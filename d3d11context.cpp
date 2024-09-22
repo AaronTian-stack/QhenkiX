@@ -128,7 +128,7 @@ void D3D11Context::destroy()
 void D3D11Context::debug_clear()
 {
     D3D11_VIEWPORT viewport = {};
-    viewport.TopLeftX = 0;
+    viewport.TopLeftX = 50;
     viewport.TopLeftY = 0;
     viewport.Width = static_cast<float>(1280);
     viewport.Height = static_cast<float>(720);
