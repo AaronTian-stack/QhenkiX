@@ -5,8 +5,12 @@
 #include <SDL_syswm.h>
 #include <string>
 #include <vector>
+#include <DirectXMath.h>
 
+#define NOMINMAX
 #include <windows.h>
+
+using namespace DirectX;
 
 struct DisplayInfo
 {
@@ -39,7 +43,9 @@ public:
 	SDL_DisplayMode get_current_monitor() const;
 	static std::vector<SDL_DisplayMode> get_monitors();
 
-	const DisplayInfo& get_display_info();
+	[[nodiscard]] XMUINT2 get_display_size() const;
+
+	const DisplayInfo& get_display_info() const;
 	HWND get_window_handle();
 
 	bool set_fullscreen(bool fullscreen);
@@ -54,5 +60,7 @@ public:
 	void wait();
 
 	void destroy();
+
+	friend class Application;
 };
 

@@ -26,7 +26,13 @@ std::vector<SDL_DisplayMode> DisplayWindow::get_monitors()
 	return modes;
 }
 
-const DisplayInfo& DisplayWindow::get_display_info()
+XMUINT2 DisplayWindow::get_display_size() const
+{
+	return {static_cast<uint32_t>(display_info.width), static_cast<uint32_t>(display_info.height)};
+
+}
+
+const DisplayInfo& DisplayWindow::get_display_info() const
 {
 	return display_info;
 }
@@ -75,7 +81,7 @@ void DisplayWindow::set_resizable(bool resizable)
 
 void DisplayWindow::wait()
 {
-	SDL_Delay(static_cast<int>(1.f / display_info.refresh_rate));
+	//SDL_Delay(static_cast<int>(1.f / display_info.refresh_rate));
 }
 
 void DisplayWindow::destroy()
@@ -86,8 +92,6 @@ void DisplayWindow::destroy()
 
 void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_index)
 {
-	display_info = info;
-
 	// For now just choose primary monitor. The developer can create a menu to let a user choose a monitor, or the program can try picking one on its own.
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0)
 	{
@@ -104,6 +108,8 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 		(info.undecorated ? SDL_WINDOW_BORDERLESS : 0) |
 		(info.resizable ? SDL_WINDOW_RESIZABLE : 0) | 
 		SDL_WINDOW_ALLOW_HIGHDPI);
+
+	display_info = info;
 
 	if (window == nullptr)
 	{

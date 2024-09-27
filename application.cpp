@@ -3,7 +3,7 @@
 /**
  * This could be overridden to set up the display window with custom settings.
  * For example opening a window to allow the user to select some settings.
- * Or loading settings from a file.
+ * Or loading resolution settings from a file.
  */
 void Application::init_display_window()
 {
@@ -13,14 +13,20 @@ void Application::init_display_window()
 	info.title = "QhenkiX Application | DX11";
 	info.fullscreen = false;
 	info.undecorated = false;
-	info.resizable = false;
-	display_window.create_window(info, 0);
+	info.resizable = true;
+	window.create_window(info, 0);
+}
+
+void Application::create()
+{
+
 }
 
 void Application::run()
 {
 	init_display_window();
-	d3d11_context.create(display_window);
+	d3d11.create(window);
+	create();
 	// starts the main loop
     bool quit = false;
     while (!quit)
@@ -36,7 +42,9 @@ void Application::run()
 			{
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED)
 				{
-					d3d11_context.resize_swapchain(event.window.data1, event.window.data2);
+					window.display_info.width = event.window.data1;
+					window.display_info.height = event.window.data2;
+					d3d11.resize_swapchain(event.window.data1, event.window.data2);
 					resize(event.window.data1, event.window.data2);
 				}
 			}
@@ -44,10 +52,11 @@ void Application::run()
 
         render();
 
-		display_window.wait();
+		// TODO: proper application frame limiting
+		//window.wait();
     }
-    display_window.destroy();
-	d3d11_context.destroy();
+    window.destroy();
+	d3d11.destroy();
     destroy();
 }
 

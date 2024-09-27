@@ -21,16 +21,19 @@
     <ClCompile Include="application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="displaywindow.cpp">
+    <ClCompile Include="graphics\displaywindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="shader.cpp">
+    <ClCompile Include="graphics\shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="d3d11context.cpp">
+    <ClCompile Include="graphics\d3d11context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="example\exampleapp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\layoutassembler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,17 +44,24 @@
     <ClInclude Include="application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="displaywindow.h">
+    <ClInclude Include="graphics\displaywindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="shader.h">
+    <ClInclude Include="graphics\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="d3d11context.h">
+    <ClInclude Include="graphics\d3d11context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="example\exampleapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="graphics\layoutassembler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="base-shaders\BaseShader.vs.hlsl" />
+    <FxCompile Include="base-shaders\BaseShader.ps.hlsl" />
   </ItemGroup>
 </Project>

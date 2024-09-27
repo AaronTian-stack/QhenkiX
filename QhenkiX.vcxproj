@@ -77,6 +77,9 @@
     </CustomBuildBeforeTargets>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
     <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <ExtensionsToDeleteOnClean>$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LibraryPath>$(ProjectDir)SDL2-2.30.7\lib\x64;$(LibraryPath)</LibraryPath>
@@ -85,6 +88,9 @@
     </CustomBuildBeforeTargets>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
     <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <ExtensionsToDeleteOnClean>$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -120,7 +126,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)SDL2-2.30.7\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,6 +137,9 @@
     <CustomBuildStep>
       <Command>echo hello</Command>
     </CustomBuildStep>
+    <FxCompile>
+      <ShaderModel>6.2</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -151,14 +161,18 @@
     <CustomBuildStep>
       <Command>echo hello</Command>
     </CustomBuildStep>
+    <FxCompile>
+      <ShaderModel>6.2</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="application.cpp" />
-    <ClCompile Include="displaywindow.cpp" />
+    <ClCompile Include="graphics\displaywindow.cpp" />
     <ClCompile Include="example\exampleapp.cpp" />
     <ClCompile Include="example\main.cpp" />
-    <ClCompile Include="d3d11context.cpp" />
-    <ClCompile Include="shader.cpp" />
+    <ClCompile Include="graphics\d3d11context.cpp" />
+    <ClCompile Include="graphics\layoutassembler.cpp" />
+    <ClCompile Include="graphics\shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll">
@@ -168,10 +182,27 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.h" />
-    <ClInclude Include="displaywindow.h" />
-    <ClInclude Include="d3d11context.h" />
+    <ClInclude Include="graphics\displaywindow.h" />
+    <ClInclude Include="graphics\d3d11context.h" />
     <ClInclude Include="example\exampleapp.h" />
-    <ClInclude Include="shader.h" />
+    <ClInclude Include="graphics\layoutassembler.h" />
+    <ClInclude Include="graphics\shader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="base-shaders\BaseShader.ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <DeploymentContent>true</DeploymentContent>
+    </FxCompile>
+    <FxCompile Include="base-shaders\BaseShader.vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <DeploymentContent>true</DeploymentContent>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
