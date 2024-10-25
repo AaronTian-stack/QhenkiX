@@ -1,10 +1,10 @@
-#include "d3d11context.h"
+#include <d3d11context.h>
 
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
 #include <iostream>
 
-#include "shader.h"
+#include <shader.h>
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -24,13 +24,18 @@ void D3D11Context::create(DisplayWindow& window)
     // This feature level requires a display driver that is at least implemented to WDDM for Windows 8 (WDDM 1.2).
     constexpr D3D_FEATURE_LEVEL deviceFeatureLevel = D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_1;
 
+	UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#ifdef _DEBUG
+	creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
 	// create device
     // adapter is controlled by driver. must change in windows settings
     if (FAILED(D3D11CreateDevice(
         nullptr,
         D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_HARDWARE,
         nullptr,
-        0,
+        creationFlags,
         &deviceFeatureLevel,
         1,
         D3D11_SDK_VERSION,
@@ -73,6 +78,16 @@ void D3D11Context::create(DisplayWindow& window)
 
     // create swap chain render target
 	create_swapchain_resources();
+
+#ifdef _DEBUG
+    if (FAILED(device.As(&debug)))
+    {
+        throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
+    }
+#endif
+
+
+
 }
 
 void D3D11Context::create_swapchain_resources()
@@ -93,6 +108,7 @@ void D3D11Context::create_swapchain_resources()
 		throw std::runtime_error("Failed to create Render Target View");
     }
     // don't need to keep the back buffer reference only needed it to create RTV
+	// d3d11 auto swaps the back buffer, uses the same pointer
 }
 
 void D3D11Context::destroy_swapchain_resources()
@@ -126,19 +142,36 @@ void D3D11Context::destroy()
     swapchain.Reset();
     dxgi_factory.Reset();
     device_context.Reset();
+#if !defined(NDEBUG)
+    debug->ReportLiveDeviceObjects(D3D11_RLDO_FLAGS::D3D11_RLDO_DETAIL);
+    debug.Reset();
+#endif
     device.Reset();
 }
 
-ComPtr<ID3D11VertexShader> D3D11Context::create_vertex_shader(const std::wstring& fileName,
-	ComPtr<ID3DBlob>& vertexShaderBlob, const D3D_SHADER_MACRO* macros)
+ComPtr<ID3D11VertexShader> D3D11Context::create_vertex_shader(const std::wstring& file_name,
+	ComPtr<ID3DBlob>& vertex_shader_blob)
 {
-	return Shader::vertex_shader(device, fileName, vertexShaderBlob, macros);
+	return Shader::vertex_shader(device, file_name, vertex_shader_blob, nullptr);
 }
 
-ComPtr<ID3D11PixelShader> D3D11Context::create_pixel_shader(const std::wstring& fileName,
-	const D3D_SHADER_MACRO* macros)
+ComPtr<ID3D11PixelShader> D3D11Context::create_pixel_shader(const std::wstring& file_name)
 {
-	return Shader::pixel_shader(device, fileName, macros);
+	return Shader::pixel_shader(device, file_name, nullptr);
+}
+
+ComPtr<ID3D11VertexShader> D3D11Context::create_vertex_shader(const std::wstring& file_name,
+                                                              ComPtr<ID3DBlob>& vertex_shader_blob, std::vector<D3D_SHADER_MACRO> macros)
+{
+    assert(macros.back().Name == nullptr && "Last macro must be null");
+	return Shader::vertex_shader(device, file_name, vertex_shader_blob, macros.data());
+}
+
+ComPtr<ID3D11PixelShader> D3D11Context::create_pixel_shader(const std::wstring& file_name,
+    std::vector<D3D_SHADER_MACRO> macros)
+{
+    assert(macros.back().Name == nullptr && "Last macro must be null");
+	return Shader::pixel_shader(device, file_name, macros.data());
 }
 
 void D3D11Context::clear(const ComPtr<ID3D11RenderTargetView>& render_target, const float r, const float g, const float b, const float a)
@@ -156,28 +189,14 @@ void D3D11Context::clear(const ComPtr<ID3D11RenderTargetView>& render_target, co
 
 void D3D11Context::present(unsigned int blanks)
 {
-	assert(blanks <= 4);
     // nth blank (1 = double buffer)
 	swapchain->Present(blanks, 0);
 }
 
-void D3D11Context::debug_clear()
+void D3D11Context::clear_set_default()
 {
-    D3D11_VIEWPORT viewport = {};
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-	auto s = window->get_display_size();
-    viewport.Width = static_cast<float>(s.x);
-    viewport.Height = static_cast<float>(s.y);
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-
     clear(sc_render_target, { 0.0f, 0.0f, 0.0f, 1.0f });
-
     // multiple viewports is only for geometry shader
-    device_context->RSSetViewports(
-        1,
-        &viewport);
     device_context->OMSetRenderTargets(
         1,
         sc_render_target.GetAddressOf(),

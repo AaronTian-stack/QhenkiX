@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(ProjectDir)SDL2-2.30.7\lib\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(LibraryPath)</LibraryPath>
     <IncludePath>$(IncludePath)</IncludePath>
     <CustomBuildBeforeTargets>
     </CustomBuildBeforeTargets>
@@ -82,7 +82,7 @@
     <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(ProjectDir)SDL2-2.30.7\lib\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(LibraryPath)</LibraryPath>
     <IncludePath>$(IncludePath)</IncludePath>
     <CustomBuildBeforeTargets>
     </CustomBuildBeforeTargets>
@@ -126,13 +126,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX;$(ProjectDir)qhenkiX\graphics;$(ProjectDir)qhenkiX\graphics\d3d</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>echo hello</Command>
@@ -149,14 +149,15 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)SDL2-2.30.7\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX;$(ProjectDir)qhenkiX\graphics;$(ProjectDir)qhenkiX\graphics\d3d</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>echo hello</Command>
@@ -166,13 +167,17 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="application.cpp" />
-    <ClCompile Include="graphics\displaywindow.cpp" />
+    <ClCompile Include="qhenkiX\application.cpp" />
+    <ClCompile Include="qhenkiX\graphics\camera.cpp" />
+    <ClCompile Include="qhenkiX\graphics\displaywindow.cpp" />
     <ClCompile Include="example\exampleapp.cpp" />
     <ClCompile Include="example\main.cpp" />
-    <ClCompile Include="graphics\d3d11context.cpp" />
-    <ClCompile Include="graphics\layoutassembler.cpp" />
-    <ClCompile Include="graphics\shader.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d\d3d11context.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d\layoutassembler.cpp" />
+    <ClCompile Include="qhenkiX\graphics\shader.cpp" />
+    <ClCompile Include="qhenkiX\graphics\orthographic_camera.cpp" />
+    <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp" />
+    <ClCompile Include="qhenkiX\graphics\viewport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll">
@@ -181,12 +186,16 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application.h" />
-    <ClInclude Include="graphics\displaywindow.h" />
-    <ClInclude Include="graphics\d3d11context.h" />
+    <ClInclude Include="qhenkiX\application.h" />
+    <ClInclude Include="qhenkiX\graphics\camera.h" />
+    <ClInclude Include="qhenkiX\graphics\displaywindow.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d\d3d11context.h" />
     <ClInclude Include="example\exampleapp.h" />
-    <ClInclude Include="graphics\layoutassembler.h" />
-    <ClInclude Include="graphics\shader.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d\layoutassembler.h" />
+    <ClInclude Include="qhenkiX\graphics\shader.h" />
+    <ClInclude Include="qhenkiX\graphics\orthographic_camera.h" />
+    <ClInclude Include="qhenkiX\graphics\2d\spritebatch.h" />
+    <ClInclude Include="qhenkiX\graphics\viewport.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="base-shaders\BaseShader.ps.hlsl">

@@ -56,10 +56,9 @@ ID3D11InputLayout* LayoutAssembler::create_input_layout(const ComPtr<ID3D11Devic
         return layout_map[hash].Get();
 
     ComPtr<ID3D11InputLayout> layout;
-
     if (FAILED(device->CreateInputLayout(
         layout_desc.data(),
-        layout_desc.size(),
+        static_cast<UINT>(layout_desc.size()),
         vertexShaderBlob->GetBufferPointer(),
         vertexShaderBlob->GetBufferSize(),
         &layout)))

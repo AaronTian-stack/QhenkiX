@@ -10,7 +10,7 @@ void DisplayWindow::create_window(const DisplayInfo& info, int monitor_index)
 
 SDL_DisplayMode DisplayWindow::get_current_monitor() const
 {
-	return current_monitor;
+	return current_monitor_;
 }
 
 std::vector<SDL_DisplayMode> DisplayWindow::get_monitors()
@@ -28,55 +28,55 @@ std::vector<SDL_DisplayMode> DisplayWindow::get_monitors()
 
 XMUINT2 DisplayWindow::get_display_size() const
 {
-	return {static_cast<uint32_t>(display_info.width), static_cast<uint32_t>(display_info.height)};
+	return {static_cast<uint32_t>(display_info_.width), static_cast<uint32_t>(display_info_.height)};
 
 }
 
 const DisplayInfo& DisplayWindow::get_display_info() const
 {
-	return display_info;
+	return display_info_;
 }
 
 HWND DisplayWindow::get_window_handle()
 {
-	return hwnd;
+	return hwnd_;
 }
 
 bool DisplayWindow::set_fullscreen(bool fullscreen)
 {
-	if (SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0) != 0)
+	if (SDL_SetWindowFullscreen(window_, fullscreen ? SDL_WINDOW_FULLSCREEN : 0) != 0)
 	{
 		SDL_Log("Unable to set fullscreen: %s", SDL_GetError());
 		return false;
 	}
-	display_info.fullscreen = fullscreen;
+	display_info_.fullscreen = fullscreen;
 	return true;
 }
 
 bool DisplayWindow::set_resolution(int width, int height)
 {
-	SDL_SetWindowSize(window, width, height);
-	display_info.width = width;
-	display_info.height = height;
+	SDL_SetWindowSize(window_, width, height);
+	display_info_.width = width;
+	display_info_.height = height;
 	return true;
 }
 
 void DisplayWindow::set_title(const char* title)
 {
-	SDL_SetWindowTitle(window, title);
-	display_info.title = title;
+	SDL_SetWindowTitle(window_, title);
+	display_info_.title = title;
 }
 
 void DisplayWindow::set_decoration(bool undecorated)
 {
-	SDL_SetWindowBordered(window, undecorated ? SDL_FALSE : SDL_TRUE);
-	display_info.undecorated = undecorated;
+	SDL_SetWindowBordered(window_, undecorated ? SDL_FALSE : SDL_TRUE);
+	display_info_.undecorated = undecorated;
 }
 
 void DisplayWindow::set_resizable(bool resizable)
 {
-	SDL_SetWindowResizable(window, resizable ? SDL_TRUE : SDL_FALSE);
-	display_info.resizable = resizable;
+	SDL_SetWindowResizable(window_, resizable ? SDL_TRUE : SDL_FALSE);
+	display_info_.resizable = resizable;
 }
 
 void DisplayWindow::wait()
@@ -86,7 +86,7 @@ void DisplayWindow::wait()
 
 void DisplayWindow::destroy()
 {
-	SDL_DestroyWindow(window);
+	SDL_DestroyWindow(window_);
 	SDL_Quit();
 }
 
@@ -99,7 +99,7 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 		throw std::runtime_error("Unable to initialize SDL");
 	}
 
-	window = SDL_CreateWindow(info.title.c_str(),
+	window_ = SDL_CreateWindow(info.title.c_str(),
 		SDL_WINDOWPOS_CENTERED_DISPLAY(monitor_index), // Centered on primary display
 		SDL_WINDOWPOS_CENTERED_DISPLAY(monitor_index),
 		info.width,
@@ -109,18 +109,18 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 		(info.resizable ? SDL_WINDOW_RESIZABLE : 0) | 
 		SDL_WINDOW_ALLOW_HIGHDPI);
 
-	display_info = info;
+	display_info_ = info;
 
-	if (window == nullptr)
+	if (window_ == nullptr)
 	{
 		SDL_Log("Unable to create window: %s", SDL_GetError());
 		SDL_Quit();
 		throw std::runtime_error("Unable to create window");
 	}
 
-	SDL_GetCurrentDisplayMode(monitor_index, &current_monitor);
+	SDL_GetCurrentDisplayMode(monitor_index, &current_monitor_);
 
 	SDL_VERSION(&wmInfo.version);
-	SDL_GetWindowWMInfo(window, &wmInfo);
-	hwnd = (HWND)wmInfo.info.win.window;
+	SDL_GetWindowWMInfo(window_, &wmInfo);
+	hwnd_ = (HWND)wmInfo.info.win.window;
 }

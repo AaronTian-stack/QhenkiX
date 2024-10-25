@@ -28,12 +28,12 @@ struct DisplayInfo
  */
 class DisplayWindow
 {
-	SDL_Window* window = nullptr;
-	SDL_DisplayMode current_monitor = {};
-	DisplayInfo display_info = {};
+	SDL_Window* window_ = nullptr;
+	SDL_DisplayMode current_monitor_ = {};
+	DisplayInfo display_info_ = {};
 
 	SDL_SysWMinfo wmInfo = {};
-	HWND hwnd = nullptr;
+	HWND hwnd_ = nullptr;
 
 	void create_window_internal(const DisplayInfo& info, int monitor_index);
 

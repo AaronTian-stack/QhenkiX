@@ -7,25 +7,23 @@
  */
 void Application::init_display_window()
 {
-	DisplayInfo info;
-	info.width = 1280;
-	info.height = 720;
-	info.title = "QhenkiX Application | DX11";
-	info.fullscreen = false;
-	info.undecorated = false;
-	info.resizable = true;
-	window.create_window(info, 0);
-}
-
-void Application::create()
-{
-
+	DisplayInfo info
+	{
+		.width = 1280,
+		.height = 720,
+		.fullscreen = false,
+		.undecorated = false,
+		.resizable = true,
+		.title = "QhenkiX Application | DX11",
+	};
+	
+	window_.create_window(info, 0);
 }
 
 void Application::run()
 {
 	init_display_window();
-	d3d11.create(window);
+	d3d11_.create(window_);
 	create();
 	// starts the main loop
     bool quit = false;
@@ -42,9 +40,9 @@ void Application::run()
 			{
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED)
 				{
-					window.display_info.width = event.window.data1;
-					window.display_info.height = event.window.data2;
-					d3d11.resize_swapchain(event.window.data1, event.window.data2);
+					window_.display_info_.width = event.window.data1;
+					window_.display_info_.height = event.window.data2;
+					d3d11_.resize_swapchain(event.window.data1, event.window.data2);
 					resize(event.window.data1, event.window.data2);
 				}
 			}
@@ -55,19 +53,7 @@ void Application::run()
 		// TODO: proper application frame limiting
 		//window.wait();
     }
-    window.destroy();
-	d3d11.destroy();
+	d3d11_.destroy();
+    window_.destroy();
     destroy();
-}
-
-void Application::render()
-{
-}
-
-void Application::resize(int width, int height)
-{
-}
-
-void Application::destroy()
-{
 }

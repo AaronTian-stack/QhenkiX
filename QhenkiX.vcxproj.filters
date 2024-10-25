@@ -18,22 +18,34 @@
     <ClCompile Include="example\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="application.cpp">
+    <ClCompile Include="qhenkiX\application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="graphics\displaywindow.cpp">
+    <ClCompile Include="qhenkiX\graphics\displaywindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="graphics\shader.cpp">
+    <ClCompile Include="qhenkiX\graphics\shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="graphics\d3d11context.cpp">
+    <ClCompile Include="qhenkiX\graphics\d3d\d3d11context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="example\exampleapp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="graphics\layoutassembler.cpp">
+    <ClCompile Include="qhenkiX\graphics\d3d\layoutassembler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\orthographic_camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\viewport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,22 +53,34 @@
     <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application.h">
+    <ClInclude Include="qhenkiX\application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="graphics\displaywindow.h">
+    <ClInclude Include="qhenkiX\graphics\displaywindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="graphics\shader.h">
+    <ClInclude Include="qhenkiX\graphics\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="graphics\d3d11context.h">
+    <ClInclude Include="qhenkiX\graphics\d3d\d3d11context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="example\exampleapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="graphics\layoutassembler.h">
+    <ClInclude Include="qhenkiX\graphics\d3d\layoutassembler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\orthographic_camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\2d\spritebatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\viewport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
