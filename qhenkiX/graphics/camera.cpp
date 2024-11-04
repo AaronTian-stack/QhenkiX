@@ -38,10 +38,10 @@ void Camera::translate(XMFLOAT3 t)
 	translate(t.x, t.y, t.z);
 }
 
-void Camera::unproject(XMFLOAT3& screen, float viewportX, float viewportY, float viewportWidth, float viewportHeight)
+void Camera::unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height)
 {
 	assert(false);
-	float x = screen.x - viewportX;
+	float x = screen.x - viewport_x;
 	// TODO: need render target height!
 	//float y = window_height - screen.y - viewportY;
 }
@@ -49,6 +49,16 @@ void Camera::unproject(XMFLOAT3& screen, float viewportX, float viewportY, float
 void Camera::unproject(XMFLOAT3& screen)
 {
 	unproject(screen, 0, 0, viewport_width, viewport_height);
+}
+
+void Camera::project(XMFLOAT3& world, float viewport_x, float viewport_y, float viewport_width, float viewport_height)
+{
+	assert(false);
+}
+
+void Camera::project(XMFLOAT3& world)
+{
+	assert(false);
 }
 
 void Camera::look_at(float x, float y, float z)

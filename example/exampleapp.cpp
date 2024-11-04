@@ -5,6 +5,10 @@ void ExampleApp::create()
 	ComPtr<ID3DBlob> vertex_shader_blob;
 	vertex_shader = d3d11_.create_vertex_shader(L"base-shaders/BaseShader.vs.hlsl", vertex_shader_blob);
 	pixel_shader = d3d11_.create_pixel_shader(L"base-shaders/BaseShader.ps.hlsl");
+#ifdef _DEBUG
+	D3D11Context::set_debug_name(vertex_shader.Get(), "Base Vertex Shader");
+	D3D11Context::set_debug_name(pixel_shader.Get(), "Base Pixel Shader");
+#endif
 }
 
 void ExampleApp::render()

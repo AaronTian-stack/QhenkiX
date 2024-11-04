@@ -1,10 +1,10 @@
-#include <d3d11context.h>
+#include "d3d11_context.h"
 
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
 #include <iostream>
 
-#include <shader.h>
+#include "d3d11_shader.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -19,6 +19,10 @@ void D3D11Context::create(DisplayWindow& window)
     {
 		throw std::runtime_error("Failed to create DXGI Factory");
     }
+#ifdef _DEBUG
+    constexpr char factoryName[] = "dxgi_factory";
+    dxgi_factory->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
+#endif
 
     // Targets features supported by Direct3D 11.1, including shader model 5 and logical blend operations.
     // This feature level requires a display driver that is at least implemented to WDDM for Windows 8 (WDDM 1.2).
@@ -45,22 +49,31 @@ void D3D11Context::create(DisplayWindow& window)
     {
 		throw std::runtime_error("Failed to create D3D11 Device");
     }
+#ifdef _DEBUG
+	constexpr char deviceName[] = "d3d11_device";
+	device->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
+#endif
 
 	this->window = &window;
     const auto info = window.get_display_info();
 
 	// create swap chain
-    DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor = {};
-	swapChainDescriptor.Width = info.width;
-	swapChainDescriptor.Height = info.height;
-    swapChainDescriptor.Format = DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM;
-    swapChainDescriptor.SampleDesc.Count = 1; // MSAA
-    swapChainDescriptor.SampleDesc.Quality = 0; 
-    swapChainDescriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDescriptor.BufferCount = 2;
-    swapChainDescriptor.SwapEffect = DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    swapChainDescriptor.Scaling = DXGI_SCALING::DXGI_SCALING_STRETCH;
-    swapChainDescriptor.Flags = {};
+    DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor = 
+    {
+        .Width = static_cast<UINT>(info.width),
+	    .Height = static_cast<UINT>(info.height),
+	    .Format = DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM,
+		.SampleDesc = 
+		{
+        	.Count = 1, // MSAA Count
+        	.Quality = 0
+		},
+	    .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+	    .BufferCount = 2,
+        .Scaling = DXGI_SCALING::DXGI_SCALING_STRETCH,
+	    .SwapEffect = DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_FLIP_DISCARD,
+	    .Flags = {},
+    };
 
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC swapChainFullscreenDescriptor = {};
     swapChainFullscreenDescriptor.Windowed = true;
@@ -85,9 +98,6 @@ void D3D11Context::create(DisplayWindow& window)
         throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
     }
 #endif
-
-
-
 }
 
 void D3D11Context::create_swapchain_resources()
@@ -147,31 +157,34 @@ void D3D11Context::destroy()
     debug.Reset();
 #endif
     device.Reset();
+#ifdef _DEBUG
+	std::cerr << "Destroyed D3D11 Context" << std::endl;
+#endif
 }
 
 ComPtr<ID3D11VertexShader> D3D11Context::create_vertex_shader(const std::wstring& file_name,
 	ComPtr<ID3DBlob>& vertex_shader_blob)
 {
-	return Shader::vertex_shader(device, file_name, vertex_shader_blob, nullptr);
+	return D3D11Shader::vertex_shader(device, file_name, vertex_shader_blob, nullptr);
 }
 
 ComPtr<ID3D11PixelShader> D3D11Context::create_pixel_shader(const std::wstring& file_name)
 {
-	return Shader::pixel_shader(device, file_name, nullptr);
+	return D3D11Shader::pixel_shader(device, file_name, nullptr);
 }
 
 ComPtr<ID3D11VertexShader> D3D11Context::create_vertex_shader(const std::wstring& file_name,
                                                               ComPtr<ID3DBlob>& vertex_shader_blob, std::vector<D3D_SHADER_MACRO> macros)
 {
     assert(macros.back().Name == nullptr && "Last macro must be null");
-	return Shader::vertex_shader(device, file_name, vertex_shader_blob, macros.data());
+	return D3D11Shader::vertex_shader(device, file_name, vertex_shader_blob, macros.data());
 }
 
 ComPtr<ID3D11PixelShader> D3D11Context::create_pixel_shader(const std::wstring& file_name,
     std::vector<D3D_SHADER_MACRO> macros)
 {
     assert(macros.back().Name == nullptr && "Last macro must be null");
-	return Shader::pixel_shader(device, file_name, macros.data());
+	return D3D11Shader::pixel_shader(device, file_name, macros.data());
 }
 
 void D3D11Context::clear(const ComPtr<ID3D11RenderTargetView>& render_target, const float r, const float g, const float b, const float a)

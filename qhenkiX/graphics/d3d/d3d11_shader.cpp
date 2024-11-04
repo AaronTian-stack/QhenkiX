@@ -1,4 +1,4 @@
-#include "shader.h"
+#include "d3d11_shader.h"
 
 #include <stdexcept>
 #include <fstream>
@@ -7,8 +7,8 @@
 #include <filesystem>
 #include <iostream>
 
-bool Shader::compile_shader(const std::wstring& fileName, const std::string& entryPoint, const std::string& profile,
-                            ComPtr<ID3DBlob>& shaderBlob, const D3D_SHADER_MACRO* macros)
+bool D3D11Shader::compile_shader(const std::wstring& fileName, const std::string& entryPoint, const std::string& profile,
+                                 ComPtr<ID3DBlob>& shaderBlob, const D3D_SHADER_MACRO* macros)
 {
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
@@ -36,7 +36,7 @@ bool Shader::compile_shader(const std::wstring& fileName, const std::string& ent
 	return true;
 }
 
-ComPtr<ID3D11VertexShader> Shader::vertex_shader(const ComPtr<ID3D11Device>& device, const std::wstring& fileName, ComPtr<ID3DBlob> &vertexShaderBlob, const D3D_SHADER_MACRO* macros)
+ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(const ComPtr<ID3D11Device>& device, const std::wstring& fileName, ComPtr<ID3DBlob> &vertexShaderBlob, const D3D_SHADER_MACRO* macros)
 {
 	if (!compile_shader(fileName, ENTRYPOINT, VS_VERSION, vertexShaderBlob, macros))
 	{
@@ -55,7 +55,7 @@ ComPtr<ID3D11VertexShader> Shader::vertex_shader(const ComPtr<ID3D11Device>& dev
 	return vertexShader;
 }
 
-ComPtr<ID3D11PixelShader> Shader::pixel_shader(const ComPtr<ID3D11Device>& device, const std::wstring& fileName, const D3D_SHADER_MACRO* macros)
+ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(const ComPtr<ID3D11Device>& device, const std::wstring& fileName, const D3D_SHADER_MACRO* macros)
 {
 	ComPtr<ID3DBlob> pixelShaderBlob;
 	if (!compile_shader(fileName, ENTRYPOINT, PS_VERSION, pixelShaderBlob, macros))

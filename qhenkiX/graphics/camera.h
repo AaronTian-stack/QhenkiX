@@ -46,13 +46,15 @@ public:
 	void translate(float x, float y, float z);
 	void translate(XMFLOAT3 t);
 
-	void unproject(XMFLOAT3& screen, float viewportX, float viewportY, float viewportWidth, float viewportHeight);
+	void unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
 	void unproject(XMFLOAT3& screen);
 
-	void project(XMFLOAT3& world, float viewportX, float viewportY, float viewportWidth, float viewportHeight);
+	void project(XMFLOAT3& world, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
 	void project(XMFLOAT3& world);
 
 	void look_at(float x, float y, float z);
 	void look_at(XMFLOAT3 target);
+
+	friend class Viewport;
 };
 

@@ -11,7 +11,7 @@ using Microsoft::WRL::ComPtr;
 #define PS_VERSION "ps_5_0"
 #define ENTRYPOINT "main"
 
-class Shader
+class D3D11Shader
 {
 	// macros must be null terminated
 	static bool compile_shader(const std::wstring& fileName, const std::string& entryPoint, const std::string& profile,

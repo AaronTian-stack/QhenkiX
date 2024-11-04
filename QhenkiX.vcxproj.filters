@@ -24,10 +24,10 @@
     <ClCompile Include="qhenkiX\graphics\displaywindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\shader.cpp">
+    <ClCompile Include="qhenkiX\graphics\d3d\d3d11_shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\d3d\d3d11context.cpp">
+    <ClCompile Include="qhenkiX\graphics\d3d\d3d11_context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="example\exampleapp.cpp">
@@ -45,7 +45,13 @@
     <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\viewport.cpp">
+    <ClCompile Include="qhenkiX\util\viewport\viewport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -59,10 +65,10 @@
     <ClInclude Include="qhenkiX\graphics\displaywindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\shader.h">
+    <ClInclude Include="qhenkiX\graphics\d3d\d3d11_shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\d3d\d3d11context.h">
+    <ClInclude Include="qhenkiX\graphics\d3d\d3d11_context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="example\exampleapp.h">
@@ -80,7 +86,28 @@
     <ClInclude Include="qhenkiX\graphics\2d\spritebatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\viewport.h">
+    <ClInclude Include="qhenkiX\util\viewport\viewport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\util\scaling.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\util\viewport\scaling_viewport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\resource\buffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d\d3d11_buffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\smartpointer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

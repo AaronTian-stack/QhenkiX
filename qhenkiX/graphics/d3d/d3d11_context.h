@@ -15,7 +15,6 @@ class D3D11Context
 	DisplayWindow* window = nullptr;
 
 	ComPtr<IDXGIFactory2> dxgi_factory = nullptr;
-	ComPtr<ID3D11Device> device = nullptr;
 	
 	ComPtr<IDXGISwapChain1> swapchain = nullptr;
 	ComPtr<ID3D11RenderTargetView> sc_render_target = nullptr;
@@ -24,10 +23,6 @@ class D3D11Context
 	ComPtr<ID3D11Debug> debug = nullptr;
 #endif
 
-	// Will not work with things that don't derive from ID3D11DeviceChild
-	template<UINT TDebugNameLength>
-	static void set_debug_name(_In_ ID3D11DeviceChild* device_resource, _In_z_ const char(&debug_name)[TDebugNameLength]);
-
 	void create(DisplayWindow& window);
 	void create_swapchain_resources();
 	void destroy_swapchain_resources();
@@ -35,6 +30,11 @@ class D3D11Context
 	void destroy();
 
 public:
+	// Will not work with things that don't derive from ID3D11DeviceChild
+	template<UINT TDebugNameLength>
+	static void set_debug_name(_In_ ID3D11DeviceChild* device_resource, _In_z_ const char(&debug_name)[TDebugNameLength]);
+
+	ComPtr<ID3D11Device> device = nullptr;
 	ComPtr<ID3D11DeviceContext> device_context = nullptr;
 
 	ComPtr<ID3D11VertexShader> create_vertex_shader(const std::wstring& file_name, ComPtr<ID3DBlob>& vertex_shader_blob);
@@ -47,6 +47,7 @@ public:
 
 	void present(unsigned int blanks);
 
+	// clears swapchain buffer and sets swapchain buffer to render target
 	void clear_set_default();
 
 	friend class Application;
