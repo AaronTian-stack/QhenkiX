@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include <DirectXMath.h>
 
-#include "camera.h"
-#include "d3d11_context.h"
+#include "graphics/camera.h"
+#include "graphics/d3d11/d3d11_context.h"
 
 using namespace DirectX;
 

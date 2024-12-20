@@ -51,7 +51,6 @@ void Application::run()
         render();
 
 		// TODO: proper application frame limiting
-		//window.wait();
     }
 	d3d11_.destroy();
     window_.destroy();

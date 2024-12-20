@@ -2,7 +2,7 @@
 
 #include <tsl/robin_map.h>
 #include <wrl/client.h>
-#include <d3d11_context.h>
+#include <graphics/d3d11/d3d11_context.h>
 
 using namespace Microsoft::WRL;
 
@@ -19,8 +19,8 @@ enum VertexBufferType : uint8_t
 
 struct BufferData
 {
-	void* data;
 	size_t size;
+	void* data;
 };
 
 class Mesh

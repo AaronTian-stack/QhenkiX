@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/displaywindow.h"
-#include "graphics/d3d/d3d11_context.h"
+#include "graphics/d3d11/d3d11_context.h"
 
 /**
  * Encapsulates the objects that control DisplayWindow, Audio, Input, File System, Preferences.

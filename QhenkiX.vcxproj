@@ -126,7 +126,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX;$(ProjectDir)qhenkiX\graphics;$(ProjectDir)qhenkiX\graphics\d3d</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -149,7 +149,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX;$(ProjectDir)qhenkiX\graphics;$(ProjectDir)qhenkiX\graphics\d3d</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -167,14 +167,16 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="qhenkiX\graphics\abstraction\context.cpp" />
     <ClCompile Include="qhenkiX\application.cpp" />
+    <ClCompile Include="qhenkiX\graphics\abstraction\swapchain.cpp" />
     <ClCompile Include="qhenkiX\graphics\camera.cpp" />
     <ClCompile Include="qhenkiX\graphics\displaywindow.cpp" />
     <ClCompile Include="example\exampleapp.cpp" />
     <ClCompile Include="example\main.cpp" />
-    <ClCompile Include="qhenkiX\graphics\d3d\d3d11_context.cpp" />
-    <ClCompile Include="qhenkiX\graphics\d3d\layoutassembler.cpp" />
-    <ClCompile Include="qhenkiX\graphics\d3d\d3d11_shader.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_context.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d11\layoutassembler.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader.cpp" />
     <ClCompile Include="qhenkiX\graphics\mesh.cpp" />
     <ClCompile Include="qhenkiX\graphics\orthographic_camera.cpp" />
     <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp" />
@@ -188,18 +190,20 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="qhenkiX\graphics\abstraction\context.h" />
     <ClInclude Include="include\smartpointer.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d\d3d11_buffer.h" />
+    <ClInclude Include="qhenkiX\graphics\abstraction\swapchain.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_buffer.h" />
     <ClInclude Include="qhenkiX\graphics\mesh.h" />
     <ClInclude Include="qhenkiX\graphics\resource\buffer.h" />
     <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h" />
     <ClInclude Include="qhenkiX\application.h" />
     <ClInclude Include="qhenkiX\graphics\camera.h" />
     <ClInclude Include="qhenkiX\graphics\displaywindow.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d\d3d11_context.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_context.h" />
     <ClInclude Include="example\exampleapp.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d\layoutassembler.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d\d3d11_shader.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d11\layoutassembler.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader.h" />
     <ClInclude Include="qhenkiX\graphics\orthographic_camera.h" />
     <ClInclude Include="qhenkiX\graphics\2d\spritebatch.h" />
     <ClInclude Include="qhenkiX\util\viewport\viewport.h" />

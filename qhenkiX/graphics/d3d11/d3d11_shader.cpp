@@ -1,7 +1,6 @@
 #include "d3d11_shader.h"
 
 #include <stdexcept>
-#include <fstream>
 #include <sstream>
 #include <d3dcompiler.h>
 #include <filesystem>
@@ -12,9 +11,11 @@ bool D3D11Shader::compile_shader(const std::wstring& fileName, const std::string
 {
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
-#if defined(DEBUG) || defined(_DEBUG)
+
+#if defined(_DEBUG)
 	flags |= D3DCOMPILE_DEBUG;
 #endif
+
 	HRESULT hr = D3DCompileFromFile(
 		fileName.c_str(),
 		macros,
