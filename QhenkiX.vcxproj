@@ -167,6 +167,7 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
     <ClCompile Include="qhenkiX\application.cpp" />
     <ClCompile Include="qhenkiX\graphics\camera.cpp" />
@@ -189,6 +190,7 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
     <ClInclude Include="qhenkiX\graphics\vendetta\context.h" />
     <ClInclude Include="include\smartpointer.h" />

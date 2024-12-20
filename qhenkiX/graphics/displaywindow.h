@@ -59,7 +59,7 @@ public:
 
 	void wait();
 
-	void destroy();
+	~DisplayWindow();
 
 	friend class Application;
 };

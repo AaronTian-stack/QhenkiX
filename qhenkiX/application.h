@@ -16,10 +16,19 @@ class Application
 
 protected:
 
+	enum GraphicsAPI
+	{
+		D3D11,
+		Vulkan,
+		OpenGL
+	};
+
 	// TODO: Default shaders. Should be initialized in some function
+	GraphicsAPI graphics_api_ = D3D11;
 
 	DisplayWindow window_;
-	D3D11Context d3d11_;
+	uPtr<vendetta::Context> context_ = nullptr;
+	vendetta::Swapchain swapchain_{};
 
 	virtual void init_display_window();
 
@@ -29,7 +38,6 @@ protected:
 	virtual void destroy() {}
 
 public:
-	virtual ~Application() = default;
 	void run();
 };
 

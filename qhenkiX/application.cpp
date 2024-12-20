@@ -1,12 +1,15 @@
 #include "application.h"
 
+#include <graphics/d3d11/d3d11_context.h>
+
 /**
  * This could be overridden to set up the display window with custom settings.
- * For example opening a window to allow the user to select some settings.
+ * For example opening a settings window first to allow the user to select some settings.
  * Or loading resolution settings from a file.
  */
 void Application::init_display_window()
 {
+
 	DisplayInfo info
 	{
 		.width = 1280,
@@ -14,7 +17,7 @@ void Application::init_display_window()
 		.fullscreen = false,
 		.undecorated = false,
 		.resizable = true,
-		.title = "QhenkiX Application | DX11",
+		.title = "QhenkiX Application",
 	};
 	
 	window_.create_window(info, 0);
@@ -23,7 +26,16 @@ void Application::init_display_window()
 void Application::run()
 {
 	init_display_window();
-	d3d11_.create(window_);
+	// TODO: create certain context
+	context_ = mkU<D3D11Context>();
+	context_->create();
+	swapchain_.desc =
+	{
+		.width = window_.display_info_.width,
+		.height = window_.display_info_.height,
+		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
+	};
+	//context_->create_swapchain(window_, swapchain_);
 	create();
 	// starts the main loop
     bool quit = false;
@@ -42,17 +54,17 @@ void Application::run()
 				{
 					window_.display_info_.width = event.window.data1;
 					window_.display_info_.height = event.window.data2;
-					d3d11_.resize_swapchain(event.window.data1, event.window.data2);
-					resize(event.window.data1, event.window.data2);
+					//context_->resize_swapchain(event.window.data1, event.window.data2);
+					//resize(event.window.data1, event.window.data2);
 				}
 			}
         }
 
-        render();
+        //render();
 
 		// TODO: proper application frame limiting
     }
-	d3d11_.destroy();
-    window_.destroy();
-    destroy();
+	//context_->wait_all();
+	destroy();
+	context_->destroy();
 }

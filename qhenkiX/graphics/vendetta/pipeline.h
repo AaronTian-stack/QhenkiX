@@ -7,25 +7,25 @@ namespace vendetta
 {
 	struct RasterizerDesc
 	{
-		D3D12_FILL_MODE                       fill_mode = D3D12_FILL_MODE_SOLID;
-		D3D12_CULL_MODE                       cull_mode = D3D12_CULL_MODE_NONE;
-		BOOL                                  front_counter_clockwise = TRUE;
-		int                                   depth_bias = 0;
-		float                                 depth_bias_clamp = 0.f;
-		float                                 slope_scaled_depth_bias = 0.f;
-		BOOL                                  depth_clip_enable = 0;
+		D3D12_FILL_MODE                       fill_mode = D3D12_FILL_MODE_SOLID; // 4
+		D3D12_CULL_MODE                       cull_mode = D3D12_CULL_MODE_NONE; // 4
+		BOOL                                  front_counter_clockwise = TRUE; // 4
+		int                                   depth_bias = 0; // 4
+		float                                 depth_bias_clamp = 0.f; // 4
+		float                                 slope_scaled_depth_bias = 0.f; // 4
+		BOOL                                  depth_clip_enable = 0; // 4
 	};
 
 	struct DepthStencilDesc
 	{
-		uint32_t                              depth_enable = TRUE;
-		D3D12_DEPTH_WRITE_MASK                depth_write_mask = D3D12_DEPTH_WRITE_MASK_ZERO;
-		D3D12_COMPARISON_FUNC                 depth_func = D3D12_COMPARISON_FUNC_LESS;
-		BOOL                                  stencil_enable = FALSE;
-		uint8_t                               stencil_read_mask;
-		uint8_t                               stencil_write_mask;
-		D3D12_DEPTH_STENCILOP_DESC            front_face;
-		D3D12_DEPTH_STENCILOP_DESC            back_face;
+		D3D12_DEPTH_STENCILOP_DESC            front_face; // 16
+		D3D12_DEPTH_STENCILOP_DESC            back_face; // 16
+		uint32_t                              depth_enable = TRUE; // 4
+		D3D12_DEPTH_WRITE_MASK                depth_write_mask = D3D12_DEPTH_WRITE_MASK_ZERO; // 4
+		D3D12_COMPARISON_FUNC                 depth_func = D3D12_COMPARISON_FUNC_LESS; // 4
+		BOOL                                  stencil_enable = FALSE; // 4
+		uint8_t                               stencil_read_mask; // 1
+		uint8_t                               stencil_write_mask; // 1
 		// vulkan uses a single struct for both front and back face (read/write mask)
 	};
 
@@ -35,16 +35,21 @@ namespace vendetta
 		D3D12_INPUT_ELEMENT_DESC*			elements;
 	};
 
+	struct PartialPipelineDesc // 440
+	{
+		D3D12_BLEND_DESC blend_desc; // 328
+		DepthStencilDesc depth_stencil_state; // 52
+		RasterizerDesc rasterizer_state; // 28
+		InputLayoutDesc input_layout; // 16
+		DXGI_SAMPLE_DESC multisample_desc; // 8
+		D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type; // 4
+	};
+
 	struct PipelineDesc
 	{
-		RasterizerDesc rasterizer_state;
-		DepthStencilDesc depth_stencil_state;
-		InputLayoutDesc input_layout;
-		DXGI_SAMPLE_DESC multisample_desc;
+		PartialPipelineDesc* partial_pipeline_desc;
 		int num_render_targets;
-		D3D12_BLEND_DESC blend_desc;
 		DXGI_FORMAT RTVFormats[8];
-		D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type;
 	};
 	class Pipeline
 	{

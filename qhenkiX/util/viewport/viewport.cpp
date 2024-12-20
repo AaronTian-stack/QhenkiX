@@ -11,9 +11,9 @@ void Viewport::apply(D3D11Context& context, bool center_camera)
 		.MinDepth = 0.0f,
 		.MaxDepth = 1.0f,
 	};
-	context.device_context->RSSetViewports(
-		1,
-		&viewport);
+	//context.device_context->RSSetViewports(
+	//	1,
+	//	&viewport);
 	camera->viewport_width = screen_width_;
 	camera->viewport_height = screen_height_;
 	if (center_camera)

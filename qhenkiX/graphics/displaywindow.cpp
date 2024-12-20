@@ -84,7 +84,7 @@ void DisplayWindow::wait()
 	//SDL_Delay(static_cast<int>(1.f / display_info.refresh_rate));
 }
 
-void DisplayWindow::destroy()
+DisplayWindow::~DisplayWindow()
 {
 	SDL_DestroyWindow(window_);
 	SDL_Quit();

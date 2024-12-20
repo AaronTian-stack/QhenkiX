@@ -57,6 +57,9 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll" />
@@ -129,6 +132,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
