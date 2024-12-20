@@ -6,11 +6,12 @@
 #include <wrl.h>
 
 #include "graphics/displaywindow.h"
+#include "graphics/vendetta/context.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
-class D3D11Context
+class D3D11Context// : public vendetta::Context
 {
 	DisplayWindow* window = nullptr;
 

@@ -54,10 +54,7 @@
     <ClCompile Include="qhenkiX\graphics\mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\abstraction\context.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\abstraction\swapchain.cpp">
+    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -104,7 +101,7 @@
     <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\resource\buffer.h">
+    <ClInclude Include="qhenkiX\graphics\vendetta\buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_buffer.h">
@@ -116,10 +113,22 @@
     <ClInclude Include="qhenkiX\graphics\mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\abstraction\context.h">
+    <ClInclude Include="qhenkiX\graphics\vendetta\context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\abstraction\swapchain.h">
+    <ClInclude Include="qhenkiX\graphics\vendetta\swapchain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\vendetta\disposable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\vendetta\shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\vendetta\pipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

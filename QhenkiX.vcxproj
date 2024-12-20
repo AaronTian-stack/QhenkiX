@@ -132,7 +132,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>echo hello</Command>
@@ -157,7 +157,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>echo hello</Command>
@@ -167,9 +167,8 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="qhenkiX\graphics\abstraction\context.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
     <ClCompile Include="qhenkiX\application.cpp" />
-    <ClCompile Include="qhenkiX\graphics\abstraction\swapchain.cpp" />
     <ClCompile Include="qhenkiX\graphics\camera.cpp" />
     <ClCompile Include="qhenkiX\graphics\displaywindow.cpp" />
     <ClCompile Include="example\exampleapp.cpp" />
@@ -190,12 +189,16 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="qhenkiX\graphics\abstraction\context.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
+    <ClInclude Include="qhenkiX\graphics\vendetta\context.h" />
     <ClInclude Include="include\smartpointer.h" />
-    <ClInclude Include="qhenkiX\graphics\abstraction\swapchain.h" />
+    <ClInclude Include="qhenkiX\graphics\vendetta\disposable.h" />
+    <ClInclude Include="qhenkiX\graphics\vendetta\pipeline.h" />
+    <ClInclude Include="qhenkiX\graphics\vendetta\shader.h" />
+    <ClInclude Include="qhenkiX\graphics\vendetta\swapchain.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_buffer.h" />
     <ClInclude Include="qhenkiX\graphics\mesh.h" />
-    <ClInclude Include="qhenkiX\graphics\resource\buffer.h" />
+    <ClInclude Include="qhenkiX\graphics\vendetta\buffer.h" />
     <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h" />
     <ClInclude Include="qhenkiX\application.h" />
     <ClInclude Include="qhenkiX\graphics\camera.h" />
