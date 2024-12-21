@@ -41,6 +41,8 @@ void ExampleApp::render()
 	//d3d11_.device_context->Draw(3, 0);
 
 	//d3d11_.present(1);
+
+	context_->present(swapchain_);
 }
 
 void ExampleApp::resize(int width, int height)

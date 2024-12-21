@@ -35,7 +35,7 @@ void Application::run()
 		.height = window_.display_info_.height,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	};
-	//context_->create_swapchain(window_, swapchain_);
+	context_->create_swapchain(window_, swapchain_);
 	create();
 	// starts the main loop
     bool quit = false;
@@ -55,16 +55,15 @@ void Application::run()
 					window_.display_info_.width = event.window.data1;
 					window_.display_info_.height = event.window.data2;
 					//context_->resize_swapchain(event.window.data1, event.window.data2);
-					//resize(event.window.data1, event.window.data2);
+					resize(event.window.data1, event.window.data2);
 				}
 			}
         }
 
-        //render();
+        render();
 
 		// TODO: proper application frame limiting
     }
-	//context_->wait_all();
+	context_->wait_all();
 	destroy();
-	context_->destroy();
 }

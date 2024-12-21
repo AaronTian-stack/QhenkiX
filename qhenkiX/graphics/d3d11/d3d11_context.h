@@ -5,7 +5,6 @@
 #include <dxgi1_2.h>
 #include <wrl.h>
 
-#include "graphics/displaywindow.h"
 #include "graphics/vendetta/context.h"
 
 using Microsoft::WRL::ComPtr;
@@ -26,14 +25,16 @@ class D3D11Context : public vendetta::Context
 
 public:
 	void create() override;
-	void destroy() override;
-	void create_swapchain(DisplayWindow& window, vendetta::Swapchain& swapchain) override;
+	//void destroy() override;
+	bool create_swapchain(DisplayWindow& window, vendetta::Swapchain& swapchain) override;
 	bool resize_swapchain(vendetta::Swapchain& swapchain, int width, int height) override;
-	bool create_shader(vendetta::Shader* shader, const char* path, vendetta::ShaderType type,
-		std::vector<D3D_SHADER_MACRO> macros) override;
+	bool create_shader(vendetta::Shader& shader, const std::wstring& path, vendetta::ShaderType type,
+	                   std::vector<D3D_SHADER_MACRO> macros) override;
+	bool create_pipeline(vendetta::Pipeline& pipeline, vendetta::Shader& shader) override;
 	void wait_all() override;
+	bool present(vendetta::Swapchain& swapchain) override;
 
-	//~D3D11Context() override;
+	~D3D11Context() override;
 };
 
 template <UINT TDebugNameLength>
