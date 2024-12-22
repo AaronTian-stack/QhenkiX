@@ -176,7 +176,7 @@
     <ClCompile Include="example\exampleapp.cpp" />
     <ClCompile Include="example\main.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_context.cpp" />
-    <ClCompile Include="qhenkiX\graphics\d3d11\layoutassembler.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader.cpp" />
     <ClCompile Include="qhenkiX\graphics\mesh.cpp" />
     <ClCompile Include="qhenkiX\graphics\orthographic_camera.cpp" />
@@ -209,7 +209,7 @@
     <ClInclude Include="qhenkiX\graphics\displaywindow.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_context.h" />
     <ClInclude Include="example\exampleapp.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d11\layoutassembler.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader.h" />
     <ClInclude Include="qhenkiX\graphics\orthographic_camera.h" />
     <ClInclude Include="qhenkiX\graphics\2d\spritebatch.h" />

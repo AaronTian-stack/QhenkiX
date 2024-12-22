@@ -36,7 +36,7 @@ namespace vendetta
 		D3D12_INPUT_ELEMENT_DESC*			elements;
 	};
 
-	struct PipelineDesc
+	struct GraphicsPipelineDesc
 	{
 		D3D12_BLEND_DESC* blend_desc = nullptr; // 328
 		DepthStencilDesc* depth_stencil_state = nullptr; // 52
@@ -44,12 +44,13 @@ namespace vendetta
 		InputLayoutDesc* input_layout = nullptr; // 16
 		DXGI_SAMPLE_DESC* multisample_desc = nullptr; // 8
 		D3D12_PRIMITIVE_TOPOLOGY_TYPE* primitive_topology_type = nullptr; // 4
-		int num_render_targets = -1;
+		int num_render_targets = -1; // If this is <= 0, pipeline is lazily created based off what render target is bound at draw time
 		DXGI_FORMAT RTVFormats[8]{};
 	};
-	class Pipeline
+	struct GraphicsPipeline
 	{
-		PipelineDesc desc{}; // for DX12 should be freed after pipeline creation
+		BOOL interleaved = FALSE;
+		GraphicsPipelineDesc desc{};
 		Shader* shader = nullptr;
 		sPtr<void> internal_state;
 	};

@@ -33,7 +33,7 @@
     <ClCompile Include="example\exampleapp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\d3d11\layoutassembler.cpp">
+    <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\camera.cpp">
@@ -83,7 +83,7 @@
     <ClInclude Include="example\exampleapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\d3d11\layoutassembler.h">
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\camera.h">

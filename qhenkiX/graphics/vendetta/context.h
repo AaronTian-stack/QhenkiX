@@ -20,8 +20,13 @@ namespace vendetta
 		virtual bool present(Swapchain& swapchain) = 0;
 
 		virtual bool create_shader(Shader& shader, const std::wstring& path, ShaderType type, std::vector<D3D_SHADER_MACRO> macros) = 0;
-		// Create pipeline based off specified description assumed to be already filled
-		virtual bool create_pipeline(Pipeline& pipeline, Shader& shader) = 0;
+		// Create graphics pipeline based off specified description assumed to be already filled
+		virtual bool create_pipeline(GraphicsPipeline& pipeline, Shader& vertex_shader, vendetta::Shader& pixel_shader) = 0;
+		// virtual bool bind_pipeline(GraphicsPipeline& pipeline) = 0;
+
+		// TODO: compute pipeline
+
+		// virtual bool set_viewport(const Viewport& viewport) = 0;
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_all() = 0;

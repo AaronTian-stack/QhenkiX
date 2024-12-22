@@ -4,8 +4,9 @@
 
 class ExampleApp : public Application
 {
-	ComPtr<ID3D11VertexShader> vertex_shader;
-	ComPtr<ID3D11PixelShader> pixel_shader;
+	vendetta::GraphicsPipeline pipeline{};
+	vendetta::Shader vertex_shader{};
+	vendetta::Shader pixel_shader{};
 
 protected:
 	void create() override;
