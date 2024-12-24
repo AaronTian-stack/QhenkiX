@@ -8,6 +8,9 @@ class ExampleApp : public Application
 	vendetta::Shader vertex_shader{};
 	vendetta::Shader pixel_shader{};
 
+	//vendetta::CommandPool cmd_pool{};
+	vendetta::CommandList cmd_list{};
+
 protected:
 	void create() override;
 	void render() override;

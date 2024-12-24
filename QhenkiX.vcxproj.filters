@@ -143,6 +143,15 @@
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\vendetta\command_list.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\vendetta\render_target.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_render_target.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="base-shaders\BaseShader.vs.hlsl" />

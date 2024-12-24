@@ -22,6 +22,8 @@ class D3D11Context : public vendetta::Context
 	ComPtr<ID3D11DeviceContext> device_context_ = nullptr;
 	D3D11LayoutAssembler layout_assembler_;
 
+	std::array<D3D11_VIEWPORT, 16> viewports;
+
 public:
 	// Will not work with things that don't derive from ID3D11DeviceChild
 	template<UINT TDebugNameLength>
@@ -29,14 +31,27 @@ public:
 
 	void create() override;
 	//void destroy() override;
-	bool create_swapchain(DisplayWindow& window, vendetta::Swapchain& swapchain) override;
+	bool create_swapchain(DisplayWindow& window, const vendetta::SwapchainDesc& swapchain_desc, vendetta::Swapchain& swapchain) override;
 	bool resize_swapchain(vendetta::Swapchain& swapchain, int width, int height) override;
+	bool present(vendetta::Swapchain& swapchain) override;
+
 	bool create_shader(vendetta::Shader& shader, const std::wstring& path, vendetta::ShaderType type,
 	                   std::vector<D3D_SHADER_MACRO> macros) override;
 	bool create_pipeline(vendetta::GraphicsPipeline& pipeline, vendetta::Shader& vertex_shader, vendetta::Shader& pixel_shader) override;
-	void wait_all() override;
-	bool present(vendetta::Swapchain& swapchain) override;
+	bool bind_pipeline(vendetta::CommandList& cmd_list, vendetta::GraphicsPipeline& pipeline) override;
 
+	void start_render_pass(vendetta::CommandList& cmd_list, vendetta::Swapchain& swapchain,
+		const vendetta::RenderTarget* depth_stencil) override;
+	void start_render_pass(vendetta::CommandList& cmd_list, unsigned rt_count,
+	                       const vendetta::RenderTarget* rts, const vendetta::RenderTarget* depth_stencil) override;
+
+	void set_viewports(unsigned count, const D3D12_VIEWPORT* viewport) override;
+
+	void draw(vendetta::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) override;
+	void draw_indexed(vendetta::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
+		int32_t base_vertex_offset) override;
+
+	void wait_all() override;
 	~D3D11Context() override;
 
 	friend class D3D11GraphicsPipeline;

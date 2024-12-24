@@ -1,5 +1,6 @@
 ﻿#include "d3d11_pipeline.h"
 
+#include <array>
 #include <cassert>
 
 void D3D11GraphicsPipeline::bind(const ComPtr<ID3D11DeviceContext>& context)
@@ -9,11 +10,15 @@ void D3D11GraphicsPipeline::bind(const ComPtr<ID3D11DeviceContext>& context)
 		int vsc = 0;
 		int psc = 0;
 		int cc = 0;
-		for (auto i = 0; i < 3; i++)
+		std::array shaders = { vertex_shader_, pixel_shader_, }; //  TODO: compute_shader_
+		for (auto shader : shaders)
 		{
-			if (vertex_shader_ && static_cast<D3D11Shader*>(vertex_shader_)->vertex) vsc++;
-			if (pixel_shader_ && static_cast<D3D11Shader*>(pixel_shader_)->pixel) psc++;
-			// TODO: COMPUTE if (compute_shader_ && static_cast<D3D11Shader*>(compute_shader_)->compute) cc++;
+			if (shader)
+			{
+				if (static_cast<D3D11Shader*>(shader)->vertex) vsc++;
+				if (static_cast<D3D11Shader*>(shader)->pixel) psc++;
+				// if (static_cast<D3D11Shader*>(compute_shader_)->compute)) cc++;
+			}
 		}
 		assert(vsc <= 1 && "Vertex shader count (vsc) should be <= 1");
 		assert(psc <= 1 && "Pixel shader count (psc) should be <= 1");

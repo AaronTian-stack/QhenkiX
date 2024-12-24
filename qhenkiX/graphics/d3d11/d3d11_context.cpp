@@ -7,6 +7,7 @@
 #include "d3d11_shader.h"
 #include "d3d11_swapchain.h"
 #include "d3d11_pipeline.h"
+#include "d3d11_render_target.h"
 
 void D3D11Context::create()
 {
@@ -76,11 +77,12 @@ void D3D11Context::create()
 #endif
 }
 
-bool D3D11Context::create_swapchain(DisplayWindow& window, vendetta::Swapchain& swapchain)
+bool D3D11Context::create_swapchain(DisplayWindow& window, const vendetta::SwapchainDesc& swapchain_desc, vendetta::Swapchain& swapchain)
 {
+	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	return swap_d3d11->create(swapchain.desc, window, dxgi_factory, device_);
+	return swap_d3d11->create(swapchain_desc, window, dxgi_factory, device_);
 }
 
 bool D3D11Context::resize_swapchain(vendetta::Swapchain& swapchain, int width, int height)
@@ -89,12 +91,13 @@ bool D3D11Context::resize_swapchain(vendetta::Swapchain& swapchain, int width, i
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	assert(swap_d3d11);
 	assert(swap_d3d11->swapchain);
-    return swap_d3d11->resize(device_, width, height);
+    return swap_d3d11->resize(device_, device_context_, width, height);
 }
 
 bool D3D11Context::create_shader(vendetta::Shader& shader, const std::wstring& path, vendetta::ShaderType type,
                                  std::vector<D3D_SHADER_MACRO> macros)
 {
+	shader.type = type;
 	shader.internal_state = mkS<D3D11Shader>();
 
 	macros.emplace_back(nullptr, nullptr);
@@ -137,94 +140,169 @@ bool D3D11Context::create_pipeline(vendetta::GraphicsPipeline& pipeline, vendett
 	const auto input_layout_ = layout_assembler_.create_input_layout_reflection(device_, d3d11_vertex_shader->vertex_blob, pipeline.interleaved);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
-    bool succeeded = false;
+	bool succeeded = input_layout_ != nullptr;
 
-	// Create rasterizer state object (deduplicated)
-    // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11device-createrasterizerstate
-	if (const auto rs = pipeline.desc.rasterizer_state)
-    {
-        D3D11_RASTERIZER_DESC rasterizer_desc = 
-        {
-            .FillMode = static_cast<D3D11_FILL_MODE>(rs->fill_mode),
-			.CullMode = static_cast<D3D11_CULL_MODE>(rs->cull_mode),
-			.FrontCounterClockwise = rs->front_counter_clockwise,
-			.DepthBias = rs->depth_bias,
-			.DepthBiasClamp = rs->depth_bias_clamp,
-			.SlopeScaledDepthBias = rs->slope_scaled_depth_bias,
-			.DepthClipEnable = rs->depth_clip_enable,
-			.ScissorEnable = FALSE, // Scissor enable not included (TODO: add later?)
-			.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
-			.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
-        };
-        if (FAILED(device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
-        {
-            std::cerr << "D3D11: Failed to create Rasterizer State" << std::endl;
-			succeeded = false;
-        }
-    }
-
-    // Create blend state
-	if (const auto blend = pipeline.desc.blend_desc)
-    {
-        D3D11_BLEND_DESC blend_desc;
-        blend_desc.AlphaToCoverageEnable = blend->AlphaToCoverageEnable;
-        blend_desc.IndependentBlendEnable = blend->IndependentBlendEnable;
-		for (int i = 0; i < 8; i++)
+	if (const auto desc = pipeline.desc)
+	{
+		// Create Rasterizer state object
+		if (const auto rs = desc->rasterizer_state)
 		{
-            auto& brt = blend_desc.RenderTarget[i];
-            // D3D11 does not have logic operations
-			assert(!(blend->RenderTarget[i].BlendEnable && blend->RenderTarget[i].LogicOpEnable));
-            blend_desc.RenderTarget[i] =
-            {
-	            .BlendEnable = blend->RenderTarget[i].BlendEnable,
-	            .SrcBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlend),
-	            .DestBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlend),
-	            .BlendOp = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOp),
-	            .SrcBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlendAlpha),
-	            .DestBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlendAlpha),
-	            .BlendOpAlpha = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOpAlpha),
-	            .RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
-            };
+			D3D11_RASTERIZER_DESC rasterizer_desc =
+			{
+				.FillMode = static_cast<D3D11_FILL_MODE>(rs->fill_mode),
+				.CullMode = static_cast<D3D11_CULL_MODE>(rs->cull_mode),
+				.FrontCounterClockwise = rs->front_counter_clockwise,
+				.DepthBias = rs->depth_bias,
+				.DepthBiasClamp = rs->depth_bias_clamp,
+				.SlopeScaledDepthBias = rs->slope_scaled_depth_bias,
+				.DepthClipEnable = rs->depth_clip_enable,
+				.ScissorEnable = FALSE, // Scissor enable not included (TODO: add later?)
+				.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
+				.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
+			};
+			if (FAILED(device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
+			{
+				std::cerr << "D3D11: Failed to create Rasterizer State" << std::endl;
+				succeeded = false;
+			}
 		}
-        if (FAILED(device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
-        {
-            std::cerr << "D3D11: Failed to create Blend State" << std::endl;
-			succeeded = false;
-        }
-    }
 
-	// Create depth stencil state
-    if (const auto ds = pipeline.desc.depth_stencil_state)
-    {
-        D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
-		depth_stencil_desc.DepthEnable = ds->depth_enable;
-		depth_stencil_desc.DepthWriteMask = static_cast<D3D11_DEPTH_WRITE_MASK>(ds->depth_write_mask);
-		depth_stencil_desc.DepthFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->depth_func);
-		depth_stencil_desc.StencilEnable = ds->stencil_enable;
-		depth_stencil_desc.StencilReadMask = ds->stencil_read_mask;
-		depth_stencil_desc.StencilWriteMask = ds->stencil_write_mask;
-        depth_stencil_desc.FrontFace =
-        {
-            .StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilFailOp),
-            .StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilDepthFailOp),
-            .StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilPassOp),
-            .StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->front_face.StencilFunc)
-        };
-		depth_stencil_desc.BackFace =
+		// Create Blend state
+		if (const auto blend = desc->blend_desc)
 		{
-			.StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilFailOp),
-			.StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilDepthFailOp),
-			.StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilPassOp),
-			.StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->back_face.StencilFunc)
-		};
-		if (FAILED(device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
-		{
-			std::cerr << "D3D11: Failed to create Depth Stencil State" << std::endl;
-			succeeded = false;
+			D3D11_BLEND_DESC blend_desc;
+			blend_desc.AlphaToCoverageEnable = blend->AlphaToCoverageEnable;
+			blend_desc.IndependentBlendEnable = blend->IndependentBlendEnable;
+			for (int i = 0; i < 8; i++)
+			{
+				auto& brt = blend_desc.RenderTarget[i];
+				// D3D11 does not have logic operations
+				assert(!(blend->RenderTarget[i].BlendEnable && blend->RenderTarget[i].LogicOpEnable));
+				blend_desc.RenderTarget[i] =
+				{
+					.BlendEnable = blend->RenderTarget[i].BlendEnable,
+					.SrcBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlend),
+					.DestBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlend),
+					.BlendOp = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOp),
+					.SrcBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlendAlpha),
+					.DestBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlendAlpha),
+					.BlendOpAlpha = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOpAlpha),
+					.RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
+				};
+			}
+			if (FAILED(device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
+			{
+				std::cerr << "D3D11: Failed to create Blend State" << std::endl;
+				succeeded = false;
+			}
 		}
-    }
+
+		// Create Depth Stencil state
+		if (const auto ds = desc->depth_stencil_state)
+		{
+			D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
+			depth_stencil_desc.DepthEnable = ds->depth_enable;
+			depth_stencil_desc.DepthWriteMask = static_cast<D3D11_DEPTH_WRITE_MASK>(ds->depth_write_mask);
+			depth_stencil_desc.DepthFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->depth_func);
+			depth_stencil_desc.StencilEnable = ds->stencil_enable;
+			depth_stencil_desc.StencilReadMask = ds->stencil_read_mask;
+			depth_stencil_desc.StencilWriteMask = ds->stencil_write_mask;
+			depth_stencil_desc.FrontFace =
+			{
+				.StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilFailOp),
+				.StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilDepthFailOp),
+				.StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilPassOp),
+				.StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->front_face.StencilFunc)
+			};
+			depth_stencil_desc.BackFace =
+			{
+				.StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilFailOp),
+				.StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilDepthFailOp),
+				.StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilPassOp),
+				.StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->back_face.StencilFunc)
+			};
+			if (FAILED(device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
+			{
+				std::cerr << "D3D11: Failed to create Depth Stencil State" << std::endl;
+				succeeded = false;
+			}
+		}
+	}
 
     return succeeded;
+}
+
+bool D3D11Context::bind_pipeline(vendetta::CommandList& cmd_list, vendetta::GraphicsPipeline& pipeline)
+{
+	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
+	assert(d3d11_pipeline);
+	d3d11_pipeline->bind(device_context_);
+	return true;
+}
+
+void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, vendetta::Swapchain& swapchain,
+	const vendetta::RenderTarget* depth_stencil)
+{
+	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
+	auto rtv = swap_d3d11->sc_render_target.Get();
+	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	device_context_->ClearRenderTargetView(rtv, clear_color);
+	device_context_->OMSetRenderTargets(1, &rtv, nullptr);
+}
+
+void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, unsigned rt_count,
+                                     const vendetta::RenderTarget* rts, const vendetta::RenderTarget* depth_stencil)
+{
+    std::array<ID3D11RenderTargetView**, 8> rtvs{};
+    // Clear render target views (if applicable)
+	for (int i = 0; i < rt_count; i++)
+	{
+		auto& desc = rts[i].desc;
+		auto d3d11_rtv = static_cast<D3D11RenderTarget*>(rts[i].internal_state.get());
+		if (desc.clear_color)
+		{
+			device_context_->ClearRenderTargetView(d3d11_rtv->rtv.Get(), desc.clear_color_value.data());
+		}
+		rtvs[i] = d3d11_rtv->rtv.GetAddressOf();
+	}
+    // D3D11 does not have concept of render pass
+    // Set render target views
+    // TODO: depth stencil views
+	ID3D11DepthStencilView* ds = nullptr;
+	if (depth_stencil)
+	{
+		//device_context_->ClearDepthStencilView(dsi->rtv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	}
+    device_context_->OMSetRenderTargets(rt_count, rtvs[0], ds);
+}
+
+void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
+{
+    for (int i = 0; i < count; i++)
+    {
+		viewports[i] =
+		{
+			.TopLeftX = viewport[i].TopLeftX,
+			.TopLeftY = viewport[i].TopLeftY,
+			.Width = viewport[i].Width,
+			.Height = viewport[i].Height,
+			.MinDepth = viewport[i].MinDepth,
+			.MaxDepth = viewport[i].MaxDepth,
+		};
+
+    }
+	device_context_->RSSetViewports(count, viewports.data());
+}
+
+void D3D11Context::draw(vendetta::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+{
+	device_context_->Draw(vertex_count, start_vertex_offset);
+}
+
+void D3D11Context::draw_indexed(vendetta::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
+	int32_t base_vertex_offset)
+{
+	device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
 }
 
 void D3D11Context::wait_all()
@@ -235,9 +313,6 @@ void D3D11Context::wait_all()
 bool D3D11Context::present(vendetta::Swapchain& swapchain)
 {
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-    // TODO: remove clear color it is for testing!
-    constexpr float clearColor[] = { 1.0f, 0.1f, 0.1f, 1.0f };
-	device_context_->ClearRenderTargetView(swap_d3d11->sc_render_target.Get(), clearColor);
 	auto result = swap_d3d11->swapchain->Present(1, 0);
     return result == S_OK;
 }

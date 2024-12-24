@@ -65,8 +65,10 @@ bool D3D11Swapchain::create_swapchain_resources(const ComPtr<ID3D11Device>& devi
     return true;
 }
 
-bool D3D11Swapchain::resize(const ComPtr<ID3D11Device>& device, int width, int height)
+bool D3D11Swapchain::resize(const ComPtr<ID3D11Device>& device, const ComPtr<ID3D11DeviceContext>& device_context, int width, int height)
 {
+    device_context->Flush();
+
     sc_render_target.Reset();
 
     if (FAILED(swapchain->ResizeBuffers(

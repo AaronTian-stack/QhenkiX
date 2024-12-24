@@ -2,6 +2,8 @@
 #include <dxgiformat.h>
 #include <smartpointer.h>
 
+#include "render_target.h"
+
 namespace vendetta
 {
 	struct SwapchainDesc
@@ -13,6 +15,7 @@ namespace vendetta
 	struct Swapchain
 	{
 		SwapchainDesc desc;
+		RenderTarget render_target;
 		sPtr<void> internal_state;
 	};
 

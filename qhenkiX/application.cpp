@@ -26,16 +26,16 @@ void Application::init_display_window()
 void Application::run()
 {
 	init_display_window();
-	// TODO: create certain context
+	// TODO: create certain context based off platform or settings
 	context_ = mkU<D3D11Context>();
 	context_->create();
-	swapchain_.desc =
+	const vendetta::SwapchainDesc swapchain_desc =
 	{
 		.width = window_.display_info_.width,
 		.height = window_.display_info_.height,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	};
-	context_->create_swapchain(window_, swapchain_);
+	context_->create_swapchain(window_, swapchain_desc, swapchain_);
 	create();
 	// starts the main loop
     bool quit = false;
@@ -54,7 +54,7 @@ void Application::run()
 				{
 					window_.display_info_.width = event.window.data1;
 					window_.display_info_.height = event.window.data2;
-					//context_->resize_swapchain(event.window.data1, event.window.data2);
+					context_->resize_swapchain(swapchain_, event.window.data1, event.window.data2);
 					resize(event.window.data1, event.window.data2);
 				}
 			}

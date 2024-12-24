@@ -109,6 +109,11 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(const Co
         D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
         pVertexShaderReflection->GetInputParameterDesc(i, &paramDesc);
 
+		// Ignore system attributes
+		if (paramDesc.SystemValueType == D3D_NAME_VERTEX_ID 
+            || paramDesc.SystemValueType == D3D_NAME_PRIMITIVE_ID
+            || paramDesc.SystemValueType == D3D_NAME_INSTANCE_ID) continue;
+
         D3D11_INPUT_ELEMENT_DESC elementDesc;
         elementDesc.SemanticName = paramDesc.SemanticName;
         elementDesc.SemanticIndex = paramDesc.SemanticIndex;

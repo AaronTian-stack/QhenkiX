@@ -8,8 +8,8 @@ namespace vendetta
 	{
 		Vertex = 1 << 1,
 		Index = 1 << 2,
-		Uniform = 1 << 3, // Constant buffer in D3D
-		Storage = 1 << 4, // Structured buffer in D3D
+		Uniform = 1 << 3,
+		Storage = 1 << 4,
 		Indirect = 1 << 5,
 		TransferSrc = 1 << 6,
 		TransferDst = 1 << 7,

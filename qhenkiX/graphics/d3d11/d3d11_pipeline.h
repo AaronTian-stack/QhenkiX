@@ -12,6 +12,6 @@ struct D3D11GraphicsPipeline
 	ComPtr<ID3D11RasterizerState> rasterizer_state_ = nullptr;
 	ComPtr<ID3D11BlendState> blend_state_ = nullptr;
 	ComPtr<ID3D11DepthStencilState> depth_stencil_state_ = nullptr;
-	// if state struct is null, state is not changed
+	// Binds both vertex pixel shaders and pipeline states. If any state struct is null, the state is not changed.
 	void bind(const ComPtr<ID3D11DeviceContext>& context);
 };

@@ -15,6 +15,6 @@ struct D3D11Swapchain
 	bool create(vendetta::SwapchainDesc desc, DisplayWindow& window,
 	            const ComPtr<IDXGIFactory2>& dxgi_factory, const ComPtr<ID3D11Device>& device);
 	bool create_swapchain_resources(const ComPtr<ID3D11Device>& device);
-	bool resize(const ComPtr<ID3D11Device>& device, int width, int height);
+	bool resize(const ComPtr<ID3D11Device>& device, const ComPtr<ID3D11DeviceContext>& device_context, int width, int height);
 	~D3D11Swapchain();
 };

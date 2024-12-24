@@ -45,12 +45,13 @@ namespace vendetta
 		DXGI_SAMPLE_DESC* multisample_desc = nullptr; // 8
 		D3D12_PRIMITIVE_TOPOLOGY_TYPE* primitive_topology_type = nullptr; // 4
 		int num_render_targets = -1; // If this is <= 0, pipeline is lazily created based off what render target is bound at draw time
-		DXGI_FORMAT RTVFormats[8]{};
+		std::array<DXGI_FORMAT, 8> rtv_formats{};
 	};
+
 	struct GraphicsPipeline
 	{
 		BOOL interleaved = FALSE;
-		GraphicsPipelineDesc desc{};
+		GraphicsPipelineDesc* desc = nullptr;
 		Shader* shader = nullptr;
 		sPtr<void> internal_state;
 	};
