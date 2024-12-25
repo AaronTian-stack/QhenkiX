@@ -11,6 +11,8 @@ class ExampleApp : public Application
 	//vendetta::CommandPool cmd_pool{};
 	vendetta::CommandList cmd_list{};
 
+	vendetta::Buffer vertex_buffer{};
+
 protected:
 	void create() override;
 	void render() override;

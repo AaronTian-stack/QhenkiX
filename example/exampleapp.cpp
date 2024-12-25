@@ -3,15 +3,30 @@
 void ExampleApp::create()
 {
 	// create shaders
-	context_->create_shader(vertex_shader, L"base-shaders/BaseShader.vs.hlsl", vendetta::ShaderType::VERTEX, {});
-	context_->create_shader(pixel_shader, L"base-shaders/BaseShader.ps.hlsl", vendetta::ShaderType::PIXEL, {});
+	context_->create_shader(vertex_shader, L"base-shaders/BaseShader.vs.hlsl", vendetta::ShaderType::VERTEX_SHADER, {});
+	context_->create_shader(pixel_shader, L"base-shaders/BaseShader.ps.hlsl", vendetta::ShaderType::PIXEL_SHADER, {});
 	// create pipeline
 	context_->create_pipeline(pipeline, vertex_shader, pixel_shader);
+	// TODO: create queue
+	// TODO: allocate command pool from queue
+	// TODO: allocate command list from command pool
+
+	const auto vertices = std::array{
+		0.0f, 0.5f, 0.0f,
+		0.5f, -0.5f, 0.0f,
+		-0.5f, -0.5f, 0.0f,
+	};
+	vendetta::BufferDesc desc =
+	{
+		.size = vertices.size() * sizeof(float),
+		.usage = vendetta::BufferUsage::VERTEX,
+		.visibility = vendetta::BufferVisibility::GPU_ONLY
+	};
+	context_->create_buffer(desc, vertices.data(), vertex_buffer);
 }
 
 void ExampleApp::render()
 {
-	// TODO: command list
 	// Clear back buffer / Start render pass
 	context_->start_render_pass(cmd_list, swapchain_, nullptr);
 
@@ -29,9 +44,12 @@ void ExampleApp::render()
 	context_->set_viewports(1, &viewport);
 	// Bind pipeline
 	context_->bind_pipeline(cmd_list, pipeline);
-	// TODO: bind buffer
+	const unsigned int offset = 0;
+	context_->bind_vertex_buffers(cmd_list, 0, 1, &vertex_buffer, &offset);
 	// Draw
 	context_->draw(cmd_list, 3, 0);
+	// TODO: submit command list
+
 	// Present
 	context_->present(swapchain_);
 }

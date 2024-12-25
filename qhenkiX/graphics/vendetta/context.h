@@ -4,6 +4,7 @@
 #include <d3dcommon.h>
 #include <graphics/displaywindow.h>
 
+#include "buffer.h"
 #include "command_list.h"
 #include "pipeline.h"
 #include "render_target.h"
@@ -25,6 +26,10 @@ namespace vendetta
 		// Create graphics pipeline based off specified description assumed to be already filled
 		virtual bool create_pipeline(GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;
+
+		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer) = 0;
+
+		virtual void bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const unsigned* offsets) = 0;
 
 		// TODO: compute pipeline
 

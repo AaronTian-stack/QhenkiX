@@ -6,24 +6,22 @@ namespace vendetta
 {
 	enum BufferUsage : uint8_t
 	{
-		Vertex = 1 << 1,
-		Index = 1 << 2,
-		Uniform = 1 << 3,
-		Storage = 1 << 4,
-		Indirect = 1 << 5,
-		TransferSrc = 1 << 6,
-		TransferDst = 1 << 7,
+		VERTEX = 1 << 0,
+		INDEX = 1 << 1,
+		UNIFORM = 1 << 2,
+		STORAGE = 1 << 3,
+		INDIRECT = 1 << 4,
+		TRANSFER_SRC = 1 << 5,
+		TRANSFER_DST = 1 << 6,
 	};
 
 	enum BufferVisibility : uint8_t
 	{
-		CPU_WRITE = 1 << 1, // Host visible
-		CPU_WRITE_PERSISTENT = 1 << 2, // Not supported in D3D11
-		GPU_READ = 1 << 3,
-		GPU_WRITE = 1 << 4,
+		GPU_ONLY = 0,
+		CPU_SEQUENTIAL = 1 << 0,
+		CPU_RANDOM = 1 << 1,
 	};
 
-	// High level description of a buffer
 	struct BufferDesc
 	{
 		uint64_t size = 0;
@@ -34,6 +32,6 @@ namespace vendetta
 	struct Buffer
 	{
 		BufferDesc desc;
-		sPtr<void> state;
+		sPtr<void> internal_state;
 	};
 }

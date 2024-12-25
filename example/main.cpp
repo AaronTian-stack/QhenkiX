@@ -5,10 +5,9 @@
 int main()
 {
     // Simple example application for the QhenkiX Game Framework.
-    // Opens a window and renders a simple image.
 
 	ExampleApp app;
-	app.run();
+	app.run(vendetta::D3D11);
 
     return 0;
 }

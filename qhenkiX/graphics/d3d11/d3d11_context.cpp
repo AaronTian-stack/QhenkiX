@@ -14,6 +14,7 @@ void D3D11Context::create()
     // Create factory
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&dxgi_factory))))
     {
+		std::cerr << "D3D11: Failed to create DXGI Factory" << std::endl;
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
     }
 #ifdef _DEBUG
@@ -104,17 +105,17 @@ bool D3D11Context::create_shader(vendetta::Shader& shader, const std::wstring& p
 	auto shader_d3d11 = static_cast<D3D11Shader*>(shader.internal_state.get());
     switch(type)
     {
-	    case vendetta::ShaderType::VERTEX:
+	    case vendetta::ShaderType::VERTEX_SHADER:
 	    {
 			shader_d3d11->vertex = D3D11Shader::vertex_shader(device_, path, shader_d3d11->vertex_blob, macros.data());
             break;
 	    }
-		case vendetta::ShaderType::PIXEL:
+		case vendetta::ShaderType::PIXEL_SHADER:
 		{
 			shader_d3d11->pixel = D3D11Shader::pixel_shader(device_, path, macros.data());
 			break;
 		}
-		case vendetta::ShaderType::COMPUTE:
+		case vendetta::ShaderType::COMPUTE_SHADER:
 		{
 			throw std::runtime_error("D3D11: Compute Shader not implemented");
 		}
@@ -137,7 +138,8 @@ bool D3D11Context::create_pipeline(vendetta::GraphicsPipeline& pipeline, vendett
 	d3d11_pipeline->pixel_shader_ = pixel_shader.internal_state.get();
 
     // Create and store input layout
-	const auto input_layout_ = layout_assembler_.create_input_layout_reflection(device_, d3d11_vertex_shader->vertex_blob, pipeline.interleaved);
+	ID3D11InputLayout* input_layout_ = nullptr;
+	input_layout_ = layout_assembler_.create_input_layout_reflection(device_, d3d11_vertex_shader->vertex_blob, pipeline.interleaved);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
 	bool succeeded = input_layout_ != nullptr;
@@ -240,8 +242,122 @@ bool D3D11Context::bind_pipeline(vendetta::CommandList& cmd_list, vendetta::Grap
 	return true;
 }
 
+bool D3D11Context::create_buffer(const vendetta::BufferDesc& desc, const void* data, vendetta::Buffer& buffer)
+{
+	buffer.desc = desc;
+	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
+	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+
+	D3D11_BUFFER_DESC bufferInfo{};
+	bufferInfo.ByteWidth = desc.size;
+	switch(desc.usage)
+	{
+		case vendetta::BufferUsage::VERTEX:
+			bufferInfo.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+			break;
+		case vendetta::BufferUsage::INDEX:
+			bufferInfo.BindFlags = D3D11_BIND_INDEX_BUFFER;
+			break;
+		case vendetta::BufferUsage::UNIFORM:
+			bufferInfo.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+			break;
+		case vendetta::BufferUsage::STORAGE:
+			bufferInfo.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+			break;
+		case vendetta::BufferUsage::INDIRECT:
+			bufferInfo.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
+			break;
+		case vendetta::BufferUsage::TRANSFER_SRC:
+		case vendetta::BufferUsage::TRANSFER_DST:
+			bufferInfo.BindFlags = 0; // TODO: check this
+			break;
+		default:
+			throw std::runtime_error("D3D11: buffer type not implemented");
+	}
+	if ((desc.visibility & vendetta::BufferVisibility::CPU_SEQUENTIAL) 
+		|| (desc.visibility & vendetta::BufferVisibility::CPU_RANDOM))
+	{
+		bufferInfo.Usage = D3D11_USAGE_DYNAMIC;
+		bufferInfo.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	}
+	else
+	{
+		bufferInfo.Usage = D3D11_USAGE_DEFAULT;
+		bufferInfo.CPUAccessFlags = 0;
+	}
+	// misc flags
+	//TODO bufferInfo.StructureByteStride = 0;
+
+	D3D11_SUBRESOURCE_DATA resourceData;
+	resourceData.pSysMem = data;
+	if (FAILED(device_->CreateBuffer(
+		&bufferInfo,
+		&resourceData,
+		&*buffer_d3d11)))
+	{
+		std::cerr << "D3D11: Failed to create triangle vertex buffer" << std::endl;
+		return false;
+	}
+	return true;
+}
+
+void D3D11Context::bind_vertex_buffers(vendetta::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const vendetta::Buffer* buffers, const
+                                      unsigned* offsets)
+{
+	assert(buffer_count <= 16);
+	std::array<ID3D11Buffer**, 16> buffer_d3d11{};
+	for (int i = 0; i < buffer_count; i++)
+	{
+		buffer_d3d11[i] = static_cast<ComPtr<ID3D11Buffer>*>(buffers[i].internal_state.get())->GetAddressOf();
+	}
+	// strides must be fetched from current input layout
+	ComPtr<ID3D11InputLayout> inputLayout = nullptr;
+	device_context_->IAGetInputLayout(&inputLayout);
+	assert(inputLayout && "No Input Layout bound"); // if null then no input layout is bound
+
+	auto layout = layout_assembler_.find_layout(inputLayout.Get());
+	assert(layout);
+
+	// linear search through the list of attributes and find the stride (size of input, float1/2/3/4) of the matching slot number
+	std::array<UINT, 16> strides{};
+	const auto& desc_vec = layout->desc;
+	for (int i = 0; i < buffer_count; i++)
+	{
+		const auto slot = start_slot + i;
+		for (const auto& desc : desc_vec)
+		{
+			bool found = false;
+			if (desc.InputSlot == slot)
+			{
+				switch (desc.Format)
+				{
+				case DXGI_FORMAT_R32G32B32A32_FLOAT:
+					strides[i] = 4 * sizeof(float);
+					break;
+				case DXGI_FORMAT_R32G32B32_FLOAT:
+					strides[i] = 3 * sizeof(float);
+					break;
+				case DXGI_FORMAT_R32G32_FLOAT:
+					strides[i] = 2 * sizeof(float);
+					break;
+				case DXGI_FORMAT_R32_FLOAT:
+					strides[i] = sizeof(float);
+					break;
+				default:
+					std::cerr << "D3D11: Unknown format in input layout" << std::endl;
+					throw std::runtime_error("D3D11: Unknown format in input layout");
+				}
+				found = true;
+				break;
+			}
+			assert(found && "D3D11: Input slot not found in input layout");
+		}
+	}
+	device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides.data(), offsets);
+}
+
 void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, vendetta::Swapchain& swapchain,
-	const vendetta::RenderTarget* depth_stencil)
+                                     const vendetta::RenderTarget* depth_stencil)
 {
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	auto rtv = swap_d3d11->sc_render_target.Get();
@@ -271,6 +387,7 @@ void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, unsigned r
 	ID3D11DepthStencilView* ds = nullptr;
 	if (depth_stencil)
 	{
+		assert(false && "D3D11: Depth Stencil not implemented");
 		//device_context_->ClearDepthStencilView(dsi->rtv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	}
     device_context_->OMSetRenderTargets(rt_count, rtvs[0], ds);
@@ -319,6 +436,7 @@ bool D3D11Context::present(vendetta::Swapchain& swapchain)
 
 D3D11Context::~D3D11Context()
 {
+	layout_assembler_.dispose();
     device_context_->ClearState();
     device_context_->Flush();
     device_context_.Reset();

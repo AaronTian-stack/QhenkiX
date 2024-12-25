@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "d3d11_context.h"
+
 bool D3D11Swapchain::create(vendetta::SwapchainDesc desc, DisplayWindow& window,
                             const ComPtr<IDXGIFactory2>& dxgi_factory, const ComPtr<ID3D11Device>& device)
 {
@@ -60,6 +62,9 @@ bool D3D11Swapchain::create_swapchain_resources(const ComPtr<ID3D11Device>& devi
 		std::cerr << "D3D11: Failed to create Render Target View" << std::endl;
 		return false;
     }
+#ifdef _DEBUG
+	D3D11Context::set_debug_name(sc_render_target.Get(), "Swapchain Render Target");
+#endif
     // don't need to keep the back buffer reference only needed it to create RTV
     // d3d11 auto swaps the back buffer, uses the same pointer
     return true;

@@ -34,7 +34,7 @@ void D3D11GraphicsPipeline::bind(const ComPtr<ID3D11DeviceContext>& context)
 		assert(shader->pixel);
 		context->PSSetShader(shader->pixel.Get(), nullptr, 0);
 	}
-	if (input_layout_) context->IASetInputLayout(input_layout_.Get());
+	if (input_layout_) context->IASetInputLayout(input_layout_);
 	if (topology_) context->IASetPrimitiveTopology(topology_);
 	if (rasterizer_state_) context->RSSetState(rasterizer_state_.Get());
 	if (blend_state_) context->OMSetBlendState(blend_state_.Get(), nullptr, 0xffffffff);

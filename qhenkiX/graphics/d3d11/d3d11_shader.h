@@ -15,8 +15,8 @@ using Microsoft::WRL::ComPtr;
 class D3D11Shader
 {
 	// macros must be null terminated
-	static bool compile_shader(const std::wstring& fileName, const std::string& entryPoint, const std::string& profile,
-	                           ComPtr<ID3DBlob>& shaderBlob, const D3D_SHADER_MACRO* macros);
+	static bool compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& profile,
+	                           ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros);
 
 public:
 	ComPtr<ID3DBlob> vertex_blob;

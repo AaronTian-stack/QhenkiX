@@ -6,9 +6,9 @@ namespace vendetta
 {
 	enum ShaderType : uint8_t
 	{
-		VERTEX,
-		PIXEL,
-		COMPUTE,
+		VERTEX_SHADER,
+		PIXEL_SHADER,
+		COMPUTE_SHADER,
 	};
 	struct Shader
 	{

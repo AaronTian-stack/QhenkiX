@@ -1,5 +1,6 @@
 #include "application.h"
 
+#include <iostream>
 #include <graphics/d3d11/d3d11_context.h>
 
 /**
@@ -9,7 +10,6 @@
  */
 void Application::init_display_window()
 {
-
 	DisplayInfo info
 	{
 		.width = 1280,
@@ -23,11 +23,17 @@ void Application::init_display_window()
 	window_.create_window(info, 0);
 }
 
-void Application::run()
+void Application::run(vendetta::GraphicsAPI api)
 {
 	init_display_window();
-	// TODO: create certain context based off platform or settings
-	context_ = mkU<D3D11Context>();
+	switch (api)
+	{
+	case vendetta::D3D11:
+		context_ = mkU<D3D11Context>();
+		break;
+	default:
+		throw std::runtime_error("Not implemented API");
+	}
 	context_->create();
 	const vendetta::SwapchainDesc swapchain_desc =
 	{

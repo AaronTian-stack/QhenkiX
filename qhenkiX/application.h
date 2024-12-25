@@ -3,6 +3,16 @@
 #include "graphics/displaywindow.h"
 #include "graphics/d3d11/d3d11_context.h"
 
+namespace vendetta
+{
+	enum GraphicsAPI
+	{
+		D3D11,
+		D3D12,
+		Vulkan,
+	};
+}
+
 /**
  * Encapsulates the objects that control DisplayWindow, Audio, Input, File System, Preferences.
  * Sets up default states for the objects, but initialization can be overridden.
@@ -15,16 +25,8 @@ class Application
 	//Preferences
 
 protected:
-
-	enum GraphicsAPI
-	{
-		D3D11,
-		Vulkan,
-		OpenGL
-	};
-
 	// TODO: Default shaders. Should be initialized in some function
-	GraphicsAPI graphics_api_ = D3D11;
+	vendetta::GraphicsAPI graphics_api_ = vendetta::D3D11;
 
 	DisplayWindow window_;
 	uPtr<vendetta::Context> context_ = nullptr;
@@ -38,6 +40,6 @@ protected:
 	virtual void destroy() {}
 
 public:
-	void run();
+	void run(vendetta::GraphicsAPI api);
 };
 

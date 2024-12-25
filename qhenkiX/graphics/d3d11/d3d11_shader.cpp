@@ -7,8 +7,8 @@
 
 #include "d3d11_context.h"
 
-bool D3D11Shader::compile_shader(const std::wstring& fileName, const std::string& entryPoint, const std::string& profile,
-                                 ComPtr<ID3DBlob>& shaderBlob, const D3D_SHADER_MACRO* macros)
+bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& profile,
+                                 ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros)
 {
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
@@ -18,14 +18,14 @@ bool D3D11Shader::compile_shader(const std::wstring& fileName, const std::string
 #endif
 
 	HRESULT hr = D3DCompileFromFile(
-		fileName.c_str(),
+		file_name.c_str(),
 		macros,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		entryPoint.c_str(),
+		entry_point.c_str(),
 		profile.c_str(),
 		flags,
 		0,
-		&shaderBlob,
+		&shader_blob,
 		&errorBlob);
 	if (FAILED(hr))
 	{
@@ -45,7 +45,8 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(const ComPtr<ID3D11Device>
 {
 	if (!compile_shader(file_name, ENTRYPOINT, VS_VERSION, vertex_shader_blob, macros))
 	{
-		throw std::runtime_error("Failed to compile vertex shader");
+		std::cerr << "D3D11: Failed to compile vertex shader" << std::endl;
+		throw std::runtime_error("D3D11: Failed to compile vertex shader");
 	}
 
 	ComPtr<ID3D11VertexShader> vertex_shader;
@@ -55,6 +56,7 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(const ComPtr<ID3D11Device>
 		nullptr,
 		&vertex_shader)))
 	{
+		std::cerr << "D3D11: Failed to create vertex shader" << std::endl;
 		throw std::runtime_error("Failed to create vertex shader");
 	}
 
@@ -62,6 +64,7 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(const ComPtr<ID3D11Device>
 	constexpr size_t maxLength = 256;
 	if (file_name.size() >= maxLength)
 	{
+		std::cerr << "D3D11: Vertex shader debug name is too long" << std::endl;
 		throw std::runtime_error("D3D11: Vertex shader debug name is too long");
 	}
 	char debugName[maxLength] = {};
@@ -77,6 +80,7 @@ ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(const ComPtr<ID3D11Device>& 
 	ComPtr<ID3DBlob> pixel_shader_blob;
 	if (!compile_shader(file_name, ENTRYPOINT, PS_VERSION, pixel_shader_blob, macros))
 	{
+		std::cerr << "D3D11: Failed to compile pixel shader" << std::endl;
 		throw std::runtime_error("Failed to compile pixel shader");
 	}
 
@@ -87,6 +91,7 @@ ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(const ComPtr<ID3D11Device>& 
 		nullptr,
 		&pixel_shader)))
 	{
+		std::cerr << "D3D11: Failed to create pixel shader" << std::endl;
 		throw std::runtime_error("Failed to create pixel shader");
 	}
 
@@ -94,6 +99,7 @@ ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(const ComPtr<ID3D11Device>& 
 	constexpr size_t maxLength = 256;
 	if (file_name.size() >= maxLength)
 	{
+		std::cerr << "D3D11: Pixel shader debug name is too long" << std::endl;
 		throw std::runtime_error("D3D11: Pixel shader debug name is too long");
 	}
 	char debugName[maxLength] = {};

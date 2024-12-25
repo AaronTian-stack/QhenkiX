@@ -20,6 +20,7 @@ class D3D11Context : public vendetta::Context
 #endif
 	ComPtr<ID3D11Device> device_ = nullptr;
 	ComPtr<ID3D11DeviceContext> device_context_ = nullptr;
+
 	D3D11LayoutAssembler layout_assembler_;
 
 	std::array<D3D11_VIEWPORT, 16> viewports;
@@ -35,10 +36,19 @@ public:
 	bool resize_swapchain(vendetta::Swapchain& swapchain, int width, int height) override;
 	bool present(vendetta::Swapchain& swapchain) override;
 
+	// thread safe
 	bool create_shader(vendetta::Shader& shader, const std::wstring& path, vendetta::ShaderType type,
 	                   std::vector<D3D_SHADER_MACRO> macros) override;
+	// thread safe
 	bool create_pipeline(vendetta::GraphicsPipeline& pipeline, vendetta::Shader& vertex_shader, vendetta::Shader& pixel_shader) override;
 	bool bind_pipeline(vendetta::CommandList& cmd_list, vendetta::GraphicsPipeline& pipeline) override;
+
+	bool create_buffer(const vendetta::BufferDesc& desc, const void* data, vendetta::Buffer& buffer) override;
+
+	void bind_vertex_buffers(vendetta::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const vendetta::Buffer* buffers, const
+	                        unsigned* offsets) override;
+
+	// recording commands is not thread safe
 
 	void start_render_pass(vendetta::CommandList& cmd_list, vendetta::Swapchain& swapchain,
 		const vendetta::RenderTarget* depth_stencil) override;
