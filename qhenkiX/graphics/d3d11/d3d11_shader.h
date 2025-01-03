@@ -23,7 +23,7 @@ public:
 	ComPtr<ID3D11VertexShader> vertex;
 	ComPtr<ID3D11PixelShader> pixel;
 
-	static ComPtr<ID3D11VertexShader> vertex_shader(const ComPtr<ID3D11Device>& device, const std::wstring& file_name, ComPtr<ID3DBlob>& vertex_shader_blob, const D3D_SHADER_MACRO* macros);
-	static ComPtr<ID3D11PixelShader> pixel_shader(const ComPtr<ID3D11Device>& device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros);
+	static ComPtr<ID3D11VertexShader> vertex_shader(ID3D11Device* const device, const std::wstring& file_name, ComPtr<ID3DBlob>& vertex_shader_blob, const D3D_SHADER_MACRO* macros);
+	static ComPtr<ID3D11PixelShader> pixel_shader(ID3D11Device* const device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros);
 };
 

@@ -14,12 +14,12 @@ using namespace DirectX;
 
 class D3D11Context : public vendetta::Context
 {
-	ComPtr<IDXGIFactory6> dxgi_factory = nullptr;
+	ComPtr<IDXGIFactory6> dxgi_factory;
 #ifdef _DEBUG
-	ComPtr<ID3D11Debug> debug_ = nullptr;
+	ComPtr<ID3D11Debug> debug_;
 #endif
-	ComPtr<ID3D11Device> device_ = nullptr;
-	ComPtr<ID3D11DeviceContext> device_context_ = nullptr;
+	ComPtr<ID3D11Device> device_;
+	ComPtr<ID3D11DeviceContext> device_context_;
 
 	D3D11LayoutAssembler layout_assembler_;
 
@@ -31,7 +31,6 @@ public:
 	static void set_debug_name(_In_ ID3D11DeviceChild* device_resource, _In_z_ const char(&debug_name)[TDebugNameLength]);
 
 	void create() override;
-	//void destroy() override;
 	bool create_swapchain(DisplayWindow& window, const vendetta::SwapchainDesc& swapchain_desc, vendetta::Swapchain& swapchain) override;
 	bool resize_swapchain(vendetta::Swapchain& swapchain, int width, int height) override;
 	bool present(vendetta::Swapchain& swapchain) override;

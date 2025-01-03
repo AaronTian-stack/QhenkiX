@@ -30,8 +30,8 @@ public:
 	ID3D11InputLayout* find_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layout);
 	Layout* find_layout(ID3D11InputLayout* layout);
 	// Creates input layout based off current state of layout_desc
-	std::optional<ComPtr<ID3D11InputLayout>> create_input_layout_manual(const ComPtr<ID3D11Device>& device,
-	                                                                    const ComPtr<ID3DBlob>& vertex_shader_blob);
+	std::optional<ComPtr<ID3D11InputLayout>> create_input_layout_manual(ID3D11Device* const device,
+	                                                                    ID3DBlob* const vertex_shader_blob);
 	
     /**
      * @brief Creates an input layout using shader reflection.
@@ -43,8 +43,8 @@ public:
 	 * @param interleaved If true, slots will be incremented by 1 for each vertex attribute
      * @return Pointer to the created ID3D11InputLayout
      */
-	ID3D11InputLayout* create_input_layout_reflection(const ComPtr<ID3D11Device>& device,
-	                                                  const ComPtr<ID3DBlob>& vertex_shader_blob,
+	ID3D11InputLayout* create_input_layout_reflection(ID3D11Device* const device,
+	                                                  ID3DBlob* const vertex_shader_blob,
 	                                                  bool interleaved);
 
 	void dispose() override;

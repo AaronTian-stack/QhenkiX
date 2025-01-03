@@ -8,6 +8,8 @@ class ExampleApp : public Application
 	vendetta::Shader vertex_shader{};
 	vendetta::Shader pixel_shader{};
 
+	// TODO: one commandpool per frame, per thread. pool allocates lists
+
 	//vendetta::CommandPool cmd_pool{};
 	vendetta::CommandList cmd_list{};
 

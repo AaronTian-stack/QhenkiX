@@ -6,6 +6,7 @@ void ExampleApp::create()
 	context_->create_shader(vertex_shader, L"base-shaders/BaseShader.vs.hlsl", vendetta::ShaderType::VERTEX_SHADER, {});
 	context_->create_shader(pixel_shader, L"base-shaders/BaseShader.ps.hlsl", vendetta::ShaderType::PIXEL_SHADER, {});
 	// create pipeline
+	// TODO: pass pipeline description struct
 	context_->create_pipeline(pipeline, vertex_shader, pixel_shader);
 	// TODO: create queue
 	// TODO: allocate command pool from queue

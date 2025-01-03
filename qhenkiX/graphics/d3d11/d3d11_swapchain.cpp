@@ -5,9 +5,9 @@
 #include "d3d11_context.h"
 
 bool D3D11Swapchain::create(vendetta::SwapchainDesc desc, DisplayWindow& window,
-                            const ComPtr<IDXGIFactory2>& dxgi_factory, const ComPtr<ID3D11Device>& device)
+                            IDXGIFactory2* const dxgi_factory, ID3D11Device* const device)
 {
-    DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor =
+    DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor =
     {
         .Width = static_cast<UINT>(desc.width),
         .Height = static_cast<UINT>(desc.height),
@@ -19,19 +19,19 @@ bool D3D11Swapchain::create(vendetta::SwapchainDesc desc, DisplayWindow& window,
         },
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
         .BufferCount = 2,
-        .Scaling = DXGI_SCALING::DXGI_SCALING_STRETCH,
-        .SwapEffect = DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_FLIP_DISCARD,
+        .Scaling = DXGI_SCALING_STRETCH,
+        .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
         .Flags = {},
     };
 
-    DXGI_SWAP_CHAIN_FULLSCREEN_DESC swapChainFullscreenDescriptor = {};
-    swapChainFullscreenDescriptor.Windowed = true;
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC swap_chain_fullscreen_descriptor = {};
+    swap_chain_fullscreen_descriptor.Windowed = true;
 
     if (FAILED(dxgi_factory->CreateSwapChainForHwnd(
-        device.Get(),
+        device,
         window.get_window_handle(),
-        &swapChainDescriptor,
-        &swapChainFullscreenDescriptor,
+        &swap_chain_descriptor,
+        &swap_chain_fullscreen_descriptor,
         nullptr,
         &swapchain)))
     {
@@ -43,7 +43,7 @@ bool D3D11Swapchain::create(vendetta::SwapchainDesc desc, DisplayWindow& window,
     return create_swapchain_resources(device);
 }
 
-bool D3D11Swapchain::create_swapchain_resources(const ComPtr<ID3D11Device>& device)
+bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
 {
     ComPtr<ID3D11Texture2D> backBuffer = nullptr;
     if (FAILED(swapchain->GetBuffer(
@@ -65,12 +65,12 @@ bool D3D11Swapchain::create_swapchain_resources(const ComPtr<ID3D11Device>& devi
 #ifdef _DEBUG
 	D3D11Context::set_debug_name(sc_render_target.Get(), "Swapchain Render Target");
 #endif
-    // don't need to keep the back buffer reference only needed it to create RTV
-    // d3d11 auto swaps the back buffer, uses the same pointer
+    // Don't need to keep the back buffer reference only needed it to create RTV
+    // D3D11 auto swaps the back buffer, uses the same pointer
     return true;
 }
 
-bool D3D11Swapchain::resize(const ComPtr<ID3D11Device>& device, const ComPtr<ID3D11DeviceContext>& device_context, int width, int height)
+bool D3D11Swapchain::resize(ID3D11Device* const device, ID3D11DeviceContext* const device_context, int width, int height)
 {
     device_context->Flush();
 

@@ -18,17 +18,8 @@ void D3D11Context::create()
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
     }
 #ifdef _DEBUG
-    constexpr char factoryName[] = "dxgi_factory";
+    constexpr char factoryName[] = "DXGI Factory";
     dxgi_factory->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
-#endif
-
-    // Targets features supported by Direct3D 11.1, including shader model 5 and logical blend operations.
-    // This feature level requires a display driver that is at least implemented to WDDM for Windows 8 (WDDM 1.2).
-    constexpr D3D_FEATURE_LEVEL deviceFeatureLevel = D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_1;
-
-    UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-#ifdef _DEBUG
-    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
 	// Pick discrete GPU
@@ -50,7 +41,14 @@ void D3D11Context::create()
     DXGI_ADAPTER_DESC1 desc;
     HRESULT hr = adapter->GetDesc1(&desc);
 	if (FAILED(hr)) std::cerr << "D3D11: Failed to get adapter description" << std::endl;
-    else std::wcout << L"Selected D3D11 Adapter: " << desc.Description << L"\n";
+    else std::wcout << L"D3D11: Selected adapter: " << desc.Description << L"\n";
+
+	constexpr D3D_FEATURE_LEVEL deviceFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+
+	UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#ifdef _DEBUG
+	creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
 
     // Create device
     if (FAILED(D3D11CreateDevice(
@@ -83,7 +81,7 @@ bool D3D11Context::create_swapchain(DisplayWindow& window, const vendetta::Swapc
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	return swap_d3d11->create(swapchain_desc, window, dxgi_factory, device_);
+	return swap_d3d11->create(swapchain_desc, window, dxgi_factory.Get(), device_.Get());
 }
 
 bool D3D11Context::resize_swapchain(vendetta::Swapchain& swapchain, int width, int height)
@@ -92,7 +90,7 @@ bool D3D11Context::resize_swapchain(vendetta::Swapchain& swapchain, int width, i
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	assert(swap_d3d11);
 	assert(swap_d3d11->swapchain);
-    return swap_d3d11->resize(device_, device_context_, width, height);
+    return swap_d3d11->resize(device_.Get(), device_context_.Get(), width, height);
 }
 
 bool D3D11Context::create_shader(vendetta::Shader& shader, const std::wstring& path, vendetta::ShaderType type,
@@ -107,12 +105,12 @@ bool D3D11Context::create_shader(vendetta::Shader& shader, const std::wstring& p
     {
 	    case vendetta::ShaderType::VERTEX_SHADER:
 	    {
-			shader_d3d11->vertex = D3D11Shader::vertex_shader(device_, path, shader_d3d11->vertex_blob, macros.data());
+			shader_d3d11->vertex = D3D11Shader::vertex_shader(device_.Get(), path, shader_d3d11->vertex_blob, macros.data());
             break;
 	    }
 		case vendetta::ShaderType::PIXEL_SHADER:
 		{
-			shader_d3d11->pixel = D3D11Shader::pixel_shader(device_, path, macros.data());
+			shader_d3d11->pixel = D3D11Shader::pixel_shader(device_.Get(), path, macros.data());
 			break;
 		}
 		case vendetta::ShaderType::COMPUTE_SHADER:
@@ -139,7 +137,7 @@ bool D3D11Context::create_pipeline(vendetta::GraphicsPipeline& pipeline, vendett
 
     // Create and store input layout
 	ID3D11InputLayout* input_layout_ = nullptr;
-	input_layout_ = layout_assembler_.create_input_layout_reflection(device_, d3d11_vertex_shader->vertex_blob, pipeline.interleaved);
+	input_layout_ = layout_assembler_.create_input_layout_reflection(device_.Get(), d3d11_vertex_shader->vertex_blob.Get(), pipeline.interleaved);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
 	bool succeeded = input_layout_ != nullptr;
@@ -306,22 +304,22 @@ void D3D11Context::bind_vertex_buffers(vendetta::CommandList& cmd_list, unsigned
 {
 	assert(buffer_count <= 16);
 	std::array<ID3D11Buffer**, 16> buffer_d3d11{};
-	for (int i = 0; i < buffer_count; i++)
+	for (unsigned int i = 0; i < buffer_count; i++)
 	{
 		buffer_d3d11[i] = static_cast<ComPtr<ID3D11Buffer>*>(buffers[i].internal_state.get())->GetAddressOf();
 	}
 	// strides must be fetched from current input layout
-	ComPtr<ID3D11InputLayout> inputLayout = nullptr;
-	device_context_->IAGetInputLayout(&inputLayout);
-	assert(inputLayout && "No Input Layout bound"); // if null then no input layout is bound
+	ComPtr<ID3D11InputLayout> input_layout = nullptr;
+	device_context_->IAGetInputLayout(&input_layout);
+	assert(input_layout && "No Input Layout bound"); // if null then no input layout is bound
 
-	auto layout = layout_assembler_.find_layout(inputLayout.Get());
+	auto layout = layout_assembler_.find_layout(input_layout.Get());
 	assert(layout);
 
 	// linear search through the list of attributes and find the stride (size of input, float1/2/3/4) of the matching slot number
 	std::array<UINT, 16> strides{};
 	const auto& desc_vec = layout->desc;
-	for (int i = 0; i < buffer_count; i++)
+	for (unsigned int i = 0; i < buffer_count; i++)
 	{
 		const auto slot = start_slot + i;
 		for (const auto& desc : desc_vec)
@@ -371,7 +369,7 @@ void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, unsigned r
 {
     std::array<ID3D11RenderTargetView**, 8> rtvs{};
     // Clear render target views (if applicable)
-	for (int i = 0; i < rt_count; i++)
+	for (unsigned int i = 0; i < rt_count; i++)
 	{
 		auto& desc = rts[i].desc;
 		auto d3d11_rtv = static_cast<D3D11RenderTarget*>(rts[i].internal_state.get());

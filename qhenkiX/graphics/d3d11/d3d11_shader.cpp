@@ -41,7 +41,7 @@ bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::strin
 #pragma warning(push)
 #pragma warning(disable : 4996)
 
-ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(const ComPtr<ID3D11Device>& device, const std::wstring& file_name, ComPtr<ID3DBlob> &vertex_shader_blob, const D3D_SHADER_MACRO* macros)
+ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device, const std::wstring& file_name, ComPtr<ID3DBlob> &vertex_shader_blob, const D3D_SHADER_MACRO* macros)
 {
 	if (!compile_shader(file_name, ENTRYPOINT, VS_VERSION, vertex_shader_blob, macros))
 	{
@@ -75,7 +75,7 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(const ComPtr<ID3D11Device>
 	return vertex_shader;
 }
 
-ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(const ComPtr<ID3D11Device>& device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros)
+ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(ID3D11Device* const device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros)
 {
 	ComPtr<ID3DBlob> pixel_shader_blob;
 	if (!compile_shader(file_name, ENTRYPOINT, PS_VERSION, pixel_shader_blob, macros))

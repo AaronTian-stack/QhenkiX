@@ -71,8 +71,8 @@ Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
 
 
 std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layout_manual(
-	const ComPtr<ID3D11Device>& device,
-	const ComPtr<ID3DBlob>& vertex_shader_blob)
+	ID3D11Device* const device,
+	ID3DBlob* const vertex_shader_blob)
 {
 	std::lock_guard lock(layout_mutex_);
     // hash the input layout
@@ -97,8 +97,8 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
 }
 
 ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
-	const ComPtr<ID3D11Device>& device,
-	const ComPtr<ID3DBlob>& vertex_shader_blob, bool interleaved)
+	ID3D11Device* const device,
+	ID3DBlob* const vertex_shader_blob, bool interleaved)
 {
     ComPtr<ID3D11ShaderReflection> pVertexShaderReflection;
     if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(), 
