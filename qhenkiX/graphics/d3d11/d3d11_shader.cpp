@@ -38,9 +38,6 @@ bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::strin
 	return true;
 }
 
-#pragma warning(push)
-#pragma warning(disable : 4996)
-
 ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device, const std::wstring& file_name, ComPtr<ID3DBlob> &vertex_shader_blob, const D3D_SHADER_MACRO* macros)
 {
 	if (!compile_shader(file_name, ENTRYPOINT, VS_VERSION, vertex_shader_blob, macros))
@@ -61,15 +58,15 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device
 	}
 
 #ifdef _DEBUG
-	constexpr size_t maxLength = 256;
-	if (file_name.size() >= maxLength)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+	if (constexpr size_t max_length = 256; file_name.size() < max_length)
 	{
-		std::cerr << "D3D11: Vertex shader debug name is too long" << std::endl;
-		throw std::runtime_error("D3D11: Vertex shader debug name is too long");
+		char debug_name_w[max_length] = {};
+		std::wcstombs(debug_name_w, file_name.c_str(), max_length - 1);
+		D3D11Context::set_debug_name(vertex_shader.Get(), debug_name_w);
 	}
-	char debugName[maxLength] = {};
-	std::wcstombs(debugName, file_name.c_str(), maxLength - 1);
-	D3D11Context::set_debug_name(vertex_shader.Get(), debugName);
+	else std::cerr << "D3D11: Vertex shader debug name is too long" << std::endl;
 #endif
 
 	return vertex_shader;

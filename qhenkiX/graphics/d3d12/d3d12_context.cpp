@@ -152,7 +152,7 @@ bool D3D12Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::Graphics
 	return false;
 }
 
-bool D3D12Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer)
+bool D3D12Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name)
 {
 	return false;
 }

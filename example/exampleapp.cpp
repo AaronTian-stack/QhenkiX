@@ -7,7 +7,10 @@ void ExampleApp::create()
 	context_->create_shader(pixel_shader, L"base-shaders/BaseShader.ps.hlsl", qhenki::ShaderType::PIXEL_SHADER, {});
 
 	// Create pipeline
-	qhenki::GraphicsPipelineDesc pipeline_desc = {};
+	qhenki::GraphicsPipelineDesc pipeline_desc =
+	{
+		.interleaved = TRUE,
+	};
 	context_->create_pipeline(pipeline_desc, pipeline, vertex_shader, pixel_shader);
 
 	// TODO: create queue
@@ -16,9 +19,9 @@ void ExampleApp::create()
 
 	// Create vertex buffer
 	const auto vertices = std::array{
-		0.0f, 0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-		-0.5f, -0.5f, 0.0f,
+		0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
+		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f
 	};
 	qhenki::BufferDesc desc =
 	{
@@ -26,7 +29,7 @@ void ExampleApp::create()
 		.usage = qhenki::BufferUsage::VERTEX,
 		.visibility = qhenki::BufferVisibility::GPU_ONLY
 	};
-	context_->create_buffer(desc, vertices.data(), vertex_buffer);
+	context_->create_buffer(desc, vertices.data(), vertex_buffer, nullptr);
 }
 
 void ExampleApp::render()

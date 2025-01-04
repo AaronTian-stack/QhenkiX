@@ -126,14 +126,16 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
             || paramDesc.SystemValueType == D3D_NAME_PRIMITIVE_ID
             || paramDesc.SystemValueType == D3D_NAME_INSTANCE_ID) continue;
 
-        D3D11_INPUT_ELEMENT_DESC elementDesc;
-        elementDesc.SemanticName = paramDesc.SemanticName;
-        elementDesc.SemanticIndex = paramDesc.SemanticIndex;
-        elementDesc.InputSlot = slot;
-        elementDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-        //// TODO: INSTANCING
-        elementDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-        elementDesc.InstanceDataStepRate = 0;
+        D3D11_INPUT_ELEMENT_DESC elementDesc = 
+        {
+            .SemanticName = paramDesc.SemanticName,
+	        .SemanticIndex = paramDesc.SemanticIndex,
+	        .InputSlot = slot,
+	        .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
+	        //// TODO: INSTANCING
+	        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+	        .InstanceDataStepRate = 0,
+        };
 
         // Determine DXGI format
         if (paramDesc.Mask == 1)

@@ -37,7 +37,7 @@ public:
 	                     qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader) override;
 	bool bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline) override;
 
-	bool create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer) override;
+	bool create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name) override;
 	void bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
 		const qhenki::Buffer* buffers, const unsigned* offsets) override;
 

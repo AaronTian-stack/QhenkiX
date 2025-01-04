@@ -136,7 +136,7 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 	d3d11_pipeline->pixel_shader_ = pixel_shader.internal_state.get();
 
 	ID3D11InputLayout* input_layout_ = layout_assembler_.create_input_layout_reflection(device_.Get(),
-		d3d11_vertex_shader->vertex_blob.Get(), pipeline.interleaved);
+		d3d11_vertex_shader->vertex_blob.Get(), desc.interleaved);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
 	bool succeeded = input_layout_ != nullptr;
@@ -246,7 +246,7 @@ bool D3D11Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::Graphics
 	return true;
 }
 
-bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer)
+bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name)
 {
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
@@ -302,6 +302,19 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 		std::cerr << "D3D11: Failed to create triangle vertex buffer" << std::endl;
 		return false;
 	}
+
+#ifdef _DEBUG
+#pragma warning(push)
+#pragma warning(disable : 4996)
+	if (constexpr size_t max_length = 256; debug_name && wcslen(debug_name) < max_length)
+	{
+		char debug_name_w[max_length] = {};
+		std::wcstombs(debug_name_w, debug_name, max_length - 1);
+		set_debug_name(buffer_d3d11->Get(), debug_name_w);
+	}
+	else std::cerr << "D3D11: Buffer debug name is too long" << std::endl;
+#endif
+
 	return true;
 }
 
@@ -315,7 +328,7 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 		buffer_d3d11[i] = static_cast<ComPtr<ID3D11Buffer>*>(buffers[i].internal_state.get())->GetAddressOf();
 	}
 	// strides must be fetched from current input layout
-	ComPtr<ID3D11InputLayout> input_layout = nullptr;
+	ComPtr<ID3D11InputLayout> input_layout;
 	device_context_->IAGetInputLayout(&input_layout);
 	assert(input_layout && "No Input Layout bound"); // if null then no input layout is bound
 
@@ -327,7 +340,7 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 	const auto& desc_vec = layout->desc;
 	for (unsigned int i = 0; i < buffer_count; i++)
 	{
-		const auto slot = start_slot + i;
+		const auto slot = start_slot + i; // Assumes 1 buffer per slot
 		for (const auto& desc : desc_vec)
 		{
 			bool found = false;
@@ -336,23 +349,22 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 				switch (desc.Format)
 				{
 				case DXGI_FORMAT_R32G32B32A32_FLOAT:
-					strides[i] = 4 * sizeof(float);
+					strides[i] += 4 * sizeof(float);
 					break;
 				case DXGI_FORMAT_R32G32B32_FLOAT:
-					strides[i] = 3 * sizeof(float);
+					strides[i] += 3 * sizeof(float);
 					break;
 				case DXGI_FORMAT_R32G32_FLOAT:
-					strides[i] = 2 * sizeof(float);
+					strides[i] += 2 * sizeof(float);
 					break;
 				case DXGI_FORMAT_R32_FLOAT:
-					strides[i] = sizeof(float);
+					strides[i] += sizeof(float);
 					break;
 				default:
 					std::cerr << "D3D11: Unknown format in input layout" << std::endl;
 					throw std::runtime_error("D3D11: Unknown format in input layout");
 				}
 				found = true;
-				break;
 			}
 			assert(found && "D3D11: Input slot not found in input layout");
 		}

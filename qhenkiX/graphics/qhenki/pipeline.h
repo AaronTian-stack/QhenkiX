@@ -47,11 +47,11 @@ namespace qhenki
 		D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		int num_render_targets = -1; // If this is <= 0, pipeline is lazily created based off what render target is bound at draw time
 		std::array<DXGI_FORMAT, 8> rtv_formats{};
+		BOOL interleaved = FALSE; // Whether vertex data is interleaved or not, used during reflection
 	};
 
 	struct GraphicsPipeline
 	{
-		BOOL interleaved = FALSE;
 		GraphicsPipelineDesc* desc = nullptr; // Freed back to pool after pipeline is created (D3D12)
 		Shader* shader = nullptr;
 		sPtr<void> internal_state;
