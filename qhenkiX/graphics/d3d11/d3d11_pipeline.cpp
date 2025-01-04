@@ -2,8 +2,9 @@
 
 #include <array>
 #include <cassert>
+#include "d3d11_shader.h"
 
-void D3D11GraphicsPipeline::bind(const ComPtr<ID3D11DeviceContext>& context)
+void D3D11GraphicsPipeline::bind(ID3D11DeviceContext* const context)
 {
 #ifdef _DEBUG
 	{
@@ -11,7 +12,7 @@ void D3D11GraphicsPipeline::bind(const ComPtr<ID3D11DeviceContext>& context)
 		int psc = 0;
 		int cc = 0;
 		std::array shaders = { vertex_shader_, pixel_shader_, }; //  TODO: compute_shader_
-		for (auto shader : shaders)
+		for (const auto shader : shaders)
 		{
 			if (shader)
 			{

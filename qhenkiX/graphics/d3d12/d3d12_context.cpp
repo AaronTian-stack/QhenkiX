@@ -80,8 +80,8 @@ void D3D12Context::create()
 #endif
 }
 
-bool D3D12Context::create_swapchain(DisplayWindow& window, const vendetta::SwapchainDesc& swapchain_desc,
-	vendetta::Swapchain& swapchain)
+bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::SwapchainDesc& swapchain_desc,
+	qhenki::Swapchain& swapchain)
 {
 	DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor =
 	{
@@ -125,50 +125,50 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const vendetta::Swapc
 	return true;
 }
 
-bool D3D12Context::resize_swapchain(vendetta::Swapchain& swapchain, int width, int height)
+bool D3D12Context::resize_swapchain(qhenki::Swapchain& swapchain, int width, int height)
 {
 	return false;
 }
 
-bool D3D12Context::present(vendetta::Swapchain& swapchain)
+bool D3D12Context::present(qhenki::Swapchain& swapchain)
 {
 	return false;
 }
 
-bool D3D12Context::create_shader(vendetta::Shader& shader, const std::wstring& path, vendetta::ShaderType type,
+bool D3D12Context::create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
 	std::vector<D3D_SHADER_MACRO> macros)
 {
 	return false;
 }
 
-bool D3D12Context::create_pipeline(vendetta::GraphicsPipeline& pipeline, vendetta::Shader& vertex_shader,
-	vendetta::Shader& pixel_shader)
+bool D3D12Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline,
+                                   qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader)
 {
 	return false;
 }
 
-bool D3D12Context::bind_pipeline(vendetta::CommandList& cmd_list, vendetta::GraphicsPipeline& pipeline)
+bool D3D12Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline)
 {
 	return false;
 }
 
-bool D3D12Context::create_buffer(const vendetta::BufferDesc& desc, const void* data, vendetta::Buffer& buffer)
+bool D3D12Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer)
 {
 	return false;
 }
 
-void D3D12Context::bind_vertex_buffers(vendetta::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
-	const vendetta::Buffer* buffers, const unsigned* offsets)
+void D3D12Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
+	const qhenki::Buffer* buffers, const unsigned* offsets)
 {
 }
 
-void D3D12Context::start_render_pass(vendetta::CommandList& cmd_list, vendetta::Swapchain& swapchain,
-	const vendetta::RenderTarget* depth_stencil)
+void D3D12Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
+	const qhenki::RenderTarget* depth_stencil)
 {
 }
 
-void D3D12Context::start_render_pass(vendetta::CommandList& cmd_list, unsigned rt_count,
-	const vendetta::RenderTarget* rts, const vendetta::RenderTarget* depth_stencil)
+void D3D12Context::start_render_pass(qhenki::CommandList& cmd_list, unsigned rt_count,
+	const qhenki::RenderTarget* rts, const qhenki::RenderTarget* depth_stencil)
 {
 }
 
@@ -176,11 +176,11 @@ void D3D12Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 {
 }
 
-void D3D12Context::draw(vendetta::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void D3D12Context::draw(qhenki::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
 }
 
-void D3D12Context::draw_indexed(vendetta::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
+void D3D12Context::draw_indexed(qhenki::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
 }

@@ -4,7 +4,7 @@
 
 #include "d3d11_context.h"
 
-bool D3D11Swapchain::create(vendetta::SwapchainDesc desc, DisplayWindow& window,
+bool D3D11Swapchain::create(qhenki::SwapchainDesc desc, DisplayWindow& window,
                             IDXGIFactory2* const dxgi_factory, ID3D11Device* const device)
 {
     DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor =

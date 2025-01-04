@@ -2,26 +2,29 @@
 
 void ExampleApp::create()
 {
-	// create shaders
-	context_->create_shader(vertex_shader, L"base-shaders/BaseShader.vs.hlsl", vendetta::ShaderType::VERTEX_SHADER, {});
-	context_->create_shader(pixel_shader, L"base-shaders/BaseShader.ps.hlsl", vendetta::ShaderType::PIXEL_SHADER, {});
-	// create pipeline
-	// TODO: pass pipeline description struct
-	context_->create_pipeline(pipeline, vertex_shader, pixel_shader);
+	// Create shaders
+	context_->create_shader(vertex_shader, L"base-shaders/BaseShader.vs.hlsl", qhenki::ShaderType::VERTEX_SHADER, {});
+	context_->create_shader(pixel_shader, L"base-shaders/BaseShader.ps.hlsl", qhenki::ShaderType::PIXEL_SHADER, {});
+
+	// Create pipeline
+	qhenki::GraphicsPipelineDesc pipeline_desc = {};
+	context_->create_pipeline(pipeline_desc, pipeline, vertex_shader, pixel_shader);
+
 	// TODO: create queue
 	// TODO: allocate command pool from queue
 	// TODO: allocate command list from command pool
 
+	// Create vertex buffer
 	const auto vertices = std::array{
 		0.0f, 0.5f, 0.0f,
 		0.5f, -0.5f, 0.0f,
 		-0.5f, -0.5f, 0.0f,
 	};
-	vendetta::BufferDesc desc =
+	qhenki::BufferDesc desc =
 	{
 		.size = vertices.size() * sizeof(float),
-		.usage = vendetta::BufferUsage::VERTEX,
-		.visibility = vendetta::BufferVisibility::GPU_ONLY
+		.usage = qhenki::BufferUsage::VERTEX,
+		.visibility = qhenki::BufferVisibility::GPU_ONLY
 	};
 	context_->create_buffer(desc, vertices.data(), vertex_buffer);
 }

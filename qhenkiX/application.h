@@ -3,7 +3,7 @@
 #include "graphics/displaywindow.h"
 #include "graphics/d3d11/d3d11_context.h"
 
-namespace vendetta
+namespace qhenki
 {
 	enum GraphicsAPI
 	{
@@ -26,11 +26,11 @@ class Application
 
 protected:
 	// TODO: Default shaders. Should be initialized in some function
-	vendetta::GraphicsAPI graphics_api_ = vendetta::D3D11;
+	qhenki::GraphicsAPI graphics_api_ = qhenki::D3D11;
 
 	DisplayWindow window_;
-	uPtr<vendetta::Context> context_ = nullptr;
-	vendetta::Swapchain swapchain_{};
+	uPtr<qhenki::Context> context_ = nullptr;
+	qhenki::Swapchain swapchain_{};
 
 	virtual void init_display_window();
 
@@ -40,6 +40,6 @@ protected:
 	virtual void destroy() {}
 
 public:
-	void run(vendetta::GraphicsAPI api);
+	void run(qhenki::GraphicsAPI api);
 };
 

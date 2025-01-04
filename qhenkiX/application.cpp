@@ -23,19 +23,19 @@ void Application::init_display_window()
 	window_.create_window(info, 0);
 }
 
-void Application::run(vendetta::GraphicsAPI api)
+void Application::run(qhenki::GraphicsAPI api)
 {
 	init_display_window();
 	switch (api)
 	{
-	case vendetta::D3D11:
+	case qhenki::D3D11:
 		context_ = mkU<D3D11Context>();
 		break;
 	default:
 		throw std::runtime_error("Not implemented API");
 	}
 	context_->create();
-	const vendetta::SwapchainDesc swapchain_desc =
+	const qhenki::SwapchainDesc swapchain_desc =
 	{
 		.width = window_.display_info_.width,
 		.height = window_.display_info_.height,

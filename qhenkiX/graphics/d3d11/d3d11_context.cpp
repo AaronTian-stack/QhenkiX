@@ -76,7 +76,7 @@ void D3D11Context::create()
 #endif
 }
 
-bool D3D11Context::create_swapchain(DisplayWindow& window, const vendetta::SwapchainDesc& swapchain_desc, vendetta::Swapchain& swapchain)
+bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::SwapchainDesc& swapchain_desc, qhenki::Swapchain& swapchain)
 {
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
@@ -84,7 +84,7 @@ bool D3D11Context::create_swapchain(DisplayWindow& window, const vendetta::Swapc
 	return swap_d3d11->create(swapchain_desc, window, dxgi_factory.Get(), device_.Get());
 }
 
-bool D3D11Context::resize_swapchain(vendetta::Swapchain& swapchain, int width, int height)
+bool D3D11Context::resize_swapchain(qhenki::Swapchain& swapchain, int width, int height)
 {
 	wait_all();
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
@@ -93,7 +93,7 @@ bool D3D11Context::resize_swapchain(vendetta::Swapchain& swapchain, int width, i
     return swap_d3d11->resize(device_.Get(), device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_shader(vendetta::Shader& shader, const std::wstring& path, vendetta::ShaderType type,
+bool D3D11Context::create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
                                  std::vector<D3D_SHADER_MACRO> macros)
 {
 	shader.type = type;
@@ -103,17 +103,17 @@ bool D3D11Context::create_shader(vendetta::Shader& shader, const std::wstring& p
 	auto shader_d3d11 = static_cast<D3D11Shader*>(shader.internal_state.get());
     switch(type)
     {
-	    case vendetta::ShaderType::VERTEX_SHADER:
+	    case qhenki::ShaderType::VERTEX_SHADER:
 	    {
 			shader_d3d11->vertex = D3D11Shader::vertex_shader(device_.Get(), path, shader_d3d11->vertex_blob, macros.data());
             break;
 	    }
-		case vendetta::ShaderType::PIXEL_SHADER:
+		case qhenki::ShaderType::PIXEL_SHADER:
 		{
 			shader_d3d11->pixel = D3D11Shader::pixel_shader(device_.Get(), path, macros.data());
 			break;
 		}
-		case vendetta::ShaderType::COMPUTE_SHADER:
+		case qhenki::ShaderType::COMPUTE_SHADER:
 		{
 			throw std::runtime_error("D3D11: Compute Shader not implemented");
 		}
@@ -121,126 +121,132 @@ bool D3D11Context::create_shader(vendetta::Shader& shader, const std::wstring& p
     return true;
 }
 
-bool D3D11Context::create_pipeline(vendetta::GraphicsPipeline& pipeline, vendetta::Shader& vertex_shader, vendetta::Shader& pixel_shader)
+bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline, qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader)
 {
 	// D3D11 does not have concept of pipelines. D3D11 pipeline is just shader + state + input layout
 	pipeline.internal_state = mkS<D3D11GraphicsPipeline>();
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
 	const auto d3d11_vertex_shader = static_cast<D3D11Shader*>(vertex_shader.internal_state.get());
 	const auto d3d11_pixel_shader = static_cast<D3D11Shader*>(pixel_shader.internal_state.get());
-    assert(d3d11_pipeline);
+	assert(d3d11_pipeline);
 	assert(d3d11_vertex_shader);
-    assert(d3d11_pixel_shader);
+	assert(d3d11_pixel_shader);
 
-    d3d11_pipeline->vertex_shader_ = vertex_shader.internal_state.get();
+	d3d11_pipeline->vertex_shader_ = vertex_shader.internal_state.get();
 	d3d11_pipeline->pixel_shader_ = pixel_shader.internal_state.get();
 
-    // Create and store input layout
-	ID3D11InputLayout* input_layout_ = nullptr;
-	input_layout_ = layout_assembler_.create_input_layout_reflection(device_.Get(), d3d11_vertex_shader->vertex_blob.Get(), pipeline.interleaved);
+	ID3D11InputLayout* input_layout_ = layout_assembler_.create_input_layout_reflection(device_.Get(),
+		d3d11_vertex_shader->vertex_blob.Get(), pipeline.interleaved);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
 	bool succeeded = input_layout_ != nullptr;
 
-	if (const auto desc = pipeline.desc)
 	{
-		// Create Rasterizer state object
-		if (const auto rs = desc->rasterizer_state)
+		// TODO: better multithreading solution?
+		std::scoped_lock lock(pipeline_mutex);
+		pipeline.desc = pool.construct(desc);
+	}
+
+	// Create Rasterizer state object
+	if (const auto& rs = desc.rasterizer_state; rs.has_value())
+	{
+		D3D11_RASTERIZER_DESC rasterizer_desc =
 		{
-			D3D11_RASTERIZER_DESC rasterizer_desc =
+			.FillMode = static_cast<D3D11_FILL_MODE>(rs->fill_mode),
+			.CullMode = static_cast<D3D11_CULL_MODE>(rs->cull_mode),
+			.FrontCounterClockwise = rs->front_counter_clockwise,
+			.DepthBias = rs->depth_bias,
+			.DepthBiasClamp = rs->depth_bias_clamp,
+			.SlopeScaledDepthBias = rs->slope_scaled_depth_bias,
+			.DepthClipEnable = rs->depth_clip_enable,
+			.ScissorEnable = FALSE, // Scissor enable not included (TODO: add later?)
+			.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
+			.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
+		};
+		if (FAILED(device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
+		{
+			std::cerr << "D3D11: Failed to create Rasterizer State" << std::endl;
+			succeeded = false;
+		}
+	}
+
+	// Create Blend state
+	if (const auto& blend = desc.blend_desc; blend.has_value())
+	{
+		D3D11_BLEND_DESC blend_desc
+		{
+			.AlphaToCoverageEnable = blend->AlphaToCoverageEnable,
+			.IndependentBlendEnable = blend->IndependentBlendEnable,
+		};
+		for (int i = 0; i < 8; i++)
+		{
+			// D3D11 does not have logic operations
+			assert(!(blend->RenderTarget[i].BlendEnable && blend->RenderTarget[i].LogicOpEnable));
+			blend_desc.RenderTarget[i] =
 			{
-				.FillMode = static_cast<D3D11_FILL_MODE>(rs->fill_mode),
-				.CullMode = static_cast<D3D11_CULL_MODE>(rs->cull_mode),
-				.FrontCounterClockwise = rs->front_counter_clockwise,
-				.DepthBias = rs->depth_bias,
-				.DepthBiasClamp = rs->depth_bias_clamp,
-				.SlopeScaledDepthBias = rs->slope_scaled_depth_bias,
-				.DepthClipEnable = rs->depth_clip_enable,
-				.ScissorEnable = FALSE, // Scissor enable not included (TODO: add later?)
-				.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
-				.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
+				.BlendEnable = blend->RenderTarget[i].BlendEnable,
+				.SrcBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlend),
+				.DestBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlend),
+				.BlendOp = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOp),
+				.SrcBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlendAlpha),
+				.DestBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlendAlpha),
+				.BlendOpAlpha = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOpAlpha),
+				.RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
 			};
-			if (FAILED(device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
-			{
-				std::cerr << "D3D11: Failed to create Rasterizer State" << std::endl;
-				succeeded = false;
-			}
 		}
-
-		// Create Blend state
-		if (const auto blend = desc->blend_desc)
+		if (FAILED(device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
 		{
-			D3D11_BLEND_DESC blend_desc;
-			blend_desc.AlphaToCoverageEnable = blend->AlphaToCoverageEnable;
-			blend_desc.IndependentBlendEnable = blend->IndependentBlendEnable;
-			for (int i = 0; i < 8; i++)
-			{
-				auto& brt = blend_desc.RenderTarget[i];
-				// D3D11 does not have logic operations
-				assert(!(blend->RenderTarget[i].BlendEnable && blend->RenderTarget[i].LogicOpEnable));
-				blend_desc.RenderTarget[i] =
-				{
-					.BlendEnable = blend->RenderTarget[i].BlendEnable,
-					.SrcBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlend),
-					.DestBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlend),
-					.BlendOp = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOp),
-					.SrcBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlendAlpha),
-					.DestBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlendAlpha),
-					.BlendOpAlpha = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOpAlpha),
-					.RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
-				};
-			}
-			if (FAILED(device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
-			{
-				std::cerr << "D3D11: Failed to create Blend State" << std::endl;
-				succeeded = false;
-			}
+			std::cerr << "D3D11: Failed to create Blend State" << std::endl;
+			succeeded = false;
 		}
+	}
 
-		// Create Depth Stencil state
-		if (const auto ds = desc->depth_stencil_state)
+	// Create Depth Stencil state
+	if (const auto& ds = desc.depth_stencil_state; ds.has_value())
+	{
+		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc =
 		{
-			D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
-			depth_stencil_desc.DepthEnable = ds->depth_enable;
-			depth_stencil_desc.DepthWriteMask = static_cast<D3D11_DEPTH_WRITE_MASK>(ds->depth_write_mask);
-			depth_stencil_desc.DepthFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->depth_func);
-			depth_stencil_desc.StencilEnable = ds->stencil_enable;
-			depth_stencil_desc.StencilReadMask = ds->stencil_read_mask;
-			depth_stencil_desc.StencilWriteMask = ds->stencil_write_mask;
-			depth_stencil_desc.FrontFace =
+			.DepthEnable = static_cast<BOOL>(ds->depth_enable),
+			.DepthWriteMask = static_cast<D3D11_DEPTH_WRITE_MASK>(ds->depth_write_mask),
+			.DepthFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->depth_func),
+			.StencilEnable = ds->stencil_enable,
+			.StencilReadMask = ds->stencil_read_mask,
+			.StencilWriteMask = ds->stencil_write_mask,
+			.FrontFace =
 			{
 				.StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilFailOp),
 				.StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilDepthFailOp),
 				.StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilPassOp),
 				.StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->front_face.StencilFunc)
-			};
-			depth_stencil_desc.BackFace =
+			},
+			.BackFace =
 			{
 				.StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilFailOp),
 				.StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilDepthFailOp),
 				.StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilPassOp),
 				.StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->back_face.StencilFunc)
-			};
-			if (FAILED(device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
-			{
-				std::cerr << "D3D11: Failed to create Depth Stencil State" << std::endl;
-				succeeded = false;
-			}
+			},
+		};
+
+		if (FAILED(device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
+		{
+			std::cerr << "D3D11: Failed to create Depth Stencil State" << std::endl;
+			succeeded = false;
 		}
 	}
 
     return succeeded;
 }
 
-bool D3D11Context::bind_pipeline(vendetta::CommandList& cmd_list, vendetta::GraphicsPipeline& pipeline)
+bool D3D11Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline)
 {
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
 	assert(d3d11_pipeline);
-	d3d11_pipeline->bind(device_context_);
+	d3d11_pipeline->bind(device_context_.Get());
 	return true;
 }
 
-bool D3D11Context::create_buffer(const vendetta::BufferDesc& desc, const void* data, vendetta::Buffer& buffer)
+bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer)
 {
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
@@ -250,30 +256,30 @@ bool D3D11Context::create_buffer(const vendetta::BufferDesc& desc, const void* d
 	bufferInfo.ByteWidth = desc.size;
 	switch(desc.usage)
 	{
-		case vendetta::BufferUsage::VERTEX:
+		case qhenki::BufferUsage::VERTEX:
 			bufferInfo.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			break;
-		case vendetta::BufferUsage::INDEX:
+		case qhenki::BufferUsage::INDEX:
 			bufferInfo.BindFlags = D3D11_BIND_INDEX_BUFFER;
 			break;
-		case vendetta::BufferUsage::UNIFORM:
+		case qhenki::BufferUsage::UNIFORM:
 			bufferInfo.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 			break;
-		case vendetta::BufferUsage::STORAGE:
+		case qhenki::BufferUsage::STORAGE:
 			bufferInfo.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 			break;
-		case vendetta::BufferUsage::INDIRECT:
+		case qhenki::BufferUsage::INDIRECT:
 			bufferInfo.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
 			break;
-		case vendetta::BufferUsage::TRANSFER_SRC:
-		case vendetta::BufferUsage::TRANSFER_DST:
+		case qhenki::BufferUsage::TRANSFER_SRC:
+		case qhenki::BufferUsage::TRANSFER_DST:
 			bufferInfo.BindFlags = 0; // TODO: check this
 			break;
 		default:
 			throw std::runtime_error("D3D11: buffer type not implemented");
 	}
-	if ((desc.visibility & vendetta::BufferVisibility::CPU_SEQUENTIAL) 
-		|| (desc.visibility & vendetta::BufferVisibility::CPU_RANDOM))
+	if ((desc.visibility & qhenki::BufferVisibility::CPU_SEQUENTIAL) 
+		|| (desc.visibility & qhenki::BufferVisibility::CPU_RANDOM))
 	{
 		bufferInfo.Usage = D3D11_USAGE_DYNAMIC;
 		bufferInfo.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -299,7 +305,7 @@ bool D3D11Context::create_buffer(const vendetta::BufferDesc& desc, const void* d
 	return true;
 }
 
-void D3D11Context::bind_vertex_buffers(vendetta::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const vendetta::Buffer* buffers, const
+void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::Buffer* buffers, const
                                       unsigned* offsets)
 {
 	assert(buffer_count <= 16);
@@ -354,8 +360,8 @@ void D3D11Context::bind_vertex_buffers(vendetta::CommandList& cmd_list, unsigned
 	device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides.data(), offsets);
 }
 
-void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, vendetta::Swapchain& swapchain,
-                                     const vendetta::RenderTarget* depth_stencil)
+void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
+                                     const qhenki::RenderTarget* depth_stencil)
 {
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	auto rtv = swap_d3d11->sc_render_target.Get();
@@ -364,8 +370,8 @@ void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, vendetta::
 	device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
 
-void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, unsigned rt_count,
-                                     const vendetta::RenderTarget* rts, const vendetta::RenderTarget* depth_stencil)
+void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, unsigned rt_count,
+                                     const qhenki::RenderTarget* rts, const qhenki::RenderTarget* depth_stencil)
 {
     std::array<ID3D11RenderTargetView**, 8> rtvs{};
     // Clear render target views (if applicable)
@@ -393,7 +399,7 @@ void D3D11Context::start_render_pass(vendetta::CommandList& cmd_list, unsigned r
 
 void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 {
-    for (int i = 0; i < count; i++)
+    for (unsigned int i = 0; i < count; i++)
     {
 		viewports[i] =
 		{
@@ -409,12 +415,12 @@ void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 	device_context_->RSSetViewports(count, viewports.data());
 }
 
-void D3D11Context::draw(vendetta::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void D3D11Context::draw(qhenki::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
 	device_context_->Draw(vertex_count, start_vertex_offset);
 }
 
-void D3D11Context::draw_indexed(vendetta::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
+void D3D11Context::draw_indexed(qhenki::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
 	device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
@@ -425,7 +431,7 @@ void D3D11Context::wait_all()
     device_context_->Flush();
 }
 
-bool D3D11Context::present(vendetta::Swapchain& swapchain)
+bool D3D11Context::present(qhenki::Swapchain& swapchain)
 {
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	auto result = swap_d3d11->swapchain->Present(1, 0);

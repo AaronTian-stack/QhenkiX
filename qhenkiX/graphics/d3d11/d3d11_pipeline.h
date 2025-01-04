@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #define NOMINMAX
-#include "d3d11_shader.h"
+#include "d3d11_layout_assembler.h"
 
 struct D3D11GraphicsPipeline
 {
@@ -13,5 +13,5 @@ struct D3D11GraphicsPipeline
 	ComPtr<ID3D11BlendState> blend_state_ = nullptr;
 	ComPtr<ID3D11DepthStencilState> depth_stencil_state_ = nullptr;
 	// Binds both vertex pixel shaders and pipeline states. If any state struct is null, the state is not changed.
-	void bind(const ComPtr<ID3D11DeviceContext>& context);
+	void bind(ID3D11DeviceContext* const context);
 };

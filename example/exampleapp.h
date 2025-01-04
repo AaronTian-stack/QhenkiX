@@ -4,16 +4,16 @@
 
 class ExampleApp : public Application
 {
-	vendetta::GraphicsPipeline pipeline{};
-	vendetta::Shader vertex_shader{};
-	vendetta::Shader pixel_shader{};
+	qhenki::GraphicsPipeline pipeline{};
+	qhenki::Shader vertex_shader{};
+	qhenki::Shader pixel_shader{};
 
 	// TODO: one commandpool per frame, per thread. pool allocates lists
 
-	//vendetta::CommandPool cmd_pool{};
-	vendetta::CommandList cmd_list{};
+	//qhenki::CommandPool cmd_pool{};
+	qhenki::CommandList cmd_list{};
 
-	vendetta::Buffer vertex_buffer{};
+	qhenki::Buffer vertex_buffer{};
 
 protected:
 	void create() override;

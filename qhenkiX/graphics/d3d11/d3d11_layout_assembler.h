@@ -7,7 +7,7 @@
 #include <wrl/client.h>
 #include <tsl/robin_map.h>
 
-#include "graphics/vendetta/disposable.h"
+#include "graphics/qhenki/disposable.h"
 
 using Microsoft::WRL::ComPtr;
 
