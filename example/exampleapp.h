@@ -2,6 +2,19 @@
 
 #include <application.h>
 
+struct CameraMatrices
+{
+	XMFLOAT4X4 viewProj;
+	XMFLOAT4X4 invViewProj;
+};
+
+/**
+* @class ExampleApp
+* @brief Renders a spinning cube.
+*
+* Sets up the necessary graphics pipeline, shaders, command lists, and buffers to render a spinning cube.
+* It overrides the create, render, resize, and destroy methods to manage the lifecycle of the application.
+*/
 class ExampleApp : public Application
 {
 	qhenki::GraphicsPipeline pipeline{};
@@ -14,6 +27,10 @@ class ExampleApp : public Application
 	qhenki::CommandList cmd_list{};
 
 	qhenki::Buffer vertex_buffer{};
+	qhenki::Buffer index_buffer{};
+	qhenki::Buffer matrix_buffer{};
+
+	CameraMatrices matrices{};
 
 protected:
 	void create() override;

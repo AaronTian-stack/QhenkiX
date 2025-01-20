@@ -48,10 +48,15 @@ public:
 
 	bool create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name = nullptr) override;
 
+	void* map_buffer(const qhenki::Buffer& buffer) override;
+	void unmap_buffer(const qhenki::Buffer& buffer) override;
+
 	void bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::Buffer* buffers, const
 	                        unsigned* offsets) override;
+	void bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki::Buffer& buffer, DXGI_FORMAT format,
+		unsigned offset) override;
 
-	// recording commands is not thread safe
+	// Recording commands is not thread safe in D3D11. TODO: runtime check that this is called from the same thread
 
 	void start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
 		const qhenki::RenderTarget* depth_stencil) override;

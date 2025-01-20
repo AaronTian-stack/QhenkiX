@@ -24,10 +24,9 @@ class Application
 	//Files 
 	//Preferences
 
+	qhenki::GraphicsAPI graphics_api_ = qhenki::D3D11;
 protected:
 	// TODO: Default shaders. Should be initialized in some function
-	qhenki::GraphicsAPI graphics_api_ = qhenki::D3D11;
-
 	DisplayWindow window_;
 	uPtr<qhenki::Context> context_ = nullptr;
 	qhenki::Swapchain swapchain_{};
@@ -41,5 +40,6 @@ protected:
 
 public:
 	void run(qhenki::GraphicsAPI api);
+	qhenki::GraphicsAPI get_graphics_api() const { return graphics_api_; }
 };
 

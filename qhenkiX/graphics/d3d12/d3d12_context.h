@@ -3,6 +3,7 @@
 #include <wrl/client.h>
 
 #include "D3D12MemAlloc.h"
+#include "d3d12_heap.h"
 #include "graphics/qhenki/context.h"
 
 using Microsoft::WRL::ComPtr;
@@ -20,9 +21,7 @@ class D3D12Context : public qhenki::Context
 
 	ComPtr<IDXGISwapChain3> swapchain;
 
-	UINT rtv_descriptor_size = 0;
-	const UINT rtv_descriptor_count = 1000;
-	ComPtr<ID3D12DescriptorHeap> rtv_heap;
+	D3D12Heap rtv_heap;
 
 public:
 	void create() override;
@@ -38,8 +37,14 @@ public:
 	bool bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline) override;
 
 	bool create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name) override;
+
+	void* map_buffer(const qhenki::Buffer& buffer) override;
+	void unmap_buffer(const qhenki::Buffer& buffer) override;
+
 	void bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
 		const qhenki::Buffer* buffers, const unsigned* offsets) override;
+	void bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki::Buffer& buffer, DXGI_FORMAT format,
+		unsigned offset) override;
 
 	void start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
 		const qhenki::RenderTarget* depth_stencil) override;

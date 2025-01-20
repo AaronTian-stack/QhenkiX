@@ -292,14 +292,17 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 	// misc flags
 	//TODO bufferInfo.StructureByteStride = 0;
 
-	D3D11_SUBRESOURCE_DATA resourceData;
-	resourceData.pSysMem = data;
+	D3D11_SUBRESOURCE_DATA resource_data;
+	resource_data.pSysMem = data;
+
+	const auto resource_data_ptr = data ? &resource_data : nullptr;
+
 	if (FAILED(device_->CreateBuffer(
 		&bufferInfo,
-		&resourceData,
+		resource_data_ptr,
 		&*buffer_d3d11)))
 	{
-		std::cerr << "D3D11: Failed to create triangle vertex buffer" << std::endl;
+		std::cerr << "D3D11: Failed to create buffer" << std::endl;
 		return false;
 	}
 
@@ -318,8 +321,29 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 	return true;
 }
 
+void* D3D11Context::map_buffer(const qhenki::Buffer& buffer)
+{
+	D3D11_MAPPED_SUBRESOURCE mapped_resource;
+	if (FAILED(device_context_->Map(
+		static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), 
+		0, 
+		D3D11_MAP_WRITE_DISCARD, 
+		0, 
+		&mapped_resource)))
+	{
+		std::cerr << "D3D11: Failed to map buffer" << std::endl;
+		return nullptr;
+	}
+	return mapped_resource.pData;
+}
+
+void D3D11Context::unmap_buffer(const qhenki::Buffer& buffer)
+{
+	device_context_->Unmap(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), 0);
+}
+
 void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::Buffer* buffers, const
-                                      unsigned* offsets)
+                                       unsigned* offsets)
 {
 	assert(buffer_count <= 16);
 	std::array<ID3D11Buffer**, 16> buffer_d3d11{};
@@ -372,11 +396,17 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 	device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides.data(), offsets);
 }
 
+void D3D11Context::bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki::Buffer& buffer, DXGI_FORMAT format,
+	unsigned offset)
+{
+	device_context_->IASetIndexBuffer(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), format, offset);
+}
+
 void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
                                      const qhenki::RenderTarget* depth_stencil)
 {
-	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	auto rtv = swap_d3d11->sc_render_target.Get();
+	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
+	const auto rtv = swap_d3d11->sc_render_target.Get();
 	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	device_context_->ClearRenderTargetView(rtv, clear_color);
 	device_context_->OMSetRenderTargets(1, &rtv, nullptr);
@@ -445,8 +475,8 @@ void D3D11Context::wait_all()
 
 bool D3D11Context::present(qhenki::Swapchain& swapchain)
 {
-	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	auto result = swap_d3d11->swapchain->Present(1, 0);
+	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
+	const auto result = swap_d3d11->swapchain->Present(1, 0);
     return result == S_OK;
 }
 

@@ -26,12 +26,21 @@ namespace qhenki
 		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;
 
-		virtual bool create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_buffer(const BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
+
+        /**
+        * Write only. Do not read or performance issues may happen.
+        * For now no persistent mapping. Emulating in D3D11 would require state tracking of buffer usage
+		**/
+		virtual void* map_buffer(const Buffer& buffer) = 0;
+		virtual void unmap_buffer(const Buffer& buffer) = 0;
 
 		virtual void bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const unsigned* offsets) = 0;
+		virtual void bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, DXGI_FORMAT format, unsigned offset) = 0;
 
 		// TODO: compute pipeline
 
+		// TODO: optional clear
 		virtual void start_render_pass(CommandList& cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil) = 0;
 		virtual void start_render_pass(CommandList& cmd_list, unsigned int rt_count, const RenderTarget* rts, const RenderTarget* depth_stencil) = 0;
 

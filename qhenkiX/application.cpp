@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <graphics/d3d11/d3d11_context.h>
+#include <graphics/d3d12/d3d12_context.h>
 
 /**
  * This could be overridden to set up the display window with custom settings.
@@ -23,14 +24,19 @@ void Application::init_display_window()
 	window_.create_window(info, 0);
 }
 
-void Application::run(qhenki::GraphicsAPI api)
+void Application::run(const qhenki::GraphicsAPI api)
 {
+	graphics_api_ = api;
 	init_display_window();
 	switch (api)
 	{
 	case qhenki::D3D11:
 		context_ = mkU<D3D11Context>();
 		break;
+	case qhenki::D3D12:
+		context_ = mkU<D3D12Context>();
+		break;
+	case qhenki::Vulkan: break;
 	default:
 		throw std::runtime_error("Not implemented API");
 	}

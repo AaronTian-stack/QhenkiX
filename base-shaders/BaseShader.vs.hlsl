@@ -1,3 +1,9 @@
+cbuffer CameraBuffer : register(b0)
+{
+    float4x4 view;
+    float4x4 projection;
+};
+
 struct VSInput
 {
     float3 position : POSITION;

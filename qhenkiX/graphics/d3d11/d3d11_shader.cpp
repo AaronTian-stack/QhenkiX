@@ -53,6 +53,7 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device
 		nullptr,
 		&vertex_shader)))
 	{
+		// TODO: use default vertex shader fallback
 		std::cerr << "D3D11: Failed to create vertex shader" << std::endl;
 		throw std::runtime_error("Failed to create vertex shader");
 	}
@@ -88,6 +89,7 @@ ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(ID3D11Device* const device, 
 		nullptr,
 		&pixel_shader)))
 	{
+		// TODO: use default pixel shader fallback
 		std::cerr << "D3D11: Failed to create pixel shader" << std::endl;
 		throw std::runtime_error("Failed to create pixel shader");
 	}

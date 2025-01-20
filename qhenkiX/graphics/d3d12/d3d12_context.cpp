@@ -57,18 +57,7 @@ void D3D12Context::create()
 	}
 
 	// Create RTV heap
-	D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc =
-	{
-		.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-		.NumDescriptors = rtv_descriptor_count, // N RTVs
-		.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-		.NodeMask = 0, // 0 for single adapter
-	};
-	if (FAILED(device_->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&rtv_heap))))
-	{
-		std::cerr << "D3D12: Failed to create RTV descriptor heap" << std::endl;
-	}
-	rtv_descriptor_size = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	rtv_heap.create(device_.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 #ifdef _DEBUG
 	// Enable the D3D12 debug layer
@@ -157,13 +146,28 @@ bool D3D12Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 	return false;
 }
 
-void D3D12Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
-	const qhenki::Buffer* buffers, const unsigned* offsets)
+void* D3D12Context::map_buffer(const qhenki::Buffer& buffer)
+{
+	return nullptr;
+}
+
+void D3D12Context::unmap_buffer(const qhenki::Buffer& buffer)
 {
 }
 
+void D3D12Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
+                                       const qhenki::Buffer* buffers, const unsigned* offsets)
+{
+}
+
+void D3D12Context::bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki::Buffer& buffer, DXGI_FORMAT format,
+	unsigned offset)
+{
+	assert(false && "D3D12: Index Buffer not implemented");
+}
+
 void D3D12Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
-	const qhenki::RenderTarget* depth_stencil)
+                                     const qhenki::RenderTarget* depth_stencil)
 {
 }
 
