@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "graphics/d3d11/d3d11_shader.h"
+
 void D3D12Context::create()
 {
 #ifdef _DEBUG
@@ -137,15 +139,65 @@ bool D3D12Context::present(qhenki::Swapchain& swapchain)
 bool D3D12Context::create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
 	std::vector<D3D_SHADER_MACRO> macros)
 {
-	assert(false);
-	return false;
+	shader.type = type;
+	shader.internal_state = mkS<ComPtr<ID3DBlob>>();
+
+	const auto shader_d3d12 = static_cast<ComPtr<ID3DBlob>*>(shader.internal_state.get());
+
+	bool result = false;
+
+	switch (type)
+	{
+	case qhenki::VERTEX_SHADER: 
+		result = D3D11Shader::compile_shader(path, ENTRYPOINT, VS_VERSION, *shader_d3d12, macros.data());
+		break;
+	case qhenki::PIXEL_SHADER: 
+		result = D3D11Shader::compile_shader(path, ENTRYPOINT, PS_VERSION, *shader_d3d12, macros.data());
+		break;
+	case qhenki::COMPUTE_SHADER: 
+		assert(false);
+		break;
+	default:
+		assert(false);
+	}
+
+	return result;
 }
 
 bool D3D12Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline,
-                                   qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader)
+                                   qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader, wchar_t const* debug_name)
 {
 	assert(false);
-	return false;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+	// TODO: Input reflection
+	// pso.InputLayout
+	// TODO: handling root signatures?
+	// pso.pRootSignature
+
+	auto vertex_shader_blob = static_cast<ComPtr<ID3DBlob>*>(vertex_shader.internal_state.get());
+	auto pixel_shader_blob = static_cast<ComPtr<ID3DBlob>*>(pixel_shader.internal_state.get());
+	psoDesc.VS =
+	{
+		.pShaderBytecode = vertex_shader_blob->Get()->GetBufferPointer(),
+		.BytecodeLength = vertex_shader_blob->Get()->GetBufferSize()
+	};
+	psoDesc.PS =
+	{
+		.pShaderBytecode = pixel_shader_blob->Get()->GetBufferPointer(),
+		.BytecodeLength = pixel_shader_blob->Get()->GetBufferSize()
+	};
+	//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.DepthStencilState.DepthEnable = FALSE;
+	psoDesc.DepthStencilState.StencilEnable = FALSE;
+	psoDesc.SampleMask = UINT_MAX;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	psoDesc.SampleDesc.Count = 1;
+
+	return true;
 }
 
 bool D3D12Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline)

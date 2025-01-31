@@ -53,7 +53,6 @@ namespace qhenki
 	struct GraphicsPipeline
 	{
 		GraphicsPipelineDesc* desc = nullptr; // Freed back to pool after pipeline is created (D3D12)
-		Shader* shader = nullptr;
 		sPtr<void> internal_state;
 	};
 }

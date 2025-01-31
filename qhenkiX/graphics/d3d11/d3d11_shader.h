@@ -8,14 +8,15 @@
 
 using Microsoft::WRL::ComPtr;
 
+// TODO: move these macros out of here eventually
 #define VS_VERSION "vs_5_0"
 #define PS_VERSION "ps_5_0"
 #define ENTRYPOINT "main"
 
 class D3D11Shader
 {
-	// macros must be null terminated
-	static bool compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& profile,
+	// Macros must be null terminated
+	static bool compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& target_version,
 	                           ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros);
 
 public:
@@ -25,5 +26,7 @@ public:
 
 	static ComPtr<ID3D11VertexShader> vertex_shader(ID3D11Device* const device, const std::wstring& file_name, ComPtr<ID3DBlob>& vertex_shader_blob, const D3D_SHADER_MACRO* macros);
 	static ComPtr<ID3D11PixelShader> pixel_shader(ID3D11Device* const device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros);
+
+	friend class D3D12Context;
 };
 

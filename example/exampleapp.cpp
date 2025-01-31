@@ -11,7 +11,7 @@ void ExampleApp::create()
 	{
 		.interleaved = TRUE,
 	};
-	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_);
+	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_, L"triangle_pipeline");
 
 	// TODO: create queue(s)
 	m_context_->create_queue(qhenki::QueueType::GRAPHICS, m_graphics_queue_);

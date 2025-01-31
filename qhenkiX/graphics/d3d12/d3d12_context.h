@@ -33,7 +33,7 @@ public:
 	bool create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
 		std::vector<D3D_SHADER_MACRO> macros) override;
 	bool create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline,
-	                     qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader) override;
+	                     qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader, wchar_t const* debug_name) override;
 	bool bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline) override;
 
 	bool create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name) override;

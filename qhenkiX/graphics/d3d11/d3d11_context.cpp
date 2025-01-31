@@ -121,9 +121,10 @@ bool D3D11Context::create_shader(qhenki::Shader& shader, const std::wstring& pat
     return true;
 }
 
-bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline, qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader)
+bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline, qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader, wchar_t
+                                   const* debug_name)
 {
-	// D3D11 does not have concept of pipelines. D3D11 pipeline is just shader + state + input layout
+	// D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
 	pipeline.internal_state = mkS<D3D11GraphicsPipeline>();
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
 	const auto d3d11_vertex_shader = static_cast<D3D11Shader*>(vertex_shader.internal_state.get());

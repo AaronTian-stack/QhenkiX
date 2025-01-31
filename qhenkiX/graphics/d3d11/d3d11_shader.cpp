@@ -7,14 +7,14 @@
 
 #include "d3d11_context.h"
 
-bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& profile,
+bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& target_version,
                                  ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros)
 {
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
 
 #if defined(_DEBUG)
-	flags |= D3DCOMPILE_DEBUG;
+	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
 	HRESULT hr = D3DCompileFromFile(
@@ -22,7 +22,7 @@ bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::strin
 		macros,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		entry_point.c_str(),
-		profile.c_str(),
+		target_version.c_str(),
 		flags,
 		0,
 		&shader_blob,
