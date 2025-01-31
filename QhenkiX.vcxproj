@@ -219,15 +219,16 @@
     <ClInclude Include="include\boost\version.hpp" />
     <ClInclude Include="include\D3D12MemAlloc.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_render_target.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_heap.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\context.h" />
     <ClInclude Include="include\smartpointer.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\disposable.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\pipeline.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\queue.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\render_target.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\shader.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\swapchain.h" />

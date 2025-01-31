@@ -21,35 +21,39 @@ void Application::init_display_window()
 		.title = "QhenkiX Application",
 	};
 	
-	window_.create_window(info, 0);
+	m_window_.create_window(info, 0);
 }
 
 void Application::run(const qhenki::GraphicsAPI api)
 {
-	graphics_api_ = api;
+	m_graphics_api_ = api;
 	init_display_window();
 	switch (api)
 	{
 	case qhenki::D3D11:
-		context_ = mkU<D3D11Context>();
+		m_context_ = mkU<D3D11Context>();
 		break;
 	case qhenki::D3D12:
-		context_ = mkU<D3D12Context>();
+		m_context_ = mkU<D3D12Context>();
 		break;
-	case qhenki::Vulkan: break;
+	case qhenki::Vulkan: 
+		break;
 	default:
 		throw std::runtime_error("Not implemented API");
 	}
-	context_->create();
+	m_context_->create();
+
+	m_context_->create_queue(qhenki::QueueType::GRAPHICS, m_graphics_queue_);
+
 	const qhenki::SwapchainDesc swapchain_desc =
 	{
-		.width = window_.display_info_.width,
-		.height = window_.display_info_.height,
+		.width = m_window_.display_info_.width,
+		.height = m_window_.display_info_.height,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	};
-	context_->create_swapchain(window_, swapchain_desc, swapchain_);
+	m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, m_graphics_queue_);
 	create();
-	// starts the main loop
+	// Starts the main loop
     bool quit = false;
     while (!quit)
     {
@@ -64,9 +68,9 @@ void Application::run(const qhenki::GraphicsAPI api)
 			{
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED)
 				{
-					window_.display_info_.width = event.window.data1;
-					window_.display_info_.height = event.window.data2;
-					context_->resize_swapchain(swapchain_, event.window.data1, event.window.data2);
+					m_window_.display_info_.width = event.window.data1;
+					m_window_.display_info_.height = event.window.data2;
+					m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2);
 					resize(event.window.data1, event.window.data2);
 				}
 			}
@@ -76,6 +80,6 @@ void Application::run(const qhenki::GraphicsAPI api)
 
 		// TODO: proper application frame limiting
     }
-	context_->wait_all();
+	m_context_->wait_all();
 	destroy();
 }

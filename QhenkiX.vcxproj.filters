@@ -152,9 +152,6 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\render_target.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_render_target.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -231,6 +228,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\boost\config\workaround.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\queue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -2,10 +2,6 @@
 
 namespace qhenki
 {
-	struct CommandPool
-	{
-		
-	};
 	struct CommandList
 	{
 		

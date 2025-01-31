@@ -17,20 +17,20 @@ struct CameraMatrices
 */
 class ExampleApp : public Application
 {
-	qhenki::GraphicsPipeline pipeline{};
-	qhenki::Shader vertex_shader{};
-	qhenki::Shader pixel_shader{};
+	qhenki::GraphicsPipeline m_pipeline_{};
+	qhenki::Shader m_vertex_shader_{};
+	qhenki::Shader m_pixel_shader_{};
 
 	// TODO: one commandpool per frame, per thread. pool allocates lists
+	// command pools for main thread
+	std::array<qhenki::CommandPool, qhenki::Context::m_frames_in_flight> m_cmd_pools_{};
+	qhenki::CommandList m_cmd_list_{};
 
-	//qhenki::CommandPool cmd_pool{};
-	qhenki::CommandList cmd_list{};
+	qhenki::Buffer m_vertex_buffer_{};
+	qhenki::Buffer m_index_buffer_{};
+	qhenki::Buffer matrix_buffer_{};
 
-	qhenki::Buffer vertex_buffer{};
-	qhenki::Buffer index_buffer{};
-	qhenki::Buffer matrix_buffer{};
-
-	CameraMatrices matrices{};
+	CameraMatrices matrices_{};
 
 protected:
 	void create() override;

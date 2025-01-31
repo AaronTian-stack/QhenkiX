@@ -4,10 +4,10 @@
 
 int main()
 {
-    // Simple example application for the QhenkiX Game Framework.
+    // Run simple example application for the QhenkiX Game Framework.
 
 	ExampleApp app;
-	app.run(qhenki::D3D11);
+	app.run(qhenki::D3D12);
 
     return 0;
 }

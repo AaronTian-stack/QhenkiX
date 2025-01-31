@@ -7,24 +7,23 @@
 #include "d3d11_shader.h"
 #include "d3d11_swapchain.h"
 #include "d3d11_pipeline.h"
-#include "d3d11_render_target.h"
 
 void D3D11Context::create()
 {
     // Create factory
-    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&dxgi_factory))))
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory_))))
     {
 		std::cerr << "D3D11: Failed to create DXGI Factory" << std::endl;
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
     }
 #ifdef _DEBUG
     constexpr char factoryName[] = "DXGI Factory";
-    dxgi_factory->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
+    m_dxgi_factory_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
 #endif
 
 	// Pick discrete GPU
     ComPtr<IDXGIAdapter1> adapter;
-    if (FAILED(dxgi_factory->EnumAdapterByGpuPreference(
+    if (FAILED(m_dxgi_factory_->EnumAdapterByGpuPreference(
         0, // Adapter index
         DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
         __uuidof(IDXGIAdapter1),
@@ -32,7 +31,7 @@ void D3D11Context::create()
     )))
     {
 		std::cerr << "D3D11: Failed to find discrete GPU. Defaulting to 0th adapter" << std::endl;
-        if (FAILED(dxgi_factory->EnumAdapters1(0, &adapter)))
+        if (FAILED(m_dxgi_factory_->EnumAdapters1(0, &adapter)))
         {
 			throw std::runtime_error("D3D11: Failed to find a adapter");
         }
@@ -59,29 +58,30 @@ void D3D11Context::create()
         &deviceFeatureLevel,
         1,
         D3D11_SDK_VERSION,
-        &device_,
+        &m_device_,
         nullptr,
-        &device_context_)))
+        &m_device_context_)))
     {
         throw std::runtime_error("D3D11: Failed to create D3D11 Device");
     }
 	
 #ifdef _DEBUG
     constexpr char deviceName[] = "d3d11_device";
-    device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
-    if (FAILED(device_.As(&debug_)))
+    m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
+    if (FAILED(m_device_.As(&m_debug_)))
     {
         throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
     }
 #endif
 }
 
-bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::SwapchainDesc& swapchain_desc, qhenki::Swapchain& swapchain)
+bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::SwapchainDesc& swapchain_desc, qhenki::Swapchain& swapchain, qhenki::Queue
+                                    & direct_queue)
 {
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	return swap_d3d11->create(swapchain_desc, window, dxgi_factory.Get(), device_.Get());
+	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get());
 }
 
 bool D3D11Context::resize_swapchain(qhenki::Swapchain& swapchain, int width, int height)
@@ -90,7 +90,7 @@ bool D3D11Context::resize_swapchain(qhenki::Swapchain& swapchain, int width, int
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	assert(swap_d3d11);
 	assert(swap_d3d11->swapchain);
-    return swap_d3d11->resize(device_.Get(), device_context_.Get(), width, height);
+    return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
 bool D3D11Context::create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
@@ -105,12 +105,12 @@ bool D3D11Context::create_shader(qhenki::Shader& shader, const std::wstring& pat
     {
 	    case qhenki::ShaderType::VERTEX_SHADER:
 	    {
-			shader_d3d11->vertex = D3D11Shader::vertex_shader(device_.Get(), path, shader_d3d11->vertex_blob, macros.data());
+			shader_d3d11->vertex = D3D11Shader::vertex_shader(m_device_.Get(), path, shader_d3d11->vertex_blob, macros.data());
             break;
 	    }
 		case qhenki::ShaderType::PIXEL_SHADER:
 		{
-			shader_d3d11->pixel = D3D11Shader::pixel_shader(device_.Get(), path, macros.data());
+			shader_d3d11->pixel = D3D11Shader::pixel_shader(m_device_.Get(), path, macros.data());
 			break;
 		}
 		case qhenki::ShaderType::COMPUTE_SHADER:
@@ -135,7 +135,7 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 	d3d11_pipeline->vertex_shader_ = vertex_shader.internal_state.get();
 	d3d11_pipeline->pixel_shader_ = pixel_shader.internal_state.get();
 
-	ID3D11InputLayout* input_layout_ = layout_assembler_.create_input_layout_reflection(device_.Get(),
+	ID3D11InputLayout* input_layout_ = m_layout_assembler_.create_input_layout_reflection(m_device_.Get(),
 		d3d11_vertex_shader->vertex_blob.Get(), desc.interleaved);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
@@ -143,8 +143,9 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 
 	{
 		// TODO: better multithreading solution?
-		std::scoped_lock lock(pipeline_mutex);
-		pipeline.desc = pool.construct(desc);
+		std::scoped_lock lock(m_pipeline_mutex_);
+		pipeline.desc = m_pool_.construct(desc);
+		// D3D11 implementation will always need description to be stored.
 	}
 
 	// Create Rasterizer state object
@@ -163,7 +164,7 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 			.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
 			.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
 		};
-		if (FAILED(device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
+		if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
 		{
 			std::cerr << "D3D11: Failed to create Rasterizer State" << std::endl;
 			succeeded = false;
@@ -194,7 +195,7 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 				.RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
 			};
 		}
-		if (FAILED(device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
+		if (FAILED(m_device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
 		{
 			std::cerr << "D3D11: Failed to create Blend State" << std::endl;
 			succeeded = false;
@@ -228,7 +229,7 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 			},
 		};
 
-		if (FAILED(device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
+		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
 		{
 			std::cerr << "D3D11: Failed to create Depth Stencil State" << std::endl;
 			succeeded = false;
@@ -242,7 +243,7 @@ bool D3D11Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::Graphics
 {
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
 	assert(d3d11_pipeline);
-	d3d11_pipeline->bind(device_context_.Get());
+	d3d11_pipeline->bind(m_device_context_.Get());
 	return true;
 }
 
@@ -297,7 +298,7 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 
 	const auto resource_data_ptr = data ? &resource_data : nullptr;
 
-	if (FAILED(device_->CreateBuffer(
+	if (FAILED(m_device_->CreateBuffer(
 		&bufferInfo,
 		resource_data_ptr,
 		&*buffer_d3d11)))
@@ -324,7 +325,7 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 void* D3D11Context::map_buffer(const qhenki::Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
-	if (FAILED(device_context_->Map(
+	if (FAILED(m_device_context_->Map(
 		static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), 
 		0, 
 		D3D11_MAP_WRITE_DISCARD, 
@@ -339,7 +340,7 @@ void* D3D11Context::map_buffer(const qhenki::Buffer& buffer)
 
 void D3D11Context::unmap_buffer(const qhenki::Buffer& buffer)
 {
-	device_context_->Unmap(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), 0);
+	m_device_context_->Unmap(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), 0);
 }
 
 void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::Buffer* buffers, const
@@ -353,10 +354,10 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 	}
 	// strides must be fetched from current input layout
 	ComPtr<ID3D11InputLayout> input_layout;
-	device_context_->IAGetInputLayout(&input_layout);
+	m_device_context_->IAGetInputLayout(&input_layout);
 	assert(input_layout && "No Input Layout bound"); // if null then no input layout is bound
 
-	auto layout = layout_assembler_.find_layout(input_layout.Get());
+	auto layout = m_layout_assembler_.find_layout(input_layout.Get());
 	assert(layout);
 
 	// linear search through the list of attributes and find the stride (size of input, float1/2/3/4) of the matching slot number
@@ -393,13 +394,23 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 			assert(found && "D3D11: Input slot not found in input layout");
 		}
 	}
-	device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides.data(), offsets);
+	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides.data(), offsets);
 }
 
 void D3D11Context::bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki::Buffer& buffer, DXGI_FORMAT format,
 	unsigned offset)
 {
-	device_context_->IASetIndexBuffer(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), format, offset);
+	m_device_context_->IASetIndexBuffer(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), format, offset);
+}
+
+bool D3D11Context::create_queue(const qhenki::QueueType type, qhenki::Queue& queue)
+{
+	return true; // D3D11 does not have queues
+}
+
+bool D3D11Context::create_command_pool(qhenki::CommandPool& command_pool, const qhenki::Queue& queue)
+{
+	return true; // D3D11 does not have queues
 }
 
 void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
@@ -408,8 +419,8 @@ void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swap
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto rtv = swap_d3d11->sc_render_target.Get();
 	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	device_context_->ClearRenderTargetView(rtv, clear_color);
-	device_context_->OMSetRenderTargets(1, &rtv, nullptr);
+	m_device_context_->ClearRenderTargetView(rtv, clear_color);
+	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
 
 void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, unsigned rt_count,
@@ -419,13 +430,13 @@ void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, unsigned rt_
     // Clear render target views (if applicable)
 	for (unsigned int i = 0; i < rt_count; i++)
 	{
-		auto& desc = rts[i].desc;
-		auto d3d11_rtv = static_cast<D3D11RenderTarget*>(rts[i].internal_state.get());
-		if (desc.clear_color)
+		const auto& [clear_color, clear_color_value] = rts[i].desc;
+		const auto d3d11_rtv = static_cast<ComPtr<ID3D11RenderTargetView>*>(rts[i].internal_state.get());
+		if (clear_color)
 		{
-			device_context_->ClearRenderTargetView(d3d11_rtv->rtv.Get(), desc.clear_color_value.data());
+			m_device_context_->ClearRenderTargetView(d3d11_rtv->Get(), clear_color_value.data());
 		}
-		rtvs[i] = d3d11_rtv->rtv.GetAddressOf();
+		rtvs[i] = d3d11_rtv->GetAddressOf();
 	}
     // D3D11 does not have concept of render pass
     // Set render target views
@@ -434,16 +445,16 @@ void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, unsigned rt_
 	if (depth_stencil)
 	{
 		assert(false && "D3D11: Depth Stencil not implemented");
-		//device_context_->ClearDepthStencilView(dsi->rtv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+		m_device_context_->ClearDepthStencilView(ds, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	}
-    device_context_->OMSetRenderTargets(rt_count, rtvs[0], ds);
+    m_device_context_->OMSetRenderTargets(rt_count, rtvs[0], ds);
 }
 
 void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 {
     for (unsigned int i = 0; i < count; i++)
     {
-		viewports[i] =
+		m_viewports_[i] =
 		{
 			.TopLeftX = viewport[i].TopLeftX,
 			.TopLeftY = viewport[i].TopLeftY,
@@ -454,23 +465,23 @@ void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 		};
 
     }
-	device_context_->RSSetViewports(count, viewports.data());
+	m_device_context_->RSSetViewports(count, m_viewports_.data());
 }
 
 void D3D11Context::draw(qhenki::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
-	device_context_->Draw(vertex_count, start_vertex_offset);
+	m_device_context_->Draw(vertex_count, start_vertex_offset);
 }
 
 void D3D11Context::draw_indexed(qhenki::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
-	device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
+	m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
 }
 
 void D3D11Context::wait_all()
 {
-    device_context_->Flush();
+    m_device_context_->Flush();
 }
 
 bool D3D11Context::present(qhenki::Swapchain& swapchain)
@@ -482,14 +493,14 @@ bool D3D11Context::present(qhenki::Swapchain& swapchain)
 
 D3D11Context::~D3D11Context()
 {
-	layout_assembler_.dispose();
-    device_context_->ClearState();
-    device_context_->Flush();
-    device_context_.Reset();
-    dxgi_factory.Reset();
+	m_layout_assembler_.dispose();
+    m_device_context_->ClearState();
+    m_device_context_->Flush();
+    m_device_context_.Reset();
+    m_dxgi_factory_.Reset();
 #if _DEBUG
-    debug_->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
-    debug_.Reset();
+    m_debug_->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+    m_debug_.Reset();
 #endif
-    device_.Reset();
+    m_device_.Reset();
 }

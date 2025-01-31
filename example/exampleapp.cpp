@@ -3,18 +3,23 @@
 void ExampleApp::create()
 {
 	// Create shaders
-	context_->create_shader(vertex_shader, L"base-shaders/BaseShader.vs.hlsl", qhenki::ShaderType::VERTEX_SHADER, {});
-	context_->create_shader(pixel_shader, L"base-shaders/BaseShader.ps.hlsl", qhenki::ShaderType::PIXEL_SHADER, {});
+	m_context_->create_shader(m_vertex_shader_, L"base-shaders/BaseShader.vs.hlsl", qhenki::ShaderType::VERTEX_SHADER, {});
+	m_context_->create_shader(m_pixel_shader_, L"base-shaders/BaseShader.ps.hlsl", qhenki::ShaderType::PIXEL_SHADER, {});
 
 	// Create pipeline
 	qhenki::GraphicsPipelineDesc pipeline_desc =
 	{
 		.interleaved = TRUE,
 	};
-	context_->create_pipeline(pipeline_desc, pipeline, vertex_shader, pixel_shader);
+	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_);
 
-	// TODO: create queue
-	// TODO: allocate command pool from queue
+	// TODO: create queue(s)
+	m_context_->create_queue(qhenki::QueueType::GRAPHICS, m_graphics_queue_);
+	// TODO: allocate command pool(s)/allocator(s) from queue
+	for (int i = 0; i < qhenki::Context::m_frames_in_flight; i++)
+	{
+		m_context_->create_command_pool(m_cmd_pools_[i], m_graphics_queue_);
+	}
 	// TODO: allocate command list from command pool
 
 	// Create vertex buffer
@@ -29,7 +34,7 @@ void ExampleApp::create()
 		.usage = qhenki::BufferUsage::VERTEX,
 		.visibility = qhenki::BufferVisibility::GPU_ONLY
 	};
-	context_->create_buffer(desc, vertices.data(), vertex_buffer, L"Interleaved Position/Color Buffer");
+	m_context_->create_buffer(desc, vertices.data(), m_vertex_buffer_, L"Interleaved Position/Color Buffer");
 
 	const auto indices = std::array{ 0u, 1u, 2u };
 	qhenki::BufferDesc index_desc =
@@ -38,7 +43,7 @@ void ExampleApp::create()
 		.usage = qhenki::BufferUsage::INDEX,
 		.visibility = qhenki::BufferVisibility::GPU_ONLY
 	};
-	context_->create_buffer(index_desc, indices.data(), index_buffer, L"Index Buffer");
+	m_context_->create_buffer(index_desc, indices.data(), m_index_buffer_, L"Index Buffer");
 
 	qhenki::BufferDesc matrix_desc =
 	{
@@ -46,7 +51,7 @@ void ExampleApp::create()
 		.usage = qhenki::BufferUsage::UNIFORM,
 		.visibility = qhenki::BufferVisibility::CPU_SEQUENTIAL
 	};
-	context_->create_buffer(matrix_desc, nullptr, matrix_buffer, L"Matrix Buffer");
+	m_context_->create_buffer(matrix_desc, nullptr, matrix_buffer_, L"Matrix Buffer");
 }
 
 void ExampleApp::render()
@@ -58,20 +63,20 @@ void ExampleApp::render()
 	const XMVECTORF32 focus_pos = { 0.0f, 0.0f, 0.0f };
 	const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f };
     const auto view = XMMatrixLookAtLH(eye_pos, focus_pos, up);
-	const auto dim = this->window_.get_display_size();
+	const auto dim = this->m_window_.get_display_size();
 	const auto proj = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(dim.x) / static_cast<float>(dim.y), 
 		0.01f, 100.0f);
 	const auto prod = XMMatrixTranspose(XMMatrixMultiply(view, proj));
-	XMStoreFloat4x4(&matrices.viewProj, prod);
-	XMStoreFloat4x4(&matrices.invViewProj, XMMatrixInverse(nullptr, prod));
+	XMStoreFloat4x4(&matrices_.viewProj, prod);
+	XMStoreFloat4x4(&matrices_.invViewProj, XMMatrixInverse(nullptr, prod));
 
 	// Update matrix buffer
-	const auto buffer_pointer = context_->map_buffer(matrix_buffer);
-	memcpy(buffer_pointer, &matrices, sizeof(CameraMatrices));
-	context_->unmap_buffer(matrix_buffer);
+	const auto buffer_pointer = m_context_->map_buffer(matrix_buffer_);
+	memcpy(buffer_pointer, &matrices_, sizeof(CameraMatrices));
+	m_context_->unmap_buffer(matrix_buffer_);
 
 	// Clear back buffer / Start render pass
-	context_->start_render_pass(cmd_list, swapchain_, nullptr);
+	m_context_->start_render_pass(m_cmd_list_, m_swapchain_, nullptr);
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport =
@@ -83,9 +88,9 @@ void ExampleApp::render()
 		.MinDepth = 0.0f,
 		.MaxDepth = 1.0f,
 	};
-	context_->set_viewports(1, &viewport);
+	m_context_->set_viewports(1, &viewport);
 	// Bind pipeline
-	context_->bind_pipeline(cmd_list, pipeline);
+	m_context_->bind_pipeline(m_cmd_list_, m_pipeline_);
 
 	/**
 	* TODO: Bind table to pipeline
@@ -94,15 +99,15 @@ void ExampleApp::render()
 	*/
 
 	const unsigned int offset = 0;
-	context_->bind_vertex_buffers(cmd_list, 0, 1, &vertex_buffer, &offset);
-	context_->bind_index_buffer(cmd_list, index_buffer, DXGI_FORMAT_R32_UINT, 0);
+	m_context_->bind_vertex_buffers(m_cmd_list_, 0, 1, &m_vertex_buffer_, &offset);
+	m_context_->bind_index_buffer(m_cmd_list_, m_index_buffer_, DXGI_FORMAT_R32_UINT, 0);
 
 	// Draw
-	context_->draw_indexed(cmd_list, 3, 0, 0);
+	m_context_->draw_indexed(m_cmd_list_, 3, 0, 0);
 	// TODO: submit command list
 
 	// Present
-	context_->present(swapchain_);
+	m_context_->present(m_swapchain_);
 }
 
 void ExampleApp::resize(int width, int height)
