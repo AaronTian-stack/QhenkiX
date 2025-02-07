@@ -8,11 +8,6 @@
 
 using Microsoft::WRL::ComPtr;
 
-// TODO: move these macros out of here eventually
-#define VS_VERSION "vs_5_0"
-#define PS_VERSION "ps_5_0"
-#define ENTRYPOINT "main"
-
 class D3D11Shader
 {
 	// Macros must be null terminated

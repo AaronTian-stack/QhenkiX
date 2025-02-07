@@ -15,7 +15,11 @@ namespace qhenki
 		int                                   depth_bias = 0; // 4
 		float                                 depth_bias_clamp = 0.f; // 4
 		float                                 slope_scaled_depth_bias = 0.f; // 4
-		BOOL                                  depth_clip_enable = 0; // 4
+		BOOL                                  depth_clip_enable = TRUE; // 4
+		// Always uses alpha MSAA
+		// No AA lines
+		// No forced Sample Count
+		// TODO: Conservative Rasterization?
 	};
 
 	struct DepthStencilDesc
@@ -52,7 +56,8 @@ namespace qhenki
 
 	struct GraphicsPipeline
 	{
-		GraphicsPipelineDesc* desc = nullptr; // Freed back to pool after pipeline is created (D3D12)
+		// TODO: i don't think this is needed anymore
+		// GraphicsPipelineDesc* desc = nullptr; // For D3D11
 		sPtr<void> internal_state;
 	};
 }

@@ -2,6 +2,8 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <dxgidebug.h>
+#include <dxcapi.h>
+#include <boost/pool/object_pool.hpp>
 
 #include "D3D12MemAlloc.h"
 #include "d3d12_heap.h"
@@ -22,6 +24,12 @@ class D3D12Context : public qhenki::Context
 	ComPtr<IDXGISwapChain3> m_swapchain_;
 
 	D3D12Heap m_rtv_heap_;
+
+	std::mutex m_pipeline_desc_mutex_;
+	boost::object_pool<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_pipeline_desc_pool_;
+
+	ComPtr<IDxcLibrary> m_library_;
+	ComPtr<IDxcCompiler> m_compiler_;
 
 public:
 	void create() override;

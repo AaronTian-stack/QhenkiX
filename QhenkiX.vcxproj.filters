@@ -236,6 +236,12 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d_shared\d3d_macros.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="base-shaders\BaseShader.vs.hlsl" />

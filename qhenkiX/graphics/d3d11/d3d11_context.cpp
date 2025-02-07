@@ -142,13 +142,6 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 
 	bool succeeded = input_layout_ != nullptr;
 
-	{
-		// TODO: better multithreading solution?
-		std::scoped_lock lock(m_pipeline_mutex_);
-		pipeline.desc = m_pool_.construct(desc);
-		// D3D11 implementation will always need description to be stored.
-	}
-
 	// Create Rasterizer state object
 	if (const auto& rs = desc.rasterizer_state; rs.has_value())
 	{

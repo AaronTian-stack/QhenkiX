@@ -25,13 +25,13 @@ namespace qhenki
 		UINT get_frame_index() const { return m_frame_index_; }
 
 		virtual void create() = 0;
-		//virtual void destroy() = 0;
 
 		// Creates swapchain based off specified description
 		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, qhenki::Queue& direct_queue) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
+		// Dynamic shader compilation
 		virtual bool create_shader(Shader& shader, const std::wstring& path, ShaderType type, std::vector<D3D_SHADER_MACRO> macros) = 0;
 		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, wchar_t
 		                             const* debug_name = nullptr) = 0;

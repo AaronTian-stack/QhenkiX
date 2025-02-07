@@ -26,9 +26,6 @@ class D3D11Context : public qhenki::Context
 
 	std::array<D3D11_VIEWPORT, 16> m_viewports_;
 
-	std::mutex m_pipeline_mutex_;
-	boost::object_pool<qhenki::GraphicsPipelineDesc> m_pool_;
-
 public:
 	// Will not work with things that don't derive from ID3D11DeviceChild
 	template<UINT TDebugNameLength>

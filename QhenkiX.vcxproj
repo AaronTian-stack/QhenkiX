@@ -133,7 +133,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>echo hello</Command>
@@ -158,7 +158,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>echo hello</Command>
@@ -222,6 +222,8 @@
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_heap.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d_shared\d3d_macros.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\context.h" />

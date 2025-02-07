@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "d3d11_context.h"
+#include "graphics/d3d_shared/d3d_macros.h"
 
 bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& target_version,
                                  ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros)
@@ -17,6 +18,7 @@ bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::strin
 	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
+	// TODO: d3dcompiler_47.dll should be bundled with the application
 	HRESULT hr = D3DCompileFromFile(
 		file_name.c_str(),
 		macros,
@@ -40,7 +42,7 @@ bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::strin
 
 ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device, const std::wstring& file_name, ComPtr<ID3DBlob> &vertex_shader_blob, const D3D_SHADER_MACRO* macros)
 {
-	if (!compile_shader(file_name, ENTRYPOINT, VS_VERSION, vertex_shader_blob, macros))
+	if (!compile_shader(file_name, ENTRYPOINT, VS_VERSION_DX11, vertex_shader_blob, macros))
 	{
 		std::cerr << "D3D11: Failed to compile vertex shader" << std::endl;
 		throw std::runtime_error("D3D11: Failed to compile vertex shader");
@@ -76,7 +78,7 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device
 ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(ID3D11Device* const device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros)
 {
 	ComPtr<ID3DBlob> pixel_shader_blob;
-	if (!compile_shader(file_name, ENTRYPOINT, PS_VERSION, pixel_shader_blob, macros))
+	if (!compile_shader(file_name, ENTRYPOINT, PS_VERSION_DX11, pixel_shader_blob, macros))
 	{
 		std::cerr << "D3D11: Failed to compile pixel shader" << std::endl;
 		throw std::runtime_error("Failed to compile pixel shader");

@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "d3d12_pipeline.h"
 #include "graphics/d3d11/d3d11_shader.h"
 
 void D3D12Context::create()
@@ -48,6 +49,14 @@ void D3D12Context::create()
 	{
 		std::cerr << "D3D12: Failed to create device" << std::endl;
 		throw std::runtime_error("D3D12: Failed to create device");
+	}
+
+	// Check for Shader Model 6 support
+	D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = { D3D_SHADER_MODEL_6_0 };
+	if (FAILED(m_device_->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel)))
+		|| (shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_0))
+	{
+
 	}
 
 	D3D12MA::ALLOCATOR_DESC allocatorDesc = 
@@ -146,20 +155,26 @@ bool D3D12Context::create_shader(qhenki::Shader& shader, const std::wstring& pat
 
 	bool result = false;
 
-	switch (type)
-	{
-	case qhenki::VERTEX_SHADER: 
-		result = D3D11Shader::compile_shader(path, ENTRYPOINT, VS_VERSION, *shader_d3d12, macros.data());
-		break;
-	case qhenki::PIXEL_SHADER: 
-		result = D3D11Shader::compile_shader(path, ENTRYPOINT, PS_VERSION, *shader_d3d12, macros.data());
-		break;
-	case qhenki::COMPUTE_SHADER: 
-		assert(false);
-		break;
-	default:
-		assert(false);
-	}
+	assert(false);
+
+	// compile with DXC...
+
+
+
+	//switch (type)
+	//{
+	//case qhenki::VERTEX_SHADER: 
+	//	result = D3D11Shader::compile_shader(path, ENTRYPOINT, VS_VERSION_DX11, *shader_d3d12, macros.data());
+	//	break;
+	//case qhenki::PIXEL_SHADER: 
+	//	result = D3D11Shader::compile_shader(path, ENTRYPOINT, PS_VERSION_DX11, *shader_d3d12, macros.data());
+	//	break;
+	//case qhenki::COMPUTE_SHADER: 
+	//	assert(false);
+	//	break;
+	//default:
+	//	assert(false);
+	//}
 
 	return result;
 }
@@ -169,33 +184,137 @@ bool D3D12Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 {
 	assert(false);
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC* pso_desc;
+	{
+		std::scoped_lock lock(m_pipeline_desc_mutex_);
+		pso_desc = m_pipeline_desc_pool_.construct();
+	}
+
 	// TODO: Input reflection
 	// pso.InputLayout
 	// TODO: handling root signatures?
 	// pso.pRootSignature
 
+	// TODO: DS, HS, maybe GS
+
 	auto vertex_shader_blob = static_cast<ComPtr<ID3DBlob>*>(vertex_shader.internal_state.get());
 	auto pixel_shader_blob = static_cast<ComPtr<ID3DBlob>*>(pixel_shader.internal_state.get());
-	psoDesc.VS =
+	pso_desc->VS =
 	{
 		.pShaderBytecode = vertex_shader_blob->Get()->GetBufferPointer(),
 		.BytecodeLength = vertex_shader_blob->Get()->GetBufferSize()
 	};
-	psoDesc.PS =
+	pso_desc->PS =
 	{
 		.pShaderBytecode = pixel_shader_blob->Get()->GetBufferPointer(),
 		.BytecodeLength = pixel_shader_blob->Get()->GetBufferSize()
 	};
-	//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState.DepthEnable = FALSE;
-	psoDesc.DepthStencilState.StencilEnable = FALSE;
-	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.SampleDesc.Count = 1;
+
+	if (desc.rasterizer_state.has_value())
+	{
+		pso_desc->RasterizerState =
+		{
+			.FillMode = desc.rasterizer_state->fill_mode,
+			.CullMode = desc.rasterizer_state->cull_mode,
+			.FrontCounterClockwise = desc.rasterizer_state->front_counter_clockwise,
+			.DepthBias = desc.rasterizer_state->depth_bias,
+			.DepthBiasClamp = desc.rasterizer_state->depth_bias_clamp,
+			.SlopeScaledDepthBias = desc.rasterizer_state->slope_scaled_depth_bias,
+			.DepthClipEnable = desc.rasterizer_state->depth_clip_enable,
+
+			.MultisampleEnable = FALSE,
+			.AntialiasedLineEnable = FALSE,
+			.ForcedSampleCount = 0,
+			.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF
+		};
+	}
+	else
+	{
+		pso_desc->RasterizerState =
+		{
+			.FillMode = D3D12_FILL_MODE_SOLID,
+			.CullMode = D3D12_CULL_MODE_BACK,
+			.FrontCounterClockwise = FALSE,
+			.DepthBias = D3D12_DEFAULT_DEPTH_BIAS,
+			.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP,
+			.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS,
+			.DepthClipEnable = TRUE,
+			.MultisampleEnable = FALSE,
+			.AntialiasedLineEnable = FALSE,
+			.ForcedSampleCount = 0,
+			.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
+		};
+	}
+
+	if (desc.blend_desc.has_value())
+	{
+		pso_desc->BlendState = *desc.blend_desc;
+	}
+	else
+	{
+		pso_desc->BlendState.AlphaToCoverageEnable = FALSE;
+		pso_desc->BlendState.IndependentBlendEnable = FALSE;
+		constexpr D3D12_RENDER_TARGET_BLEND_DESC default_render_target_blend_desc =
+		{
+			FALSE,FALSE,
+			D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
+			D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
+			D3D12_LOGIC_OP_NOOP,
+			D3D12_COLOR_WRITE_ENABLE_ALL,
+		};
+		for (auto& i : pso_desc->BlendState.RenderTarget)
+			i = default_render_target_blend_desc;
+	}
+
+	if (desc.depth_stencil_state.has_value())
+	{
+		auto& depth_stencil_state = desc.depth_stencil_state.value();
+		pso_desc->DepthStencilState =
+		{
+			.DepthEnable = static_cast<INT>(depth_stencil_state.depth_enable),
+			.DepthWriteMask = depth_stencil_state.depth_write_mask,
+			.DepthFunc = depth_stencil_state.depth_func,
+			.StencilEnable = depth_stencil_state.stencil_enable,
+			.StencilReadMask = depth_stencil_state.stencil_read_mask,
+			.StencilWriteMask = depth_stencil_state.stencil_write_mask,
+			.FrontFace = depth_stencil_state.front_face,
+			.BackFace = depth_stencil_state.back_face,
+		};
+	}
+	else
+	{
+		pso_desc->DepthStencilState.DepthEnable = FALSE;
+		pso_desc->DepthStencilState.StencilEnable = FALSE;
+	}
+
+	pso_desc->SampleMask = UINT_MAX;
+	pso_desc->PrimitiveTopologyType = desc.primitive_topology_type;
+
+	// TODO: If RenderTargets < 0, compilation must be deferred until bind time
+	pso_desc->NumRenderTargets = desc.num_render_targets;
+	for (int i = 0; i < desc.num_render_targets; i++)
+	{
+		pso_desc->RTVFormats[i] = desc.rtv_formats[i];
+	}
+
+	// TODO: MSAA support
+	pso_desc->SampleDesc.Count = 1;
+
+	auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
+
+	if (desc.num_render_targets < 1)
+	{
+		std::cerr << "D3D12: Pipeline creation deferred due to lack of targets" << std::endl;
+		d3d12_pipeline->deferred = true;
+	}
+	else
+	{
+		if (FAILED(m_device_->CreateGraphicsPipelineState(pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state))))
+		{
+			std::cerr << "D3D12: Failed to create Graphics Pipeline State" << std::endl;
+			return false;
+		}
+	}
 
 	return true;
 }
@@ -203,13 +322,18 @@ bool D3D12Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 bool D3D12Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline)
 {
 	assert(false);
-	return false;
+
+
+	// check if pipeline is deferred
+	// if it is then set correct render target info
+
+	return true;
 }
 
 bool D3D12Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name)
 {
 	assert(false);
-	return false;
+	return true;
 }
 
 void* D3D12Context::map_buffer(const qhenki::Buffer& buffer)
