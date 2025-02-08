@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="example\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="qhenkiX\application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -28,9 +25,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_context.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="example\exampleapp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.cpp">
@@ -84,9 +78,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_context.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="example\exampleapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.h">

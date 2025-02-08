@@ -28,26 +28,26 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -141,6 +141,10 @@
     <FxCompile>
       <ShaderModel>6.2</ShaderModel>
     </FxCompile>
+    <Lib>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -166,6 +170,10 @@
     <FxCompile>
       <ShaderModel>6.2</ShaderModel>
     </FxCompile>
+    <Lib>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_pipeline.cpp" />
@@ -176,8 +184,6 @@
     <ClCompile Include="qhenkiX\application.cpp" />
     <ClCompile Include="qhenkiX\graphics\camera.cpp" />
     <ClCompile Include="qhenkiX\graphics\displaywindow.cpp" />
-    <ClCompile Include="example\exampleapp.cpp" />
-    <ClCompile Include="example\main.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_context.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader.cpp" />
@@ -191,6 +197,8 @@
     <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll">
       <DeploymentContent>true</DeploymentContent>
       <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(DestinationFolders)</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(DestinationFolders)</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
@@ -242,7 +250,6 @@
     <ClInclude Include="qhenkiX\graphics\camera.h" />
     <ClInclude Include="qhenkiX\graphics\displaywindow.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_context.h" />
-    <ClInclude Include="example\exampleapp.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader.h" />
     <ClInclude Include="qhenkiX\graphics\orthographic_camera.h" />
