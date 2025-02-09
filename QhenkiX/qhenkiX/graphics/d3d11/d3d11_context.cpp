@@ -246,6 +246,7 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
 	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+	assert(buffer_d3d11);
 
 	D3D11_BUFFER_DESC bufferInfo{};
 	bufferInfo.ByteWidth = desc.size;
@@ -319,8 +320,10 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 void* D3D11Context::map_buffer(const qhenki::Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
+	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+	assert(buffer_d3d11);
 	if (FAILED(m_device_context_->Map(
-		static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), 
+		buffer_d3d11->Get(),
 		0, 
 		D3D11_MAP_WRITE_DISCARD, 
 		0, 
@@ -334,7 +337,9 @@ void* D3D11Context::map_buffer(const qhenki::Buffer& buffer)
 
 void D3D11Context::unmap_buffer(const qhenki::Buffer& buffer)
 {
-	m_device_context_->Unmap(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), 0);
+	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+	assert(buffer_d3d11);
+	m_device_context_->Unmap(buffer_d3d11->Get(), 0);
 }
 
 void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::Buffer* buffers, const
@@ -344,7 +349,9 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 	std::array<ID3D11Buffer**, 16> buffer_d3d11{};
 	for (unsigned int i = 0; i < buffer_count; i++)
 	{
-		buffer_d3d11[i] = static_cast<ComPtr<ID3D11Buffer>*>(buffers[i].internal_state.get())->GetAddressOf();
+		auto buffer = static_cast<ComPtr<ID3D11Buffer>*>(buffers[i].internal_state.get());
+		assert(buffer);
+		buffer_d3d11[i] = buffer->GetAddressOf();
 	}
 	// strides must be fetched from current input layout
 	ComPtr<ID3D11InputLayout> input_layout;
@@ -394,7 +401,9 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 void D3D11Context::bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki::Buffer& buffer, DXGI_FORMAT format,
 	unsigned offset)
 {
-	m_device_context_->IASetIndexBuffer(static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get())->Get(), format, offset);
+	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+	assert(buffer_d3d11);
+	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), format, offset);
 }
 
 bool D3D11Context::create_queue(const qhenki::QueueType type, qhenki::Queue& queue)
@@ -426,6 +435,7 @@ void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, unsigned rt_
 	{
 		const auto& [clear_color, clear_color_value] = rts[i].desc;
 		const auto d3d11_rtv = static_cast<ComPtr<ID3D11RenderTargetView>*>(rts[i].internal_state.get());
+		assert(d3d11_rtv);
 		if (clear_color)
 		{
 			m_device_context_->ClearRenderTargetView(d3d11_rtv->Get(), clear_color_value.data());

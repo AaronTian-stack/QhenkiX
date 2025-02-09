@@ -131,6 +131,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::Swapcha
 
 	assert(direct_queue.type == qhenki::QueueType::GRAPHICS);
 	const auto queue = static_cast<ComPtr<ID3D12CommandQueue>*>(direct_queue.internal_state.get());
+	assert(queue);
 
 	ComPtr<IDXGISwapChain1> swapchain1;
 	if (FAILED(m_dxgi_factory_->CreateSwapChainForHwnd(
@@ -385,6 +386,7 @@ bool D3D12Context::create_queue(const qhenki::QueueType type, qhenki::Queue& que
 	queue.type = type;
 	queue.internal_state = mkS<ComPtr<ID3D12CommandQueue>>();
 	auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
+	assert(queue_d3d12);
 	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&*queue_d3d12))))
 	{
 		std::cerr << "D3D12: Failed to create command queue" << std::endl;
@@ -411,6 +413,7 @@ bool D3D12Context::create_command_pool(qhenki::CommandPool& command_pool, const 
 	}
 
 	auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->Get();
+	assert(command_allocator);
 	if (FAILED(m_device_->CreateCommandAllocator(type, IID_PPV_ARGS(&command_allocator))))
 	{
 		std::cerr << "D3D12: Failed to create command allocator" << std::endl;
