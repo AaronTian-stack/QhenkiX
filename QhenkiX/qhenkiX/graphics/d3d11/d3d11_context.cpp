@@ -93,7 +93,7 @@ bool D3D11Context::resize_swapchain(qhenki::Swapchain& swapchain, int width, int
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
+bool D3D11Context::create_shader_dynamic(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
                                  std::vector<D3D_SHADER_MACRO> macros)
 {
 	shader.type = type;

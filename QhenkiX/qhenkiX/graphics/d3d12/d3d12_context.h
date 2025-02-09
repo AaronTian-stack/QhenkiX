@@ -13,6 +13,8 @@ using Microsoft::WRL::ComPtr;
 
 class D3D12Context : public qhenki::Context
 {
+	D3D12_FEATURE_DATA_SHADER_MODEL m_shader_model_ = {};
+
 	ComPtr<IDXGIFactory6> m_dxgi_factory_ = nullptr;
 #ifdef _DEBUG
 	ComPtr<ID3D12Debug3> m_debug_;
@@ -38,7 +40,7 @@ public:
 	bool resize_swapchain(qhenki::Swapchain& swapchain, int width, int height) override;
 	bool present(qhenki::Swapchain& swapchain) override;
 
-	bool create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
+	bool create_shader_dynamic(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
 		std::vector<D3D_SHADER_MACRO> macros) override;
 	bool create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline,
 	                     qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader, wchar_t const* debug_name) override;

@@ -3,7 +3,9 @@
 #include <iostream>
 
 #include "d3d12_pipeline.h"
+#include "d3d12_shader_compiler.h"
 #include "graphics/d3d11/d3d11_shader.h"
+#include "graphics/shared/d3d_macros.h"
 
 void D3D12Context::create()
 {
@@ -51,12 +53,29 @@ void D3D12Context::create()
 		throw std::runtime_error("D3D12: Failed to create device");
 	}
 
-	// Check for Shader Model 6 support
-	D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = { D3D_SHADER_MODEL_6_0 };
-	if (FAILED(m_device_->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel)))
-		|| (shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_0))
+	// Find highest supported shader model
+	#if defined(NTDDI_WIN10_VB) && (NTDDI_VERSION >= NTDDI_WIN10_VB)
+		m_shader_model_.HighestShaderModel = D3D_SHADER_MODEL_6_6;
+	#elif defined(NTDDI_WIN10_19H1) && (NTDDI_VERSION >= NTDDI_WIN10_19H1)
+		shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_5;
+	#elif defined(NTDDI_WIN10_RS5) && (NTDDI_VERSION >= NTDDI_WIN10_RS5)
+		shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_4;
+	#elif defined(NTDDI_WIN10_RS4) && (NTDDI_VERSION >= NTDDI_WIN10_RS4)
+		shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_2;
+	#elif defined(NTDDI_WIN10_RS3) && (NTDDI_VERSION >= NTDDI_WIN10_RS3)
+		shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_1;
+	#else
+		shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_0;
+	#endif
+	hr = m_device_->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &m_shader_model_, sizeof(m_shader_model_));
+	while (hr == E_INVALIDARG && m_shader_model_.HighestShaderModel > D3D_SHADER_MODEL_6_0)
 	{
-
+		m_shader_model_.HighestShaderModel = static_cast<D3D_SHADER_MODEL>(static_cast<int>(m_shader_model_.HighestShaderModel) - 1);
+		hr = m_device_->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &m_shader_model_, sizeof(m_shader_model_));
+	}
+	if (FAILED(hr))
+	{
+		m_shader_model_.HighestShaderModel = D3D_SHADER_MODEL_5_1;
 	}
 
 	D3D12MA::ALLOCATOR_DESC allocatorDesc = 
@@ -83,6 +102,8 @@ void D3D12Context::create()
 		m_dxgi_debug_->EnableLeakTrackingForThread();
 	}
 #endif
+
+	shader_compiler = std::make_unique<D3D12ShaderCompiler>();
 }
 
 bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::SwapchainDesc& swapchain_desc,
@@ -145,36 +166,21 @@ bool D3D12Context::present(qhenki::Swapchain& swapchain)
 	return false;
 }
 
-bool D3D12Context::create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
+bool D3D12Context::create_shader_dynamic(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
 	std::vector<D3D_SHADER_MACRO> macros)
 {
 	shader.type = type;
-	shader.internal_state = mkS<ComPtr<ID3DBlob>>();
 
-	const auto shader_d3d12 = static_cast<ComPtr<ID3DBlob>*>(shader.internal_state.get());
+	CompilerInput input =
+	{
+		.path = path,
+	};
 
-	bool result = false;
+	CompilerOutput output;
+	bool result = shader_compiler->compile(input, output);
 
-	assert(false);
-
-	// compile with DXC...
-
-
-
-	//switch (type)
-	//{
-	//case qhenki::VERTEX_SHADER: 
-	//	result = D3D11Shader::compile_shader(path, ENTRYPOINT, VS_VERSION_DX11, *shader_d3d12, macros.data());
-	//	break;
-	//case qhenki::PIXEL_SHADER: 
-	//	result = D3D11Shader::compile_shader(path, ENTRYPOINT, PS_VERSION_DX11, *shader_d3d12, macros.data());
-	//	break;
-	//case qhenki::COMPUTE_SHADER: 
-	//	assert(false);
-	//	break;
-	//default:
-	//	assert(false);
-	//}
+	// IDxcBlob
+	shader.internal_state = output.internal_state;
 
 	return result;
 }
@@ -197,8 +203,10 @@ bool D3D12Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
 
 	// TODO: DS, HS, maybe GS
 
-	auto vertex_shader_blob = static_cast<ComPtr<ID3DBlob>*>(vertex_shader.internal_state.get());
-	auto pixel_shader_blob = static_cast<ComPtr<ID3DBlob>*>(pixel_shader.internal_state.get());
+	auto vertex_shader_blob = static_cast<ComPtr<IDxcBlob>*>(vertex_shader.internal_state.get());
+	auto pixel_shader_blob = static_cast<ComPtr<IDxcBlob>*>(pixel_shader.internal_state.get());
+	assert(vertex_shader_blob);
+	assert(pixel_shader_blob);
 	pso_desc->VS =
 	{
 		.pShaderBytecode = vertex_shader_blob->Get()->GetBufferPointer(),

@@ -3,8 +3,8 @@
 void ExampleApp::create()
 {
 	// Create shaders
-	m_context_->create_shader(m_vertex_shader_, L"base-shaders/BaseShader.vs.hlsl", qhenki::ShaderType::VERTEX_SHADER, {});
-	m_context_->create_shader(m_pixel_shader_, L"base-shaders/BaseShader.ps.hlsl", qhenki::ShaderType::PIXEL_SHADER, {});
+	m_context_->create_shader_dynamic(m_vertex_shader_, L"base-shaders/BaseShader.vs.hlsl", qhenki::ShaderType::VERTEX_SHADER, {});
+	m_context_->create_shader_dynamic(m_pixel_shader_, L"base-shaders/BaseShader.ps.hlsl", qhenki::ShaderType::PIXEL_SHADER, {});
 
 	// Create pipeline
 	qhenki::GraphicsPipelineDesc pipeline_desc =

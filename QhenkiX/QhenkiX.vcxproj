@@ -143,7 +143,7 @@
     </FxCompile>
     <Lib>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -172,13 +172,15 @@
     </FxCompile>
     <Lib>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_pipeline.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_heap.cpp" />
+    <ClCompile Include="qhenkiX\graphics\shared\filehelper.cpp" />
     <ClCompile Include="src\D3D12MemAlloc.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
     <ClCompile Include="qhenkiX\application.cpp" />
@@ -228,10 +230,11 @@
     <ClInclude Include="include\D3D12MemAlloc.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_heap.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d_shared\d3d_macros.h" />
+    <ClInclude Include="qhenkiX\graphics\shared\d3d_macros.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\context.h" />
@@ -245,6 +248,7 @@
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_buffer.h" />
     <ClInclude Include="qhenkiX\graphics\mesh.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\buffer.h" />
+    <ClInclude Include="qhenkiX\graphics\shared\filehelper.h" />
     <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h" />
     <ClInclude Include="qhenkiX\application.h" />
     <ClInclude Include="qhenkiX\graphics\camera.h" />
@@ -257,22 +261,7 @@
     <ClInclude Include="qhenkiX\util\viewport\viewport.h" />
     <ClInclude Include="qhenkiX\util\scaling.h" />
     <ClInclude Include="qhenkiX\util\viewport\scaling_viewport.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="base-shaders\BaseShader.ps.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <DeploymentContent>true</DeploymentContent>
-    </FxCompile>
-    <FxCompile Include="base-shaders\BaseShader.vs.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <DeploymentContent>true</DeploymentContent>
-    </FxCompile>
+    <ClInclude Include="qhenkiX\graphics\qhenki\shader_compiler.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

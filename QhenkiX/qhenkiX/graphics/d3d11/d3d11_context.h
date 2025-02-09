@@ -13,6 +13,7 @@
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
+// SM 5.1
 class D3D11Context : public qhenki::Context
 {
 	ComPtr<IDXGIFactory6> m_dxgi_factory_;
@@ -38,7 +39,7 @@ public:
 	bool present(qhenki::Swapchain& swapchain) override;
 
 	// thread safe
-	bool create_shader(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
+	bool create_shader_dynamic(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
 	                   std::vector<D3D_SHADER_MACRO> macros) override;
 	// thread safe
 	bool create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline, qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader, wchar_t

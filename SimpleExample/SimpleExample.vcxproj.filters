@@ -27,4 +27,13 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="base-shaders\BaseShader.ps.hlsl" />
+    <FxCompile Include="base-shaders\BaseShader.vs.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="SDL2.dll" />
+    <CopyFileToFolders Include="dxcompiler.dll" />
+    <CopyFileToFolders Include="dxil.dll" />
+  </ItemGroup>
 </Project>

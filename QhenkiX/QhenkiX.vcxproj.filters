@@ -63,6 +63,12 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_heap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\shared\filehelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll" />
@@ -230,12 +236,17 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\d3d_shared\d3d_macros.h">
+    <ClInclude Include="qhenkiX\graphics\shared\d3d_macros.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="base-shaders\BaseShader.vs.hlsl" />
-    <FxCompile Include="base-shaders\BaseShader.ps.hlsl" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\shader_compiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\shared\filehelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

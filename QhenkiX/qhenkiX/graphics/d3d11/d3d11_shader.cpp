@@ -6,7 +6,7 @@
 #include <iostream>
 
 #include "d3d11_context.h"
-#include "graphics/d3d_shared/d3d_macros.h"
+#include "graphics/shared/d3d_macros.h"
 
 bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& target_version,
                                  ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros)
@@ -18,7 +18,7 @@ bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::strin
 	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-	// TODO: d3dcompiler_47.dll should be bundled with the application
+	// TODO: d3dcompiler_47.dll should be linked with the application
 	HRESULT hr = D3DCompileFromFile(
 		file_name.c_str(),
 		macros,

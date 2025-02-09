@@ -1,0 +1,12 @@
+﻿#pragma once
+#include <optional>
+#include <string>
+#include <vector>
+
+class FileHelper
+{
+public:
+	// read a file as a vector of bytes
+	static std::optional<std::vector<uint8_t>> read_file(const std::wstring& path);
+	// TODO: write a file as a vector of bytes
+};
