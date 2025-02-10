@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-namespace qhenki
+namespace qhenki::graphics
 {
 	struct CommandList
 	{

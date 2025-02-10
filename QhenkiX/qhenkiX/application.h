@@ -3,7 +3,7 @@
 #include "graphics/displaywindow.h"
 #include "graphics/d3d11/d3d11_context.h"
 
-namespace qhenki
+namespace qhenki::graphics
 {
 	enum GraphicsAPI
 	{
@@ -24,12 +24,12 @@ class Application
 	//Files 
 	//Preferences
 
-	qhenki::GraphicsAPI m_graphics_api_;
+	qhenki::graphics::GraphicsAPI m_graphics_api_;
 protected:
 	DisplayWindow m_window_;
-	uPtr<qhenki::Context> m_context_ = nullptr;
-	qhenki::Swapchain m_swapchain_{};
-	qhenki::Queue m_graphics_queue_{};
+	uPtr<qhenki::graphics::Context> m_context_ = nullptr;
+	qhenki::graphics::Swapchain m_swapchain_{};
+	qhenki::graphics::Queue m_graphics_queue_{};
 
 	virtual void init_display_window();
 
@@ -39,7 +39,7 @@ protected:
 	virtual void destroy() {}
 
 public:
-	void run(qhenki::GraphicsAPI api);
-	[[nodiscard]] qhenki::GraphicsAPI get_graphics_api() const { return m_graphics_api_; }
+	void run(qhenki::graphics::GraphicsAPI api);
+	[[nodiscard]] qhenki::graphics::GraphicsAPI get_graphics_api() const { return m_graphics_api_; }
 };
 

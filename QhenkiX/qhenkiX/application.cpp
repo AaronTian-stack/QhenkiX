@@ -18,34 +18,34 @@ void Application::init_display_window()
 		.fullscreen = false,
 		.undecorated = false,
 		.resizable = true,
-		.title = "QhenkiX Application",
+		.title = "qhenki::graphicsX Application",
 	};
 	
 	m_window_.create_window(info, 0);
 }
 
-void Application::run(const qhenki::GraphicsAPI api)
+void Application::run(const qhenki::graphics::GraphicsAPI api)
 {
 	m_graphics_api_ = api;
 	init_display_window();
 	switch (api)
 	{
-	case qhenki::D3D11:
+	case qhenki::graphics::D3D11:
 		m_context_ = mkU<D3D11Context>();
 		break;
-	case qhenki::D3D12:
+	case qhenki::graphics::D3D12:
 		m_context_ = mkU<D3D12Context>();
 		break;
-	case qhenki::Vulkan: 
+	case qhenki::graphics::Vulkan: 
 		break;
 	default:
 		throw std::runtime_error("Not implemented API");
 	}
 	m_context_->create();
 
-	m_context_->create_queue(qhenki::QueueType::GRAPHICS, m_graphics_queue_);
+	m_context_->create_queue(qhenki::graphics::QueueType::GRAPHICS, m_graphics_queue_);
 
-	const qhenki::SwapchainDesc swapchain_desc =
+	const qhenki::graphics::SwapchainDesc swapchain_desc =
 	{
 		.width = m_window_.display_info_.width,
 		.height = m_window_.display_info_.height,

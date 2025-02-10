@@ -6,7 +6,7 @@
 #include <iostream>
 
 #include "d3d11_context.h"
-#include "graphics/shared/d3d_macros.h"
+#include "graphics/shared/d3d_helper.h"
 
 bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& target_version,
                                  ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros)
@@ -61,8 +61,6 @@ ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device
 	}
 
 #ifdef _DEBUG
-#pragma warning(push)
-#pragma warning(disable : 4996)
 	if (constexpr size_t max_length = 256; file_name.size() < max_length)
 	{
 		char debug_name_w[max_length] = {};

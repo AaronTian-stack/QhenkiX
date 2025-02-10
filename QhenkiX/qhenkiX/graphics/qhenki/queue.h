@@ -2,7 +2,7 @@
 
 #include <smartpointer.h>
 
-namespace qhenki
+namespace qhenki::graphics
 {
 	enum QueueType
 	{

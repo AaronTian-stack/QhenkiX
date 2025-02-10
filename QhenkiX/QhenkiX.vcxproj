@@ -177,9 +177,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_pipeline.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_heap.cpp" />
+    <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\filehelper.cpp" />
     <ClCompile Include="src\D3D12MemAlloc.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
@@ -229,12 +231,13 @@
     <ClInclude Include="include\boost\version.hpp" />
     <ClInclude Include="include\D3D12MemAlloc.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_heap.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
-    <ClInclude Include="qhenkiX\graphics\shared\d3d_macros.h" />
+    <ClInclude Include="qhenkiX\graphics\shared\d3d_helper.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\context.h" />
@@ -245,7 +248,6 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\render_target.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\shader.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\swapchain.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_buffer.h" />
     <ClInclude Include="qhenkiX\graphics\mesh.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\buffer.h" />
     <ClInclude Include="qhenkiX\graphics\shared\filehelper.h" />

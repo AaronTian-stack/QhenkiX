@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <iostream>
 
+#include "graphics/shared/d3d_helper.h"
 #include "graphics/shared/filehelper.h"
 
 D3D12ShaderCompiler::D3D12ShaderCompiler()
@@ -49,6 +50,10 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		args.push_back(L"-D");
 		args.push_back(define);
 	}
+
+	// Set target profile
+	args.push_back(L"-T");
+	args.emplace_back(D3DHelper::get_shader_model_wchar(input.shader_type, input.shader_model));
 
 	std::vector<const wchar_t*> args_ptrs;
 	args_ptrs.reserve(args.size());

@@ -75,7 +75,7 @@ void D3D11Context::create()
 #endif
 }
 
-bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::SwapchainDesc& swapchain_desc, qhenki::Swapchain& swapchain, qhenki::Queue
+bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc, qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue
                                     & direct_queue)
 {
 	swapchain.desc = swapchain_desc;
@@ -84,7 +84,7 @@ bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::Swapcha
 	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get());
 }
 
-bool D3D11Context::resize_swapchain(qhenki::Swapchain& swapchain, int width, int height)
+bool D3D11Context::resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height)
 {
 	wait_all();
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
@@ -93,7 +93,7 @@ bool D3D11Context::resize_swapchain(qhenki::Swapchain& swapchain, int width, int
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_shader_dynamic(qhenki::Shader& shader, const std::wstring& path, qhenki::ShaderType type,
+bool D3D11Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const std::wstring& path, qhenki::graphics::ShaderType type,
                                  std::vector<D3D_SHADER_MACRO> macros)
 {
 	shader.type = type;
@@ -103,17 +103,17 @@ bool D3D11Context::create_shader_dynamic(qhenki::Shader& shader, const std::wstr
 	auto shader_d3d11 = static_cast<D3D11Shader*>(shader.internal_state.get());
     switch(type)
     {
-	    case qhenki::ShaderType::VERTEX_SHADER:
+	    case qhenki::graphics::ShaderType::VERTEX_SHADER:
 	    {
 			shader_d3d11->vertex = D3D11Shader::vertex_shader(m_device_.Get(), path, shader_d3d11->vertex_blob, macros.data());
             break;
 	    }
-		case qhenki::ShaderType::PIXEL_SHADER:
+		case qhenki::graphics::ShaderType::PIXEL_SHADER:
 		{
 			shader_d3d11->pixel = D3D11Shader::pixel_shader(m_device_.Get(), path, macros.data());
 			break;
 		}
-		case qhenki::ShaderType::COMPUTE_SHADER:
+		case qhenki::graphics::ShaderType::COMPUTE_SHADER:
 		{
 			throw std::runtime_error("D3D11: Compute Shader not implemented");
 		}
@@ -121,7 +121,7 @@ bool D3D11Context::create_shader_dynamic(qhenki::Shader& shader, const std::wstr
     return true;
 }
 
-bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhenki::GraphicsPipeline& pipeline, qhenki::Shader& vertex_shader, qhenki::Shader& pixel_shader, wchar_t
+bool D3D11Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline, qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t
                                    const* debug_name)
 {
 	// D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
@@ -233,7 +233,7 @@ bool D3D11Context::create_pipeline(const qhenki::GraphicsPipelineDesc& desc, qhe
     return succeeded;
 }
 
-bool D3D11Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::GraphicsPipeline& pipeline)
+bool D3D11Context::bind_pipeline(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::GraphicsPipeline& pipeline)
 {
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
 	assert(d3d11_pipeline);
@@ -241,7 +241,7 @@ bool D3D11Context::bind_pipeline(qhenki::CommandList& cmd_list, qhenki::Graphics
 	return true;
 }
 
-bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name)
+bool D3D11Context::create_buffer(const qhenki::graphics::BufferDesc& desc, const void* data, qhenki::graphics::Buffer& buffer, wchar_t const* debug_name)
 {
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
@@ -252,30 +252,30 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 	bufferInfo.ByteWidth = desc.size;
 	switch(desc.usage)
 	{
-		case qhenki::BufferUsage::VERTEX:
+		case qhenki::graphics::BufferUsage::VERTEX:
 			bufferInfo.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			break;
-		case qhenki::BufferUsage::INDEX:
+		case qhenki::graphics::BufferUsage::INDEX:
 			bufferInfo.BindFlags = D3D11_BIND_INDEX_BUFFER;
 			break;
-		case qhenki::BufferUsage::UNIFORM:
+		case qhenki::graphics::BufferUsage::UNIFORM:
 			bufferInfo.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 			break;
-		case qhenki::BufferUsage::STORAGE:
+		case qhenki::graphics::BufferUsage::STORAGE:
 			bufferInfo.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 			break;
-		case qhenki::BufferUsage::INDIRECT:
+		case qhenki::graphics::BufferUsage::INDIRECT:
 			bufferInfo.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
 			break;
-		case qhenki::BufferUsage::TRANSFER_SRC:
-		case qhenki::BufferUsage::TRANSFER_DST:
+		case qhenki::graphics::BufferUsage::TRANSFER_SRC:
+		case qhenki::graphics::BufferUsage::TRANSFER_DST:
 			bufferInfo.BindFlags = 0; // TODO: check this
 			break;
 		default:
 			throw std::runtime_error("D3D11: buffer type not implemented");
 	}
-	if ((desc.visibility & qhenki::BufferVisibility::CPU_SEQUENTIAL) 
-		|| (desc.visibility & qhenki::BufferVisibility::CPU_RANDOM))
+	if ((desc.visibility & qhenki::graphics::BufferVisibility::CPU_SEQUENTIAL) 
+		|| (desc.visibility & qhenki::graphics::BufferVisibility::CPU_RANDOM))
 	{
 		bufferInfo.Usage = D3D11_USAGE_DYNAMIC;
 		bufferInfo.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -303,8 +303,6 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 	}
 
 #ifdef _DEBUG
-#pragma warning(push)
-#pragma warning(disable : 4996)
 	if (constexpr size_t max_length = 256; debug_name && wcslen(debug_name) < max_length)
 	{
 		char debug_name_w[max_length] = {};
@@ -317,7 +315,7 @@ bool D3D11Context::create_buffer(const qhenki::BufferDesc& desc, const void* dat
 	return true;
 }
 
-void* D3D11Context::map_buffer(const qhenki::Buffer& buffer)
+void* D3D11Context::map_buffer(const qhenki::graphics::Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
 	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
@@ -335,14 +333,14 @@ void* D3D11Context::map_buffer(const qhenki::Buffer& buffer)
 	return mapped_resource.pData;
 }
 
-void D3D11Context::unmap_buffer(const qhenki::Buffer& buffer)
+void D3D11Context::unmap_buffer(const qhenki::graphics::Buffer& buffer)
 {
 	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
 	assert(buffer_d3d11);
 	m_device_context_->Unmap(buffer_d3d11->Get(), 0);
 }
 
-void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::Buffer* buffers, const
+void D3D11Context::bind_vertex_buffers(qhenki::graphics::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::graphics::Buffer* buffers, const
                                        unsigned* offsets)
 {
 	assert(buffer_count <= 16);
@@ -398,7 +396,7 @@ void D3D11Context::bind_vertex_buffers(qhenki::CommandList& cmd_list, unsigned s
 	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides.data(), offsets);
 }
 
-void D3D11Context::bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki::Buffer& buffer, DXGI_FORMAT format,
+void D3D11Context::bind_index_buffer(qhenki::graphics::CommandList& cmd_list, const qhenki::graphics::Buffer& buffer, DXGI_FORMAT format,
 	unsigned offset)
 {
 	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
@@ -406,18 +404,18 @@ void D3D11Context::bind_index_buffer(qhenki::CommandList& cmd_list, const qhenki
 	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), format, offset);
 }
 
-bool D3D11Context::create_queue(const qhenki::QueueType type, qhenki::Queue& queue)
+bool D3D11Context::create_queue(const qhenki::graphics::QueueType type, qhenki::graphics::Queue& queue)
 {
 	return true; // D3D11 does not have queues
 }
 
-bool D3D11Context::create_command_pool(qhenki::CommandPool& command_pool, const qhenki::Queue& queue)
+bool D3D11Context::create_command_pool(qhenki::graphics::CommandPool& command_pool, const qhenki::graphics::Queue& queue)
 {
 	return true; // D3D11 does not have queues
 }
 
-void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swapchain& swapchain,
-                                     const qhenki::RenderTarget* depth_stencil)
+void D3D11Context::start_render_pass(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::Swapchain& swapchain,
+                                     const qhenki::graphics::RenderTarget* depth_stencil)
 {
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto rtv = swap_d3d11->sc_render_target.Get();
@@ -426,8 +424,8 @@ void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, qhenki::Swap
 	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
 
-void D3D11Context::start_render_pass(qhenki::CommandList& cmd_list, unsigned rt_count,
-                                     const qhenki::RenderTarget* rts, const qhenki::RenderTarget* depth_stencil)
+void D3D11Context::start_render_pass(qhenki::graphics::CommandList& cmd_list, unsigned rt_count,
+                                     const qhenki::graphics::RenderTarget* rts, const qhenki::graphics::RenderTarget* depth_stencil)
 {
     std::array<ID3D11RenderTargetView**, 8> rtvs{};
     // Clear render target views (if applicable)
@@ -472,12 +470,12 @@ void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 	m_device_context_->RSSetViewports(count, m_viewports_.data());
 }
 
-void D3D11Context::draw(qhenki::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void D3D11Context::draw(qhenki::graphics::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
 	m_device_context_->Draw(vertex_count, start_vertex_offset);
 }
 
-void D3D11Context::draw_indexed(qhenki::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
+void D3D11Context::draw_indexed(qhenki::graphics::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
 	m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
@@ -488,7 +486,7 @@ void D3D11Context::wait_all()
     m_device_context_->Flush();
 }
 
-bool D3D11Context::present(qhenki::Swapchain& swapchain)
+bool D3D11Context::present(qhenki::graphics::Swapchain& swapchain)
 {
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto result = swap_d3d11->swapchain->Present(1, 0);

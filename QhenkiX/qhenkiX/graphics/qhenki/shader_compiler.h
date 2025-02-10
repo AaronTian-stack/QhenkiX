@@ -7,9 +7,10 @@
 struct CompilerInput
 {
 	// TODO: flags
-	qhenki::ShaderType type;
+	qhenki::graphics::ShaderType shader_type;
 	std::wstring path;
 	std::wstring entry_point = L"main";
+	qhenki::graphics::ShaderModel shader_model;
 	// TODO: includes
 	std::vector<std::wstring> defines;
 };

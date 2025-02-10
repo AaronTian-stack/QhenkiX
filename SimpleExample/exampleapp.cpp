@@ -3,20 +3,20 @@
 void ExampleApp::create()
 {
 	// Create shaders
-	m_context_->create_shader_dynamic(m_vertex_shader_, L"base-shaders/BaseShader.vs.hlsl", qhenki::ShaderType::VERTEX_SHADER, {});
-	m_context_->create_shader_dynamic(m_pixel_shader_, L"base-shaders/BaseShader.ps.hlsl", qhenki::ShaderType::PIXEL_SHADER, {});
+	m_context_->create_shader_dynamic(m_vertex_shader_, L"base-shaders/BaseShader.vs.hlsl", qhenki::graphics::ShaderType::VERTEX_SHADER, {});
+	m_context_->create_shader_dynamic(m_pixel_shader_, L"base-shaders/BaseShader.ps.hlsl", qhenki::graphics::ShaderType::PIXEL_SHADER, {});
 
 	// Create pipeline
-	qhenki::GraphicsPipelineDesc pipeline_desc =
+	qhenki::graphics::GraphicsPipelineDesc pipeline_desc =
 	{
 		.interleaved = TRUE,
 	};
 	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_, L"triangle_pipeline");
 
 	// TODO: create queue(s)
-	m_context_->create_queue(qhenki::QueueType::GRAPHICS, m_graphics_queue_);
+	m_context_->create_queue(qhenki::graphics::QueueType::GRAPHICS, m_graphics_queue_);
 	// TODO: allocate command pool(s)/allocator(s) from queue
-	for (int i = 0; i < qhenki::Context::m_frames_in_flight; i++)
+	for (int i = 0; i < qhenki::graphics::Context::m_frames_in_flight; i++)
 	{
 		m_context_->create_command_pool(m_cmd_pools_[i], m_graphics_queue_);
 	}
@@ -28,28 +28,28 @@ void ExampleApp::create()
 		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
 		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f
 	};
-	qhenki::BufferDesc desc =
+	qhenki::graphics::BufferDesc desc =
 	{
 		.size = vertices.size() * sizeof(float),
-		.usage = qhenki::BufferUsage::VERTEX,
-		.visibility = qhenki::BufferVisibility::GPU_ONLY
+		.usage = qhenki::graphics::BufferUsage::VERTEX,
+		.visibility = qhenki::graphics::BufferVisibility::GPU_ONLY
 	};
 	m_context_->create_buffer(desc, vertices.data(), m_vertex_buffer_, L"Interleaved Position/Color Buffer");
 
 	const auto indices = std::array{ 0u, 1u, 2u };
-	qhenki::BufferDesc index_desc =
+	qhenki::graphics::BufferDesc index_desc =
 	{
 		.size = indices.size() * sizeof(uint32_t),
-		.usage = qhenki::BufferUsage::INDEX,
-		.visibility = qhenki::BufferVisibility::GPU_ONLY
+		.usage = qhenki::graphics::BufferUsage::INDEX,
+		.visibility = qhenki::graphics::BufferVisibility::GPU_ONLY
 	};
 	m_context_->create_buffer(index_desc, indices.data(), m_index_buffer_, L"Index Buffer");
 
-	qhenki::BufferDesc matrix_desc =
+	qhenki::graphics::BufferDesc matrix_desc =
 	{
 		.size = sizeof(CameraMatrices),
-		.usage = qhenki::BufferUsage::UNIFORM,
-		.visibility = qhenki::BufferVisibility::CPU_SEQUENTIAL
+		.usage = qhenki::graphics::BufferUsage::UNIFORM,
+		.visibility = qhenki::graphics::BufferVisibility::CPU_SEQUENTIAL
 	};
 	m_context_->create_buffer(matrix_desc, nullptr, matrix_buffer_, L"Matrix Buffer");
 }

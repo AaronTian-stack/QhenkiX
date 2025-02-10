@@ -12,9 +12,9 @@
 #include "render_target.h"
 #include "shader_compiler.h"
 
-namespace qhenki
+namespace qhenki::graphics
 {
-	// TODO: replace all D3D types with qhenki types
+	// TODO: replace all D3D types with qhenki::graphics types
 	class Context
 	{
 	protected:
@@ -30,7 +30,7 @@ namespace qhenki
 		virtual void create() = 0;
 
 		// Creates swapchain based off specified description
-		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, qhenki::Queue& direct_queue) = 0;
+		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, qhenki::graphics::Queue& direct_queue) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
@@ -42,7 +42,7 @@ namespace qhenki
 		                             const* debug_name = nullptr) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;
 
-		virtual bool create_buffer(const BufferDesc& desc, const void* data, qhenki::Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_buffer(const BufferDesc& desc, const void* data, qhenki::graphics::Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
 
         /**
         * Write only. Do not read or performance issues may happen.

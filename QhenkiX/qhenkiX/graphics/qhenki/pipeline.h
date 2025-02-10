@@ -5,7 +5,7 @@
 
 #include "shader.h"
 
-namespace qhenki
+namespace qhenki::graphics
 {
 	struct RasterizerDesc
 	{

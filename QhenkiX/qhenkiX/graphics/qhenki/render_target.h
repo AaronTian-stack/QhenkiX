@@ -3,7 +3,7 @@
 #include <smartpointer.h>
 #include <array>
 
-namespace qhenki
+namespace qhenki::graphics
 {
 	// TODO: render target format: color, depth, stencil
 	struct RenderTargetDesc
