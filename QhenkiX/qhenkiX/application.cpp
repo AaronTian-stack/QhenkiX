@@ -18,7 +18,7 @@ void Application::init_display_window()
 		.fullscreen = false,
 		.undecorated = false,
 		.resizable = true,
-		.title = "qhenki::graphicsX Application",
+		.title = "QhenkiX Application",
 	};
 	
 	m_window_.create_window(info, 0);

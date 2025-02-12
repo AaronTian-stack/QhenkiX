@@ -3,26 +3,30 @@
 #define NOMINMAX
 #include <d3d11.h>
 #include <d3dcommon.h>
-#include <string>
+#include <variant>
 #include <wrl/client.h>
+
+#include "graphics/qhenki/shader.h"
+#include "graphics/qhenki/shader_compiler.h"
 
 using Microsoft::WRL::ComPtr;
 
-// TODO: rework this class
+struct D3D11VertexShader
+{
+	ComPtr<ID3D11VertexShader> vertex_shader;
+	ComPtr<ID3DBlob> vertex_shader_blob;
+};
+
 class D3D11Shader
 {
-	//// Macros must be null terminated
-	//static bool compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& target_version,
-	//                           ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros);
+	qhenki::graphics::ShaderType m_type_;
+	std::variant<ComPtr<ID3D11PixelShader>, D3D11VertexShader> m_shader_;
 
 public:
-	//ComPtr<ID3DBlob> vertex_blob;
-	//ComPtr<ID3D11VertexShader> vertex;
-	//ComPtr<ID3D11PixelShader> pixel;
+	D3D11Shader(ID3D11Device* const device, const qhenki::graphics::ShaderType shader_type, const std::wstring& name, 
+		const CompilerOutput& output, bool& result);
 
-	//static ComPtr<ID3D11VertexShader> vertex_shader(ID3D11Device* const device, const std::wstring& file_name, ComPtr<ID3DBlob>& vertex_shader_blob, const D3D_SHADER_MACRO* macros);
-	//static ComPtr<ID3D11PixelShader> pixel_shader(ID3D11Device* const device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros);
-
-	friend class D3D12Context;
+	friend class D3D11Context;
+	friend class D3D11GraphicsPipeline;
 };
 

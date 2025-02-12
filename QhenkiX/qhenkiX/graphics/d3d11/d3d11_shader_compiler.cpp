@@ -2,7 +2,6 @@
 
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
-#include <iostream>
 #include <wrl/client.h>
 
 #include "graphics/shared/d3d_helper.h"
@@ -15,23 +14,29 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
 
 #if defined(_DEBUG)
-	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+	flags |= D3DCOMPILE_DEBUG;// | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-	if (input.shader_model > qhenki::graphics::ShaderModel::SM_5_1)
+	if (input.min_shader_model > qhenki::graphics::ShaderModel::SM_5_1)
 	{
-		std::cerr << "D3D11ShaderCompiler: Shader model not supported" << std::endl;
+		output.error_message = "D3D11ShaderCompiler: Shader model not supported";
 		return false;
 	}
 
 	char s_name[256] = {};
 	if (constexpr size_t max_length = 256; input.entry_point.size() < max_length)
 	{
-		std::wcstombs(s_name, input.entry_point.data(), max_length - 1);
+		size_t converted_chars = 0;
+		auto error = wcstombs_s(&converted_chars, s_name, input.entry_point.c_str(), max_length - 1);
+		if (error != 0)
+		{
+			output.error_message = "D3D11ShaderCompiler: Failed to convert entry point name from wstring to string";
+			return false;
+		}
 	}
 	else
 	{
-		std::cerr << "D3D11ShaderCompiler: Entry point name is too long" << std::endl;
+		output.error_message = "D3D11ShaderCompiler: Entry point name is too long";
 	}
 
 	std::vector<D3D_SHADER_MACRO> macros;
@@ -58,12 +63,12 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	ComPtr<ID3DBlob> shader_blob = nullptr;
 	// TODO: d3dcompiler_47.dll should be linked with the application
 	// TODO: custom include handler
-	HRESULT hr = D3DCompileFromFile(
+	const HRESULT hr = D3DCompileFromFile(
 		input.path.c_str(),
 		macros.data(),
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		s_name,
-		D3DHelper::get_shader_model_char(input.shader_type, input.shader_model),
+		D3DHelper::get_shader_model_char(input.shader_type, input.min_shader_model),
 		flags,
 		0,
 		&shader_blob,
@@ -72,8 +77,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	{
 		if (error_blob)
 		{
-			std::wcerr << "D3D11ShaderCompiler: Failed to compile shader :: " << input.path << std::endl;
-			std::cerr << (char*)error_blob->GetBufferPointer() << std::endl;
+			output.error_message = static_cast<char*>(error_blob->GetBufferPointer());
 		}
 		return false;
 	}

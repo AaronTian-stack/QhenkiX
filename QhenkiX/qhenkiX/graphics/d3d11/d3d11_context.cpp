@@ -7,6 +7,7 @@
 #include "d3d11_shader.h"
 #include "d3d11_swapchain.h"
 #include "d3d11_pipeline.h"
+#include "d3d11_shader_compiler.h"
 
 void D3D11Context::create()
 {
@@ -73,6 +74,8 @@ void D3D11Context::create()
         throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
     }
 #endif
+
+	shader_compiler = std::make_unique<D3D11ShaderCompiler>();
 }
 
 bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc, qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue
@@ -93,32 +96,20 @@ bool D3D11Context::resize_swapchain(qhenki::graphics::Swapchain& swapchain, int 
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const std::wstring& path, qhenki::graphics::ShaderType type,
-                                 std::vector<D3D_SHADER_MACRO> macros)
+bool D3D11Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input)
 {
-	shader.type = type;
-	shader.internal_state = mkS<D3D11Shader>();
+	CompilerOutput output = {};
+	// ID3DBlob
+	if (shader_compiler->compile(input, output))
+	{
+		return false;
+	}
 
-	macros.emplace_back(nullptr, nullptr);
-	auto shader_d3d11 = static_cast<D3D11Shader*>(shader.internal_state.get());
-    switch(type)
-    {
-	    case qhenki::graphics::ShaderType::VERTEX_SHADER:
-	    {
-			shader_d3d11->vertex = D3D11Shader::vertex_shader(m_device_.Get(), path, shader_d3d11->vertex_blob, macros.data());
-            break;
-	    }
-		case qhenki::graphics::ShaderType::PIXEL_SHADER:
-		{
-			shader_d3d11->pixel = D3D11Shader::pixel_shader(m_device_.Get(), path, macros.data());
-			break;
-		}
-		case qhenki::graphics::ShaderType::COMPUTE_SHADER:
-		{
-			throw std::runtime_error("D3D11: Compute Shader not implemented");
-		}
-    }
-    return true;
+	shader.type = input.shader_type;
+	bool result = true;
+	shader.internal_state = mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.path, output, result);
+
+    return result;
 }
 
 bool D3D11Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline, qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t
@@ -136,8 +127,11 @@ bool D3D11Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 	d3d11_pipeline->vertex_shader_ = vertex_shader.internal_state.get();
 	d3d11_pipeline->pixel_shader_ = pixel_shader.internal_state.get();
 
+	const auto true_vs = std::get_if<D3D11VertexShader>(&d3d11_vertex_shader->m_shader_);
+	assert(true_vs);
+
 	ID3D11InputLayout* input_layout_ = m_layout_assembler_.create_input_layout_reflection(m_device_.Get(),
-		d3d11_vertex_shader->vertex_blob.Get(), desc.interleaved);
+		true_vs->vertex_shader_blob.Get(), desc.interleaved);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
 	bool succeeded = input_layout_ != nullptr;
@@ -298,18 +292,19 @@ bool D3D11Context::create_buffer(const qhenki::graphics::BufferDesc& desc, const
 		resource_data_ptr,
 		&*buffer_d3d11)))
 	{
-		std::cerr << "D3D11: Failed to create buffer" << std::endl;
 		return false;
 	}
 
 #ifdef _DEBUG
-	if (constexpr size_t max_length = 256; debug_name && wcslen(debug_name) < max_length)
-	{
-		char debug_name_w[max_length] = {};
-		std::wcstombs(debug_name_w, debug_name, max_length - 1);
-		set_debug_name(buffer_d3d11->Get(), debug_name_w);
-	}
-	else std::cerr << "D3D11: Buffer debug name is too long" << std::endl;
+
+    if (debug_name)
+    {
+		constexpr size_t max_length = 256;
+        char debug_name_w[max_length] = {};
+		size_t converted_chars = 0;
+		wcstombs_s(&converted_chars, debug_name_w, debug_name, max_length - 1);
+        set_debug_name(buffer_d3d11->Get(), debug_name_w);
+    }
 #endif
 
 	return true;

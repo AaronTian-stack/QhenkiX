@@ -40,8 +40,7 @@ public:
 	bool resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height) override;
 	bool present(qhenki::graphics::Swapchain& swapchain) override;
 
-	bool create_shader_dynamic(qhenki::graphics::Shader& shader, const std::wstring& path, qhenki::graphics::ShaderType type,
-		std::vector<D3D_SHADER_MACRO> macros) override;
+	bool create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input) override;
 	bool create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline,
 	                     qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t const* debug_name) override;
 	bool bind_pipeline(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::GraphicsPipeline& pipeline) override;

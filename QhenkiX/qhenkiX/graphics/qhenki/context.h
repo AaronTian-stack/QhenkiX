@@ -34,10 +34,9 @@ namespace qhenki::graphics
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
-		// TODO: some kind of argument for what shader model you want to compile against (DX11 does not support 6.0)
 		// TODO: replace arguments with CompilerInput struct
 		// Dynamic shader compilation
-		virtual bool create_shader_dynamic(Shader& shader, const std::wstring& path, ShaderType type, std::vector<D3D_SHADER_MACRO> macros) = 0;
+		virtual bool create_shader_dynamic(Shader& shader, const CompilerInput& input) = 0;
 		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, wchar_t
 		                             const* debug_name = nullptr) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;

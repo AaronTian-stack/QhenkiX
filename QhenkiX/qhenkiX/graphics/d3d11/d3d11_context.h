@@ -39,8 +39,7 @@ public:
 	bool present(qhenki::graphics::Swapchain& swapchain) override;
 
 	// thread safe
-	bool create_shader_dynamic(qhenki::graphics::Shader& shader, const std::wstring& path, qhenki::graphics::ShaderType type,
-	                   std::vector<D3D_SHADER_MACRO> macros) override;
+	bool create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input) override;
 	// thread safe
 	bool create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline, qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t
 	                     const* debug_name) override;

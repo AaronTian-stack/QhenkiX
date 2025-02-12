@@ -167,19 +167,12 @@ bool D3D12Context::present(qhenki::graphics::Swapchain& swapchain)
 	return false;
 }
 
-bool D3D12Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const std::wstring& path, qhenki::graphics::ShaderType type,
-	std::vector<D3D_SHADER_MACRO> macros)
+bool D3D12Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input)
 {
-	shader.type = type;
+	CompilerOutput output = {};
+	const bool result = shader_compiler->compile(input, output);
 
-	CompilerInput input =
-	{
-		.path = path,
-	};
-
-	CompilerOutput output;
-	bool result = shader_compiler->compile(input, output);
-
+	shader.type = input.shader_type;
 	// IDxcBlob
 	shader.internal_state = output.internal_state;
 

@@ -3,110 +3,69 @@
 #include <codecvt>
 #include <stdexcept>
 #include <d3dcompiler.h>
-#include <iostream>
+#include <stdlib.h>
 
 #include "d3d11_context.h"
 #include "graphics/shared/d3d_helper.h"
 
-bool D3D11Shader::compile_shader(const std::wstring& file_name, const std::string& entry_point, const std::string& target_version,
-                                 ComPtr<ID3DBlob>& shader_blob, const D3D_SHADER_MACRO* macros)
+D3D11Shader::D3D11Shader(ID3D11Device* const device, const qhenki::graphics::ShaderType shader_type, const std::wstring& name, 
+	const CompilerOutput& output, bool& result) : m_type_(shader_type)
 {
-	ComPtr<ID3DBlob> errorBlob = nullptr;
-	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+	auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
 
-#if defined(_DEBUG)
-	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
-
-	// TODO: d3dcompiler_47.dll should be linked with the application
-	HRESULT hr = D3DCompileFromFile(
-		file_name.c_str(),
-		macros,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		entry_point.c_str(),
-		target_version.c_str(),
-		flags,
-		0,
-		&shader_blob,
-		&errorBlob);
-	if (FAILED(hr))
+	result = true;
+	ID3D11DeviceChild* device_resource = nullptr;
+	switch (shader_type)
 	{
-		if (errorBlob)
+	case qhenki::graphics::ShaderType::VERTEX_SHADER:
+	{
+		m_shader_ = D3D11VertexShader();
+		if (FAILED(device->CreateVertexShader(
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+			nullptr,
+			&std::get<D3D11VertexShader>(m_shader_).vertex_shader)))
 		{
-			std::cerr << (char*)errorBlob->GetBufferPointer() << std::endl;
+			result = false;
 		}
-		return false;
+		else
+		{
+			device_resource = std::get<D3D11VertexShader>(m_shader_).vertex_shader.Get();
+			// the blob needs to be saved
+			auto& tvs = std::get<D3D11VertexShader>(m_shader_);
+			tvs.vertex_shader_blob = ComPtr<ID3DBlob>(blob);
+		}
+		break;
 	}
-	return true;
-}
-
-ComPtr<ID3D11VertexShader> D3D11Shader::vertex_shader(ID3D11Device* const device, const std::wstring& file_name, ComPtr<ID3DBlob> &vertex_shader_blob, const D3D_SHADER_MACRO* macros)
-{
-	if (!compile_shader(file_name, ENTRYPOINT, VS_VERSION_DX11, vertex_shader_blob, macros))
+	case qhenki::graphics::ShaderType::PIXEL_SHADER:
 	{
-		std::cerr << "D3D11: Failed to compile vertex shader" << std::endl;
-		throw std::runtime_error("D3D11: Failed to compile vertex shader");
+		m_shader_ = ComPtr<ID3D11PixelShader>();
+		if (FAILED(device->CreatePixelShader(
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+			nullptr,
+			std::get<ComPtr<ID3D11PixelShader>>(m_shader_).GetAddressOf())))
+		{
+			result = false;
+		}
+		else
+		{
+			device_resource = std::get<ComPtr<ID3D11PixelShader>>(m_shader_).Get();
+		}
+		break;
 	}
-
-	ComPtr<ID3D11VertexShader> vertex_shader;
-	if (FAILED(device->CreateVertexShader(
-		vertex_shader_blob->GetBufferPointer(),
-		vertex_shader_blob->GetBufferSize(),
-		nullptr,
-		&vertex_shader)))
-	{
-		// TODO: use default vertex shader fallback
-		std::cerr << "D3D11: Failed to create vertex shader" << std::endl;
-		throw std::runtime_error("Failed to create vertex shader");
+	default:
+		throw std::runtime_error("D3D11: Shader type not implemented");
 	}
 
 #ifdef _DEBUG
-	if (constexpr size_t max_length = 256; file_name.size() < max_length)
+	if (device_resource)
 	{
-		char debug_name_w[max_length] = {};
-		std::wcstombs(debug_name_w, file_name.c_str(), max_length - 1);
-		D3D11Context::set_debug_name(vertex_shader.Get(), debug_name_w);
+		constexpr size_t max_length = 256;
+		char debug_name_str[max_length] = {};
+		size_t converted_chars = 0;
+		wcstombs_s(&converted_chars, debug_name_str, name.c_str(), max_length - 1);
+		D3D11Context::set_debug_name(device_resource, debug_name_str);
 	}
-	else std::cerr << "D3D11: Vertex shader debug name is too long" << std::endl;
 #endif
-
-	return vertex_shader;
 }
-
-ComPtr<ID3D11PixelShader> D3D11Shader::pixel_shader(ID3D11Device* const device, const std::wstring& file_name, const D3D_SHADER_MACRO* macros)
-{
-	ComPtr<ID3DBlob> pixel_shader_blob;
-	if (!compile_shader(file_name, ENTRYPOINT, PS_VERSION_DX11, pixel_shader_blob, macros))
-	{
-		std::cerr << "D3D11: Failed to compile pixel shader" << std::endl;
-		throw std::runtime_error("Failed to compile pixel shader");
-	}
-
-	ComPtr<ID3D11PixelShader> pixel_shader;
-	if (FAILED(device->CreatePixelShader(
-		pixel_shader_blob->GetBufferPointer(),
-		pixel_shader_blob->GetBufferSize(),
-		nullptr,
-		&pixel_shader)))
-	{
-		// TODO: use default pixel shader fallback
-		std::cerr << "D3D11: Failed to create pixel shader" << std::endl;
-		throw std::runtime_error("Failed to create pixel shader");
-	}
-
-#ifdef _DEBUG
-	constexpr size_t maxLength = 256;
-	if (file_name.size() >= maxLength)
-	{
-		std::cerr << "D3D11: Pixel shader debug name is too long" << std::endl;
-		throw std::runtime_error("D3D11: Pixel shader debug name is too long");
-	}
-	char debugName[maxLength] = {};
-	std::wcstombs(debugName, file_name.c_str(), maxLength - 1);
-	D3D11Context::set_debug_name(pixel_shader.Get(), debugName);
-#endif
-
-	return pixel_shader;
-}
-
-#pragma warning(pop)
