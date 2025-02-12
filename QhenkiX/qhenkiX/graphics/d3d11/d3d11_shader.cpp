@@ -12,6 +12,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const qhenki::graphics::Sha
 	const CompilerOutput& output, bool& result) : m_type_(shader_type)
 {
 	auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
+	assert(blob);
 
 	result = true;
 	ID3D11DeviceChild* device_resource = nullptr;

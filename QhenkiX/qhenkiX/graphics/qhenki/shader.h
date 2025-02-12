@@ -17,6 +17,7 @@ namespace qhenki::graphics
 	};
 	enum class ShaderModel
 	{
+		SM_5_0,
 		SM_5_1,
 		SM_6_0,
 		SM_6_1,

@@ -100,7 +100,7 @@ bool D3D11Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const
 {
 	CompilerOutput output = {};
 	// ID3DBlob
-	if (shader_compiler->compile(input, output))
+	if (!shader_compiler->compile(input, output))
 	{
 		return false;
 	}

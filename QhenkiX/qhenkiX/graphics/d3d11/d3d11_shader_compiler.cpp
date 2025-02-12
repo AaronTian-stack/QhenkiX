@@ -1,5 +1,6 @@
 ﻿#include "d3d11_shader_compiler.h"
 
+#include <cassert>
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
@@ -23,21 +24,16 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	char s_name[256] = {};
-	if (constexpr size_t max_length = 256; input.entry_point.size() < max_length)
+	constexpr size_t max_length = 256;
+	char s_name[max_length] = {};
+	size_t converted_chars = 0;
+	auto error = wcstombs_s(&converted_chars, s_name, input.entry_point.c_str(), max_length - 1);
+	if (error != 0)
 	{
-		size_t converted_chars = 0;
-		auto error = wcstombs_s(&converted_chars, s_name, input.entry_point.c_str(), max_length - 1);
-		if (error != 0)
-		{
-			output.error_message = "D3D11ShaderCompiler: Failed to convert entry point name from wstring to string";
-			return false;
-		}
+		output.error_message = "D3D11ShaderCompiler: Failed to convert entry point name from wstring to string";
+		return false;
 	}
-	else
-	{
-		output.error_message = "D3D11ShaderCompiler: Entry point name is too long";
-	}
+
 
 	std::vector<D3D_SHADER_MACRO> macros;
 	macros.reserve(input.defines.size() + 1);
@@ -60,6 +56,9 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     }
     macros.push_back({ nullptr, nullptr });
 
+	const auto target = D3DHelper::get_shader_model_char(input.shader_type, input.min_shader_model);
+	assert(target);
+
 	ComPtr<ID3DBlob> shader_blob = nullptr;
 	// TODO: d3dcompiler_47.dll should be linked with the application
 	// TODO: custom include handler
@@ -68,7 +67,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		macros.data(),
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		s_name,
-		D3DHelper::get_shader_model_char(input.shader_type, input.min_shader_model),
+		target,
 		flags,
 		0,
 		&shader_blob,
