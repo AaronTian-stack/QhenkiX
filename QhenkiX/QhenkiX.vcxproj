@@ -72,7 +72,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib;$(LibraryPath)</LibraryPath>
     <IncludePath>$(IncludePath)</IncludePath>
     <CustomBuildBeforeTargets>
     </CustomBuildBeforeTargets>
@@ -83,7 +83,7 @@
     <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib;$(LibraryPath)</LibraryPath>
     <IncludePath>$(IncludePath)</IncludePath>
     <CustomBuildBeforeTargets>
     </CustomBuildBeforeTargets>
@@ -127,7 +127,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -142,8 +142,8 @@
       <ShaderModel>6.2</ShaderModel>
     </FxCompile>
     <Lib>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -154,7 +154,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL2-2.30.7\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -171,8 +171,8 @@
       <ShaderModel>6.2</ShaderModel>
     </FxCompile>
     <Lib>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)SDL2-2.30.7\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -196,14 +196,6 @@
     <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp" />
     <ClCompile Include="qhenkiX\util\viewport\viewport.cpp" />
     <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll">
-      <DeploymentContent>true</DeploymentContent>
-      <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(DestinationFolders)</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(DestinationFolders)</DestinationFolders>
-    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\boost\assert.hpp" />

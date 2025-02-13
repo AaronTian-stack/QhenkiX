@@ -32,8 +32,8 @@
     <FxCompile Include="base-shaders\BaseShader.vs.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="SDL2.dll" />
     <CopyFileToFolders Include="dxcompiler.dll" />
     <CopyFileToFolders Include="dxil.dll" />
+    <CopyFileToFolders Include="..\QhenkiX\SDL3-3.2.4\lib\x64\SDL3.dll" />
   </ItemGroup>
 </Project>

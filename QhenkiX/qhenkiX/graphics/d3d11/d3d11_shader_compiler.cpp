@@ -34,9 +34,12 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-
 	std::vector<D3D_SHADER_MACRO> macros;
 	macros.reserve(input.defines.size() + 1);
+
+	// need to keep in scope for substrings until shader is compiled
+	std::vector<std::string> defines;
+	defines.reserve(input.defines.size() * 2);
 	
 	// convert the define into D3D_SHADER_MACRO
     for (const auto& define : input.defines)
@@ -47,7 +50,11 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         size_t pos = define_str.find('=');
         if (pos != std::string::npos)
         {
-            macros.push_back({ define_str.substr(0, pos).c_str(), define_str.substr(pos + 1).c_str() });
+			defines.push_back(define_str.substr(0, pos));
+			auto& substr1 = defines.back();
+			defines.push_back(define_str.substr(pos + 1));
+			auto& substr2 = defines.back();
+            macros.push_back({ substr1.c_str(), substr2.c_str() });
         }
         else
         {

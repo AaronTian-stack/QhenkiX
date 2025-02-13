@@ -1,8 +1,7 @@
 #pragma once
 
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
-#include <SDL_syswm.h>
+#include <SDL3/SDL.h>
 #include <string>
 #include <vector>
 #include <DirectXMath.h>
@@ -28,12 +27,11 @@ struct DisplayInfo
  */
 class DisplayWindow
 {
-	SDL_Window* window_ = nullptr;
-	SDL_DisplayMode current_monitor_ = {};
-	DisplayInfo display_info_ = {};
+	SDL_Window* m_window_ = nullptr;
+	SDL_DisplayMode m_current_monitor_ = {};
+	DisplayInfo m_display_info_ = {};
 
-	SDL_SysWMinfo wmInfo = {};
-	HWND hwnd_ = nullptr;
+	HWND m_hwnd_ = nullptr; // TODO: support other platforms besides windows
 
 	void create_window_internal(const DisplayInfo& info, int monitor_index);
 

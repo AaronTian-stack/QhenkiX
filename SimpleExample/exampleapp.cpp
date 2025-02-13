@@ -71,7 +71,7 @@ void ExampleApp::create()
 
 void ExampleApp::render()
 {
-	const auto seconds_elapsed = static_cast<float>(SDL_GetTicks64()) / 1000.f;
+	const auto seconds_elapsed = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
 	// Update matrices
 	const XMVECTORF32 eye_pos = { sin(seconds_elapsed) * 2.0f, 0.0f, cos(seconds_elapsed) * 2.0f };

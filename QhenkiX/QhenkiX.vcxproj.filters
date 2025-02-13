@@ -77,9 +77,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="SDL2-2.30.7\lib\x64\SDL2.dll" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="qhenkiX\application.h">
       <Filter>Header Files</Filter>
     </ClInclude>

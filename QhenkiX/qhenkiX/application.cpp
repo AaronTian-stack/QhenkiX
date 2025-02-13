@@ -47,8 +47,8 @@ void Application::run(const qhenki::graphics::GraphicsAPI api)
 
 	const qhenki::graphics::SwapchainDesc swapchain_desc =
 	{
-		.width = m_window_.display_info_.width,
-		.height = m_window_.display_info_.height,
+		.width = m_window_.m_display_info_.width,
+		.height = m_window_.m_display_info_.height,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	};
 	m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, m_graphics_queue_);
@@ -60,19 +60,16 @@ void Application::run(const qhenki::graphics::GraphicsAPI api)
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-            if (event.type == SDL_QUIT)
+            if (event.type == SDL_EVENT_QUIT)
             {
                 quit = true;
             }
-			if (event.type == SDL_WINDOWEVENT)
+			if (event.type == SDL_EVENT_WINDOW_RESIZED)
 			{
-				if (event.window.event == SDL_WINDOWEVENT_RESIZED)
-				{
-					m_window_.display_info_.width = event.window.data1;
-					m_window_.display_info_.height = event.window.data2;
-					m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2);
-					resize(event.window.data1, event.window.data2);
-				}
+				m_window_.m_display_info_.width = event.window.data1;
+				m_window_.m_display_info_.height = event.window.data2;
+				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2);
+				resize(event.window.data1, event.window.data2);
 			}
         }
 
