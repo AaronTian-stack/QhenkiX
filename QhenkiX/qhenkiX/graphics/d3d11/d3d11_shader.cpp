@@ -3,7 +3,6 @@
 #include <codecvt>
 #include <stdexcept>
 #include <d3dcompiler.h>
-#include <stdlib.h>
 
 #include "d3d11_context.h"
 #include "graphics/shared/d3d_helper.h"

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <d3d12shader.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <dxgidebug.h>
@@ -7,6 +8,7 @@
 
 #include "D3D12MemAlloc.h"
 #include "d3d12_heap.h"
+#include "d3d12_pipeline.h"
 #include "graphics/qhenki/context.h"
 
 using Microsoft::WRL::ComPtr;
@@ -32,6 +34,8 @@ class D3D12Context : public qhenki::graphics::Context
 
 	ComPtr<IDxcLibrary> m_library_;
 	ComPtr<IDxcCompiler> m_compiler_;
+
+	D3D12ReflectionData shader_reflection(ID3D12ShaderReflection* shader_reflection, const bool interleaved) const;
 
 public:
 	void create() override;

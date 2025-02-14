@@ -115,7 +115,8 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
 
     UINT slot = 0;
 
-    std::vector<D3D11_INPUT_ELEMENT_DESC> inputLayoutDesc;
+    std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc;
+	input_layout_desc.reserve(shaderDesc.InputParameters);
     for (uint32_t i = 0; i < shaderDesc.InputParameters; i++)
     {
         D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
@@ -169,23 +170,23 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
 
         if (!interleaved) slot++;
 
-        //save element desc
-        inputLayoutDesc.push_back(elementDesc);
+        // save element desc
+        input_layout_desc.push_back(elementDesc);
     }
 
-    if (inputLayoutDesc.empty())
+    if (input_layout_desc.empty())
     {
 		return {};
     }
 
 	// hash and check if layout already exists
 	std::lock_guard lock(layout_mutex_);
-	find_layout(inputLayoutDesc)
+	find_layout(input_layout_desc)
 
     ComPtr<ID3D11InputLayout> layout;
     if (FAILED(device->CreateInputLayout(
-        inputLayoutDesc.data(),
-        inputLayoutDesc.size(),
+        input_layout_desc.data(),
+        input_layout_desc.size(),
         vertex_shader_blob->GetBufferPointer(), 
         vertex_shader_blob->GetBufferSize(), 
         &layout)))
@@ -194,7 +195,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
 		return nullptr;
     }
 
-    layout_map[hash] = { layout, std::move(inputLayoutDesc) };
+    layout_map[hash] = { layout, std::move(input_layout_desc) };
 	layout_logical_map[layout.Get()] = &layout_map[hash];
 
 	return layout.Get();

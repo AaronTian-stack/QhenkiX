@@ -29,7 +29,7 @@ protected:
 	DisplayWindow m_window_;
 	uPtr<qhenki::graphics::Context> m_context_ = nullptr;
 	qhenki::graphics::Swapchain m_swapchain_{};
-	qhenki::graphics::Queue m_graphics_queue_{};
+	qhenki::graphics::Queue m_graphics_queue_{}; // A graphics queue is given to the application by default
 
 	virtual void init_display_window();
 

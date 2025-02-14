@@ -1,11 +1,11 @@
 ﻿#include "d3d12_context.h"
 
+#include <d3d12shader.h>
 #include <iostream>
 
 #include "d3d12_pipeline.h"
 #include "d3d12_shader_compiler.h"
 #include "graphics/d3d11/d3d11_shader.h"
-#include "graphics/shared/d3d_helper.h"
 
 void D3D12Context::create()
 {
@@ -87,7 +87,7 @@ void D3D12Context::create()
 	allocatorDesc.Flags = D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED |
 		D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
 
-	if (FAILED( CreateAllocator(&allocatorDesc, &m_allocator_)))
+	if (FAILED(CreateAllocator(&allocatorDesc, &m_allocator_)))
 	{
 		std::cerr << "D3D12: Failed to create memory allocator" << std::endl;
 		throw std::runtime_error("D3D12: Failed to create memory allocator");
@@ -179,10 +179,47 @@ bool D3D12Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const
 	return result;
 }
 
+D3D12ReflectionData D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection, const bool interleaved) const
+{
+	D3D12_SHADER_DESC shader_desc{};
+
+	std::vector<std::string> input_element_semantic_names;
+	input_element_semantic_names.reserve(shader_desc.InputParameters);
+	std::vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
+	input_element_desc.reserve(shader_desc.InputParameters);
+	shader_reflection->GetDesc(&shader_desc);
+	{
+		UINT slot = 0;
+		for (UINT parameter_index = 0; parameter_index < shader_desc.InputParameters; parameter_index++)
+		{
+			D3D12_SIGNATURE_PARAMETER_DESC signature_parameter_desc{};
+			shader_reflection->GetInputParameterDesc(parameter_index, &signature_parameter_desc);
+
+			input_element_semantic_names.emplace_back(signature_parameter_desc.SemanticName);
+
+			input_element_desc.emplace_back(D3D12_INPUT_ELEMENT_DESC
+				{
+					.SemanticName = input_element_semantic_names.back().c_str(),
+					.SemanticIndex = signature_parameter_desc.SemanticIndex,
+					.Format = D3D12ShaderCompiler::mask_to_format(signature_parameter_desc.Mask),
+					.InputSlot = slot,
+					.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
+					.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+					.InstanceDataStepRate = 0u, // TODO: manual options for instancing
+				});
+			if (!interleaved) slot++;
+		}
+	}
+
+	return { input_element_desc, input_element_semantic_names };
+}
+
 bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline,
                                    qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t const* debug_name)
 {
-	assert(false);
+	pipeline.internal_state = mkS<D3D12Pipeline>();
+	const auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
+	assert(d3d12_pipeline);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC* pso_desc;
 	{
@@ -190,26 +227,51 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 		pso_desc = m_pipeline_desc_pool_.construct();
 	}
 
-	// TODO: Input reflection
-	// pso.InputLayout
+	const auto d3d12_vs = static_cast<D3D12ShaderOutput*>(vertex_shader.internal_state.get());
+	const auto d3d12_ps = static_cast<D3D12ShaderOutput*>(pixel_shader.internal_state.get());
+	assert(d3d12_vs);
+	assert(d3d12_ps);
+
+	const auto& vertex_shader_blob = d3d12_vs->shader_blob;
+	const auto& pixel_shader_blob = d3d12_ps->shader_blob;
+
+	const auto& vs_reflection_buffer = d3d12_vs->reflection_blob;
+
+	const DxcBuffer vs_reflection_dxc_buffer =
+	{
+		vs_reflection_buffer->GetBufferPointer(),
+		vs_reflection_buffer->GetBufferSize(),
+		0
+	};
+	const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(shader_compiler.get());
+	assert(d3d12_shader_compiler);
+
+	ComPtr<ID3D12ShaderReflection> shader_reflection{};
+	d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, IID_PPV_ARGS(shader_reflection.GetAddressOf()));
+
+	// Input reflection (VS)
+	d3d12_pipeline->reflection_data = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+	const auto& input_layout_desc = d3d12_pipeline->reflection_data.input_layout_desc;
+	pso_desc->InputLayout = 
+	{
+		input_layout_desc.data(),
+		static_cast<uint32_t>(input_layout_desc.size())
+	};
+
 	// TODO: handling root signatures?
-	// pso.pRootSignature
+	pso_desc->pRootSignature = {};
 
 	// TODO: DS, HS, maybe GS
 
-	auto vertex_shader_blob = static_cast<ComPtr<IDxcBlob>*>(vertex_shader.internal_state.get());
-	auto pixel_shader_blob = static_cast<ComPtr<IDxcBlob>*>(pixel_shader.internal_state.get());
-	assert(vertex_shader_blob);
-	assert(pixel_shader_blob);
 	pso_desc->VS =
 	{
-		.pShaderBytecode = vertex_shader_blob->Get()->GetBufferPointer(),
-		.BytecodeLength = vertex_shader_blob->Get()->GetBufferSize()
+		.pShaderBytecode = vertex_shader_blob->GetBufferPointer(),
+		.BytecodeLength = vertex_shader_blob->GetBufferSize()
 	};
 	pso_desc->PS =
 	{
-		.pShaderBytecode = pixel_shader_blob->Get()->GetBufferPointer(),
-		.BytecodeLength = pixel_shader_blob->Get()->GetBufferSize()
+		.pShaderBytecode = pixel_shader_blob->GetBufferPointer(),
+		.BytecodeLength = pixel_shader_blob->GetBufferSize()
 	};
 
 	if (desc.rasterizer_state.has_value())
@@ -302,8 +364,6 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 	// TODO: MSAA support
 	pso_desc->SampleDesc.Count = 1;
 
-	auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
-
 	if (desc.num_render_targets < 1)
 	{
 		std::cerr << "D3D12: Pipeline creation deferred due to lack of targets" << std::endl;
@@ -311,11 +371,12 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 	}
 	else
 	{
-		if (FAILED(m_device_->CreateGraphicsPipelineState(pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state))))
+		if (const auto hr = m_device_->CreateGraphicsPipelineState(pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state)); FAILED(hr))
 		{
 			std::cerr << "D3D12: Failed to create Graphics Pipeline State" << std::endl;
 			return false;
 		}
+		d3d12_pipeline->reflection_data.clear();
 	}
 
 	return true;
@@ -405,8 +466,9 @@ bool D3D12Context::create_command_pool(qhenki::graphics::CommandPool& command_po
 		break;
 	}
 
+	command_pool.internal_state = mkS<ComPtr<ID3D12CommandAllocator>>();
 	auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->Get();
-	assert(command_allocator);
+
 	if (FAILED(m_device_->CreateCommandAllocator(type, IID_PPV_ARGS(&command_allocator))))
 	{
 		std::cerr << "D3D12: Failed to create command allocator" << std::endl;

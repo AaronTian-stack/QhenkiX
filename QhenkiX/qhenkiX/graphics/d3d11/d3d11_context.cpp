@@ -43,7 +43,7 @@ void D3D11Context::create()
 	if (FAILED(hr)) std::cerr << "D3D11: Failed to get adapter description" << std::endl;
     else std::wcout << L"D3D11: Selected adapter: " << desc.Description << L"\n";
 
-	constexpr D3D_FEATURE_LEVEL deviceFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+	constexpr D3D_FEATURE_LEVEL device_feature_level = D3D_FEATURE_LEVEL_11_0;
 
 	UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #ifdef _DEBUG
@@ -56,7 +56,7 @@ void D3D11Context::create()
         D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_UNKNOWN,
         nullptr,
         creationFlags,
-        &deviceFeatureLevel,
+        &device_feature_level,
         1,
         D3D11_SDK_VERSION,
         &m_device_,
@@ -296,7 +296,6 @@ bool D3D11Context::create_buffer(const qhenki::graphics::BufferDesc& desc, const
 	}
 
 #ifdef _DEBUG
-
     if (debug_name)
     {
 		constexpr size_t max_length = 256;
@@ -313,7 +312,7 @@ bool D3D11Context::create_buffer(const qhenki::graphics::BufferDesc& desc, const
 void* D3D11Context::map_buffer(const qhenki::graphics::Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
-	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
 	assert(buffer_d3d11);
 	if (FAILED(m_device_context_->Map(
 		buffer_d3d11->Get(),
@@ -330,7 +329,7 @@ void* D3D11Context::map_buffer(const qhenki::graphics::Buffer& buffer)
 
 void D3D11Context::unmap_buffer(const qhenki::graphics::Buffer& buffer)
 {
-	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
 	assert(buffer_d3d11);
 	m_device_context_->Unmap(buffer_d3d11->Get(), 0);
 }
@@ -394,7 +393,7 @@ void D3D11Context::bind_vertex_buffers(qhenki::graphics::CommandList& cmd_list, 
 void D3D11Context::bind_index_buffer(qhenki::graphics::CommandList& cmd_list, const qhenki::graphics::Buffer& buffer, DXGI_FORMAT format,
 	unsigned offset)
 {
-	auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
+	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
 	assert(buffer_d3d11);
 	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), format, offset);
 }
@@ -414,7 +413,7 @@ void D3D11Context::start_render_pass(qhenki::graphics::CommandList& cmd_list, qh
 {
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto rtv = swap_d3d11->sc_render_target.Get();
-	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f }; // TODO: clear color
 	m_device_context_->ClearRenderTargetView(rtv, clear_color);
 	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
