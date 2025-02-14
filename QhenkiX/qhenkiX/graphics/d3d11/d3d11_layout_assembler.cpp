@@ -96,46 +96,36 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
     return layout;
 }
 
-ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
-	ID3D11Device* const device,
-	ID3DBlob* const vertex_shader_blob, bool interleaved)
+std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_desc(ID3D11ShaderReflection* vs_reflection, const bool interleaved)
 {
-    ComPtr<ID3D11ShaderReflection> pVertexShaderReflection;
-    if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(), 
-        vertex_shader_blob->GetBufferSize(), 
-        IID_ID3D11ShaderReflection, 
-        &pVertexShaderReflection)))
-    {
-		std::cerr << "D3D11: Input layout reflection failed" << std::endl;
-		return nullptr;
-    }
+	assert(vs_reflection);
 
-    D3D11_SHADER_DESC shaderDesc;
-    pVertexShaderReflection->GetDesc(&shaderDesc);
+    D3D11_SHADER_DESC shader_desc;
+    vs_reflection->GetDesc(&shader_desc);
 
     UINT slot = 0;
 
     std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc;
-	input_layout_desc.reserve(shaderDesc.InputParameters);
-    for (uint32_t i = 0; i < shaderDesc.InputParameters; i++)
+    input_layout_desc.reserve(shader_desc.InputParameters);
+    for (uint32_t i = 0; i < shader_desc.InputParameters; i++)
     {
         D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
-        pVertexShaderReflection->GetInputParameterDesc(i, &paramDesc);
+        vs_reflection->GetInputParameterDesc(i, &paramDesc);
 
-		// Ignore system attributes
-		if (paramDesc.SystemValueType == D3D_NAME_VERTEX_ID 
+        // Ignore system attributes
+        if (paramDesc.SystemValueType == D3D_NAME_VERTEX_ID
             || paramDesc.SystemValueType == D3D_NAME_PRIMITIVE_ID
             || paramDesc.SystemValueType == D3D_NAME_INSTANCE_ID) continue;
 
-        D3D11_INPUT_ELEMENT_DESC elementDesc = 
+        D3D11_INPUT_ELEMENT_DESC elementDesc =
         {
             .SemanticName = paramDesc.SemanticName,
-	        .SemanticIndex = paramDesc.SemanticIndex,
-	        .InputSlot = slot,
-	        .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
-	        //// TODO: INSTANCING
-	        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
-	        .InstanceDataStepRate = 0,
+            .SemanticIndex = paramDesc.SemanticIndex,
+            .InputSlot = slot,
+            .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
+            //// TODO: INSTANCING
+            .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+            .InstanceDataStepRate = 0,
         };
 
         // Determine DXGI format
@@ -165,7 +155,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         }
         else
         {
-			std::cerr << "D3D11: check mask " << paramDesc.Mask << std::endl;
+            std::cerr << "D3D11: check mask " << paramDesc.Mask << std::endl;
         }
 
         if (!interleaved) slot++;
@@ -173,6 +163,28 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         // save element desc
         input_layout_desc.push_back(elementDesc);
     }
+
+	return input_layout_desc;
+}
+
+ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
+	ID3D11Device* const device,
+	ID3DBlob* const vertex_shader_blob, bool interleaved)
+{
+    ComPtr<ID3D11ShaderReflection> pVertexShaderReflection;
+    if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(), 
+        vertex_shader_blob->GetBufferSize(), 
+        IID_ID3D11ShaderReflection, 
+        &pVertexShaderReflection)))
+    {
+		std::cerr << "D3D11: Input layout reflection failed" << std::endl;
+		return nullptr;
+    }
+
+    D3D11_SHADER_DESC shader_desc;
+    pVertexShaderReflection->GetDesc(&shader_desc);
+
+	std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(pVertexShaderReflection.Get(), interleaved);
 
     if (input_layout_desc.empty())
     {

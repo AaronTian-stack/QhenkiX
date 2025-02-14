@@ -1,6 +1,7 @@
 ﻿#include "d3d12_context.h"
 
 #include <d3d12shader.h>
+#include <d3dcompiler.h>
 #include <iostream>
 
 #include "d3d12_pipeline.h"
@@ -181,22 +182,26 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::graph
 	CompilerOutput output = {};
 	const bool result = compiler->compile(input, output);
 
-	shader.type = input.shader_type;
-	// IDxcBlob
-	shader.internal_state = output.internal_state;
+	shader =
+	{
+		.type = input.shader_type,
+		.shader_model = input.min_shader_model,
+		.internal_state = output.internal_state, // IDxcBlob
+	};
 
 	return result;
 }
 
 D3D12ReflectionData D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection, const bool interleaved) const
 {
+	assert(shader_reflection);
 	D3D12_SHADER_DESC shader_desc{};
+	shader_reflection->GetDesc(&shader_desc);
 
 	std::vector<std::string> input_element_semantic_names;
 	input_element_semantic_names.reserve(shader_desc.InputParameters);
 	std::vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	input_element_desc.reserve(shader_desc.InputParameters);
-	shader_reflection->GetDesc(&shader_desc);
 	{
 		UINT slot = 0;
 		for (UINT parameter_index = 0; parameter_index < shader_desc.InputParameters; parameter_index++)
@@ -236,52 +241,86 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 		pso_desc = m_pipeline_desc_pool_.construct();
 	}
 
+	assert(vertex_shader.shader_model == pixel_shader.shader_model);
+
 	const auto d3d12_vs = static_cast<D3D12ShaderOutput*>(vertex_shader.internal_state.get());
 	const auto d3d12_ps = static_cast<D3D12ShaderOutput*>(pixel_shader.internal_state.get());
 	assert(d3d12_vs);
 	assert(d3d12_ps);
 
-	const auto& vertex_shader_blob = d3d12_vs->shader_blob;
-	const auto& pixel_shader_blob = d3d12_ps->shader_blob;
-
-	const auto& vs_reflection_buffer = d3d12_vs->reflection_blob;
-
-	const DxcBuffer vs_reflection_dxc_buffer =
+	const auto vertex_shader_blob_12 = d3d12_vs->shader_blob.Get();
+	const auto pixel_shader_blob_12 = d3d12_ps->shader_blob.Get();
+	if (vertex_shader.shader_model < qhenki::graphics::ShaderModel::SM_6_0)
 	{
-		vs_reflection_buffer->GetBufferPointer(),
-		vs_reflection_buffer->GetBufferSize(),
-		0
-	};
-	const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(shader_compiler.get());
-	assert(d3d12_shader_compiler);
+		const auto vs_11 = static_cast<ComPtr<ID3DBlob>*>(vertex_shader.internal_state.get())->Get();
+		assert(vs_11);
+		ComPtr<ID3D12ShaderReflection> shader_reflection;
+		const auto hr = D3DReflect(
+			vs_11->GetBufferPointer(),
+			vs_11->GetBufferSize(),
+			IID_ID3D12ShaderReflection,
+			&shader_reflection);
+		if (FAILED(hr))
+		{
+			std::cerr << "D3D12: Failed to reflect vertex shader" << std::endl;
+			return false;
+		}
+		// Input reflection (VS)
+		d3d12_pipeline->reflection_data = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+	}
+	else
+	{
+		const auto& vs_reflection_buffer_12 = d3d12_vs->reflection_blob;
 
-	ComPtr<ID3D12ShaderReflection> shader_reflection{};
-	d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, IID_PPV_ARGS(shader_reflection.GetAddressOf()));
+		const DxcBuffer vs_reflection_dxc_buffer =
+		{
+			vs_reflection_buffer_12->GetBufferPointer(),
+			vs_reflection_buffer_12->GetBufferSize(),
+			0
+		};
+		const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(shader_compiler.get());
+		assert(d3d12_shader_compiler);
 
-	// Input reflection (VS)
-	d3d12_pipeline->reflection_data = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+		ComPtr<ID3D12ShaderReflection> shader_reflection{};
+		const auto hr = d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, IID_PPV_ARGS(shader_reflection.GetAddressOf()));
+		if (FAILED(hr))
+		{
+			std::cerr << "D3D12: Failed to reflect vertex shader" << std::endl;
+			return false;
+		}
+		// Input reflection (VS)
+		d3d12_pipeline->reflection_data = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+	}
+
 	const auto& input_layout_desc = d3d12_pipeline->reflection_data.input_layout_desc;
-	pso_desc->InputLayout = 
+	pso_desc->InputLayout =
 	{
 		input_layout_desc.data(),
 		static_cast<uint32_t>(input_layout_desc.size())
 	};
-
-	// TODO: handling root signatures?
-	pso_desc->pRootSignature = {};
-
+	
 	// TODO: DS, HS, maybe GS
+	if (vertex_shader.shader_model < qhenki::graphics::ShaderModel::SM_6_0)
+	{
+		
+	}
+	else
+	{
+		pso_desc->VS =
+		{
+			.pShaderBytecode = vertex_shader_blob_12->GetBufferPointer(),
+			.BytecodeLength = vertex_shader_blob_12->GetBufferSize()
+		};
+		pso_desc->PS =
+		{
+			.pShaderBytecode = pixel_shader_blob_12->GetBufferPointer(),
+			.BytecodeLength = pixel_shader_blob_12->GetBufferSize()
+		};
+		
+	}
 
-	pso_desc->VS =
-	{
-		.pShaderBytecode = vertex_shader_blob->GetBufferPointer(),
-		.BytecodeLength = vertex_shader_blob->GetBufferSize()
-	};
-	pso_desc->PS =
-	{
-		.pShaderBytecode = pixel_shader_blob->GetBufferPointer(),
-		.BytecodeLength = pixel_shader_blob->GetBufferSize()
-	};
+	// TODO: handling root signatures
+	pso_desc->pRootSignature = {};
 
 	if (desc.rasterizer_state.has_value())
 	{
@@ -386,6 +425,9 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 			return false;
 		}
 		d3d12_pipeline->reflection_data.clear();
+		// free description
+		std::scoped_lock lock(m_pipeline_desc_mutex_);
+		m_pipeline_desc_pool_.destroy(pso_desc);
 	}
 
 	return true;

@@ -38,8 +38,12 @@ D3D12ShaderCompiler::D3D12ShaderCompiler()
 
 bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
-	// DXC does not support SM 5.1. Will need D3D11 FXC
-	assert(input.min_shader_model >= qhenki::graphics::ShaderModel::SM_6_0);
+	// DXC does not support < SM 6.0
+	// Use FXC
+	if (input.min_shader_model < qhenki::graphics::ShaderModel::SM_6_0)
+	{
+		return m_d3d11_shader_compiler_.compile(input, output);
+	}
 
 	DxcBuffer source_buffer;
 	const auto data = FileHelper::read_file(input.path);

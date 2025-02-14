@@ -111,6 +111,7 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::graph
 	}
 
 	shader.type = input.shader_type;
+	shader.shader_model = input.min_shader_model;
 	bool result = true;
 	// Calls CreateXShader(). Thread safe since it only uses the device
 	shader.internal_state = mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.path, output, result);

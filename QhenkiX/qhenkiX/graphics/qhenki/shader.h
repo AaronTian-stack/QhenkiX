@@ -10,11 +10,6 @@ namespace qhenki::graphics
 		PIXEL_SHADER,
 		COMPUTE_SHADER,
 	};
-	struct Shader
-	{
-		ShaderType type;
-		sPtr<void> internal_state;
-	};
 	enum class ShaderModel
 	{
 		SM_5_0,
@@ -26,5 +21,11 @@ namespace qhenki::graphics
 		SM_6_4,
 		SM_6_5,
 		SM_6_6,
+	};
+	struct Shader
+	{
+		ShaderType type;
+		ShaderModel shader_model; // SM shader was compiled with
+		sPtr<void> internal_state;
 	};
 }

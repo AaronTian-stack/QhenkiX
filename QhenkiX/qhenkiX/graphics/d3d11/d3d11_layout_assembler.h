@@ -2,6 +2,7 @@
 
 #define NOMINMAX
 #include <d3d11.h>
+#include <d3d11shader.h>
 #include <mutex>
 #include <optional>
 #include <wrl/client.h>
@@ -32,7 +33,9 @@ public:
 	// Creates input layout based off current state of layout_desc
 	std::optional<ComPtr<ID3D11InputLayout>> create_input_layout_manual(ID3D11Device* const device,
 	                                                                    ID3DBlob* const vertex_shader_blob);
-	
+
+	static std::vector<D3D11_INPUT_ELEMENT_DESC> create_input_layout_desc(ID3D11ShaderReflection* vs_reflection, bool interleaved);
+
     /**
      * @brief Creates an input layout using shader reflection.
      * 
