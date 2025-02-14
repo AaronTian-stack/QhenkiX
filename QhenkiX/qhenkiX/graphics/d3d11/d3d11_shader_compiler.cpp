@@ -12,13 +12,13 @@ using Microsoft::WRL::ComPtr;
 bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
 	ComPtr<ID3DBlob> error_blob = nullptr;
-	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 
 #if defined(_DEBUG)
 	flags |= D3DCOMPILE_DEBUG;// | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-	if (input.min_shader_model > qhenki::graphics::ShaderModel::SM_5_1)
+	if (input.min_shader_model > qhenki::graphics::ShaderModel::SM_5_0)
 	{
 		output.error_message = "D3D11ShaderCompiler: Shader model not supported";
 		return false;

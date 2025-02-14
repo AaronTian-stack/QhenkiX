@@ -10,7 +10,7 @@
 D3D11Shader::D3D11Shader(ID3D11Device* const device, const qhenki::graphics::ShaderType shader_type, const std::wstring& name, 
 	const CompilerOutput& output, bool& result) : m_type_(shader_type)
 {
-	auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
+	const auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
 	assert(blob);
 
 	result = true;

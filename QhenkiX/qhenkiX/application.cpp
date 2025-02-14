@@ -24,7 +24,7 @@ void Application::init_display_window()
 	m_window_.create_window(info, 0);
 }
 
-void Application::run(const qhenki::graphics::GraphicsAPI api)
+void Application::run(const qhenki::graphics::GraphicsAPI api, std::thread::id main_thread)
 {
 	m_graphics_api_ = api;
 	init_display_window();

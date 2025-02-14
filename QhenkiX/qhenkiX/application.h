@@ -39,7 +39,7 @@ protected:
 	virtual void destroy() {}
 
 public:
-	void run(qhenki::graphics::GraphicsAPI api);
+	void run(qhenki::graphics::GraphicsAPI api, std::thread::id main_thread);
 	[[nodiscard]] qhenki::graphics::GraphicsAPI get_graphics_api() const { return m_graphics_api_; }
 };
 

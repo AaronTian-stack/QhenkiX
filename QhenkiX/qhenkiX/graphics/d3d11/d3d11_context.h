@@ -38,8 +38,9 @@ public:
 	bool resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height) override;
 	bool present(qhenki::graphics::Swapchain& swapchain) override;
 
+	uPtr<ShaderCompiler> create_shader_compiler() override;
 	// thread safe
-	bool create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input) override;
+	bool create_shader_dynamic(ShaderCompiler* compiler, qhenki::graphics::Shader& shader, const CompilerInput& input) override;
 	// thread safe
 	bool create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline, qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t
 	                     const* debug_name) override;

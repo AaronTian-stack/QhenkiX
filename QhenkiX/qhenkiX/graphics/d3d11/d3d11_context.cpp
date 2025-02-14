@@ -75,7 +75,7 @@ void D3D11Context::create()
     }
 #endif
 
-	shader_compiler = std::make_unique<D3D11ShaderCompiler>();
+	shader_compiler = mkU<D3D11ShaderCompiler>();
 }
 
 bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc, qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue
@@ -96,17 +96,23 @@ bool D3D11Context::resize_swapchain(qhenki::graphics::Swapchain& swapchain, int 
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input)
+bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::graphics::Shader& shader, const CompilerInput& input)
 {
+	if (compiler == nullptr)
+	{
+		compiler = shader_compiler.get();
+	}
+
 	CompilerOutput output = {};
 	// ID3DBlob
-	if (!shader_compiler->compile(input, output))
+	if (!compiler->compile(input, output))
 	{
 		return false;
 	}
 
 	shader.type = input.shader_type;
 	bool result = true;
+	// Calls CreateXShader(). Thread safe since it only uses the device
 	shader.internal_state = mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.path, output, result);
 
     return result;
@@ -485,6 +491,11 @@ bool D3D11Context::present(qhenki::graphics::Swapchain& swapchain)
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto result = swap_d3d11->swapchain->Present(1, 0);
     return result == S_OK;
+}
+
+std::unique_ptr<ShaderCompiler> D3D11Context::create_shader_compiler()
+{
+	return std::make_unique<D3D11ShaderCompiler>();
 }
 
 D3D11Context::~D3D11Context()

@@ -3,6 +3,7 @@
 #include <dxcapi.h>
 #include <dxgiformat.h>
 
+#include "graphics/d3d11/d3d11_shader_compiler.h"
 #include "graphics/qhenki/shader_compiler.h"
 
 using Microsoft::WRL::ComPtr;
@@ -16,8 +17,10 @@ struct D3D12ShaderOutput
 
 class D3D12ShaderCompiler : public ShaderCompiler
 {
+	D3D11ShaderCompiler m_d3d11_shader_compiler_;
+
 	ComPtr<IDxcUtils> m_library_;
-	ComPtr<IDxcCompiler3> m_compiler_;
+	ComPtr<IDxcCompiler3> m_compiler_; // Not thread safe
 
 	static DXGI_FORMAT mask_to_format(const uint32_t mask);
 

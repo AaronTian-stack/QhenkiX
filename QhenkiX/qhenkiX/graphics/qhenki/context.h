@@ -19,11 +19,9 @@ namespace qhenki::graphics
 	{
 	protected:
 		UINT m_frame_index_ = 0;
-
-	public:
-
 		uPtr<ShaderCompiler> shader_compiler;
 
+	public:
 		static inline constexpr UINT m_frames_in_flight = 2;
 		UINT get_frame_index() const { return m_frame_index_; }
 
@@ -34,9 +32,20 @@ namespace qhenki::graphics
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
-		// TODO: replace arguments with CompilerInput struct
+		virtual uPtr<ShaderCompiler> create_shader_compiler() = 0;
 		// Dynamic shader compilation
-		virtual bool create_shader_dynamic(Shader& shader, const CompilerInput& input) = 0;
+        /**
+         * @brief Dynamically creates a shader using the specified compiler and input.
+         * 
+         * This function compiles a shader at runtime using the provided ShaderCompiler instance.
+         * The compiled shader is stored in the provided Shader object.
+         * 
+         * @param compiler Pointer to the ShaderCompiler instance used for compilation. If null default compiler with context is used (NOT thread safe).
+         * @param shader Reference to the Shader object where the compiled shader will be stored.
+         * @param input Reference to the CompilerInput structure containing the shader compilation parameters.
+         * @return true if the shader was successfully compiled and created, false otherwise.
+         */
+        virtual bool create_shader_dynamic(ShaderCompiler* compiler, Shader& shader, const CompilerInput& input) = 0;
 		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, wchar_t
 		                             const* debug_name = nullptr) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;

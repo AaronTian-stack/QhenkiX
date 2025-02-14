@@ -103,7 +103,7 @@ void D3D12Context::create()
 	}
 #endif
 
-	shader_compiler = std::make_unique<D3D12ShaderCompiler>();
+	shader_compiler = mkU<D3D12ShaderCompiler>();
 }
 
 bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc,
@@ -167,10 +167,19 @@ bool D3D12Context::present(qhenki::graphics::Swapchain& swapchain)
 	return false;
 }
 
-bool D3D12Context::create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input)
+std::unique_ptr<ShaderCompiler> D3D12Context::create_shader_compiler()
 {
+	return mkU<D3D12ShaderCompiler>();
+}
+
+bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::graphics::Shader& shader, const CompilerInput& input)
+{
+	if (compiler == nullptr)
+	{
+		compiler = shader_compiler.get();
+	}
 	CompilerOutput output = {};
-	const bool result = shader_compiler->compile(input, output);
+	const bool result = compiler->compile(input, output);
 
 	shader.type = input.shader_type;
 	// IDxcBlob

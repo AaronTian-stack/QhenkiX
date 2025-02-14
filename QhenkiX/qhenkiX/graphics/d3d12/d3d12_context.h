@@ -9,6 +9,7 @@
 #include "D3D12MemAlloc.h"
 #include "d3d12_heap.h"
 #include "d3d12_pipeline.h"
+#include "graphics/d3d11/d3d11_shader_compiler.h"
 #include "graphics/qhenki/context.h"
 
 using Microsoft::WRL::ComPtr;
@@ -35,6 +36,8 @@ class D3D12Context : public qhenki::graphics::Context
 	ComPtr<IDxcLibrary> m_library_;
 	ComPtr<IDxcCompiler> m_compiler_;
 
+	D3D11ShaderCompiler m_d3d11_shader_compiler_; // Needed for SM < 6.0
+
 	D3D12ReflectionData shader_reflection(ID3D12ShaderReflection* shader_reflection, const bool interleaved) const;
 
 public:
@@ -44,7 +47,8 @@ public:
 	bool resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height) override;
 	bool present(qhenki::graphics::Swapchain& swapchain) override;
 
-	bool create_shader_dynamic(qhenki::graphics::Shader& shader, const CompilerInput& input) override;
+	uPtr<ShaderCompiler> create_shader_compiler() override;
+	bool create_shader_dynamic(ShaderCompiler* compiler, qhenki::graphics::Shader& shader, const CompilerInput& input) override;
 	bool create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline,
 	                     qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t const* debug_name) override;
 	bool bind_pipeline(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::GraphicsPipeline& pipeline) override;

@@ -10,7 +10,7 @@ void ExampleApp::create()
 		.entry_point = L"main",
 		.min_shader_model = qhenki::graphics::ShaderModel::SM_6_6,
 	};
-	m_context_->create_shader_dynamic(m_vertex_shader_, vertex_shader);
+	m_context_->create_shader_dynamic(nullptr, m_vertex_shader_, vertex_shader);
 
 	CompilerInput pixel_shader =
 	{
@@ -19,7 +19,7 @@ void ExampleApp::create()
 		.entry_point = L"main",
 		.min_shader_model = qhenki::graphics::ShaderModel::SM_6_6,
 	};
-	m_context_->create_shader_dynamic(m_pixel_shader_, pixel_shader);
+	m_context_->create_shader_dynamic(nullptr, m_pixel_shader_, pixel_shader);
 
 	// Create pipeline
 	qhenki::graphics::GraphicsPipelineDesc pipeline_desc =
