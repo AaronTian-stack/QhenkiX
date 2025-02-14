@@ -250,10 +250,14 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 
 	const auto vertex_shader_blob_12 = d3d12_vs->shader_blob.Get();
 	const auto pixel_shader_blob_12 = d3d12_ps->shader_blob.Get();
+
+	const auto vs_11 = static_cast<ComPtr<ID3DBlob>*>(vertex_shader.internal_state.get())->Get();
+	assert(vs_11);
+
+	const auto ps_11 = static_cast<ComPtr<ID3DBlob>*>(pixel_shader.internal_state.get())->Get();
+	assert(ps_11);
 	if (vertex_shader.shader_model < qhenki::graphics::ShaderModel::SM_6_0)
 	{
-		const auto vs_11 = static_cast<ComPtr<ID3DBlob>*>(vertex_shader.internal_state.get())->Get();
-		assert(vs_11);
 		ComPtr<ID3D12ShaderReflection> shader_reflection;
 		const auto hr = D3DReflect(
 			vs_11->GetBufferPointer(),
@@ -302,7 +306,16 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 	// TODO: DS, HS, maybe GS
 	if (vertex_shader.shader_model < qhenki::graphics::ShaderModel::SM_6_0)
 	{
-		
+		pso_desc->VS =
+		{
+			.pShaderBytecode = vs_11->GetBufferPointer(),
+			.BytecodeLength = vs_11->GetBufferSize()
+		};
+		pso_desc->PS =
+		{
+			.pShaderBytecode = ps_11->GetBufferPointer(),
+			.BytecodeLength = ps_11->GetBufferSize()
+		};
 	}
 	else
 	{
@@ -316,7 +329,6 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 			.pShaderBytecode = pixel_shader_blob_12->GetBufferPointer(),
 			.BytecodeLength = pixel_shader_blob_12->GetBufferSize()
 		};
-		
 	}
 
 	// TODO: handling root signatures
