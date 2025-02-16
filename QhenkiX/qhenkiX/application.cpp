@@ -51,7 +51,7 @@ void Application::run(const qhenki::graphics::GraphicsAPI api, std::thread::id m
 		.height = m_window_.m_display_info_.height,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 	};
-	m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, m_graphics_queue_);
+	m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, m_graphics_queue_, m_frames_in_flight, m_frame_index_);
 	create();
 	// Starts the main loop
     bool quit = false;
@@ -80,3 +80,5 @@ void Application::run(const qhenki::graphics::GraphicsAPI api, std::thread::id m
 	m_context_->wait_all();
 	destroy();
 }
+
+Application::~Application() {}

@@ -18,17 +18,14 @@ namespace qhenki::graphics
 	class Context
 	{
 	protected:
-		UINT m_frame_index_ = 0;
 		uPtr<ShaderCompiler> shader_compiler;
 
 	public:
-		static inline constexpr UINT m_frames_in_flight = 2;
-		UINT get_frame_index() const { return m_frame_index_; }
-
 		virtual void create() = 0;
 
 		// Creates swapchain based off specified description
-		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, qhenki::graphics::Queue& direct_queue) = 0;
+		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, qhenki::graphics::Queue& direct_queue, unsigned
+		                              buffer_count, unsigned& frame_index) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
@@ -65,6 +62,8 @@ namespace qhenki::graphics
 
 		virtual bool create_queue(QueueType type, Queue& queue) = 0;
 		virtual bool create_command_pool(CommandPool& command_pool, const Queue& queue) = 0;
+		// Begins in recording state
+		virtual bool create_command_list(CommandList& cmd_list, const CommandPool& command_pool) = 0;
 
 		// TODO: optional clear
 		virtual void start_render_pass(CommandList& cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil) = 0;

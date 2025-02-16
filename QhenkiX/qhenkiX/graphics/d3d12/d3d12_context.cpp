@@ -108,7 +108,8 @@ void D3D12Context::create()
 }
 
 bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc,
-                                    qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue& direct_queue)
+                                    qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue& direct_queue, unsigned buffer_count, unsigned&
+                                    frame_index)
 {
 	DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor =
 	{
@@ -121,7 +122,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphic
 			.Quality = 0
 		},
 		.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-		.BufferCount = m_frames_in_flight,
+		.BufferCount = buffer_count,
 		.Scaling = DXGI_SCALING_STRETCH,
 		.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
 		.Flags = {},
@@ -136,7 +137,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphic
 
 	ComPtr<IDXGISwapChain1> swapchain1;
 	if (FAILED(m_dxgi_factory_->CreateSwapChainForHwnd(
-		queue->Get(),        // TODO: Swap chain needs the queue so that it can force a flush on it.
+		queue->Get(),        // SwapChain needs the queue so that it can force a flush on it.
 		window.get_window_handle(),
 		&swap_chain_descriptor,
 		&swap_chain_fullscreen_descriptor,
@@ -152,7 +153,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphic
 		std::cerr << "D3D12: Failed to get IDXGISwapChain3 from IDXGISwapChain1" << std::endl;
 		return false;
 	}
-	m_frame_index_ = this->m_swapchain_->GetCurrentBackBufferIndex();
+	frame_index = this->m_swapchain_->GetCurrentBackBufferIndex();
 	return true;
 }
 
@@ -192,14 +193,13 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::graph
 	return result;
 }
 
-D3D12ReflectionData D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection, const bool interleaved) const
+std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
+                                                                      const bool interleaved) const
 {
 	assert(shader_reflection);
 	D3D12_SHADER_DESC shader_desc{};
 	shader_reflection->GetDesc(&shader_desc);
 
-	std::vector<std::string> input_element_semantic_names;
-	input_element_semantic_names.reserve(shader_desc.InputParameters);
 	std::vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	input_element_desc.reserve(shader_desc.InputParameters);
 	{
@@ -209,13 +209,13 @@ D3D12ReflectionData D3D12Context::shader_reflection(ID3D12ShaderReflection* shad
 			D3D12_SIGNATURE_PARAMETER_DESC signature_parameter_desc{};
 			shader_reflection->GetInputParameterDesc(parameter_index, &signature_parameter_desc);
 
-			input_element_semantic_names.emplace_back(signature_parameter_desc.SemanticName);
+			//input_element_semantic_names.emplace_back(signature_parameter_desc.SemanticName);
 
 			input_element_desc.emplace_back(D3D12_INPUT_ELEMENT_DESC
 				{
-					.SemanticName = input_element_semantic_names.back().c_str(),
+					.SemanticName = signature_parameter_desc.SemanticName,
 					.SemanticIndex = signature_parameter_desc.SemanticIndex,
-					.Format = D3D12ShaderCompiler::mask_to_format(signature_parameter_desc.Mask),
+					.Format = D3D12ShaderCompiler::mask_to_format(signature_parameter_desc.Mask, signature_parameter_desc.ComponentType),
 					.InputSlot = slot,
 					.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
 					.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -225,7 +225,7 @@ D3D12ReflectionData D3D12Context::shader_reflection(ID3D12ShaderReflection* shad
 		}
 	}
 
-	return { input_element_desc, input_element_semantic_names };
+	return input_element_desc;
 }
 
 bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline,
@@ -259,18 +259,17 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 	if (vertex_shader.shader_model < qhenki::graphics::ShaderModel::SM_6_0)
 	{
 		ComPtr<ID3D12ShaderReflection> shader_reflection;
-		const auto hr = D3DReflect(
+		if (const auto hr = D3DReflect(
 			vs_11->GetBufferPointer(),
 			vs_11->GetBufferSize(),
 			IID_ID3D12ShaderReflection,
-			&shader_reflection);
-		if (FAILED(hr))
+			&shader_reflection); FAILED(hr))
 		{
 			std::cerr << "D3D12: Failed to reflect vertex shader" << std::endl;
 			return false;
 		}
 		// Input reflection (VS)
-		d3d12_pipeline->reflection_data = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
 	}
 	else
 	{
@@ -286,17 +285,16 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 		assert(d3d12_shader_compiler);
 
 		ComPtr<ID3D12ShaderReflection> shader_reflection{};
-		const auto hr = d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, IID_PPV_ARGS(shader_reflection.GetAddressOf()));
-		if (FAILED(hr))
+		if (const auto hr = d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, IID_PPV_ARGS(shader_reflection.GetAddressOf())); FAILED(hr))
 		{
 			std::cerr << "D3D12: Failed to reflect vertex shader" << std::endl;
 			return false;
 		}
 		// Input reflection (VS)
-		d3d12_pipeline->reflection_data = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+		d3d12_pipeline->input_layout_desc = std::move(this->shader_reflection(shader_reflection.Get(), desc.interleaved));
 	}
 
-	const auto& input_layout_desc = d3d12_pipeline->reflection_data.input_layout_desc;
+	const auto& input_layout_desc = d3d12_pipeline->input_layout_desc;
 	pso_desc->InputLayout =
 	{
 		input_layout_desc.data(),
@@ -436,8 +434,8 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 			std::cerr << "D3D12: Failed to create Graphics Pipeline State" << std::endl;
 			return false;
 		}
-		d3d12_pipeline->reflection_data.clear();
-		// free description
+		d3d12_pipeline->input_layout_desc.clear();
+		// Free description
 		std::scoped_lock lock(m_pipeline_desc_mutex_);
 		m_pipeline_desc_pool_.destroy(pso_desc);
 	}
@@ -448,10 +446,16 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 bool D3D12Context::bind_pipeline(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::GraphicsPipeline& pipeline)
 {
 	assert(false);
-
-
 	// check if pipeline is deferred
 	// if it is then set correct render target info
+
+	auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
+	assert(d3d12_pipeline);
+	if (d3d12_pipeline->deferred)
+	{
+		assert(false);
+	}
+	//auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
 
 	return true;
 }
@@ -502,7 +506,7 @@ bool D3D12Context::create_queue(const qhenki::graphics::QueueType type, qhenki::
 	}
 	queue.type = type;
 	queue.internal_state = mkS<ComPtr<ID3D12CommandQueue>>();
-	auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
+	const auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
 	assert(queue_d3d12);
 	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&*queue_d3d12))))
 	{
@@ -535,6 +539,32 @@ bool D3D12Context::create_command_pool(qhenki::graphics::CommandPool& command_po
 	if (FAILED(m_device_->CreateCommandAllocator(type, IID_PPV_ARGS(&command_allocator))))
 	{
 		std::cerr << "D3D12: Failed to create command allocator" << std::endl;
+		return false;
+	}
+	return true;
+}
+
+bool D3D12Context::create_command_list(qhenki::graphics::CommandList& cmd_list, const qhenki::graphics::CommandPool& command_pool)
+{
+	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->Get();
+	assert(command_allocator);
+	// create the appropriate command list type
+	switch (command_pool.queue->type)
+	{
+	case qhenki::graphics::GRAPHICS:
+		cmd_list.internal_state = mkS<ComPtr<ID3D12GraphicsCommandList>>();
+		break;
+	case qhenki::graphics::COMPUTE:
+		//break;
+	case qhenki::graphics::COPY: 
+		//break;
+	default:
+		throw std::runtime_error("D3D12: Not implemented command list type");
+	}
+	const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	if FAILED(m_device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator, 
+		nullptr, IID_PPV_ARGS(d3d12_cmd_list->GetAddressOf())))
+	{
 		return false;
 	}
 	return true;
@@ -583,5 +613,6 @@ D3D12Context::~D3D12Context()
 	m_dxgi_debug_.Reset();
 	m_debug_.Reset();
 #endif
+	m_allocator_.Reset();
 	m_device_.Reset();
 }

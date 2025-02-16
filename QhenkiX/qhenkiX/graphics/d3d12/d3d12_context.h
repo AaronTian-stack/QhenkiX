@@ -38,12 +38,14 @@ class D3D12Context : public qhenki::graphics::Context
 
 	D3D11ShaderCompiler m_d3d11_shader_compiler_; // Needed for SM < 6.0
 
-	D3D12ReflectionData shader_reflection(ID3D12ShaderReflection* shader_reflection, const bool interleaved) const;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection,
+	                                                        const bool interleaved) const;
 
 public:
 	void create() override;
 	bool create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc,
-	                      qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue& direct_queue) override;
+	                      qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue& direct_queue, unsigned buffer_count, unsigned&
+	                      frame_index) override;
 	bool resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height) override;
 	bool present(qhenki::graphics::Swapchain& swapchain) override;
 
@@ -65,9 +67,10 @@ public:
 
 	bool create_queue(const qhenki::graphics::QueueType type, qhenki::graphics::Queue& queue) override;
 	bool create_command_pool(qhenki::graphics::CommandPool& command_pool, const qhenki::graphics::Queue& queue) override;
+	bool create_command_list(qhenki::graphics::CommandList& cmd_list, const qhenki::graphics::CommandPool& command_pool) override;
 
 	void start_render_pass(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::Swapchain& swapchain,
-		const qhenki::graphics::RenderTarget* depth_stencil) override;
+	                       const qhenki::graphics::RenderTarget* depth_stencil) override;
 	void start_render_pass(qhenki::graphics::CommandList& cmd_list, unsigned rt_count, const qhenki::graphics::RenderTarget* rts,
 		const qhenki::graphics::RenderTarget* depth_stencil) override;
 

@@ -7,20 +7,108 @@
 #include "graphics/shared/d3d_helper.h"
 #include "graphics/shared/filehelper.h"
 
-DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask)
+DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type)
 {
-	switch (mask)
+	switch (type)
 	{
-	case 0x1:
-		return DXGI_FORMAT_R32_UINT;
-	case 0x3:
-		return DXGI_FORMAT_R32G32_UINT;
-	case 0x7:
-		return DXGI_FORMAT_R32G32B32_UINT;
-	case 0xF:
-		return DXGI_FORMAT_R32G32B32A32_UINT;
-	default:
-		throw std::runtime_error("D3D12ShaderCompiler: mask_to_format: mask not implemented");
+	case D3D_REGISTER_COMPONENT_UNKNOWN:
+		throw std::runtime_error("D3D12ShaderCompiler: mask_to_format: Unknown component type");
+	case D3D_REGISTER_COMPONENT_UINT32:
+	{
+		switch (mask)
+		{
+		case 0x1:
+			return DXGI_FORMAT_R32_UINT;
+		case 0x3:
+			return DXGI_FORMAT_R32G32_UINT;
+		case 0x7:
+			return DXGI_FORMAT_R32G32B32_UINT;
+		case 0xF:
+			return DXGI_FORMAT_R32G32B32A32_UINT;
+		default:
+			throw std::runtime_error("D3D12ShaderCompiler: uint32 mask");
+		}
+	}
+	case D3D_REGISTER_COMPONENT_SINT32:
+	{
+		switch (mask)
+		{
+		case 0x1:
+			return DXGI_FORMAT_R32_SINT;
+		case 0x3:
+			return DXGI_FORMAT_R32G32_SINT;
+		case 0x7:
+			return DXGI_FORMAT_R32G32B32_SINT;
+		case 0xF:
+			return DXGI_FORMAT_R32G32B32A32_SINT;
+		default:
+			throw std::runtime_error("D3D12ShaderCompiler: sint32 mask");
+		}
+	}
+	case D3D_REGISTER_COMPONENT_FLOAT32:
+	{
+		switch (mask)
+		{
+		case 0x1:
+			return DXGI_FORMAT_R32_FLOAT;
+		case 0x3:
+			return DXGI_FORMAT_R32G32_FLOAT;
+		case 0x7:
+			return DXGI_FORMAT_R32G32B32_FLOAT;
+		case 0xF:
+			return DXGI_FORMAT_R32G32B32A32_FLOAT;
+		default:
+			throw std::runtime_error("D3D12ShaderCompiler: float32 mask");
+	}
+		}
+	case D3D_REGISTER_COMPONENT_UINT16:
+	{
+		switch (mask)
+		{
+		case 0x1:
+			return DXGI_FORMAT_R16_UINT;
+		case 0x3:
+			return DXGI_FORMAT_R16G16_UINT;
+		case 0x7:
+			throw std::runtime_error("D3D12ShaderCompiler: 3 component uint16 mask");
+		case 0xF:
+			return DXGI_FORMAT_R16G16B16A16_UINT;
+		default:
+			throw std::runtime_error("D3D12ShaderCompiler: uint16 mask");
+		}
+	}
+	case D3D_REGISTER_COMPONENT_SINT16:
+	{
+		switch (mask)
+		{
+		case 0x1:
+			throw std::runtime_error("D3D12ShaderCompiler: 1 component sint16 mask");
+		case 0x3:
+			return DXGI_FORMAT_R16G16_SINT;
+		case 0x7:
+			throw std::runtime_error("D3D12ShaderCompiler: 3 component sint16 mask");
+		case 0xF:
+			return DXGI_FORMAT_R16G16B16A16_SINT;
+		}
+	}
+	case D3D_REGISTER_COMPONENT_FLOAT16:
+	{
+		switch (mask)
+		{
+		case 0x1:
+			return DXGI_FORMAT_R16_FLOAT;
+		case 0x3:
+			return DXGI_FORMAT_R16G16_FLOAT;
+		case 0x7:
+			throw std::runtime_error("D3D12ShaderCompiler: 3 component float16 mask");
+		case 0xF:
+			return DXGI_FORMAT_R16G16B16A16_FLOAT;
+		}
+	}
+	case D3D_REGISTER_COMPONENT_UINT64:
+	case D3D_REGISTER_COMPONENT_SINT64:
+	case D3D_REGISTER_COMPONENT_FLOAT64:
+			throw std::runtime_error("D3D12ShaderCompiler: 64 bit component type not supported");
 	}
 }
 
@@ -138,3 +226,4 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 D3D12ShaderCompiler::~D3D12ShaderCompiler()
 {
 }
+

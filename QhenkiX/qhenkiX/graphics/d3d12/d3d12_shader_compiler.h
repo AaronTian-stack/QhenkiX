@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <d3dcommon.h>
 #include <wrl/client.h>
 #include <dxcapi.h>
 #include <dxgiformat.h>
@@ -22,7 +23,7 @@ class D3D12ShaderCompiler : public ShaderCompiler
 	ComPtr<IDxcUtils> m_library_;
 	ComPtr<IDxcCompiler3> m_compiler_; // Not thread safe
 
-	static DXGI_FORMAT mask_to_format(const uint32_t mask);
+	static DXGI_FORMAT mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type);
 
 public:
 	D3D12ShaderCompiler();

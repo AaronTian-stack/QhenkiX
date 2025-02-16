@@ -23,8 +23,7 @@ class ExampleApp : public Application
 
 	// TODO: one commandpool per frame, per thread. pool allocates lists
 	// command pools for main thread
-	std::array<qhenki::graphics::CommandPool, qhenki::graphics::Context::m_frames_in_flight> m_cmd_pools_{};
-	qhenki::graphics::CommandList m_cmd_list_{};
+	std::array<qhenki::graphics::CommandPool, m_frames_in_flight> m_cmd_pools_{};
 
 	qhenki::graphics::Buffer m_vertex_buffer_{};
 	qhenki::graphics::Buffer m_index_buffer_{};
@@ -37,5 +36,8 @@ protected:
 	void render() override;
 	void resize(int width, int height) override;
 	void destroy() override;
+
+public:
+	~ExampleApp() override;
 };
 

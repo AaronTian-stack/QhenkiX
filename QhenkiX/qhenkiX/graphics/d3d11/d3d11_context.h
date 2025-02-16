@@ -34,7 +34,7 @@ public:
 
 	void create() override;
 	bool create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc, qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue
-	                      & direct_queue) override;
+	                      & direct_queue, unsigned buffer_count, unsigned& frame_index) override;
 	bool resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height) override;
 	bool present(qhenki::graphics::Swapchain& swapchain) override;
 
@@ -58,6 +58,7 @@ public:
 
 	bool create_queue(const qhenki::graphics::QueueType type, qhenki::graphics::Queue& queue) override;
 	bool create_command_pool(qhenki::graphics::CommandPool& command_pool, const qhenki::graphics::Queue& queue) override;
+	bool create_command_list(qhenki::graphics::CommandList& cmd_list, const qhenki::graphics::CommandPool& command_pool) override;
 
 	// Recording commands is not thread safe in D3D11. TODO: runtime check that this is called from the same thread
 

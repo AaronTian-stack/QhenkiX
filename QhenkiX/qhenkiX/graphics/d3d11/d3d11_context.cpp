@@ -79,12 +79,12 @@ void D3D11Context::create()
 }
 
 bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc, qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue
-                                    & direct_queue)
+                                    & direct_queue, unsigned buffer_count, unsigned& frame_index)
 {
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get());
+	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), buffer_count, frame_index);
 }
 
 bool D3D11Context::resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height)
@@ -413,6 +413,12 @@ bool D3D11Context::create_queue(const qhenki::graphics::QueueType type, qhenki::
 bool D3D11Context::create_command_pool(qhenki::graphics::CommandPool& command_pool, const qhenki::graphics::Queue& queue)
 {
 	return true; // D3D11 does not have queues
+}
+
+bool D3D11Context::create_command_list(qhenki::graphics::CommandList& cmd_list,
+	const qhenki::graphics::CommandPool& command_pool)
+{
+	return true;
 }
 
 void D3D11Context::start_render_pass(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::Swapchain& swapchain,

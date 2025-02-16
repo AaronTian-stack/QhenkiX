@@ -14,8 +14,8 @@ struct D3D11Swapchain
 	ComPtr<IDXGISwapChain1> swapchain;
 	ComPtr<ID3D11RenderTargetView> sc_render_target;
 	bool create(qhenki::graphics::SwapchainDesc desc, DisplayWindow& window,
-	            IDXGIFactory2* const dxgi_factory, ID3D11Device* const device);
-	bool create_swapchain_resources(ID3D11Device* const device);
-	bool resize(ID3D11Device* const device, ID3D11DeviceContext* const device_context, int width, int height);
+	            IDXGIFactory2* dxgi_factory, ID3D11Device* device, unsigned buffer_count, unsigned& frame_index);
+	bool create_swapchain_resources(ID3D11Device* device);
+	bool resize(ID3D11Device* device, ID3D11DeviceContext* device_context, int width, int height);
 	~D3D11Swapchain();
 };

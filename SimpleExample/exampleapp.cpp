@@ -34,7 +34,7 @@ void ExampleApp::create()
 	// TODO: create queue(s)
 	m_context_->create_queue(qhenki::graphics::QueueType::GRAPHICS, m_graphics_queue_);
 	// TODO: allocate command pool(s)/allocator(s) from queue
-	for (int i = 0; i < qhenki::graphics::Context::m_frames_in_flight; i++)
+	for (int i = 0; i < m_frames_in_flight; i++)
 	{
 		m_context_->create_command_pool(m_cmd_pools_[i], m_graphics_queue_);
 	}
@@ -93,8 +93,11 @@ void ExampleApp::render()
 	memcpy(buffer_pointer, &matrices_, sizeof(CameraMatrices));
 	m_context_->unmap_buffer(matrix_buffer_);
 
+	qhenki::graphics::CommandList cmd_list;
+	m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]);
+
 	// Clear back buffer / Start render pass
-	m_context_->start_render_pass(m_cmd_list_, m_swapchain_, nullptr);
+	m_context_->start_render_pass(cmd_list, m_swapchain_, nullptr);
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport =
@@ -108,7 +111,7 @@ void ExampleApp::render()
 	};
 	m_context_->set_viewports(1, &viewport);
 	// Bind pipeline
-	m_context_->bind_pipeline(m_cmd_list_, m_pipeline_);
+	m_context_->bind_pipeline(cmd_list, m_pipeline_);
 
 	/**
 	* TODO: Bind table to pipeline
@@ -117,11 +120,11 @@ void ExampleApp::render()
 	*/
 
 	const unsigned int offset = 0;
-	m_context_->bind_vertex_buffers(m_cmd_list_, 0, 1, &m_vertex_buffer_, &offset);
-	m_context_->bind_index_buffer(m_cmd_list_, m_index_buffer_, DXGI_FORMAT_R32_UINT, 0);
+	m_context_->bind_vertex_buffers(cmd_list, 0, 1, &m_vertex_buffer_, &offset);
+	m_context_->bind_index_buffer(cmd_list, m_index_buffer_, DXGI_FORMAT_R32_UINT, 0);
 
 	// Draw
-	m_context_->draw_indexed(m_cmd_list_, 3, 0, 0);
+	m_context_->draw_indexed(cmd_list, 3, 0, 0);
 	// TODO: submit command list
 
 	// Present
@@ -136,4 +139,8 @@ void ExampleApp::resize(int width, int height)
 void ExampleApp::destroy()
 {
 	// destroy pipeline then shaders
+}
+
+ExampleApp::~ExampleApp()
+{
 }
