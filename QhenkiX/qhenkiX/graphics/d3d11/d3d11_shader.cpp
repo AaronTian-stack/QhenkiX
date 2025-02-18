@@ -7,7 +7,7 @@
 #include "d3d11_context.h"
 #include "graphics/shared/d3d_helper.h"
 
-D3D11Shader::D3D11Shader(ID3D11Device* const device, const qhenki::graphics::ShaderType shader_type, const std::wstring& name, 
+D3D11Shader::D3D11Shader(ID3D11Device* const device, const qhenki::gfx::ShaderType shader_type, const std::wstring& name, 
 	const CompilerOutput& output, bool& result) : m_type_(shader_type)
 {
 	const auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
@@ -17,7 +17,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const qhenki::graphics::Sha
 	ID3D11DeviceChild* device_resource = nullptr;
 	switch (shader_type)
 	{
-	case qhenki::graphics::ShaderType::VERTEX_SHADER:
+	case qhenki::gfx::ShaderType::VERTEX_SHADER:
 	{
 		m_shader_ = D3D11VertexShader();
 		if (FAILED(device->CreateVertexShader(
@@ -37,7 +37,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const qhenki::graphics::Sha
 		}
 		break;
 	}
-	case qhenki::graphics::ShaderType::PIXEL_SHADER:
+	case qhenki::gfx::ShaderType::PIXEL_SHADER:
 	{
 		m_shader_ = ComPtr<ID3D11PixelShader>();
 		if (FAILED(device->CreatePixelShader(

@@ -1,4 +1,4 @@
-namespace qhenki::graphics
+namespace qhenki::gfx
 {
 	enum BufferUsage : uint8_t
 	{

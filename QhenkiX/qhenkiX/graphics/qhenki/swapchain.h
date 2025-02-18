@@ -4,7 +4,7 @@
 
 #include "render_target.h"
 
-namespace qhenki::graphics
+namespace qhenki::gfx
 {
 	struct SwapchainDesc
 	{

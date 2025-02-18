@@ -4,7 +4,7 @@
 
 #include "d3d11_context.h"
 
-bool D3D11Swapchain::create(qhenki::graphics::SwapchainDesc desc, DisplayWindow& window,
+bool D3D11Swapchain::create(qhenki::gfx::SwapchainDesc desc, DisplayWindow& window,
                             IDXGIFactory2* const dxgi_factory, ID3D11Device* const device, unsigned buffer_count, unsigned& frame_index)
 {
     frame_index = 0;

@@ -107,8 +107,8 @@ void D3D12Context::create()
 	shader_compiler = mkU<D3D12ShaderCompiler>();
 }
 
-bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphics::SwapchainDesc& swapchain_desc,
-                                    qhenki::graphics::Swapchain& swapchain, qhenki::graphics::Queue& direct_queue, unsigned buffer_count, unsigned&
+bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::gfx::SwapchainDesc& swapchain_desc,
+                                    qhenki::gfx::Swapchain& swapchain, qhenki::gfx::Queue& direct_queue, unsigned buffer_count, unsigned&
                                     frame_index)
 {
 	DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor =
@@ -131,7 +131,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphic
 	DXGI_SWAP_CHAIN_FULLSCREEN_DESC swap_chain_fullscreen_descriptor = {};
 	swap_chain_fullscreen_descriptor.Windowed = true;
 
-	assert(direct_queue.type == qhenki::graphics::QueueType::GRAPHICS);
+	assert(direct_queue.type == qhenki::gfx::QueueType::GRAPHICS);
 	const auto queue = static_cast<ComPtr<ID3D12CommandQueue>*>(direct_queue.internal_state.get());
 	assert(queue);
 
@@ -157,13 +157,13 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::graphic
 	return true;
 }
 
-bool D3D12Context::resize_swapchain(qhenki::graphics::Swapchain& swapchain, int width, int height)
+bool D3D12Context::resize_swapchain(qhenki::gfx::Swapchain& swapchain, int width, int height)
 {
 	assert(false);
 	return false;
 }
 
-bool D3D12Context::present(qhenki::graphics::Swapchain& swapchain)
+bool D3D12Context::present(qhenki::gfx::Swapchain& swapchain)
 {
 	assert(false);
 	return false;
@@ -174,7 +174,7 @@ std::unique_ptr<ShaderCompiler> D3D12Context::create_shader_compiler()
 	return mkU<D3D12ShaderCompiler>();
 }
 
-bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::graphics::Shader& shader, const CompilerInput& input)
+bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::gfx::Shader& shader, const CompilerInput& input)
 {
 	if (compiler == nullptr)
 	{
@@ -209,8 +209,6 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
 			D3D12_SIGNATURE_PARAMETER_DESC signature_parameter_desc{};
 			shader_reflection->GetInputParameterDesc(parameter_index, &signature_parameter_desc);
 
-			//input_element_semantic_names.emplace_back(signature_parameter_desc.SemanticName);
-
 			input_element_desc.emplace_back(D3D12_INPUT_ELEMENT_DESC
 				{
 					.SemanticName = signature_parameter_desc.SemanticName,
@@ -228,8 +226,8 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
 	return input_element_desc;
 }
 
-bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc& desc, qhenki::graphics::GraphicsPipeline& pipeline,
-                                   qhenki::graphics::Shader& vertex_shader, qhenki::graphics::Shader& pixel_shader, wchar_t const* debug_name)
+bool D3D12Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc, qhenki::gfx::GraphicsPipeline& pipeline,
+                                   qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, qhenki::gfx::PipelineLayout* layout, wchar_t const* debug_name)
 {
 	pipeline.internal_state = mkS<D3D12Pipeline>();
 	const auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
@@ -240,6 +238,9 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 		std::scoped_lock lock(m_pipeline_desc_mutex_);
 		pso_desc = m_pipeline_desc_pool_.construct();
 	}
+
+	// Check if PipelineLayout is already given
+
 
 	assert(vertex_shader.shader_model == pixel_shader.shader_model);
 
@@ -256,7 +257,7 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 
 	const auto ps_11 = static_cast<ComPtr<ID3DBlob>*>(pixel_shader.internal_state.get())->Get();
 	assert(ps_11);
-	if (vertex_shader.shader_model < qhenki::graphics::ShaderModel::SM_6_0)
+	if (vertex_shader.shader_model < qhenki::gfx::ShaderModel::SM_6_0)
 	{
 		ComPtr<ID3D12ShaderReflection> shader_reflection;
 		if (const auto hr = D3DReflect(
@@ -291,7 +292,7 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 			return false;
 		}
 		// Input reflection (VS)
-		d3d12_pipeline->input_layout_desc = std::move(this->shader_reflection(shader_reflection.Get(), desc.interleaved));
+		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
 	}
 
 	const auto& input_layout_desc = d3d12_pipeline->input_layout_desc;
@@ -301,8 +302,8 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 		static_cast<uint32_t>(input_layout_desc.size())
 	};
 	
-	// TODO: DS, HS, maybe GS
-	if (vertex_shader.shader_model < qhenki::graphics::ShaderModel::SM_6_0)
+	// TODO: DS, HS
+	if (vertex_shader.shader_model < qhenki::gfx::ShaderModel::SM_6_0)
 	{
 		pso_desc->VS =
 		{
@@ -440,10 +441,14 @@ bool D3D12Context::create_pipeline(const qhenki::graphics::GraphicsPipelineDesc&
 		m_pipeline_desc_pool_.destroy(pso_desc);
 	}
 
+#ifdef _DEBUG
+	d3d12_pipeline->pipeline_state->SetName(debug_name);
+#endif
+
 	return true;
 }
 
-bool D3D12Context::bind_pipeline(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::GraphicsPipeline& pipeline)
+bool D3D12Context::bind_pipeline(qhenki::gfx::CommandList& cmd_list, qhenki::gfx::GraphicsPipeline& pipeline)
 {
 	assert(false);
 	// check if pipeline is deferred
@@ -460,47 +465,47 @@ bool D3D12Context::bind_pipeline(qhenki::graphics::CommandList& cmd_list, qhenki
 	return true;
 }
 
-bool D3D12Context::create_buffer(const qhenki::graphics::BufferDesc& desc, const void* data, qhenki::graphics::Buffer& buffer, wchar_t const* debug_name)
+bool D3D12Context::create_buffer(const qhenki::gfx::BufferDesc& desc, const void* data, qhenki::gfx::Buffer& buffer, wchar_t const* debug_name)
 {
 	assert(false);
 	return true;
 }
 
-void* D3D12Context::map_buffer(const qhenki::graphics::Buffer& buffer)
+void* D3D12Context::map_buffer(const qhenki::gfx::Buffer& buffer)
 {
 	assert(false);
 	return nullptr;
 }
 
-void D3D12Context::unmap_buffer(const qhenki::graphics::Buffer& buffer)
+void D3D12Context::unmap_buffer(const qhenki::gfx::Buffer& buffer)
 {
 	assert(false);
 }
 
-void D3D12Context::bind_vertex_buffers(qhenki::graphics::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
-                                       const qhenki::graphics::Buffer* buffers, const unsigned* offsets)
+void D3D12Context::bind_vertex_buffers(qhenki::gfx::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
+                                       const qhenki::gfx::Buffer* buffers, const unsigned* offsets)
 {
 	assert(false);
 }
 
-void D3D12Context::bind_index_buffer(qhenki::graphics::CommandList& cmd_list, const qhenki::graphics::Buffer& buffer, DXGI_FORMAT format,
+void D3D12Context::bind_index_buffer(qhenki::gfx::CommandList& cmd_list, const qhenki::gfx::Buffer& buffer, DXGI_FORMAT format,
 	unsigned offset)
 {
 	assert(false);
 }
 
-bool D3D12Context::create_queue(const qhenki::graphics::QueueType type, qhenki::graphics::Queue& queue)
+bool D3D12Context::create_queue(const qhenki::gfx::QueueType type, qhenki::gfx::Queue& queue)
 {
 	D3D12_COMMAND_QUEUE_DESC queue_desc{};
 	switch (type)
 	{
-	case qhenki::graphics::QueueType::GRAPHICS:
+	case qhenki::gfx::QueueType::GRAPHICS:
 		queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		break;
-	case qhenki::graphics::QueueType::COMPUTE:
+	case qhenki::gfx::QueueType::COMPUTE:
 		queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
 		break;
-	case qhenki::graphics::QueueType::COPY:
+	case qhenki::gfx::QueueType::COPY:
 		queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
 		break;
 	}
@@ -516,19 +521,19 @@ bool D3D12Context::create_queue(const qhenki::graphics::QueueType type, qhenki::
 	return true;
 }
 
-bool D3D12Context::create_command_pool(qhenki::graphics::CommandPool& command_pool, const qhenki::graphics::Queue& queue)
+bool D3D12Context::create_command_pool(qhenki::gfx::CommandPool& command_pool, const qhenki::gfx::Queue& queue)
 {
 	// Unlike Vulkan, command allocator creation does not require the queue object.
 	D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	switch (queue.type)
 	{
-	case qhenki::graphics::QueueType::GRAPHICS:
+	case qhenki::gfx::QueueType::GRAPHICS:
 		type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		break;
-	case qhenki::graphics::QueueType::COMPUTE:
+	case qhenki::gfx::QueueType::COMPUTE:
 		type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
 		break;
-	case qhenki::graphics::QueueType::COPY:
+	case qhenki::gfx::QueueType::COPY:
 		type = D3D12_COMMAND_LIST_TYPE_COPY;
 		break;
 	}
@@ -544,19 +549,19 @@ bool D3D12Context::create_command_pool(qhenki::graphics::CommandPool& command_po
 	return true;
 }
 
-bool D3D12Context::create_command_list(qhenki::graphics::CommandList& cmd_list, const qhenki::graphics::CommandPool& command_pool)
+bool D3D12Context::create_command_list(qhenki::gfx::CommandList& cmd_list, const qhenki::gfx::CommandPool& command_pool)
 {
 	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->Get();
 	assert(command_allocator);
 	// create the appropriate command list type
 	switch (command_pool.queue->type)
 	{
-	case qhenki::graphics::GRAPHICS:
+	case qhenki::gfx::GRAPHICS:
 		cmd_list.internal_state = mkS<ComPtr<ID3D12GraphicsCommandList>>();
 		break;
-	case qhenki::graphics::COMPUTE:
+	case qhenki::gfx::COMPUTE:
 		//break;
-	case qhenki::graphics::COPY: 
+	case qhenki::gfx::COPY: 
 		//break;
 	default:
 		throw std::runtime_error("D3D12: Not implemented command list type");
@@ -570,14 +575,14 @@ bool D3D12Context::create_command_list(qhenki::graphics::CommandList& cmd_list, 
 	return true;
 }
 
-void D3D12Context::start_render_pass(qhenki::graphics::CommandList& cmd_list, qhenki::graphics::Swapchain& swapchain,
-                                     const qhenki::graphics::RenderTarget* depth_stencil)
+void D3D12Context::start_render_pass(qhenki::gfx::CommandList& cmd_list, qhenki::gfx::Swapchain& swapchain,
+                                     const qhenki::gfx::RenderTarget* depth_stencil)
 {
 	assert(false);
 }
 
-void D3D12Context::start_render_pass(qhenki::graphics::CommandList& cmd_list, unsigned rt_count,
-	const qhenki::graphics::RenderTarget* rts, const qhenki::graphics::RenderTarget* depth_stencil)
+void D3D12Context::start_render_pass(qhenki::gfx::CommandList& cmd_list, unsigned rt_count,
+	const qhenki::gfx::RenderTarget* rts, const qhenki::gfx::RenderTarget* depth_stencil)
 {
 	assert(false);
 }
@@ -587,12 +592,12 @@ void D3D12Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 	assert(false);
 }
 
-void D3D12Context::draw(qhenki::graphics::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void D3D12Context::draw(qhenki::gfx::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
 	assert(false);
 }
 
-void D3D12Context::draw_indexed(qhenki::graphics::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
+void D3D12Context::draw_indexed(qhenki::gfx::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
 	assert(false);

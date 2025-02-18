@@ -2,9 +2,9 @@
 
 #include <stdexcept>
 
-using namespace qhenki::graphics;
+using namespace qhenki::gfx;
 
-const wchar_t* D3DHelper::get_shader_model_wchar(const qhenki::graphics::ShaderType type, const qhenki::graphics::ShaderModel model)
+const wchar_t* D3DHelper::get_shader_model_wchar(const qhenki::gfx::ShaderType type, const qhenki::gfx::ShaderModel model)
 {
 	switch (type)
 	{

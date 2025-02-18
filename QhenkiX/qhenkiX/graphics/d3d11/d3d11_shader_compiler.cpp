@@ -18,7 +18,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	flags |= D3DCOMPILE_DEBUG;// | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-	if (input.min_shader_model > qhenki::graphics::ShaderModel::SM_5_0)
+	if (input.min_shader_model > qhenki::gfx::ShaderModel::SM_5_0)
 	{
 		output.error_message = "D3D11ShaderCompiler: Shader model not supported";
 		return false;

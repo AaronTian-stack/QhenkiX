@@ -126,9 +126,8 @@ D3D12ShaderCompiler::D3D12ShaderCompiler()
 
 bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
-	// DXC does not support < SM 6.0
-	// Use FXC
-	if (input.min_shader_model < qhenki::graphics::ShaderModel::SM_6_0)
+	// DXC does not support < SM 6.0, use FXC
+	if (input.min_shader_model < qhenki::gfx::ShaderModel::SM_6_0)
 	{
 		return m_d3d11_shader_compiler_.compile(input, output);
 	}
@@ -170,8 +169,6 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	args.emplace_back(D3DHelper::get_shader_model_wchar(input.shader_type, input.min_shader_model));
 
 	args.emplace_back(L"-Qstrip_debug");
-	args.emplace_back(L"-Qstrip_reflect");
-
 
 #ifdef _DEBUG
 	args.emplace_back(DXC_ARG_DEBUG); // debug info
@@ -211,14 +208,17 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	const auto d3d12_output = static_cast<D3D12ShaderOutput*>(output.internal_state.get());
 
 	// Save the blob in output
-	auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.GetAddressOf()), nullptr);
+	const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.GetAddressOf()), nullptr);
 	assert(SUCCEEDED(hr_s));
 	output.shader_size = d3d12_output->shader_blob->GetBufferSize();
 	output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
 
-	auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.GetAddressOf()), nullptr);
+	//auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.GetAddressOf()), nullptr);
+	const auto hr_r = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->reflection_blob.GetAddressOf()), nullptr);
 	assert(SUCCEEDED(hr_r));
-	auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, IID_PPV_ARGS(d3d12_output->root_signature_blob.GetAddressOf()), nullptr);
+	// This only works in debug mode
+	const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, IID_PPV_ARGS(d3d12_output->root_signature_blob.GetAddressOf()), nullptr);
+	assert(SUCCEEDED(hr_rs));
 
 	return true;
 }

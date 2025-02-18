@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <smartpointer.h>
 
-namespace qhenki::graphics
+namespace qhenki::gfx
 {
 	enum ShaderType : uint8_t
 	{

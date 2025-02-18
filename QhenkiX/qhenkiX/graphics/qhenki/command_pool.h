@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "queue.h"
 
-namespace qhenki::graphics
+namespace qhenki::gfx
 {
 	struct CommandPool
 	{

@@ -8,6 +8,6 @@
 class D3DHelper
 {
 public:
-    static const wchar_t* get_shader_model_wchar(const qhenki::graphics::ShaderType type, const qhenki::graphics::ShaderModel model);
-	static const char* get_shader_model_char(const qhenki::graphics::ShaderType type, const qhenki::graphics::ShaderModel model);
+    static const wchar_t* get_shader_model_wchar(const qhenki::gfx::ShaderType type, const qhenki::gfx::ShaderModel model);
+	static const char* get_shader_model_char(const qhenki::gfx::ShaderType type, const qhenki::gfx::ShaderModel model);
 };

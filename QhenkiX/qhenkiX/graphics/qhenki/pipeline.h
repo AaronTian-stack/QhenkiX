@@ -3,9 +3,7 @@
 #include <d3d12.h>
 #include <optional>
 
-#include "shader.h"
-
-namespace qhenki::graphics
+namespace qhenki::gfx
 {
 	struct RasterizerDesc
 	{
@@ -56,8 +54,11 @@ namespace qhenki::graphics
 
 	struct GraphicsPipeline
 	{
-		// TODO: i don't think this is needed anymore
-		// GraphicsPipelineDesc* desc = nullptr; // For D3D11
+		sPtr<void> internal_state;
+	};
+
+	struct PipelineLayout
+	{
 		sPtr<void> internal_state;
 	};
 }
