@@ -7,6 +7,7 @@
 #include "d3d12_pipeline.h"
 #include "d3d12_shader_compiler.h"
 #include "graphics/d3d11/d3d11_shader.h"
+#include "graphics/shared/d3d_helper.h"
 
 void D3D12Context::create()
 {
@@ -194,11 +195,9 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::gfx::
 }
 
 std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
-                                                                      const bool interleaved) const
+                                                                      const D3D12_SHADER_DESC& shader_desc, const bool interleaved) const
 {
 	assert(shader_reflection);
-	D3D12_SHADER_DESC shader_desc{};
-	shader_reflection->GetDesc(&shader_desc);
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	input_element_desc.reserve(shader_desc.InputParameters);
@@ -207,7 +206,12 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
 		for (UINT parameter_index = 0; parameter_index < shader_desc.InputParameters; parameter_index++)
 		{
 			D3D12_SIGNATURE_PARAMETER_DESC signature_parameter_desc{};
-			shader_reflection->GetInputParameterDesc(parameter_index, &signature_parameter_desc);
+			const auto hr = shader_reflection->GetInputParameterDesc(parameter_index, &signature_parameter_desc);
+
+			if (FAILED(hr))
+			{
+				continue;
+			}
 
 			input_element_desc.emplace_back(D3D12_INPUT_ELEMENT_DESC
 				{
@@ -226,8 +230,18 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
 	return input_element_desc;
 }
 
+void D3D12Context::root_signature_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc)
+{
+	D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {};
+	for (UINT i = 0; i < shader_desc.BoundResources; i++)
+	{
+		D3D12_SHADER_INPUT_BIND_DESC bind_desc = {};
+	}
+}
+
 bool D3D12Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc, qhenki::gfx::GraphicsPipeline& pipeline,
-                                   qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, qhenki::gfx::PipelineLayout* layout, wchar_t const* debug_name)
+	qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, 
+	qhenki::gfx::PipelineLayout* in_layout, qhenki::gfx::PipelineLayout* out_layout, wchar_t const* debug_name)
 {
 	pipeline.internal_state = mkS<D3D12Pipeline>();
 	const auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
@@ -239,42 +253,34 @@ bool D3D12Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 		pso_desc = m_pipeline_desc_pool_.construct();
 	}
 
-	// Check if PipelineLayout is already given
-
-
 	assert(vertex_shader.shader_model == pixel_shader.shader_model);
 
-	const auto d3d12_vs = static_cast<D3D12ShaderOutput*>(vertex_shader.internal_state.get());
-	const auto d3d12_ps = static_cast<D3D12ShaderOutput*>(pixel_shader.internal_state.get());
-	assert(d3d12_vs);
-	assert(d3d12_ps);
+	const auto vs = static_cast<D3DShaderOutput*>(vertex_shader.internal_state.get());
+	const auto ps = static_cast<D3DShaderOutput*>(pixel_shader.internal_state.get());
+	assert(vs);
+	assert(ps);
 
-	const auto vertex_shader_blob_12 = d3d12_vs->shader_blob.Get();
-	const auto pixel_shader_blob_12 = d3d12_ps->shader_blob.Get();
-
-	const auto vs_11 = static_cast<ComPtr<ID3DBlob>*>(vertex_shader.internal_state.get())->Get();
-	assert(vs_11);
-
-	const auto ps_11 = static_cast<ComPtr<ID3DBlob>*>(pixel_shader.internal_state.get())->Get();
-	assert(ps_11);
+	D3D12_SHADER_DESC shader_desc{};
 	if (vertex_shader.shader_model < qhenki::gfx::ShaderModel::SM_6_0)
 	{
 		ComPtr<ID3D12ShaderReflection> shader_reflection;
 		if (const auto hr = D3DReflect(
-			vs_11->GetBufferPointer(),
-			vs_11->GetBufferSize(),
+			vs->shader_blob->GetBufferPointer(),
+			vs->shader_blob->GetBufferSize(),
 			IID_ID3D12ShaderReflection,
 			&shader_reflection); FAILED(hr))
 		{
 			std::cerr << "D3D12: Failed to reflect vertex shader" << std::endl;
 			return false;
 		}
+		const auto hr_d = shader_reflection->GetDesc(&shader_desc);
+		assert(SUCCEEDED(hr_d));
 		// Input reflection (VS)
-		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.interleaved);
 	}
 	else
 	{
-		const auto& vs_reflection_buffer_12 = d3d12_vs->reflection_blob;
+		const auto& vs_reflection_buffer_12 = vs->reflection_blob;
 
 		const DxcBuffer vs_reflection_dxc_buffer =
 		{
@@ -292,46 +298,47 @@ bool D3D12Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 			return false;
 		}
 		// Input reflection (VS)
-		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), desc.interleaved);
+		const auto hr_d = shader_reflection->GetDesc(&shader_desc);
+		assert(SUCCEEDED(hr_d));
+		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.interleaved);
 	}
 
 	const auto& input_layout_desc = d3d12_pipeline->input_layout_desc;
 	pso_desc->InputLayout =
 	{
-		input_layout_desc.data(),
-		static_cast<uint32_t>(input_layout_desc.size())
+		.pInputElementDescs = input_layout_desc.data(),
+		.NumElements = static_cast<uint32_t>(input_layout_desc.size())
 	};
 	
 	// TODO: DS, HS
-	if (vertex_shader.shader_model < qhenki::gfx::ShaderModel::SM_6_0)
+	pso_desc->VS =
 	{
-		pso_desc->VS =
-		{
-			.pShaderBytecode = vs_11->GetBufferPointer(),
-			.BytecodeLength = vs_11->GetBufferSize()
-		};
-		pso_desc->PS =
-		{
-			.pShaderBytecode = ps_11->GetBufferPointer(),
-			.BytecodeLength = ps_11->GetBufferSize()
-		};
-	}
-	else
+		.pShaderBytecode = vs->shader_blob->GetBufferPointer(),
+		.BytecodeLength = vs->shader_blob->GetBufferSize()
+	};
+	pso_desc->PS =
 	{
-		pso_desc->VS =
-		{
-			.pShaderBytecode = vertex_shader_blob_12->GetBufferPointer(),
-			.BytecodeLength = vertex_shader_blob_12->GetBufferSize()
-		};
-		pso_desc->PS =
-		{
-			.pShaderBytecode = pixel_shader_blob_12->GetBufferPointer(),
-			.BytecodeLength = pixel_shader_blob_12->GetBufferSize()
-		};
-	}
+		.pShaderBytecode = ps->shader_blob->GetBufferPointer(),
+		.BytecodeLength = ps->shader_blob->GetBufferSize()
+	};
 
-	// TODO: handling root signatures
-	pso_desc->pRootSignature = {};
+	if (const auto& root_signature_blob = vs->root_signature_blob) // Root signature is contained in the shader
+	{
+		// Root signatures are always created using blobs (they must be serialized)
+		const auto root_result = m_root_reflection_.add_root_signature(m_device_.Get(), root_signature_blob->GetBufferPointer(), root_signature_blob->GetBufferSize());
+		assert(root_result);
+		pso_desc->pRootSignature = root_result;
+	}
+	else if (in_layout) // Check if premade root signature is provided
+	{
+		const auto rs = static_cast<ComPtr<ID3D12RootSignature>*>(in_layout->internal_state.get())->Get();
+		assert(rs);
+		pso_desc->pRootSignature = rs;
+	}
+	else // Create new root signature using reflection
+	{
+		root_signature_reflection(TODO, TODO);
+	}
 
 	if (desc.rasterizer_state.has_value())
 	{

@@ -79,7 +79,7 @@ void D3D11Context::create()
 }
 
 bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::gfx::SwapchainDesc& swapchain_desc, qhenki::gfx::Swapchain& swapchain, qhenki::gfx::Queue
-                                    & direct_queue, unsigned buffer_count, unsigned& frame_index)
+                                    & direct_queue, const unsigned buffer_count, unsigned& frame_index)
 {
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
@@ -119,8 +119,9 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::gfx::
     return result;
 }
 
-bool D3D11Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc, qhenki::gfx::GraphicsPipeline& pipeline, qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, qhenki::gfx::PipelineLayout
-                                   *layout, wchar_t const* debug_name)
+bool D3D11Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc, qhenki::gfx::GraphicsPipeline& pipeline, 
+	qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader,
+	qhenki::gfx::PipelineLayout* in_layout, qhenki::gfx::PipelineLayout* out_layout, wchar_t const* debug_name)
 {
 	// D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
 	pipeline.internal_state = mkS<D3D11GraphicsPipeline>();

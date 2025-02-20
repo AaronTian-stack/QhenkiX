@@ -29,7 +29,7 @@ void ExampleApp::create()
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
 		.interleaved = TRUE,
 	};
-	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_,, L"triangle_pipeline");
+	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_, nullptr, nullptr, L"triangle_pipeline");
 
 	//Create queue(s)
 	m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, m_graphics_queue_);

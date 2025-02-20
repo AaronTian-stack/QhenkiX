@@ -4,17 +4,6 @@
 
 using Microsoft::WRL::ComPtr;
 
-//struct D3D12ReflectionData
-//{
-//	
-//	std::vector<std::string> input_element_semantic_names;
-//	void clear()
-//	{
-//		input_layout_desc.clear();
-//		input_element_semantic_names.clear();
-//	}
-//};
-
 struct D3D12Pipeline
 {
 	std::vector<D3D12_INPUT_ELEMENT_DESC> input_layout_desc; // Clear this after creation!

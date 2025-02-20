@@ -14,8 +14,11 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	ComPtr<ID3DBlob> error_blob = nullptr;
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 
+	// TODO: user flags
+	// | D3DCOMPILE_SKIP_OPTIMIZATION;
+
 #if defined(_DEBUG)
-	flags |= D3DCOMPILE_DEBUG;// | D3DCOMPILE_SKIP_OPTIMIZATION;
+	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_DEBUG_NAME_FOR_SOURCE;
 #endif
 
 	if (input.min_shader_model > qhenki::gfx::ShaderModel::SM_5_0)
@@ -88,9 +91,29 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	output.internal_state = mkS<ComPtr<ID3DBlob>>(shader_blob);
+	output.internal_state = mkS<D3DShaderOutput>();
 	output.shader_size = shader_blob->GetBufferSize();
 	output.shader_data = shader_blob->GetBufferPointer();
+
+	auto d3d_shader_output = static_cast<D3DShaderOutput*>(output.internal_state.get());
+	//d3d_shader_output->shader_blob = shader_blob;
+
+	//ComPtr<ID3DBlob> dxc_root_blob;
+	//const auto h_root = shader_blob->QueryInterface(IID_PPV_ARGS(&dxc_root_blob));
+	//assert(SUCCEEDED(h_root));
+	//d3d_shader_output->shader_blob = dxc_root_blob;
+
+	//// Get the root signature
+	//// The shader might not have a root signature (e.g. D3D11 shaders)
+	//D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_ROOT_SIGNATURE, 0, dxc_root_blob.GetAddressOf());
+
+	//ComPtr<ID3DBlob> dxc_pbd_blob;
+	//const auto h_pbd = shader_blob->QueryInterface(IID_PPV_ARGS(&dxc_pbd_blob));
+	//assert(SUCCEEDED(h_pbd)); // Only debug build generates PDB (\Zi must be passed)
+	//d3d_shader_output->debug_info_blob = dxc_pbd_blob;
+
+	//// Get the generated PDB path
+	
 
 	return true;
 }

@@ -75,6 +75,9 @@
     <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="qhenkiX\application.h">
@@ -249,6 +252,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

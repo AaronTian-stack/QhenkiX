@@ -168,6 +168,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	args.emplace_back(L"-T");
 	args.emplace_back(D3DHelper::get_shader_model_wchar(input.shader_type, input.min_shader_model));
 
+	args.emplace_back(L"-Qstrip_reflect");
 	args.emplace_back(L"-Qstrip_debug");
 
 #ifdef _DEBUG
@@ -204,8 +205,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	output.internal_state = mkS<D3D12ShaderOutput>();
-	const auto d3d12_output = static_cast<D3D12ShaderOutput*>(output.internal_state.get());
+	output.internal_state = mkS<D3DShaderOutput>();
+	const auto d3d12_output = static_cast<D3DShaderOutput*>(output.internal_state.get());
 
 	// Save the blob in output
 	const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.GetAddressOf()), nullptr);
@@ -213,12 +214,24 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	output.shader_size = d3d12_output->shader_blob->GetBufferSize();
 	output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
 
-	//auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.GetAddressOf()), nullptr);
-	const auto hr_r = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->reflection_blob.GetAddressOf()), nullptr);
+	const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.GetAddressOf()), nullptr);
 	assert(SUCCEEDED(hr_r));
-	// This only works in debug mode
+
 	const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, IID_PPV_ARGS(d3d12_output->root_signature_blob.GetAddressOf()), nullptr);
-	assert(SUCCEEDED(hr_rs));
+	// The shader might not have a root signature
+	if (FAILED(hr_rs))
+	{
+		d3d12_output->root_signature_blob.Reset();
+	}
+
+	// Only generated for debug builds
+	const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(d3d12_output->debug_info_blob.GetAddressOf()), nullptr);
+	assert(SUCCEEDED(hr_d));
+
+	if (FAILED(hr_s) || FAILED(hr_r))
+	{
+		return false;
+	}
 
 	return true;
 }

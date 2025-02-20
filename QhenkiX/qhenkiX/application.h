@@ -1,7 +1,9 @@
 #pragma once
 
 #include "graphics/displaywindow.h"
-#include "graphics/d3d11/d3d11_context.h"
+#include <smartpointer.h>
+#include "graphics/qhenki/context.h"
+#include <thread>
 
 namespace qhenki::gfx
 {

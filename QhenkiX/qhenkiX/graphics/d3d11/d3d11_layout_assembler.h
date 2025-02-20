@@ -20,11 +20,11 @@ struct Layout
 
 class D3D11LayoutAssembler : public Disposable
 {
-	std::mutex layout_mutex_; // compile shaders from multiple threads?
-	tsl::robin_map<size_t, Layout> layout_map;
-	tsl::robin_map<ID3D11InputLayout*, Layout*> layout_logical_map;
+	std::mutex m_layout_mutex_; // compile shaders from multiple threads?
+	tsl::robin_map<size_t, Layout> m_layout_map_;
+	tsl::robin_map<ID3D11InputLayout*, Layout*> m_layout_logical_map_;
 
-	std::vector<D3D11_INPUT_ELEMENT_DESC> layout_desc_;
+	std::vector<D3D11_INPUT_ELEMENT_DESC> m_layout_desc_;
 
 public:
 	void add_input(const D3D11_INPUT_ELEMENT_DESC& input);

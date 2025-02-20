@@ -43,7 +43,8 @@ public:
 	bool create_shader_dynamic(ShaderCompiler* compiler, qhenki::gfx::Shader& shader, const CompilerInput& input) override;
 	// thread safe
 	bool create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc, qhenki::gfx::GraphicsPipeline& pipeline, 
-		qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, qhenki::gfx::PipelineLayout* layout, wchar_t const* debug_name) override;
+		qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, 
+		qhenki::gfx::PipelineLayout* in_layout, qhenki::gfx::PipelineLayout* out_layout, wchar_t const* debug_name) override;
 	bool bind_pipeline(qhenki::gfx::CommandList& cmd_list, qhenki::gfx::GraphicsPipeline& pipeline) override;
 
 	bool create_buffer(const qhenki::gfx::BufferDesc& desc, const void* data, qhenki::gfx::Buffer& buffer, wchar_t const* debug_name = nullptr) override;
@@ -56,7 +57,7 @@ public:
 	void bind_index_buffer(qhenki::gfx::CommandList& cmd_list, const qhenki::gfx::Buffer& buffer, DXGI_FORMAT format,
 		unsigned offset) override;
 
-	bool create_queue(const qhenki::gfx::QueueType type, qhenki::gfx::Queue& queue) override;
+	bool create_queue(qhenki::gfx::QueueType type, qhenki::gfx::Queue& queue) override;
 	bool create_command_pool(qhenki::gfx::CommandPool& command_pool, const qhenki::gfx::Queue& queue) override;
 	bool create_command_list(qhenki::gfx::CommandList& cmd_list, const qhenki::gfx::CommandPool& command_pool) override;
 
@@ -76,7 +77,7 @@ public:
 	void wait_all() override;
 	~D3D11Context() override;
 
-	friend class D3D11GraphicsPipeline;
+	friend struct D3D11GraphicsPipeline;
 };
 
 template <UINT TDebugNameLength>

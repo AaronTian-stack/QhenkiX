@@ -1,7 +1,6 @@
 #pragma once
 #include "shader.h"
 #include "swapchain.h"
-#include <d3dcommon.h>
 #include <graphics/displaywindow.h>
 
 #include "buffer.h"
@@ -24,8 +23,8 @@ namespace qhenki::gfx
 		virtual void create() = 0;
 
 		// Creates swapchain based off specified description
-		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, qhenki::gfx::Queue& direct_queue, unsigned
-		                              buffer_count, unsigned& frame_index) = 0;
+		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
+		                              Queue& direct_queue, unsigned buffer_count, unsigned& frame_index) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
@@ -43,11 +42,10 @@ namespace qhenki::gfx
          * @return true if the shader was successfully compiled and created, false otherwise.
          */
         virtual bool create_shader_dynamic(ShaderCompiler* compiler, Shader& shader, const CompilerInput& input) = 0;
-		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, PipelineLayout
-		                             *layout, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, PipelineLayout* in_layout, PipelineLayout* out_layout, wchar_t const* debug_name = nullptr) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;
 
-		virtual bool create_buffer(const BufferDesc& desc, const void* data, qhenki::gfx::Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
 
         /**
         * Write only. Do not read or performance issues may happen.

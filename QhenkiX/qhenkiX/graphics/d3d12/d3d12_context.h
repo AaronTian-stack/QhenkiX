@@ -9,6 +9,7 @@
 #include "D3D12MemAlloc.h"
 #include "d3d12_heap.h"
 #include "d3d12_pipeline.h"
+#include "d3d12_root_hasher.h"
 #include "graphics/d3d11/d3d11_shader_compiler.h"
 #include "graphics/qhenki/context.h"
 
@@ -38,8 +39,10 @@ class D3D12Context : public qhenki::gfx::Context
 
 	D3D11ShaderCompiler m_d3d11_shader_compiler_; // Needed for SM < 6.0
 
-	std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection,
-	                                                        const bool interleaved) const;
+	D3D12RootHasher m_root_reflection_;
+
+	std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc, bool interleaved) const;
+	void root_signature_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc);
 
 public:
 	void create() override;
@@ -51,8 +54,11 @@ public:
 
 	uPtr<ShaderCompiler> create_shader_compiler() override;
 	bool create_shader_dynamic(ShaderCompiler* compiler, qhenki::gfx::Shader& shader, const CompilerInput& input) override;
+
 	bool create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc, qhenki::gfx::GraphicsPipeline& pipeline,
-	                     qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, qhenki::gfx::PipelineLayout* layout, wchar_t const* debug_name) override;
+		qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader, 
+		qhenki::gfx::PipelineLayout* in_layout, qhenki::gfx::PipelineLayout* out_layout, wchar_t const* debug_name) override;
+
 	bool bind_pipeline(qhenki::gfx::CommandList& cmd_list, qhenki::gfx::GraphicsPipeline& pipeline) override;
 
 	bool create_buffer(const qhenki::gfx::BufferDesc& desc, const void* data, qhenki::gfx::Buffer& buffer, wchar_t const* debug_name) override;
@@ -62,15 +68,17 @@ public:
 
 	void bind_vertex_buffers(qhenki::gfx::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
 		const qhenki::gfx::Buffer* buffers, const unsigned* offsets) override;
+
 	void bind_index_buffer(qhenki::gfx::CommandList& cmd_list, const qhenki::gfx::Buffer& buffer, DXGI_FORMAT format,
 		unsigned offset) override;
 
-	bool create_queue(const qhenki::gfx::QueueType type, qhenki::gfx::Queue& queue) override;
+	bool create_queue(qhenki::gfx::QueueType type, qhenki::gfx::Queue& queue) override;
 	bool create_command_pool(qhenki::gfx::CommandPool& command_pool, const qhenki::gfx::Queue& queue) override;
 	bool create_command_list(qhenki::gfx::CommandList& cmd_list, const qhenki::gfx::CommandPool& command_pool) override;
 
 	void start_render_pass(qhenki::gfx::CommandList& cmd_list, qhenki::gfx::Swapchain& swapchain,
-	                       const qhenki::gfx::RenderTarget* depth_stencil) override;
+		const qhenki::gfx::RenderTarget* depth_stencil) override;
+
 	void start_render_pass(qhenki::gfx::CommandList& cmd_list, unsigned rt_count, const qhenki::gfx::RenderTarget* rts,
 		const qhenki::gfx::RenderTarget* depth_stencil) override;
 

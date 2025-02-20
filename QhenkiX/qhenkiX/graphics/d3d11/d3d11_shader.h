@@ -27,6 +27,6 @@ public:
 		const CompilerOutput& output, bool& result);
 
 	friend class D3D11Context;
-	friend class D3D11GraphicsPipeline;
+	friend struct D3D11GraphicsPipeline;
 };
 
