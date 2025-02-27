@@ -16,6 +16,7 @@ struct VSOutput
     float3 color : COLOR0;
 };
 
+[RootSignature("RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)")]
 VSOutput main(VSInput input)
 {
     VSOutput output = (VSOutput) 0;

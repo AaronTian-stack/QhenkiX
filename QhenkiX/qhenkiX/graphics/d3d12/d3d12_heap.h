@@ -10,7 +10,7 @@ class D3D12Heap
 {
 	UINT descriptor_size_ = 0;
 	D3D12_DESCRIPTOR_HEAP_TYPE type_;
-	std::vector<UINT> free_list_;
+	std::vector<UINT> free_list_; // TODO: free list
 
 public:
 	static inline constexpr UINT descriptor_count = 1000;

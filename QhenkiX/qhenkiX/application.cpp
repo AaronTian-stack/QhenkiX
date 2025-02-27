@@ -24,9 +24,10 @@ void Application::init_display_window()
 	m_window_.create_window(info, 0);
 }
 
-void Application::run(const qhenki::gfx::API api, std::thread::id main_thread)
+void Application::run(const qhenki::gfx::API api)
 {
 	m_graphics_api_ = api;
+	m_main_thread_id = std::this_thread::get_id();
 	init_display_window();
 	switch (api)
 	{
@@ -74,8 +75,6 @@ void Application::run(const qhenki::gfx::API api, std::thread::id main_thread)
         }
 
         render();
-
-		// TODO: proper application frame limiting
     }
 	m_context_->wait_all();
 	destroy();

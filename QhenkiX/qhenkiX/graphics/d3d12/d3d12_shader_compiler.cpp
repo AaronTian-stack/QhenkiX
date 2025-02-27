@@ -205,8 +205,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	output.internal_state = mkS<D3DShaderOutput>();
-	const auto d3d12_output = static_cast<D3DShaderOutput*>(output.internal_state.get());
+	output.internal_state = mkS<D3D12ShaderOutput>();
+	const auto d3d12_output = static_cast<D3D12ShaderOutput*>(output.internal_state.get());
 
 	// Save the blob in output
 	const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.GetAddressOf()), nullptr);
@@ -225,7 +225,9 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	}
 
 	// Only generated for debug builds
-	const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(d3d12_output->debug_info_blob.GetAddressOf()), nullptr);
+	const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(
+		d3d12_output->debug_info_blob.GetAddressOf()), 
+		d3d12_output->debug_info_path.GetAddressOf());
 	assert(SUCCEEDED(hr_d));
 
 	if (FAILED(hr_s) || FAILED(hr_r))

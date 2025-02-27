@@ -21,11 +21,11 @@ namespace qhenki::gfx
  */
 class Application
 {
-	//Audio
-	//Input
-	//Files 
-	//Preferences
-
+	// Audio
+	// Input
+	// Files 
+	// Preferences
+	std::thread::id m_main_thread_id;
 	qhenki::gfx::API m_graphics_api_;
 protected:
 	UINT m_frame_index_ = 0;
@@ -45,7 +45,10 @@ public:
 	static inline constexpr UINT m_frames_in_flight = 2;
 	UINT get_frame_index() const { return m_frame_index_; }
 
-	void run(qhenki::gfx::API api, std::thread::id main_thread);
+	bool is_main_thread() const { return std::this_thread::get_id() == m_main_thread_id; }
+
+	// Call this from the main thread
+	void run(qhenki::gfx::API api);
 	[[nodiscard]] qhenki::gfx::API get_graphics_api() const { return m_graphics_api_; }
 	virtual ~Application() = 0;
 };

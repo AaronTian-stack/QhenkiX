@@ -2,7 +2,6 @@
 
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
-#include <iostream>
 
 #include "d3d11_shader.h"
 #include "d3d11_swapchain.h"
@@ -14,7 +13,7 @@ void D3D11Context::create()
     // Create factory
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory_))))
     {
-		std::cerr << "D3D11: Failed to create DXGI Factory" << std::endl;
+		OutputDebugString(L"D3D11: Failed to create DXGI Factory\n");
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
     }
 #ifdef _DEBUG
@@ -31,17 +30,25 @@ void D3D11Context::create()
         reinterpret_cast<void**>(adapter.GetAddressOf())
     )))
     {
-		std::cerr << "D3D11: Failed to find discrete GPU. Defaulting to 0th adapter" << std::endl;
+		OutputDebugString(L"D3D11: Failed to find discrete GPU. Defaulting to 0th adapter\n");
         if (FAILED(m_dxgi_factory_->EnumAdapters1(0, &adapter)))
         {
+			OutputDebugString(L"D3D11: Failed to find a adapter\n");
 			throw std::runtime_error("D3D11: Failed to find a adapter");
         }
     }
 
     DXGI_ADAPTER_DESC1 desc;
     HRESULT hr = adapter->GetDesc1(&desc);
-	if (FAILED(hr)) std::cerr << "D3D11: Failed to get adapter description" << std::endl;
-    else std::wcout << L"D3D11: Selected adapter: " << desc.Description << L"\n";
+	if (FAILED(hr))
+	{
+		OutputDebugString(L"D3D11: Failed to get adapter description\n");
+	}
+	else
+	{
+        std::wstring adapterDescription = desc.Description;
+        OutputDebugStringW((L"D3D11: Selected adapter: " + adapterDescription + L"\n").c_str());
+	}
 
 	constexpr D3D_FEATURE_LEVEL device_feature_level = D3D_FEATURE_LEVEL_11_0;
 
@@ -71,6 +78,7 @@ void D3D11Context::create()
     m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
     if (FAILED(m_device_.As(&m_debug_)))
     {
+		OutputDebugString(L"D3D11: Failed to get the debug layer from the device");
         throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
     }
 #endif
@@ -162,7 +170,7 @@ bool D3D11Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 		};
 		if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
 		{
-			std::cerr << "D3D11: Failed to create Rasterizer State" << std::endl;
+			OutputDebugString(L"D3D11: Failed to create Rasterizer State");
 			succeeded = false;
 		}
 	}
@@ -193,7 +201,7 @@ bool D3D11Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 		}
 		if (FAILED(m_device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
 		{
-			std::cerr << "D3D11: Failed to create Blend State" << std::endl;
+			OutputDebugString(L"D3D11: Failed to create Blend State\n");
 			succeeded = false;
 		}
 	}
@@ -227,7 +235,7 @@ bool D3D11Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 
 		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
 		{
-			std::cerr << "D3D11: Failed to create Depth Stencil State" << std::endl;
+			OutputDebugString(L"D3D11: Failed to create Depth Stencil State\n");
 			succeeded = false;
 		}
 	}
@@ -274,6 +282,7 @@ bool D3D11Context::create_buffer(const qhenki::gfx::BufferDesc& desc, const void
 			bufferInfo.BindFlags = 0; // TODO: check this
 			break;
 		default:
+			OutputDebugString(L"D3D11: buffer type not implemented");
 			throw std::runtime_error("D3D11: buffer type not implemented");
 	}
 	if ((desc.visibility & qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL) 
@@ -329,7 +338,7 @@ void* D3D11Context::map_buffer(const qhenki::gfx::Buffer& buffer)
 		0, 
 		&mapped_resource)))
 	{
-		std::cerr << "D3D11: Failed to map buffer" << std::endl;
+		OutputDebugString(L"D3D11: Failed to map buffer\n");
 		return nullptr;
 	}
 	return mapped_resource.pData;
@@ -387,8 +396,7 @@ void D3D11Context::bind_vertex_buffers(qhenki::gfx::CommandList& cmd_list, unsig
 					strides[i] += sizeof(float);
 					break;
 				default:
-					std::cerr << "D3D11: Unknown format in input layout" << std::endl;
-					throw std::runtime_error("D3D11: Unknown format in input layout");
+					OutputDebugString(L"D3D11: Unknown format in input layout");
 				}
 				found = true;
 			}

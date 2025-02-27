@@ -11,7 +11,7 @@ struct CompilerInput
 	std::wstring path;
 	std::wstring entry_point = L"main";
 	qhenki::gfx::ShaderModel min_shader_model;
-	// TODO: includes
+	// TODO: custom includes
 	std::vector<std::wstring> defines;
 };
 

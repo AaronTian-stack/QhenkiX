@@ -91,29 +91,23 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	output.internal_state = mkS<D3DShaderOutput>();
+	output.internal_state = mkS<D3D11ShaderOutput>();
 	output.shader_size = shader_blob->GetBufferSize();
 	output.shader_data = shader_blob->GetBufferPointer();
 
-	auto d3d_shader_output = static_cast<D3DShaderOutput*>(output.internal_state.get());
-	//d3d_shader_output->shader_blob = shader_blob;
+	const auto d3d_shader_output = static_cast<D3D11ShaderOutput*>(output.internal_state.get());
+	d3d_shader_output->shader_blob = shader_blob;
 
-	//ComPtr<ID3DBlob> dxc_root_blob;
-	//const auto h_root = shader_blob->QueryInterface(IID_PPV_ARGS(&dxc_root_blob));
-	//assert(SUCCEEDED(h_root));
-	//d3d_shader_output->shader_blob = dxc_root_blob;
+	// Get the root signature
+	// The shader might not have a root signature (e.g. D3D11 shaders)
+	D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_ROOT_SIGNATURE, 0, 
+		d3d_shader_output->root_signature_blob.GetAddressOf());
 
-	//// Get the root signature
-	//// The shader might not have a root signature (e.g. D3D11 shaders)
-	//D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_ROOT_SIGNATURE, 0, dxc_root_blob.GetAddressOf());
+	// PDB Blob
+	D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_PDB, 0, d3d_shader_output->debug_info_blob.GetAddressOf());
 
-	//ComPtr<ID3DBlob> dxc_pbd_blob;
-	//const auto h_pbd = shader_blob->QueryInterface(IID_PPV_ARGS(&dxc_pbd_blob));
-	//assert(SUCCEEDED(h_pbd)); // Only debug build generates PDB (\Zi must be passed)
-	//d3d_shader_output->debug_info_blob = dxc_pbd_blob;
-
-	//// Get the generated PDB path
-	
+	// Get the generated PDB path
+	D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_DEBUG_NAME, 0, d3d_shader_output->debug_info_path.GetAddressOf());
 
 	return true;
 }

@@ -28,10 +28,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="base-shaders\BaseShader.ps.hlsl" />
-    <FxCompile Include="base-shaders\BaseShader.vs.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
     <CopyFileToFolders Include="dxcompiler.dll" />
     <CopyFileToFolders Include="dxil.dll" />
     <CopyFileToFolders Include="..\QhenkiX\SDL3-3.2.4\lib\x64\SDL3.dll" />
