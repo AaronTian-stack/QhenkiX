@@ -21,6 +21,7 @@ namespace qhenki::gfx
 
 	public:
 		virtual void create() = 0;
+		virtual bool is_compatability() = 0;
 
 		// Creates swapchain based off specified description
 		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,

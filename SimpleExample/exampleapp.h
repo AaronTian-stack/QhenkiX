@@ -8,13 +8,6 @@ struct CameraMatrices
 	XMFLOAT4X4 invViewProj;
 };
 
-/**
-* @class ExampleApp
-* @brief Renders a spinning cube.
-*
-* Sets up the necessary graphics pipeline, shaders, command lists, and buffers to render a spinning cube.
-* It overrides the create, render, resize, and destroy methods to manage the lifecycle of the application.
-*/
 class ExampleApp : public Application
 {
 	qhenki::gfx::GraphicsPipeline m_pipeline_{};

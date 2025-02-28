@@ -2,10 +2,14 @@
 
 void ExampleApp::create()
 {
-	constexpr auto shader_model = qhenki::gfx::ShaderModel::SM_5_0;
+	auto shader_model = m_context_->is_compatability() ? 
+		qhenki::gfx::ShaderModel::SM_5_0 : qhenki::gfx::ShaderModel::SM_6_0;
+
+	auto compiler_flags = CompilerInput::DEBUG;
 	// Create shaders
 	CompilerInput vertex_shader =
 	{
+		.flags = compiler_flags,
 		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
 		.path = L"base-shaders/BaseShader.vs.hlsl",
 		.entry_point = L"main",
@@ -15,6 +19,7 @@ void ExampleApp::create()
 
 	CompilerInput pixel_shader =
 	{
+		.flags = compiler_flags,
 		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
 		.path = L"base-shaders/BaseShader.ps.hlsl",
 		.entry_point = L"main",

@@ -33,6 +33,7 @@ public:
 	static void set_debug_name(_In_ ID3D11DeviceChild* device_resource, _In_z_ const char(&debug_name)[TDebugNameLength]);
 
 	void create() override;
+	bool is_compatability() override { return true; }
 	bool create_swapchain(DisplayWindow& window, const qhenki::gfx::SwapchainDesc& swapchain_desc, qhenki::gfx::Swapchain& swapchain, qhenki::gfx::Queue
 	                      & direct_queue, unsigned buffer_count, unsigned& frame_index) override;
 	bool resize_swapchain(qhenki::gfx::Swapchain& swapchain, int width, int height) override;

@@ -46,6 +46,7 @@ class D3D12Context : public qhenki::gfx::Context
 
 public:
 	void create() override;
+	bool is_compatability() override { return false; }
 	bool create_swapchain(DisplayWindow& window, const qhenki::gfx::SwapchainDesc& swapchain_desc,
 	                      qhenki::gfx::Swapchain& swapchain, qhenki::gfx::Queue& direct_queue, unsigned buffer_count, unsigned&
 	                      frame_index) override;

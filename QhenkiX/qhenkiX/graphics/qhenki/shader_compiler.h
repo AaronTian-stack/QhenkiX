@@ -6,7 +6,12 @@
 
 struct CompilerInput
 {
-	// TODO: flags
+	enum ShaderFlags : uint8_t
+	{
+		DEBUG = 1 << 1, // Extracts and saves debug PDB
+	};
+
+	ShaderFlags flags;
 	qhenki::gfx::ShaderType shader_type;
 	std::wstring path;
 	std::wstring entry_point = L"main";

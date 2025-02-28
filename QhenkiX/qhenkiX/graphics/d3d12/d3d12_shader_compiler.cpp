@@ -171,10 +171,12 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	args.emplace_back(L"-Qstrip_reflect");
 	args.emplace_back(L"-Qstrip_debug");
 
-#ifdef _DEBUG
-	args.emplace_back(DXC_ARG_DEBUG); // debug info
-#endif
-	args.emplace_back(DXC_ARG_ENABLE_STRICTNESS); // strict mode
+	if (input.flags & CompilerInput::DEBUG)
+	{
+		args.emplace_back(DXC_ARG_DEBUG); // Debug info
+	}
+
+	args.emplace_back(DXC_ARG_ENABLE_STRICTNESS); // Strict mode
 	args.emplace_back(DXC_ARG_WARNINGS_ARE_ERRORS); //-WX
 
 	// c_str() version of all args
@@ -224,11 +226,22 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		d3d12_output->root_signature_blob.Reset();
 	}
 
-	// Only generated for debug builds
-	const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(
-		d3d12_output->debug_info_blob.GetAddressOf()), 
-		d3d12_output->debug_info_path.GetAddressOf());
-	assert(SUCCEEDED(hr_d));
+	if (input.flags & CompilerInput::DEBUG)
+	{
+		ComPtr<IDxcBlobUtf16> debug_info_path;
+		ComPtr<IDxcBlob> debug_info_blob;
+		const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(
+			debug_info_blob.GetAddressOf()),
+			debug_info_path.GetAddressOf());
+		// Write debug info to file
+		if (SUCCEEDED(hr_d))
+		{
+			const auto path = debug_info_path->GetStringPointer();
+			auto result = FileHelper::write_file(path, 
+				debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
+			assert(result);
+		}
+	}
 
 	if (FAILED(hr_s) || FAILED(hr_r))
 	{

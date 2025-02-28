@@ -6,6 +6,7 @@
 #include <wrl/client.h>
 
 #include "graphics/shared/d3d_helper.h"
+#include <graphics/shared/filehelper.h>
 
 using Microsoft::WRL::ComPtr;
 
@@ -14,12 +15,12 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	ComPtr<ID3DBlob> error_blob = nullptr;
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 
-	// TODO: user flags
 	// | D3DCOMPILE_SKIP_OPTIMIZATION;
 
-#if defined(_DEBUG)
-	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_DEBUG_NAME_FOR_SOURCE;
-#endif
+	if (input.flags & CompilerInput::DEBUG)
+	{
+		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_DEBUG_NAME_FOR_SOURCE;
+	}
 
 	if (input.min_shader_model > qhenki::gfx::ShaderModel::SM_5_0)
 	{
@@ -103,11 +104,27 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_ROOT_SIGNATURE, 0, 
 		d3d_shader_output->root_signature_blob.GetAddressOf());
 
-	// PDB Blob
-	D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_PDB, 0, d3d_shader_output->debug_info_blob.GetAddressOf());
+	if (input.flags & CompilerInput::DEBUG)
+	{
+		ComPtr<ID3DBlob> debug_info_path;
+		ComPtr<ID3DBlob> debug_info_blob;
+		// PDB Blob
+		D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), 
+			D3D_BLOB_PDB, 0, debug_info_blob.GetAddressOf());
+		// Generated PDB path
+		D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), 
+			D3D_BLOB_DEBUG_NAME, 0, debug_info_path.GetAddressOf());
 
-	// Get the generated PDB path
-	D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_DEBUG_NAME, 0, d3d_shader_output->debug_info_path.GetAddressOf());
+		// Convert ID3DBlob to wstring
+		const ShaderDebugName* pDebugNameData = reinterpret_cast<const ShaderDebugName*>(debug_info_path->GetBufferPointer());
+		const char* pName = reinterpret_cast<const char*>(pDebugNameData + 1);
+		// Convert the UTF-8 name to a wide string
+		std::wstring wstr(pName, pName + pDebugNameData->NameLength);
+		auto result = FileHelper::write_file(wstr,
+			debug_info_blob->GetBufferPointer(), 
+			debug_info_blob->GetBufferSize());
+		assert(result);
+	}
 
 	return true;
 }
