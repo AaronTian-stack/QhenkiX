@@ -16,7 +16,7 @@ void D3D11Context::create()
     // Create factory
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory_))))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to create DXGI Factory\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create DXGI Factory\n");
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
     }
 #ifdef _DEBUG
@@ -33,10 +33,10 @@ void D3D11Context::create()
         reinterpret_cast<void**>(adapter.GetAddressOf())
     )))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to find discrete GPU. Defaulting to 0th adapter\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
         if (FAILED(m_dxgi_factory_->EnumAdapters1(0, &adapter)))
         {
-			OutputDebugString(L"Qhenki D3D11: Failed to find a adapter\n");
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to find a adapter\n");
 			throw std::runtime_error("D3D11: Failed to find a adapter");
         }
     }
@@ -45,7 +45,7 @@ void D3D11Context::create()
     HRESULT hr = adapter->GetDesc1(&desc);
 	if (FAILED(hr))
 	{
-		OutputDebugString(L"Qhenki D3D11: Failed to get adapter description\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get adapter description\n");
 	}
 	else
 	{
@@ -81,7 +81,7 @@ void D3D11Context::create()
     m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
     if (FAILED(m_device_.As(&m_debug_)))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to get the debug layer from the device");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
         throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
     }
 #endif
@@ -178,7 +178,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		};
 		if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
 		{
-			OutputDebugString(L"Qhenki D3D11: Failed to create Rasterizer State");
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Rasterizer State");
 			succeeded = false;
 		}
 	}
@@ -209,7 +209,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		}
 		if (FAILED(m_device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
 		{
-			OutputDebugString(L"Qhenki D3D11: Failed to create Blend State\n");
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Blend State\n");
 			succeeded = false;
 		}
 	}
@@ -243,7 +243,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 
 		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
 		{
-			OutputDebugString(L"Qhenki D3D11: Failed to create Depth Stencil State\n");
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Depth Stencil State\n");
 			succeeded = false;
 		}
 	}
@@ -275,31 +275,31 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	bufferInfo.ByteWidth = desc.size;
 	switch(desc.usage)
 	{
-		case BufferUsage::VERTEX:
+		case VERTEX:
 			bufferInfo.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			break;
-		case BufferUsage::INDEX:
+		case INDEX:
 			bufferInfo.BindFlags = D3D11_BIND_INDEX_BUFFER;
 			break;
-		case BufferUsage::UNIFORM:
+		case UNIFORM:
 			bufferInfo.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 			break;
-		case BufferUsage::STORAGE:
+		case STORAGE:
 			bufferInfo.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 			break;
-		case BufferUsage::INDIRECT:
+		case INDIRECT:
 			bufferInfo.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
 			break;
-		case BufferUsage::TRANSFER_SRC:
-		case BufferUsage::TRANSFER_DST:
+		case TRANSFER_SRC:
+		case TRANSFER_DST:
 			bufferInfo.BindFlags = 0; // TODO: check this
 			break;
 		default:
-			OutputDebugString(L"Qhenki D3D11: buffer type not implemented");
-			throw std::runtime_error("D3D11: buffer type not implemented");
+			OutputDebugString(L"Qhenki D3D11 ERROR: Buffer type not implemented");
+			throw std::runtime_error("D3D11: Buffer type not implemented");
 	}
-	if ((desc.visibility & BufferVisibility::CPU_SEQUENTIAL) 
-		|| (desc.visibility & BufferVisibility::CPU_RANDOM))
+	if ((desc.visibility & CPU_SEQUENTIAL) 
+		|| (desc.visibility & CPU_RANDOM))
 	{
 		bufferInfo.Usage = D3D11_USAGE_DYNAMIC;
 		bufferInfo.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -351,7 +351,7 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
 		0, 
 		&mapped_resource)))
 	{
-		OutputDebugString(L"Qhenki D3D11: Failed to map buffer\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to map buffer\n");
 		return nullptr;
 	}
 	return mapped_resource.pData;

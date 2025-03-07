@@ -45,7 +45,7 @@ protected:
 	virtual void destroy() {}
 
 public:
-	static inline constexpr UINT m_frames_in_flight = 2;
+	static constexpr UINT m_frames_in_flight = 2;
 	UINT get_frame_index() const { return m_frame_index_; }
 
 	bool is_main_thread() const { return std::this_thread::get_id() == m_main_thread_id; }

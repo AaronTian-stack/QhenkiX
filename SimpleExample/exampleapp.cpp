@@ -81,13 +81,18 @@ void ExampleApp::create()
 	};
 	m_context_->create_buffer(index_desc, indices.data(), m_index_buffer_, L"Index Buffer");
 
-	qhenki::gfx::BufferDesc matrix_desc =
+	// Make 2 matrix constant buffers for double buffering
+	// TODO: persistent mapping flag
+	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		.size = sizeof(CameraMatrices),
-		.usage = qhenki::gfx::BufferUsage::UNIFORM,
-		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
-	};
-	m_context_->create_buffer(matrix_desc, nullptr, matrix_buffer_, L"Matrix Buffer");
+		qhenki::gfx::BufferDesc matrix_desc =
+		{
+			.size = sizeof(CameraMatrices),
+			.usage = qhenki::gfx::BufferUsage::UNIFORM,
+			.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
+		};
+		m_context_->create_buffer(matrix_desc, nullptr, m_matrix_buffers_[i], L"Matrix Buffer");
+	}
 }
 
 void ExampleApp::render()
@@ -107,15 +112,10 @@ void ExampleApp::render()
 	XMStoreFloat4x4(&matrices_.invViewProj, XMMatrixInverse(nullptr, prod));
 
 	// Update matrix buffer
-	const auto buffer_pointer = m_context_->map_buffer(matrix_buffer_);
+	const auto buffer_pointer = m_context_->map_buffer(m_matrix_buffers_[get_frame_index()]);
+	throw_if_failed(buffer_pointer);
 	memcpy(buffer_pointer, &matrices_, sizeof(CameraMatrices));
-	m_context_->unmap_buffer(matrix_buffer_);
-
-	// TODO: free command pool
-
-
-	// TODO: free command pool
-
+	m_context_->unmap_buffer(m_matrix_buffers_[get_frame_index()]);
 
 	qhenki::gfx::CommandList cmd_list;
 	m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]);
