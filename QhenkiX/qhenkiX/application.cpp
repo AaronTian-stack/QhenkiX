@@ -26,6 +26,7 @@ void Application::init_display_window()
 
 void Application::run(const qhenki::gfx::API api)
 {
+	OutputDebugString(L"Qhenki D3D12: test\n");
 	m_graphics_api_ = api;
 	m_main_thread_id = std::this_thread::get_id();
 	init_display_window();
@@ -38,9 +39,8 @@ void Application::run(const qhenki::gfx::API api)
 		m_context_ = mkU<D3D12Context>();
 		break;
 	case qhenki::gfx::Vulkan: 
-		break;
 	default:
-		throw std::runtime_error("Not implemented API");
+		throw std::runtime_error("API not implemented");
 	}
 	m_context_->create();
 
