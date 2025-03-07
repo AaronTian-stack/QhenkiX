@@ -2,7 +2,7 @@
 
 #include <d3d11shader.h>
 #include <d3dcompiler.h>
-#include <iostream>
+#include <string>
 
 template <typename T>
 void hash_combine(std::size_t& seed, const T& v) {
@@ -86,7 +86,7 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
         vertex_shader_blob->GetBufferSize(),
         &layout)))
     {
-		std::cerr << "D3D11: Failed to create Input Layout manual" << std::endl;
+		OutputDebugString(L"Qhenki D3D11: Failed to create Input Layout manual\n");
         return {};
     }
 
@@ -155,7 +155,13 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         }
         else
         {
-            std::cerr << "D3D11: check mask " << paramDesc.Mask << std::endl;
+            std::wstring mask_str;
+			mask_str.reserve(4);
+			for (int i = 0; i < 4; i++)
+			{
+				mask_str.push_back((paramDesc.Mask & (1 << i)) ? L'1' : L'0');
+			}
+			OutputDebugString((L"D3D11: Invalid mask " + mask_str + L"\n").c_str());
         }
 
         if (!interleaved) slot++;
@@ -177,7 +183,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         IID_ID3D11ShaderReflection, 
         &pVertexShaderReflection)))
     {
-		std::cerr << "D3D11: Input layout reflection failed" << std::endl;
+		OutputDebugString(L"Qhenki D3D11: Input layout reflection failed\n");
 		return nullptr;
     }
 
@@ -203,7 +209,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         vertex_shader_blob->GetBufferSize(), 
         &layout)))
     {
-		std::cerr << "D3D11: Failed to create Input Layout reflection" << std::endl;
+		OutputDebugString(L"Qhenki D3D11: Failed to create Input Layout reflection\n");
 		return nullptr;
     }
 

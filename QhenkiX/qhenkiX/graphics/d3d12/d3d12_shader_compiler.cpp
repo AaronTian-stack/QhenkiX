@@ -101,6 +101,7 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
 			return DXGI_FORMAT_R16G16_FLOAT;
 		case 0x7:
 			throw std::runtime_error("D3D12ShaderCompiler: 3 component float16 mask");
+			break;
 		case 0xF:
 			return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		}

@@ -16,7 +16,7 @@ bool D3D12Heap::create(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type)
 
 	if (FAILED(device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&heap_))))
 	{
-		std::cerr << "D3D12: Failed to create descriptor heap" << std::endl;
+		OutputDebugString(L"Qhenki D3D12: Failed to create descriptor heap\n");
 		return false;
 	}
 

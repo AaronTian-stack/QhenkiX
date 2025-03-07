@@ -21,7 +21,7 @@ void D3D12Context::create()
 	// Create the DXGI factory
 	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory_))))
 	{
-		OutputDebugString(L"D3D12: Failed to create DXGI factory\n");
+		OutputDebugString(L"Qhenki D3D12: Failed to create DXGI factory\n");
 		throw std::runtime_error("D3D12: Failed to create DXGI factory");
 	}
 #ifdef _DEBUG
@@ -37,7 +37,7 @@ void D3D12Context::create()
 		reinterpret_cast<void**>(adapter.GetAddressOf())
 	)))
 	{
-		OutputDebugString(L"D3D12: Failed to find discrete GPU. Defaulting to 0th adapter\n");
+		OutputDebugString(L"Qhenki D3D12: Failed to find discrete GPU. Defaulting to 0th adapter\n");
 		if (FAILED(m_dxgi_factory_->EnumAdapters1(0, &adapter)))
 		{
 			throw std::runtime_error("D3D12: Failed to find a adapter");
@@ -48,7 +48,7 @@ void D3D12Context::create()
 	HRESULT hr = adapter->GetDesc1(&desc);
 	if (FAILED(hr))
 	{
-		OutputDebugString(L"D3D12: Failed to get adapter description");
+		OutputDebugString(L"Qhenki D3D12: Failed to get adapter description");
 	}
 	else
 	{
@@ -57,7 +57,7 @@ void D3D12Context::create()
 
 	if (FAILED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_device_))))
 	{
-		OutputDebugString(L"D3D12: Failed to create device");
+		OutputDebugString(L"Qhenki D3D12: Failed to create device");
 		throw std::runtime_error("D3D12: Failed to create device");
 	}
 
@@ -97,7 +97,7 @@ void D3D12Context::create()
 
 	if (FAILED(CreateAllocator(&allocatorDesc, &m_allocator_)))
 	{
-		OutputDebugString(L"D3D12: Failed to create memory allocator");
+		OutputDebugString(L"Qhenki D3D12: Failed to create memory allocator");
 		throw std::runtime_error("D3D12: Failed to create memory allocator");
 	}
 
@@ -152,12 +152,12 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const qhenki::gfx::Sw
 		&swapchain1
 	)))
 	{
-		OutputDebugString(L"D3D12: Failed to create Swapchain");
+		OutputDebugString(L"Qhenki D3D12: Failed to create Swapchain");
 		return false;
 	}
 	if (FAILED(swapchain1.As(&this->m_swapchain_)))
 	{
-		OutputDebugString(L"D3D12: Failed to get IDXGISwapChain3 from IDXGISwapChain1");
+		OutputDebugString(L"Qhenki D3D12: Failed to get IDXGISwapChain3 from IDXGISwapChain1");
 		return false;
 	}
 	frame_index = this->m_swapchain_->GetCurrentBackBufferIndex();
@@ -281,7 +281,7 @@ bool D3D12Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 			IID_ID3D12ShaderReflection,
 			&shader_reflection); FAILED(hr))
 		{
-			OutputDebugString(L"D3D12: Failed to reflect vertex shader\n");
+			OutputDebugString(L"Qhenki D3D12: Failed to reflect vertex shader\n");
 			return false;
 		}
 		const auto hr_d = shader_reflection->GetDesc(&shader_desc);
@@ -319,7 +319,7 @@ bool D3D12Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 
 		if (const auto hr = d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, IID_PPV_ARGS(shader_reflection.GetAddressOf())); FAILED(hr))
 		{
-			OutputDebugString(L"D3D12: Failed to reflect vertex shader\n");
+			OutputDebugString(L"Qhenki D3D12: Failed to reflect vertex shader\n");
 			return false;
 		}
 		// Input reflection (VS)
@@ -469,14 +469,14 @@ bool D3D12Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
 
 	if (desc.num_render_targets < 1)
 	{
-		OutputDebugString(L"D3D12: Pipeline creation deferred due to lack of targets\n");
+		OutputDebugString(L"Qhenki D3D12: Pipeline creation deferred due to lack of targets\n");
 		d3d12_pipeline->deferred = true;
 	}
 	else
 	{
 		if (const auto hr = m_device_->CreateGraphicsPipelineState(pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state)); FAILED(hr))
 		{
-			OutputDebugString(L"D3D12: Failed to create Graphics Pipeline State\n");
+			OutputDebugString(L"Qhenki D3D12: Failed to create Graphics Pipeline State\n");
 			return false;
 		}
 		d3d12_pipeline->input_layout_desc.clear();
@@ -559,7 +559,7 @@ bool D3D12Context::create_queue(const qhenki::gfx::QueueType type, qhenki::gfx::
 	assert(queue_d3d12);
 	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&*queue_d3d12))))
 	{
-		OutputDebugString(L"D3D12: Failed to create command queue\n");
+		OutputDebugString(L"Qhenki D3D12: Failed to create command queue\n");
 		return false;
 	}
 	return true;
@@ -587,7 +587,7 @@ bool D3D12Context::create_command_pool(qhenki::gfx::CommandPool& command_pool, c
 
 	if (FAILED(m_device_->CreateCommandAllocator(type, IID_PPV_ARGS(&command_allocator))))
 	{
-		OutputDebugString(L"D3D12: Failed to create command allocator\n");
+		OutputDebugString(L"Qhenki D3D12: Failed to create command allocator\n");
 		return false;
 	}
 	return true;

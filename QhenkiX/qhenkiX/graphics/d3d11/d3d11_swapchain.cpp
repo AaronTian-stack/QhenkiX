@@ -1,7 +1,4 @@
 ﻿#include "d3d11_swapchain.h"
-
-#include <iostream>
-
 #include "d3d11_context.h"
 
 bool D3D11Swapchain::create(qhenki::gfx::SwapchainDesc desc, DisplayWindow& window,
@@ -36,7 +33,7 @@ bool D3D11Swapchain::create(qhenki::gfx::SwapchainDesc desc, DisplayWindow& wind
         nullptr,
         &swapchain)))
     {
-		std::cerr << "D3D11: Failed to create Swapchain" << std::endl;
+		OutputDebugString(L"Qhenki D3D11: Failed to create Swapchain\n");
         return false;
     }
 
@@ -51,7 +48,7 @@ bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
         0,
         IID_PPV_ARGS(&backBuffer))))
     {
-		std::cerr << "D3D11: Failed to get Back Buffer from Swapchain" << std::endl;
+		OutputDebugString(L"Qhenki D3D11: Failed to get Back Buffer from Swapchain\n");
 		return false;
     }
 
@@ -60,7 +57,7 @@ bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
         nullptr,
         &sc_render_target)))
     {
-		std::cerr << "D3D11: Failed to create Render Target View" << std::endl;
+		OutputDebugString(L"Qhenki D3D11: Failed to create Render Target View\n");
 		return false;
     }
 #ifdef _DEBUG
@@ -84,7 +81,8 @@ bool D3D11Swapchain::resize(ID3D11Device* const device, ID3D11DeviceContext* con
         DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM,
         0)))
     {
-		std::cerr << "D3D11: Failed to resize Swapchain buffers" << std::endl;
+		OutputDebugString(L"Qhenki D3D11: Failed to resize Swapchain buffers\n");
+        return false;
     }
 
     return create_swapchain_resources(device);
