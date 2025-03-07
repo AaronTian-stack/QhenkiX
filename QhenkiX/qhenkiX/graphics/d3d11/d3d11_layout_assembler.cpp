@@ -88,7 +88,7 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
         vertex_shader_blob->GetBufferSize(),
         &layout)))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to create Input Layout manual\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Input Layout manual\n");
         return {};
     }
 
@@ -185,7 +185,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         IID_ID3D11ShaderReflection, 
         &pVertexShaderReflection)))
     {
-		OutputDebugString(L"Qhenki D3D11: Input layout reflection failed\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Input layout reflection failed\n");
 		return nullptr;
     }
 
@@ -211,7 +211,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         vertex_shader_blob->GetBufferSize(), 
         &layout)))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to create Input Layout reflection\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Input Layout reflection\n");
 		return nullptr;
     }
 

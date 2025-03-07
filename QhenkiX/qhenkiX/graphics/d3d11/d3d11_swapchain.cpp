@@ -35,7 +35,7 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc, DisplayWindow& window, ID
         nullptr,
         &swapchain)))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to create Swapchain\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Swapchain\n");
         return false;
     }
 
@@ -50,7 +50,7 @@ bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
         0,
         IID_PPV_ARGS(&backBuffer))))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to get Back Buffer from Swapchain\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get Back Buffer from Swapchain\n");
 		return false;
     }
 
@@ -59,7 +59,7 @@ bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
         nullptr,
         &sc_render_target)))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to create Render Target View\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Render Target View\n");
 		return false;
     }
 #ifdef _DEBUG
@@ -83,7 +83,7 @@ bool D3D11Swapchain::resize(ID3D11Device* const device, ID3D11DeviceContext* con
         DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM,
         0)))
     {
-		OutputDebugString(L"Qhenki D3D11: Failed to resize Swapchain buffers\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to resize Swapchain buffers\n");
         return false;
     }
 
