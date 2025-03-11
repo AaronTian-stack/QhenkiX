@@ -7,6 +7,9 @@
 #include "graphics/shared/d3d_helper.h"
 #include "graphics/shared/filehelper.h"
 
+using namespace qhenki::gfx;
+using namespace qhenki::util;
+
 DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type)
 {
 	switch (type)
@@ -128,7 +131,7 @@ D3D12ShaderCompiler::D3D12ShaderCompiler()
 bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
 	// DXC does not support < SM 6.0, use FXC
-	if (input.min_shader_model < qhenki::gfx::ShaderModel::SM_6_0)
+	if (input.min_shader_model < ShaderModel::SM_6_0)
 	{
 		return m_d3d11_shader_compiler_.compile(input, output);
 	}

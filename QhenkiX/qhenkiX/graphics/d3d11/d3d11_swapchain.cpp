@@ -1,8 +1,10 @@
 ﻿#include "d3d11_swapchain.h"
 #include "d3d11_context.h"
 
-bool D3D11Swapchain::create(qhenki::gfx::SwapchainDesc desc, DisplayWindow& window,
-                            IDXGIFactory2* const dxgi_factory, ID3D11Device* const device, unsigned buffer_count, unsigned& frame_index)
+using namespace qhenki::gfx;
+
+bool D3D11Swapchain::create(const SwapchainDesc& desc, DisplayWindow& window, IDXGIFactory2* const dxgi_factory,
+                            ID3D11Device* const device, unsigned& frame_index)
 {
     frame_index = 0;
     DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor =
@@ -16,7 +18,7 @@ bool D3D11Swapchain::create(qhenki::gfx::SwapchainDesc desc, DisplayWindow& wind
             .Quality = 0
         },
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-        .BufferCount = buffer_count,
+        .BufferCount = desc.buffer_count,
         .Scaling = DXGI_SCALING_STRETCH,
         .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
         .Flags = {},

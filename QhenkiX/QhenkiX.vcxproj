@@ -181,7 +181,7 @@
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp" />
-    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_heap.cpp" />
+    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\filehelper.cpp" />
     <ClCompile Include="src\D3D12MemAlloc.cpp" />
@@ -229,8 +229,10 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
-    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_heap.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h" />
     <ClInclude Include="qhenkiX\graphics\shared\d3d_helper.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />

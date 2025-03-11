@@ -13,10 +13,11 @@ namespace qhenki::gfx
 
 	enum BufferVisibility : uint8_t
 	{
-		GPU_ONLY = 0,
-		// CPU_SEQUENTIAL is for buffers that are written to by the CPU sequentially
+		// Device local memory. Can be & with other visibilities to try to get BAR memory
+		GPU = 0,
+		// Host Visible: Written to by the CPU sequentially
 		CPU_SEQUENTIAL = 1 << 0,
-		// CPU_RANDOM is for buffers that are written to by the CPU randomly
+		// Host Visible: Written to by the CPU randomly. Cached randomly, try to avoid using this
 		CPU_RANDOM = 1 << 1,
 	};
 

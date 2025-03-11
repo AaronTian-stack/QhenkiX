@@ -26,17 +26,16 @@ void Application::init_display_window()
 
 void Application::run(const qhenki::gfx::API api)
 {
-	OutputDebugString(L"Qhenki D3D12: test\n");
 	m_graphics_api_ = api;
 	m_main_thread_id = std::this_thread::get_id();
 	init_display_window();
 	switch (api)
 	{
 	case qhenki::gfx::D3D11:
-		m_context_ = mkU<D3D11Context>();
+		m_context_ = mkU<qhenki::gfx::D3D11Context>();
 		break;
 	case qhenki::gfx::D3D12:
-		m_context_ = mkU<D3D12Context>();
+		m_context_ = mkU<qhenki::gfx::D3D12Context>();
 		break;
 	case qhenki::gfx::Vulkan: 
 	default:
@@ -44,15 +43,29 @@ void Application::run(const qhenki::gfx::API api)
 	}
 	m_context_->create();
 
-	m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, m_graphics_queue_);
+	throw_if_failed(m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, m_graphics_queue_));
 
 	const qhenki::gfx::SwapchainDesc swapchain_desc =
 	{
 		.width = m_window_.m_display_info_.width,
 		.height = m_window_.m_display_info_.height,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
+		.buffer_count = m_frames_in_flight,
 	};
-	m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, m_graphics_queue_, m_frames_in_flight, m_frame_index_);
+	throw_if_failed(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
+		m_graphics_queue_, m_frame_index_));
+
+	qhenki::gfx::DescriptorHeapDesc rtv_heap_desc
+	{
+		.type = qhenki::gfx::DescriptorHeapDesc::Type::RTV,
+		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
+		.descriptor_count = 1000, // TODO: expose max count to context. For now try to stay under 2048
+	};
+	throw_if_failed(m_context_->create_descriptor_heap(rtv_heap_desc, rtv_heap));
+	
+	// Make swapchain RTVs
+	throw_if_failed(m_context_->create_swapchain_descriptors(m_swapchain_, rtv_heap, swapchain_targets));
+
 	create();
 	// Starts the main loop
     bool quit = false;

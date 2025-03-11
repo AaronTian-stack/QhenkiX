@@ -4,10 +4,13 @@
 
 using Microsoft::WRL::ComPtr;
 
-struct D3D12Pipeline
+namespace qhenki::gfx
 {
-	std::vector<D3D12_INPUT_ELEMENT_DESC> input_layout_desc; // Clear this after creation!
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc = nullptr; // Temp for deferred compilation
-	ComPtr<ID3D12PipelineState> pipeline_state = nullptr;
-	bool deferred = false;
-};
+	struct D3D12Pipeline
+	{
+		std::vector<D3D12_INPUT_ELEMENT_DESC> input_layout_desc; // Clear this after creation!
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc = nullptr; // Temp for deferred compilation
+		ComPtr<ID3D12PipelineState> pipeline_state = nullptr;
+		bool deferred = false;
+	};
+}

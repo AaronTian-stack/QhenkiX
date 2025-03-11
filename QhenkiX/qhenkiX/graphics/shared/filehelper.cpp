@@ -6,6 +6,8 @@
 #include <locale>
 #include <windows.h>
 
+using namespace qhenki::util;
+
 std::optional<std::vector<uint8_t>> FileHelper::read_file(const std::wstring& path)
 {
     std::ifstream file(path, std::ios::binary | std::ios::ate);

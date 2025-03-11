@@ -3,10 +3,13 @@
 #include <string>
 #include <vector>
 
-class FileHelper
+namespace qhenki::util
 {
-public:
-	// read a file as a vector of bytes
-	static std::optional<std::vector<uint8_t>> read_file(const std::wstring& path);
-	static bool write_file(const std::wstring& path, const void* data, size_t size);
-};
+	class FileHelper
+	{
+	public:
+		// read a file as a vector of bytes
+		static std::optional<std::vector<uint8_t>> read_file(const std::wstring& path);
+		static bool write_file(const std::wstring& path, const void* data, size_t size);
+	};
+}
