@@ -13,8 +13,8 @@ using namespace DirectX;
 
 struct DisplayInfo
 {
-	int width;
-	int height;
+	unsigned int width;
+	unsigned int height;
 	int refresh_rate;
 	bool fullscreen;
 	bool undecorated;

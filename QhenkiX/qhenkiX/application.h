@@ -3,6 +3,7 @@
 #include "graphics/displaywindow.h"
 #include <smartpointer.h>
 #include "graphics/qhenki/context.h"
+#include "graphics/qhenki/descriptor_heap.h"
 #include <thread>
 
 namespace qhenki::gfx
@@ -33,6 +34,8 @@ protected:
 	uPtr<qhenki::gfx::Context> m_context_ = nullptr;
 	qhenki::gfx::Swapchain m_swapchain_{};
 	qhenki::gfx::Queue m_graphics_queue_{}; // A graphics queue is given to the application by default
+	qhenki::gfx::DescriptorHeap rtv_heap{};
+	qhenki::gfx::DescriptorTable swapchain_targets{};
 
 	virtual void init_display_window();
 

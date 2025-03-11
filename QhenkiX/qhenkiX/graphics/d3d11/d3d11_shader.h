@@ -11,22 +11,25 @@
 
 using Microsoft::WRL::ComPtr;
 
-struct D3D11VertexShader
+namespace qhenki::gfx
 {
-	ComPtr<ID3D11VertexShader> vertex_shader;
-	ComPtr<ID3DBlob> vertex_shader_blob;
-};
+	struct D3D11VertexShader
+	{
+		ComPtr<ID3D11VertexShader> vertex_shader;
+		ComPtr<ID3DBlob> vertex_shader_blob;
+	};
 
-class D3D11Shader
-{
-	qhenki::gfx::ShaderType m_type_;
-	std::variant<ComPtr<ID3D11PixelShader>, D3D11VertexShader> m_shader_;
+	class D3D11Shader
+	{
+		qhenki::gfx::ShaderType m_type_;
+		std::variant<ComPtr<ID3D11PixelShader>, D3D11VertexShader> m_shader_;
 
-public:
-	D3D11Shader(ID3D11Device* const device, const qhenki::gfx::ShaderType shader_type, const std::wstring& name, 
-		const CompilerOutput& output, bool& result);
+	public:
+		D3D11Shader(ID3D11Device* const device, const qhenki::gfx::ShaderType shader_type, const std::wstring& name,
+			const CompilerOutput& output, bool& result);
 
-	friend class D3D11Context;
-	friend struct D3D11GraphicsPipeline;
-};
+		friend class D3D11Context;
+		friend struct D3D11GraphicsPipeline;
+	};
+}
 

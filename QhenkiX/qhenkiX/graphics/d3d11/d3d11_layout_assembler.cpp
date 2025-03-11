@@ -4,6 +4,8 @@
 #include <d3dcompiler.h>
 #include <string>
 
+using namespace qhenki::gfx;
+
 template <typename T>
 void hash_combine(std::size_t& seed, const T& v) {
     std::hash<T> hasher;
@@ -59,7 +61,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::find_layout(const std::vector<D3D11_INP
 	return nullptr;
 }
 
-Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
+D3D11Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
 {
 	std::lock_guard lock(m_layout_mutex_);
 	if (m_layout_logical_map_.contains(layout)) return m_layout_logical_map_[layout];

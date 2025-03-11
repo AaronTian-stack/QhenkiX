@@ -1,5 +1,7 @@
 ﻿#include "d3d12_root_hasher.h"
 
+using namespace qhenki::gfx;
+
 uint64_t D3D12RootHasher::fnv1a_hash(const void* data, size_t size)
 {
     constexpr uint64_t FNV_OFFSET_BASIS = 14695981039346656037ULL;

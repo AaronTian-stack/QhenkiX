@@ -3,6 +3,8 @@
 #include <cassert>
 #include "d3d11_shader.h"
 
+using namespace qhenki::gfx;
+
 void D3D11GraphicsPipeline::bind(ID3D11DeviceContext* const context)
 {
 	if (const auto shader = static_cast<D3D11Shader*>(vertex_shader_))

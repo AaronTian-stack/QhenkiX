@@ -8,10 +8,11 @@ struct CompilerInput
 {
 	enum ShaderFlags : uint8_t
 	{
+		NONE = 0,
 		DEBUG = 1 << 1, // Extracts and saves debug PDB
 	};
 
-	ShaderFlags flags;
+	ShaderFlags flags{};
 	qhenki::gfx::ShaderType shader_type;
 	std::wstring path;
 	std::wstring entry_point = L"main";

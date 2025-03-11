@@ -5,15 +5,28 @@ void ExampleApp::create()
 	auto shader_model = m_context_->is_compatability() ? 
 		qhenki::gfx::ShaderModel::SM_5_0 : qhenki::gfx::ShaderModel::SM_6_0;
 
-	auto compiler_flags = CompilerInput::DEBUG;
+	auto compiler_flags = CompilerInput::NONE;
+
+	std::vector<std::wstring> defines;
+	defines.reserve(1);
+	if (m_context_->is_compatability())
+	{
+		defines.push_back(L"DX11");
+	}
+	else
+	{
+		defines.push_back(L"DX12");
+	}
+
 	// Create shaders
 	CompilerInput vertex_shader =
 	{
 		.flags = compiler_flags,
 		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
-		.path = L"base-shaders/BaseShader.vs.hlsl",
-		.entry_point = L"main",
+		.path = L"base-shaders/BaseShader.hlsl",
+		.entry_point = L"vs_main",
 		.min_shader_model = shader_model,
+		.defines = defines,
 	};
 	m_context_->create_shader_dynamic(nullptr, m_vertex_shader_, vertex_shader);
 
@@ -21,9 +34,10 @@ void ExampleApp::create()
 	{
 		.flags = compiler_flags,
 		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
-		.path = L"base-shaders/BaseShader.ps.hlsl",
-		.entry_point = L"main",
+		.path = L"base-shaders/BaseShader.hlsl",
+		.entry_point = L"ps_main",
 		.min_shader_model = shader_model,
+		.defines = defines,
 	};
 	m_context_->create_shader_dynamic(nullptr, m_pixel_shader_, pixel_shader);
 
@@ -36,9 +50,9 @@ void ExampleApp::create()
 	};
 	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_, nullptr, nullptr, L"triangle_pipeline");
 
-	//Create queue(s)
+	// Create queue(s)
 	m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, m_graphics_queue_);
-	//Allocate command pool(s)/allocator(s) from queue
+	// Allocate command pool(s)/allocator(s) from queue
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
 		m_context_->create_command_pool(m_cmd_pools_[i], m_graphics_queue_);
@@ -54,7 +68,7 @@ void ExampleApp::create()
 	{
 		.size = vertices.size() * sizeof(float),
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
-		.visibility = qhenki::gfx::BufferVisibility::GPU_ONLY
+		.visibility = qhenki::gfx::BufferVisibility::GPU
 	};
 	m_context_->create_buffer(desc, vertices.data(), m_vertex_buffer_, L"Interleaved Position/Color Buffer");
 
@@ -63,7 +77,7 @@ void ExampleApp::create()
 	{
 		.size = indices.size() * sizeof(uint32_t),
 		.usage = qhenki::gfx::BufferUsage::INDEX,
-		.visibility = qhenki::gfx::BufferVisibility::GPU_ONLY
+		.visibility = qhenki::gfx::BufferVisibility::GPU
 	};
 	m_context_->create_buffer(index_desc, indices.data(), m_index_buffer_, L"Index Buffer");
 
@@ -124,7 +138,8 @@ void ExampleApp::render()
 	*/
 
 	const unsigned int offset = 0;
-	m_context_->bind_vertex_buffers(cmd_list, 0, 1, &m_vertex_buffer_, &offset);
+	const unsigned int stride = 6 * sizeof(float);
+	m_context_->bind_vertex_buffers(cmd_list, 0, 1, &m_vertex_buffer_, &stride, &offset);
 	m_context_->bind_index_buffer(cmd_list, m_index_buffer_, DXGI_FORMAT_R32_UINT, 0);
 
 	// Draw

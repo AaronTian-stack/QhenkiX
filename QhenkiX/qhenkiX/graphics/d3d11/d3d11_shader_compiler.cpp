@@ -9,6 +9,8 @@
 #include <graphics/shared/filehelper.h>
 
 using Microsoft::WRL::ComPtr;
+using namespace qhenki::gfx;
+using namespace qhenki::util;
 
 bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
@@ -22,7 +24,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_DEBUG_NAME_FOR_SOURCE;
 	}
 
-	if (input.min_shader_model > qhenki::gfx::ShaderModel::SM_5_0)
+	if (input.min_shader_model > ShaderModel::SM_5_0)
 	{
 		output.error_message = "D3D11ShaderCompiler: Shader model not supported";
 		return false;

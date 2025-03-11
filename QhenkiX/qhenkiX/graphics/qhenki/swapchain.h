@@ -8,9 +8,10 @@ namespace qhenki::gfx
 {
 	struct SwapchainDesc
 	{
-		int width;
-		int height;
+		unsigned int width;
+		unsigned int height;
 		DXGI_FORMAT format;
+		unsigned int buffer_count;
 	};
 	struct Swapchain
 	{

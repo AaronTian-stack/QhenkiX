@@ -8,6 +8,8 @@
 #include "d3d11_pipeline.h"
 #include "d3d11_shader_compiler.h"
 
+using namespace qhenki::gfx;
+
 void D3D11Context::create()
 {
     // Create factory
@@ -86,16 +88,16 @@ void D3D11Context::create()
 	shader_compiler = mkU<D3D11ShaderCompiler>();
 }
 
-bool D3D11Context::create_swapchain(DisplayWindow& window, const qhenki::gfx::SwapchainDesc& swapchain_desc, qhenki::gfx::Swapchain& swapchain, qhenki::gfx::Queue
-                                    & direct_queue, const unsigned buffer_count, unsigned& frame_index)
+bool D3D11Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
+	Queue& direct_queue, unsigned& frame_index)
 {
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
 	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), buffer_count, frame_index);
+	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), frame_index);
 }
 
-bool D3D11Context::resize_swapchain(qhenki::gfx::Swapchain& swapchain, int width, int height)
+bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height)
 {
 	wait_all();
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
@@ -104,7 +106,12 @@ bool D3D11Context::resize_swapchain(qhenki::gfx::Swapchain& swapchain, int width
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::gfx::Shader& shader, const CompilerInput& input)
+bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap, DescriptorTable& table)
+{
+	return true; // D3D11 does not have descriptors
+}
+
+bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader& shader, const CompilerInput& input)
 {
 	if (compiler == nullptr)
 	{
@@ -127,9 +134,9 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, qhenki::gfx::
     return result;
 }
 
-bool D3D11Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc, qhenki::gfx::GraphicsPipeline& pipeline, 
-	qhenki::gfx::Shader& vertex_shader, qhenki::gfx::Shader& pixel_shader,
-	qhenki::gfx::PipelineLayout* in_layout, qhenki::gfx::PipelineLayout* out_layout, wchar_t const* debug_name)
+bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, 
+	Shader& vertex_shader, Shader& pixel_shader,
+	PipelineLayout* in_layout, PipelineLayout* out_layout, wchar_t const* debug_name)
 {
 	// D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
 	pipeline.internal_state = mkS<D3D11GraphicsPipeline>();
@@ -243,7 +250,7 @@ bool D3D11Context::create_pipeline(const qhenki::gfx::GraphicsPipelineDesc& desc
     return succeeded;
 }
 
-bool D3D11Context::bind_pipeline(qhenki::gfx::CommandList& cmd_list, qhenki::gfx::GraphicsPipeline& pipeline)
+bool D3D11Context::bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline)
 {
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
 	assert(d3d11_pipeline);
@@ -251,7 +258,12 @@ bool D3D11Context::bind_pipeline(qhenki::gfx::CommandList& cmd_list, qhenki::gfx
 	return true;
 }
 
-bool D3D11Context::create_buffer(const qhenki::gfx::BufferDesc& desc, const void* data, qhenki::gfx::Buffer& buffer, wchar_t const* debug_name)
+bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
+{
+	return true; // D3D11 does not have descriptors
+}
+
+bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name)
 {
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
@@ -262,31 +274,31 @@ bool D3D11Context::create_buffer(const qhenki::gfx::BufferDesc& desc, const void
 	bufferInfo.ByteWidth = desc.size;
 	switch(desc.usage)
 	{
-		case qhenki::gfx::BufferUsage::VERTEX:
+		case BufferUsage::VERTEX:
 			bufferInfo.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			break;
-		case qhenki::gfx::BufferUsage::INDEX:
+		case BufferUsage::INDEX:
 			bufferInfo.BindFlags = D3D11_BIND_INDEX_BUFFER;
 			break;
-		case qhenki::gfx::BufferUsage::UNIFORM:
+		case BufferUsage::UNIFORM:
 			bufferInfo.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 			break;
-		case qhenki::gfx::BufferUsage::STORAGE:
+		case BufferUsage::STORAGE:
 			bufferInfo.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 			break;
-		case qhenki::gfx::BufferUsage::INDIRECT:
+		case BufferUsage::INDIRECT:
 			bufferInfo.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
 			break;
-		case qhenki::gfx::BufferUsage::TRANSFER_SRC:
-		case qhenki::gfx::BufferUsage::TRANSFER_DST:
+		case BufferUsage::TRANSFER_SRC:
+		case BufferUsage::TRANSFER_DST:
 			bufferInfo.BindFlags = 0; // TODO: check this
 			break;
 		default:
 			OutputDebugString(L"Qhenki D3D11: buffer type not implemented");
 			throw std::runtime_error("D3D11: buffer type not implemented");
 	}
-	if ((desc.visibility & qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL) 
-		|| (desc.visibility & qhenki::gfx::BufferVisibility::CPU_RANDOM))
+	if ((desc.visibility & BufferVisibility::CPU_SEQUENTIAL) 
+		|| (desc.visibility & BufferVisibility::CPU_RANDOM))
 	{
 		bufferInfo.Usage = D3D11_USAGE_DYNAMIC;
 		bufferInfo.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -326,7 +338,7 @@ bool D3D11Context::create_buffer(const qhenki::gfx::BufferDesc& desc, const void
 	return true;
 }
 
-void* D3D11Context::map_buffer(const qhenki::gfx::Buffer& buffer)
+void* D3D11Context::map_buffer(const Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
 	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
@@ -344,69 +356,29 @@ void* D3D11Context::map_buffer(const qhenki::gfx::Buffer& buffer)
 	return mapped_resource.pData;
 }
 
-void D3D11Context::unmap_buffer(const qhenki::gfx::Buffer& buffer)
+void D3D11Context::unmap_buffer(const Buffer& buffer)
 {
 	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
 	assert(buffer_d3d11);
 	m_device_context_->Unmap(buffer_d3d11->Get(), 0);
 }
 
-void D3D11Context::bind_vertex_buffers(qhenki::gfx::CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const qhenki::gfx::Buffer* buffers, const
-                                       unsigned* offsets)
+void D3D11Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const UINT* strides, const
+	unsigned* offsets)
 {
-	assert(buffer_count <= 16);
-	std::array<ID3D11Buffer**, 16> buffer_d3d11{};
+	assert(buffer_count <= D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
+	std::array<ID3D11Buffer**, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
 	for (unsigned int i = 0; i < buffer_count; i++)
 	{
 		auto buffer = static_cast<ComPtr<ID3D11Buffer>*>(buffers[i].internal_state.get());
 		assert(buffer);
 		buffer_d3d11[i] = buffer->GetAddressOf();
 	}
-	// strides must be fetched from current input layout
-	ComPtr<ID3D11InputLayout> input_layout;
-	m_device_context_->IAGetInputLayout(&input_layout);
-	assert(input_layout && "No Input Layout bound"); // if null then no input layout is bound
 
-	auto layout = m_layout_assembler_.find_layout(input_layout.Get());
-	assert(layout);
-
-	// linear search through the list of attributes and find the stride (size of input, float1/2/3/4) of the matching slot number
-	std::array<UINT, 16> strides{};
-	const auto& desc_vec = layout->desc;
-	for (unsigned int i = 0; i < buffer_count; i++)
-	{
-		const auto slot = start_slot + i; // Assumes 1 buffer per slot
-		for (const auto& desc : desc_vec)
-		{
-			bool found = false;
-			if (desc.InputSlot == slot)
-			{
-				switch (desc.Format)
-				{
-				case DXGI_FORMAT_R32G32B32A32_FLOAT:
-					strides[i] += 4 * sizeof(float);
-					break;
-				case DXGI_FORMAT_R32G32B32_FLOAT:
-					strides[i] += 3 * sizeof(float);
-					break;
-				case DXGI_FORMAT_R32G32_FLOAT:
-					strides[i] += 2 * sizeof(float);
-					break;
-				case DXGI_FORMAT_R32_FLOAT:
-					strides[i] += sizeof(float);
-					break;
-				default:
-					OutputDebugString(L"Qhenki D3D11: Unknown format in input layout");
-				}
-				found = true;
-			}
-			assert(found && "D3D11: Input slot not found in input layout");
-		}
-	}
-	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides.data(), offsets);
+	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides, offsets);
 }
 
-void D3D11Context::bind_index_buffer(qhenki::gfx::CommandList& cmd_list, const qhenki::gfx::Buffer& buffer, DXGI_FORMAT format,
+void D3D11Context::bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, DXGI_FORMAT format,
 	unsigned offset)
 {
 	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
@@ -414,24 +386,24 @@ void D3D11Context::bind_index_buffer(qhenki::gfx::CommandList& cmd_list, const q
 	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), format, offset);
 }
 
-bool D3D11Context::create_queue(const qhenki::gfx::QueueType type, qhenki::gfx::Queue& queue)
+bool D3D11Context::create_queue(const QueueType type, Queue& queue)
 {
 	return true; // D3D11 does not have queues
 }
 
-bool D3D11Context::create_command_pool(qhenki::gfx::CommandPool& command_pool, const qhenki::gfx::Queue& queue)
+bool D3D11Context::create_command_pool(CommandPool& command_pool, const Queue& queue)
 {
 	return true; // D3D11 does not have queues
 }
 
-bool D3D11Context::create_command_list(qhenki::gfx::CommandList& cmd_list,
-	const qhenki::gfx::CommandPool& command_pool)
+bool D3D11Context::create_command_list(CommandList& cmd_list,
+	const CommandPool& command_pool)
 {
 	return true;
 }
 
-void D3D11Context::start_render_pass(qhenki::gfx::CommandList& cmd_list, qhenki::gfx::Swapchain& swapchain,
-                                     const qhenki::gfx::RenderTarget* depth_stencil)
+void D3D11Context::start_render_pass(CommandList& cmd_list, Swapchain& swapchain,
+                                     const RenderTarget* depth_stencil)
 {
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto rtv = swap_d3d11->sc_render_target.Get();
@@ -440,8 +412,8 @@ void D3D11Context::start_render_pass(qhenki::gfx::CommandList& cmd_list, qhenki:
 	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
 
-void D3D11Context::start_render_pass(qhenki::gfx::CommandList& cmd_list, unsigned rt_count,
-                                     const qhenki::gfx::RenderTarget* rts, const qhenki::gfx::RenderTarget* depth_stencil)
+void D3D11Context::start_render_pass(CommandList& cmd_list, unsigned rt_count,
+                                     const RenderTarget* rts, const RenderTarget* depth_stencil)
 {
     std::array<ID3D11RenderTargetView**, 8> rtvs{};
     // Clear render target views (if applicable)
@@ -486,12 +458,12 @@ void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
 	m_device_context_->RSSetViewports(count, m_viewports_.data());
 }
 
-void D3D11Context::draw(qhenki::gfx::CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void D3D11Context::draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
 	m_device_context_->Draw(vertex_count, start_vertex_offset);
 }
 
-void D3D11Context::draw_indexed(qhenki::gfx::CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
+void D3D11Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
 	m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
@@ -502,7 +474,7 @@ void D3D11Context::wait_all()
     m_device_context_->Flush();
 }
 
-bool D3D11Context::present(qhenki::gfx::Swapchain& swapchain)
+bool D3D11Context::present(Swapchain& swapchain)
 {
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto result = swap_d3d11->swapchain->Present(1, 0);

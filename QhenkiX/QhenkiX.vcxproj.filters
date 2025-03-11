@@ -60,7 +60,7 @@
     <ClCompile Include="src\D3D12MemAlloc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_heap.cpp">
+    <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp">
@@ -158,7 +158,7 @@
     <ClInclude Include="include\D3D12MemAlloc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_heap.h">
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\boost\config.hpp">
@@ -255,6 +255,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

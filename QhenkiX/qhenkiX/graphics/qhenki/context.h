@@ -1,4 +1,6 @@
 #pragma once
+#include <stdexcept>
+
 #include "shader.h"
 #include "swapchain.h"
 #include <graphics/displaywindow.h>
@@ -10,6 +12,8 @@
 #include "queue.h"
 #include "render_target.h"
 #include "shader_compiler.h"
+#include "descriptor_heap.h"
+#include "descriptor_table.h"
 
 namespace qhenki::gfx
 {
@@ -25,8 +29,9 @@ namespace qhenki::gfx
 
 		// Creates swapchain based off specified description
 		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
-		                              Queue& direct_queue, unsigned buffer_count, unsigned& frame_index) = 0;
+		                              Queue& direct_queue, unsigned& frame_index) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
+		virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap, DescriptorTable& table) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
 		virtual uPtr<ShaderCompiler> create_shader_compiler() = 0;
@@ -46,6 +51,8 @@ namespace qhenki::gfx
 		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, PipelineLayout* in_layout, PipelineLayout* out_layout, wchar_t const* debug_name = nullptr) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;
 
+		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
+
 		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
 
         /**
@@ -55,7 +62,7 @@ namespace qhenki::gfx
 		virtual void* map_buffer(const Buffer& buffer) = 0;
 		virtual void unmap_buffer(const Buffer& buffer) = 0;
 
-		virtual void bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const unsigned* offsets) = 0;
+		virtual void bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const UINT* strides, const unsigned* offsets) = 0;
 		virtual void bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, DXGI_FORMAT format, unsigned offset) = 0;
 		// TODO: bind compute pipeline
 
@@ -79,4 +86,12 @@ namespace qhenki::gfx
 		virtual void wait_all() = 0;
 		virtual ~Context() = default;
 	};
+}
+
+inline void throw_if_failed(bool result)
+{
+	if (!result)
+	{
+		throw std::runtime_error("Something went wrong!\n");
+	}
 }
