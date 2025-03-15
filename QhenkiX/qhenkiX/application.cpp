@@ -63,8 +63,8 @@ void Application::run(const qhenki::gfx::API api)
 	};
 	throw_if_failed(m_context_->create_descriptor_heap(rtv_heap_desc, rtv_heap));
 	
-	// Make swapchain RTVs
-	throw_if_failed(m_context_->create_swapchain_descriptors(m_swapchain_, rtv_heap, swapchain_targets));
+	// Make swapchain RTVs (stored internally)
+	throw_if_failed(m_context_->create_swapchain_descriptors(m_swapchain_, rtv_heap));
 
 	create();
 	// Starts the main loop
@@ -88,6 +88,8 @@ void Application::run(const qhenki::gfx::API api)
         }
 
         render();
+		// Prepare to render the next frame
+		// TODO: move to next frame function?
     }
 	m_context_->wait_all();
 	destroy();

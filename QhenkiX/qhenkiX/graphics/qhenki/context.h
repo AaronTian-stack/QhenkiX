@@ -13,7 +13,6 @@
 #include "render_target.h"
 #include "shader_compiler.h"
 #include "descriptor_heap.h"
-#include "descriptor_table.h"
 
 namespace qhenki::gfx
 {
@@ -31,7 +30,7 @@ namespace qhenki::gfx
 		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
 		                              Queue& direct_queue, unsigned& frame_index) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
-		virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap, DescriptorTable& table) = 0;
+		virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) = 0;
 		virtual bool present(Swapchain& swapchain) = 0;
 
 		virtual uPtr<ShaderCompiler> create_shader_compiler() = 0;
@@ -63,7 +62,7 @@ namespace qhenki::gfx
 		virtual void unmap_buffer(const Buffer& buffer) = 0;
 
 		virtual void bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const UINT* strides, const unsigned* offsets) = 0;
-		virtual void bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, DXGI_FORMAT format, unsigned offset) = 0;
+		virtual void bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, IndexType format, unsigned offset) = 0;
 		// TODO: bind compute pipeline
 
 		virtual bool create_queue(QueueType type, Queue& queue) = 0;
@@ -72,10 +71,10 @@ namespace qhenki::gfx
 		virtual bool create_command_list(CommandList& cmd_list, const CommandPool& command_pool) = 0;
 
 		// TODO: optional clear
-		virtual void start_render_pass(CommandList& cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil) = 0;
+		virtual void start_render_pass(CommandList& cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) = 0;
 		virtual void start_render_pass(CommandList& cmd_list, unsigned int rt_count, const RenderTarget* rts, const RenderTarget* depth_stencil) = 0;
 
-		virtual void set_viewports(unsigned count, const D3D12_VIEWPORT* viewport) = 0;
+		virtual void set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;
 
 		virtual void draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) = 0;
 		virtual void draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset, int32_t base_vertex_offset) = 0;

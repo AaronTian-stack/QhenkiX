@@ -40,7 +40,7 @@ bool D3D12DescriptorHeap::allocate(D3D12MA::VirtualAllocation& alloc, UINT64& al
 	return true;
 }
 
-bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle, size_t num_descriptor_offset)
+bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle, size_t offset_bytes, size_t num_descriptor_offset)
 {
 	if (m_desc_.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
 	{
@@ -48,6 +48,6 @@ bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle
 		return false;
 	}
 	handle = m_heap_->GetCPUDescriptorHandleForHeapStart();
-	handle.ptr += num_descriptor_offset * m_descriptor_size_;
+	handle.ptr += offset_bytes + num_descriptor_offset * m_descriptor_size_;
 	return true;
 }
