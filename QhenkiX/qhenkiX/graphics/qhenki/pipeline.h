@@ -3,6 +3,8 @@
 #include <d3d12.h>
 #include <optional>
 
+#include "enums.h"
+
 namespace qhenki::gfx
 {
 	struct RasterizerDesc
@@ -46,7 +48,7 @@ namespace qhenki::gfx
 		std::optional<RasterizerDesc> rasterizer_state;
 		std::optional<InputLayoutDesc> input_layout;
 		std::optional<DXGI_SAMPLE_DESC> multisample_desc;
-		D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
 		int num_render_targets = -1; // If this is <= 0, pipeline is lazily created based off what render target is bound at draw time
 		std::array<DXGI_FORMAT, 8> rtv_formats{};
 		BOOL interleaved = FALSE; // Whether vertex data is interleaved or not, used during reflection

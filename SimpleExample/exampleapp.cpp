@@ -95,7 +95,7 @@ void ExampleApp::render()
 	const auto seconds_elapsed = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
 	// Update matrices
-	const XMVECTORF32 eye_pos = { sin(seconds_elapsed) * 2.0f, 0.0f, cos(seconds_elapsed) * 2.0f };
+	const XMVECTORF32 eye_pos = { sinf(seconds_elapsed) * 2.0f, 0.0f, cosf(seconds_elapsed) * 2.0f };
 	const XMVECTORF32 focus_pos = { 0.0f, 0.0f, 0.0f };
 	const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f };
     const auto view = XMMatrixLookAtLH(eye_pos, focus_pos, up);
@@ -111,11 +111,17 @@ void ExampleApp::render()
 	memcpy(buffer_pointer, &matrices_, sizeof(CameraMatrices));
 	m_context_->unmap_buffer(matrix_buffer_);
 
+	// TODO: free command pool
+
+
+	// TODO: free command pool
+
+
 	qhenki::gfx::CommandList cmd_list;
 	m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]);
 
 	// Clear back buffer / Start render pass
-	m_context_->start_render_pass(cmd_list, m_swapchain_, nullptr);
+	m_context_->start_render_pass(cmd_list, m_swapchain_, nullptr, get_frame_index());
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport =
@@ -127,7 +133,7 @@ void ExampleApp::render()
 		.MinDepth = 0.0f,
 		.MaxDepth = 1.0f,
 	};
-	m_context_->set_viewports(1, &viewport);
+	m_context_->set_viewports(cmd_list, 1, &viewport);
 	// Bind pipeline
 	m_context_->bind_pipeline(cmd_list, m_pipeline_);
 
@@ -140,14 +146,19 @@ void ExampleApp::render()
 	const unsigned int offset = 0;
 	const unsigned int stride = 6 * sizeof(float);
 	m_context_->bind_vertex_buffers(cmd_list, 0, 1, &m_vertex_buffer_, &stride, &offset);
-	m_context_->bind_index_buffer(cmd_list, m_index_buffer_, DXGI_FORMAT_R32_UINT, 0);
+	m_context_->bind_index_buffer(cmd_list, m_index_buffer_, qhenki::gfx::IndexType::UINT32, 0);
 
 	// Draw
 	m_context_->draw_indexed(cmd_list, 3, 0, 0);
 	// TODO: submit command list
 
+	// TODO: reset the list after submission to free memory?
+
 	// Present
 	m_context_->present(m_swapchain_);
+
+	// TODO: signal fence
+	// update frame index
 }
 
 void ExampleApp::resize(int width, int height)

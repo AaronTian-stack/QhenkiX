@@ -7,6 +7,7 @@
 #include "d3d11_swapchain.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_shader_compiler.h"
+#include "graphics/shared/d3d_helper.h"
 
 using namespace qhenki::gfx;
 
@@ -106,7 +107,7 @@ bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height)
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap, DescriptorTable& table)
+bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap)
 {
 	return true; // D3D11 does not have descriptors
 }
@@ -378,12 +379,12 @@ void D3D11Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slo
 	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides, offsets);
 }
 
-void D3D11Context::bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, DXGI_FORMAT format,
-	unsigned offset)
+void D3D11Context::bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, IndexType format,
+                                     unsigned offset)
 {
 	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
 	assert(buffer_d3d11);
-	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), format, offset);
+	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), D3DHelper::get_dxgi_format(format), offset);
 }
 
 bool D3D11Context::create_queue(const QueueType type, Queue& queue)
@@ -403,12 +404,14 @@ bool D3D11Context::create_command_list(CommandList& cmd_list,
 }
 
 void D3D11Context::start_render_pass(CommandList& cmd_list, Swapchain& swapchain,
-                                     const RenderTarget* depth_stencil)
+                                     const RenderTarget* depth_stencil, UINT frame_index)
 {
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto rtv = swap_d3d11->sc_render_target.Get();
-	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f }; // TODO: clear color
+	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	// TODO: optional clear, user set values
 	m_device_context_->ClearRenderTargetView(rtv, clear_color);
+
 	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
 
@@ -440,7 +443,7 @@ void D3D11Context::start_render_pass(CommandList& cmd_list, unsigned rt_count,
     m_device_context_->OMSetRenderTargets(rt_count, rtvs[0], ds);
 }
 
-void D3D11Context::set_viewports(unsigned count, const D3D12_VIEWPORT* viewport)
+void D3D11Context::set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport)
 {
     for (unsigned int i = 0; i < count; i++)
     {

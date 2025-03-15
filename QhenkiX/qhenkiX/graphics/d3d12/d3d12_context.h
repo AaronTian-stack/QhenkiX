@@ -12,6 +12,7 @@
 #include "d3d12_root_hasher.h"
 #include "graphics/d3d11/d3d11_shader_compiler.h"
 #include "graphics/qhenki/context.h"
+#include "graphics/qhenki/descriptor_table.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -33,6 +34,7 @@ namespace qhenki::gfx
 
 		ComPtr<IDXGISwapChain3> m_swapchain_;
 		std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers_;
+		DescriptorTable m_swapchain_descriptors_{};
 
 		std::mutex m_pipeline_desc_mutex_;
 		boost::object_pool<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_pipeline_desc_pool_;
@@ -55,7 +57,7 @@ namespace qhenki::gfx
 		bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, 
 			Queue& direct_queue, unsigned& frame_index) override;
 		bool resize_swapchain(Swapchain& swapchain, int width, int height) override;
-		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap, DescriptorTable& table) override;
+		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) override;
 		bool present(Swapchain& swapchain) override;
 
 		uPtr<ShaderCompiler> create_shader_compiler() override;
@@ -77,19 +79,18 @@ namespace qhenki::gfx
 		void bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
 			const Buffer* buffers, const UINT* strides, const unsigned* offsets) override;
 
-		void bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, DXGI_FORMAT format,
-			unsigned offset) override;
+		void bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, IndexType format,
+		                       unsigned offset) override;
 
 		bool create_queue(QueueType type, Queue& queue) override;
 		bool create_command_pool(CommandPool& command_pool, const Queue& queue) override;
 		bool create_command_list(CommandList& cmd_list, const CommandPool& command_pool) override;
 
-		void start_render_pass(CommandList& cmd_list, Swapchain& swapchain,
-			const RenderTarget* depth_stencil) override;
+		void start_render_pass(CommandList& cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) override;
 
 		void start_render_pass(CommandList& cmd_list, unsigned rt_count, const RenderTarget* rts, const RenderTarget* depth_stencil) override;
 
-		void set_viewports(unsigned count, const D3D12_VIEWPORT* viewport) override;
+		void set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport) override;
 
 		void draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) override;
 		void draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset, int32_t base_vertex_offset) override;

@@ -263,5 +263,8 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\enums.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -4,7 +4,7 @@
 
 using namespace qhenki::gfx;
 
-const wchar_t* D3DHelper::get_shader_model_wchar(const qhenki::gfx::ShaderType type, const qhenki::gfx::ShaderModel model)
+const wchar_t* D3DHelper::get_shader_model_wchar(const ShaderType type, const ShaderModel model)
 {
 	switch (type)
 	{
@@ -80,6 +80,7 @@ const wchar_t* D3DHelper::get_shader_model_wchar(const qhenki::gfx::ShaderType t
 	default:
 		throw std::runtime_error("D3DHelper: not implemented");
 	}
+	return nullptr;
 }
 
 const char* D3DHelper::get_shader_model_char(const ShaderType type,
@@ -157,5 +158,34 @@ const char* D3DHelper::get_shader_model_char(const ShaderType type,
 	default:
 		throw std::runtime_error("D3DHelper: not implemented");
 	}
+	return nullptr;
 }
 
+DXGI_FORMAT D3DHelper::get_dxgi_format(const IndexType format)
+{
+	if (format == IndexType::UINT16)
+	{
+		return DXGI_FORMAT_R16_UINT;
+	}
+	return DXGI_FORMAT_R32_UINT;
+}
+
+D3D12_PRIMITIVE_TOPOLOGY D3DHelper::get_primitive_topology(const PrimitiveTopology topology)
+{
+	switch (topology)
+	{
+	case PrimitiveTopology::POINT_LIST:
+		return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+	case PrimitiveTopology::LINE_LIST:
+		return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+	case PrimitiveTopology::LINE_STRIP:
+		return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+	case PrimitiveTopology::TRIANGLE_LIST:
+		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	case PrimitiveTopology::TRIANGLE_STRIP:
+		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+	default:
+		throw std::runtime_error("D3DHelper: Invalid primitive topology");
+	}
+	return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+}
