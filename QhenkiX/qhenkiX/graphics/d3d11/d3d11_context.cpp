@@ -400,7 +400,17 @@ bool D3D11Context::create_command_pool(CommandPool& command_pool, const Queue& q
 bool D3D11Context::create_command_list(CommandList& cmd_list,
 	const CommandPool& command_pool)
 {
-	return true;
+	return true; // D3D11 does not have command lists
+}
+
+bool D3D11Context::close_command_list(CommandList& cmd_list)
+{
+	return true; // D3D11 does not have command lists
+}
+
+bool D3D11Context::reset_command_pool(CommandPool& command_pool)
+{
+	return true; // D3D11 does not have command pools
 }
 
 void D3D11Context::start_render_pass(CommandList& cmd_list, Swapchain& swapchain,
@@ -461,6 +471,12 @@ void D3D11Context::set_viewports(CommandList& list, unsigned count, const D3D12_
 	m_device_context_->RSSetViewports(count, m_viewports_.data());
 }
 
+void D3D11Context::set_scissor_rects(CommandList& list, unsigned count, const D3D12_RECT* scissor_rect)
+{
+	// D3D12_RECT = D3D11_RECT = RECT
+	m_device_context_->RSSetScissorRects(count, scissor_rect);
+}
+
 void D3D11Context::draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
 	m_device_context_->Draw(vertex_count, start_vertex_offset);
@@ -470,6 +486,11 @@ void D3D11Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uin
 	int32_t base_vertex_offset)
 {
 	m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
+}
+
+void D3D11Context::submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue)
+{
+	// D3D11 does not have command lists
 }
 
 void D3D11Context::wait_all()
