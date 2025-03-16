@@ -32,7 +32,7 @@ ID3D12RootSignature* D3D12RootHasher::add_root_signature(ID3D12Device* device, c
 	if (m_root_map_.contains(hash))
 		return nullptr;
 	ComPtr<ID3D12RootSignature> root_signature;
-	if (FAILED(device->CreateRootSignature(0, root_data, root_size, IID_PPV_ARGS(root_signature.GetAddressOf()))))
+	if (FAILED(device->CreateRootSignature(0, root_data, root_size, IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
 	{
 		return nullptr;
 	}

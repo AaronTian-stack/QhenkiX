@@ -46,7 +46,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 			blob->GetBufferPointer(),
 			blob->GetBufferSize(),
 			nullptr,
-			std::get<ComPtr<ID3D11PixelShader>>(m_shader_).GetAddressOf())))
+			std::get<ComPtr<ID3D11PixelShader>>(m_shader_).ReleaseAndGetAddressOf())))
 		{
 			result = false;
 		}

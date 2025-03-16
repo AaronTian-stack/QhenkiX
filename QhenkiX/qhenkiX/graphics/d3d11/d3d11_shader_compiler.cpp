@@ -104,7 +104,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	// Get the root signature
 	// The shader might not have a root signature (e.g. D3D11 shaders)
 	D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), D3D_BLOB_ROOT_SIGNATURE, 0, 
-		d3d_shader_output->root_signature_blob.GetAddressOf());
+		d3d_shader_output->root_signature_blob.ReleaseAndGetAddressOf());
 
 	if (input.flags & CompilerInput::DEBUG)
 	{
@@ -112,10 +112,10 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		ComPtr<ID3DBlob> debug_info_blob;
 		// PDB Blob
 		D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), 
-			D3D_BLOB_PDB, 0, debug_info_blob.GetAddressOf());
+			D3D_BLOB_PDB, 0, debug_info_blob.ReleaseAndGetAddressOf());
 		// Generated PDB path
 		D3DGetBlobPart(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), 
-			D3D_BLOB_DEBUG_NAME, 0, debug_info_path.GetAddressOf());
+			D3D_BLOB_DEBUG_NAME, 0, debug_info_path.ReleaseAndGetAddressOf());
 
 		// Convert ID3DBlob to wstring
 		const ShaderDebugName* pDebugNameData = reinterpret_cast<const ShaderDebugName*>(debug_info_path->GetBufferPointer());

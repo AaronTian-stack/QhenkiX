@@ -7,7 +7,6 @@
 #include "d3d12_shader_compiler.h"
 #include "graphics/d3d11/d3d11_shader.h"
 #include <application.h>
-#include <iostream>
 
 #include "d3d12_descriptor_heap.h"
 #include "graphics/shared/d3d_helper.h"
@@ -156,7 +155,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 		&swap_chain_descriptor,
 		nullptr,
 		nullptr,
-		swapchain1.GetAddressOf()
+		swapchain1.ReleaseAndGetAddressOf()
 	)))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create Swapchain");
@@ -761,7 +760,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		&resource_desc,
 		initial_state,
 		nullptr,
-		buffer_d3d12->GetAddressOf(),
+		buffer_d3d12->ReleaseAndGetAddressOf(),
 		IID_NULL, NULL)))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create buffer\n");
@@ -904,7 +903,7 @@ bool D3D12Context::create_queue(const QueueType type, Queue& queue)
 	queue.internal_state = mkS<ComPtr<ID3D12CommandQueue>>();
 	const auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
 	assert(queue_d3d12);
-	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(queue_d3d12->GetAddressOf()))))
+	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(queue_d3d12->ReleaseAndGetAddressOf()))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create command queue\n");
 		return false;
@@ -931,14 +930,13 @@ bool D3D12Context::create_command_pool(CommandPool& command_pool, const Queue& q
 
 	command_pool.queue = &queue;
 	command_pool.internal_state = mkS<ComPtr<ID3D12CommandAllocator>>();
-	auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->GetAddressOf();
+	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get());
 
-	if (FAILED(m_device_->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator))))
+	if (FAILED(m_device_->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator->ReleaseAndGetAddressOf()))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create command allocator\n");
 		return false;
 	}
-
 	return true;
 }
 
@@ -961,12 +959,10 @@ bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool&
 	}
 	const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
 	if FAILED(m_device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator->Get(),
-		nullptr, IID_PPV_ARGS(d3d12_cmd_list->GetAddressOf())))
+		nullptr, IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf())))
 	{
 		return false;
 	}
-	// print out address of the command list for debug
-	std::cerr << "Command list address: " << d3d12_cmd_list->Get() << std::endl;
 	return true;
 }
 
