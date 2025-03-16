@@ -7,6 +7,8 @@
 #include "d3d12_shader_compiler.h"
 #include "graphics/d3d11/d3d11_shader.h"
 #include <application.h>
+#include <iostream>
+
 #include "d3d12_descriptor_heap.h"
 #include "graphics/shared/d3d_helper.h"
 
@@ -152,7 +154,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 		queue->Get(),        // SwapChain needs the queue so that it can force a flush on it.
 		window.get_window_handle(),
 		&swap_chain_descriptor,
-		&swap_chain_fullscreen_descriptor,
+		nullptr,
 		nullptr,
 		swapchain1.GetAddressOf()
 	)))
@@ -238,8 +240,8 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
 
 bool D3D12Context::present(Swapchain& swapchain)
 {
-	assert(false);
-	return false;
+	const auto result = m_swapchain_->Present(1, 0);
+	return result == S_OK;
 }
 
 std::unique_ptr<ShaderCompiler> D3D12Context::create_shader_compiler()
@@ -902,7 +904,7 @@ bool D3D12Context::create_queue(const QueueType type, Queue& queue)
 	queue.internal_state = mkS<ComPtr<ID3D12CommandQueue>>();
 	const auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
 	assert(queue_d3d12);
-	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&*queue_d3d12))))
+	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(queue_d3d12->GetAddressOf()))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create command queue\n");
 		return false;
@@ -942,7 +944,7 @@ bool D3D12Context::create_command_pool(CommandPool& command_pool, const Queue& q
 
 bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool& command_pool)
 {
-	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->Get();
+	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get());
 	assert(command_allocator);
 	// create the appropriate command list type
 	switch (command_pool.queue->type)
@@ -958,9 +960,35 @@ bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool&
 		throw std::runtime_error("D3D12: Not implemented command list type");
 	}
 	const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
-	if FAILED(m_device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator, 
+	if FAILED(m_device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator->Get(),
 		nullptr, IID_PPV_ARGS(d3d12_cmd_list->GetAddressOf())))
 	{
+		return false;
+	}
+	// print out address of the command list for debug
+	std::cerr << "Command list address: " << d3d12_cmd_list->Get() << std::endl;
+	return true;
+}
+
+bool D3D12Context::close_command_list(CommandList& cmd_list)
+{
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	assert(cmd_list_d3d12);
+	if (FAILED(cmd_list_d3d12->Get()->Close()))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to close command list\n");
+		return false;
+	}
+	return true;
+}
+
+bool D3D12Context::reset_command_pool(CommandPool& command_pool)
+{
+	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->Get();
+	assert(command_allocator);
+	if (FAILED(command_allocator->Reset()))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to reset command allocator\n");
 		return false;
 	}
 	return true;
@@ -998,15 +1026,26 @@ void D3D12Context::start_render_pass(CommandList& cmd_list, unsigned rt_count,
 
 void D3D12Context::set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport)
 {
-	auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(list.internal_state.get());
 	assert(cmd_list_d3d12);
-	auto command_list = cmd_list_d3d12->Get();
+	const auto command_list = cmd_list_d3d12->Get();
 	command_list->RSSetViewports(count, viewport);
+}
+
+void D3D12Context::set_scissor_rects(CommandList& list, unsigned count, const D3D12_RECT* scissor_rect)
+{
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(list.internal_state.get());
+	assert(cmd_list_d3d12);
+	const auto command_list = cmd_list_d3d12->Get();
+	command_list->RSSetScissorRects(count, scissor_rect);
 }
 
 void D3D12Context::draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
-	assert(false);
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	assert(cmd_list_d3d12);
+	const auto command_list = cmd_list_d3d12->Get();
+	command_list->DrawInstanced(vertex_count, 1, start_vertex_offset, 0);
 }
 
 void D3D12Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
@@ -1017,6 +1056,21 @@ void D3D12Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uin
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->DrawIndexedInstanced(index_count, 1, 
 		start_index_offset, base_vertex_offset, 0);
+}
+
+void D3D12Context::submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue)
+{
+	const auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
+	assert(queue_d3d12);
+	assert(count < 16);
+	std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
+	for (unsigned i = 0; i < count; i++)
+	{
+		const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_lists[i].internal_state.get());
+		assert(cmd_list_d3d12);
+		cmd_list_ptrs[i] = cmd_list_d3d12->Get();
+	}
+	queue_d3d12->Get()->ExecuteCommandLists(count, cmd_list_ptrs.data());
 }
 
 void D3D12Context::wait_all()

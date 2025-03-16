@@ -67,19 +67,26 @@ namespace qhenki::gfx
 
 		virtual bool create_queue(QueueType type, Queue& queue) = 0;
 		virtual bool create_command_pool(CommandPool& command_pool, const Queue& queue) = 0;
-		// Begins in recording state
+		// Begins in OPEN state
 		virtual bool create_command_list(CommandList& cmd_list, const CommandPool& command_pool) = 0;
+
+		virtual bool close_command_list(CommandList& cmd_list) = 0;
+
+		virtual bool reset_command_pool(CommandPool& command_pool) = 0;
 
 		// TODO: optional clear
 		virtual void start_render_pass(CommandList& cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) = 0;
 		virtual void start_render_pass(CommandList& cmd_list, unsigned int rt_count, const RenderTarget* rts, const RenderTarget* depth_stencil) = 0;
 
 		virtual void set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;
+		virtual void set_scissor_rects(CommandList& list, unsigned count, const D3D12_RECT* scissor_rect) = 0;
 
 		virtual void draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) = 0;
 		virtual void draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset, int32_t base_vertex_offset) = 0;
 		// TODO: draw indirect
 		// TODO: draw indirect count
+
+		virtual void submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue) = 0;
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_all() = 0;

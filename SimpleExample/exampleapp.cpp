@@ -117,8 +117,14 @@ void ExampleApp::render()
 	memcpy(buffer_pointer, &matrices_, sizeof(CameraMatrices));
 	m_context_->unmap_buffer(m_matrix_buffers_[get_frame_index()]);
 
+	m_context_->reset_command_pool(m_cmd_pools_[get_frame_index()]);
+
 	qhenki::gfx::CommandList cmd_list;
+	// Create a command list in the open state
 	m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]);
+
+	// TODO: resource transition
+	// m_context_->
 
 	// Clear back buffer / Start render pass
 	m_context_->start_render_pass(cmd_list, m_swapchain_, nullptr, get_frame_index());
@@ -133,8 +139,15 @@ void ExampleApp::render()
 		.MinDepth = 0.0f,
 		.MaxDepth = 1.0f,
 	};
+	const D3D12_RECT scissor_rect =
+	{
+		.left = 0,
+		.top = 0,
+		.right = static_cast<LONG>(dim.x),
+		.bottom = static_cast<LONG>(dim.y),
+	};
 	m_context_->set_viewports(cmd_list, 1, &viewport);
-	// Bind pipeline
+	m_context_->set_scissor_rects(cmd_list, 1, &scissor_rect);
 	m_context_->bind_pipeline(cmd_list, m_pipeline_);
 
 	/**
@@ -148,11 +161,16 @@ void ExampleApp::render()
 	m_context_->bind_vertex_buffers(cmd_list, 0, 1, &m_vertex_buffer_, &stride, &offset);
 	m_context_->bind_index_buffer(cmd_list, m_index_buffer_, qhenki::gfx::IndexType::UINT32, 0);
 
-	// Draw
 	m_context_->draw_indexed(cmd_list, 3, 0, 0);
-	// TODO: submit command list
 
-	// TODO: reset the list after submission to free memory?
+	// TODO: resource transition
+	// m_context_->
+
+	// Close the command list
+	m_context_->close_command_list(cmd_list);
+
+	// Submit command list
+	m_context_->submit_command_lists(1, &cmd_list, m_graphics_queue_);
 
 	// Present
 	m_context_->present(m_swapchain_);

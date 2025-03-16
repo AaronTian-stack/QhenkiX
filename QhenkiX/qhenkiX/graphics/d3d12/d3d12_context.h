@@ -86,14 +86,21 @@ namespace qhenki::gfx
 		bool create_command_pool(CommandPool& command_pool, const Queue& queue) override;
 		bool create_command_list(CommandList& cmd_list, const CommandPool& command_pool) override;
 
+		bool close_command_list(CommandList& cmd_list) override;
+
+		bool reset_command_pool(CommandPool& command_pool) override;
+
 		void start_render_pass(CommandList& cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) override;
 
 		void start_render_pass(CommandList& cmd_list, unsigned rt_count, const RenderTarget* rts, const RenderTarget* depth_stencil) override;
 
 		void set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport) override;
+		void set_scissor_rects(CommandList& list, unsigned count, const D3D12_RECT* scissor_rect) override;
 
 		void draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) override;
 		void draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset, int32_t base_vertex_offset) override;
+
+		void submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue) override;
 
 		void wait_all() override;
 
