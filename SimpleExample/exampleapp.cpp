@@ -50,8 +50,8 @@ void ExampleApp::create()
 	};
 	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_, nullptr, nullptr, L"triangle_pipeline");
 
-	// Create queue(s)
-	m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, m_graphics_queue_);
+	// A graphics queue is already given to the application by the context
+
 	// Allocate command pool(s)/allocator(s) from queue
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
@@ -93,6 +93,8 @@ void ExampleApp::create()
 		};
 		m_context_->create_buffer(matrix_desc, nullptr, m_matrix_buffers_[i], L"Matrix Buffer");
 	}
+
+	// TODO: schedule copies to GPU buffers
 }
 
 void ExampleApp::render()

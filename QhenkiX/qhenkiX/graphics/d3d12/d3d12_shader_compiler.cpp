@@ -202,7 +202,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	{
 		// Get any errors
 		ComPtr<IDxcBlobUtf8> errors = nullptr;
-		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.GetAddressOf()), nullptr);
+		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
 		if (errors && errors->GetStringLength())
 		{
 			output.error_message = errors->GetStringPointer();
@@ -215,15 +215,15 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	const auto d3d12_output = static_cast<D3D12ShaderOutput*>(output.internal_state.get());
 
 	// Save the blob in output
-	const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.GetAddressOf()), nullptr);
+	const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.ReleaseAndGetAddressOf()), nullptr);
 	assert(SUCCEEDED(hr_s));
 	output.shader_size = d3d12_output->shader_blob->GetBufferSize();
 	output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
 
-	const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.GetAddressOf()), nullptr);
+	const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.ReleaseAndGetAddressOf()), nullptr);
 	assert(SUCCEEDED(hr_r));
 
-	const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, IID_PPV_ARGS(d3d12_output->root_signature_blob.GetAddressOf()), nullptr);
+	const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, IID_PPV_ARGS(d3d12_output->root_signature_blob.ReleaseAndGetAddressOf()), nullptr);
 	// The shader might not have a root signature
 	if (FAILED(hr_rs))
 	{
@@ -235,8 +235,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		ComPtr<IDxcBlobUtf16> debug_info_path;
 		ComPtr<IDxcBlob> debug_info_blob;
 		const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(
-			debug_info_blob.GetAddressOf()),
-			debug_info_path.GetAddressOf());
+			debug_info_blob.ReleaseAndGetAddressOf()),
+			debug_info_path.ReleaseAndGetAddressOf());
 		// Write debug info to file
 		if (SUCCEEDED(hr_d))
 		{
