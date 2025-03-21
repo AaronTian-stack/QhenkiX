@@ -266,5 +266,11 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\enums.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\barrier.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

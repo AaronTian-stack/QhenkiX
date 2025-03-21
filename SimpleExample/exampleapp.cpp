@@ -125,8 +125,20 @@ void ExampleApp::render()
 	// Create a command list in the open state
 	m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]);
 
-	// TODO: resource transition
-	// m_context_->
+	// Resource transition
+	qhenki::gfx::ImageBarrier barrier_render = 
+	{
+		.src_stage = qhenki::gfx::SyncStage::SYNC_DRAW, // Ensure we are not drawing anything to swapchain (still might be drawing from previous frame)
+		.dst_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET, // Setting swapchain as render target requires transition to finish first
+
+		.src_access = qhenki::gfx::AccessFlags::ACCESS_COMMON,
+		.dst_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
+
+		.src_layout = qhenki::gfx::Layout::PRESENT,
+		.dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
+	};
+	m_context_->set_barrier_resource(1, &barrier_render, m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(cmd_list, 1, &barrier_render);
 
 	// Clear back buffer / Start render pass
 	m_context_->start_render_pass(cmd_list, m_swapchain_, nullptr, get_frame_index());
@@ -165,8 +177,20 @@ void ExampleApp::render()
 
 	m_context_->draw_indexed(cmd_list, 3, 0, 0);
 
-	// TODO: resource transition
-	// m_context_->
+	// Resource transition
+	qhenki::gfx::ImageBarrier barrier_present = 
+	{
+		.src_stage = qhenki::gfx::SyncStage::SYNC_DRAW, // Wait for all draws to swapchain to finish before transitioning to presentation
+		.dst_stage = qhenki::gfx::SyncStage::SYNC_NONE, // No other stages will use swapchain resources
+
+		.src_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
+		.dst_access = qhenki::gfx::AccessFlags::NO_ACCESS,
+
+		.src_layout = qhenki::gfx::Layout::RENDER_TARGET,
+		.dst_layout = qhenki::gfx::Layout::PRESENT,
+	};
+	m_context_->set_barrier_resource(1, &barrier_present, m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(cmd_list, 1, &barrier_present);
 
 	// Close the command list
 	m_context_->close_command_list(cmd_list);

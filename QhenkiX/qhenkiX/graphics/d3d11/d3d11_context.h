@@ -87,6 +87,9 @@ namespace qhenki::gfx
 
 		void submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue) override;
 
+		void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) override;
+		void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) override;
+
 		void wait_all() override;
 		~D3D11Context() override;
 

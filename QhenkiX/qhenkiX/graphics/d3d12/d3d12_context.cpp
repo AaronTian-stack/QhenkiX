@@ -67,6 +67,17 @@ void D3D12Context::create()
 		throw std::runtime_error("D3D12: Failed to create device");
 	}
 
+	if (FAILED(m_device_->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &m_options12_, sizeof(m_options12_))))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to query D3D12 options 12\n");
+	}
+
+	if (!m_options12_.EnhancedBarriersSupported)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Enhanced barriers are not supported\n");
+		throw std::runtime_error("D3D12: Enhanced barriers are not supported");
+	}
+
 	// Find highest supported shader model
     const std::vector shader_models = {
         D3D_SHADER_MODEL_6_6,
@@ -637,7 +648,7 @@ bool D3D12Context::bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeli
 		assert(d3d12_pipeline->input_layout_desc.empty());
 	}
 
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	assert(cmd_list_d3d12);
 	cmd_list_d3d12->Get()->IASetPrimitiveTopology(d3d12_pipeline->primitive_topology);
 	cmd_list_d3d12->Get()->SetPipelineState(d3d12_pipeline->pipeline_state.Get());
@@ -840,7 +851,7 @@ void D3D12Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slo
 {
 	assert(buffer_count <= D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
 
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	assert(cmd_list_d3d12);
 	const auto command_list = cmd_list_d3d12->Get();
 
@@ -867,7 +878,7 @@ void D3D12Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slo
 void D3D12Context::bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, IndexType format,
                                      unsigned offset)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	assert(cmd_list_d3d12);
 	const auto command_list = cmd_list_d3d12->Get();
 
@@ -948,7 +959,7 @@ bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool&
 	switch (command_pool.queue->type)
 	{
 	case GRAPHICS:
-		cmd_list.internal_state = mkS<ComPtr<ID3D12GraphicsCommandList>>();
+		cmd_list.internal_state = mkS<ComPtr<ID3D12GraphicsCommandList7>>();
 		break;
 	case COMPUTE:
 		//break;
@@ -957,7 +968,7 @@ bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool&
 	default:
 		throw std::runtime_error("D3D12: Not implemented command list type");
 	}
-	const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	if FAILED(m_device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator->Get(),
 		nullptr, IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf())))
 	{
@@ -968,7 +979,7 @@ bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool&
 
 bool D3D12Context::close_command_list(CommandList& cmd_list)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	assert(cmd_list_d3d12);
 	if (FAILED(cmd_list_d3d12->Get()->Close()))
 	{
@@ -993,7 +1004,7 @@ bool D3D12Context::reset_command_pool(CommandPool& command_pool)
 void D3D12Context::start_render_pass(CommandList& cmd_list, Swapchain& swapchain,
                                      const RenderTarget* depth_stencil, UINT frame_index)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	assert(cmd_list_d3d12);
 	auto command_list = cmd_list_d3d12->Get();
 
@@ -1022,7 +1033,7 @@ void D3D12Context::start_render_pass(CommandList& cmd_list, unsigned rt_count,
 
 void D3D12Context::set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(list.internal_state.get());
 	assert(cmd_list_d3d12);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->RSSetViewports(count, viewport);
@@ -1030,7 +1041,7 @@ void D3D12Context::set_viewports(CommandList& list, unsigned count, const D3D12_
 
 void D3D12Context::set_scissor_rects(CommandList& list, unsigned count, const D3D12_RECT* scissor_rect)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(list.internal_state.get());
 	assert(cmd_list_d3d12);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->RSSetScissorRects(count, scissor_rect);
@@ -1038,7 +1049,7 @@ void D3D12Context::set_scissor_rects(CommandList& list, unsigned count, const D3
 
 void D3D12Context::draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	assert(cmd_list_d3d12);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->DrawInstanced(vertex_count, 1, start_vertex_offset, 0);
@@ -1047,7 +1058,7 @@ void D3D12Context::draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t s
 void D3D12Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
 	assert(cmd_list_d3d12);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->DrawIndexedInstanced(index_count, 1, 
@@ -1062,11 +1073,63 @@ void D3D12Context::submit_command_lists(unsigned count, CommandList* cmd_lists, 
 	std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
 	for (unsigned i = 0; i < count; i++)
 	{
-		const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList>*>(cmd_lists[i].internal_state.get());
+		const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_lists[i].internal_state.get());
 		assert(cmd_list_d3d12);
 		cmd_list_ptrs[i] = cmd_list_d3d12->Get();
 	}
 	queue_d3d12->Get()->ExecuteCommandLists(count, cmd_list_ptrs.data());
+}
+
+void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index)
+{
+	for (unsigned i = 0; i < count; i++)
+	{
+		barriers[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
+	}
+}
+
+void D3D12Context::issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers)
+{
+	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
+	assert(cmd_list_d3d12);
+	const auto command_list = cmd_list_d3d12->Get();
+
+	assert(count < 16);
+	std::array<D3D12_TEXTURE_BARRIER, 16> d3d12_barriers;
+	for (unsigned i = 0; i < count; i++)
+	{
+		const auto& barrier = barriers[i];
+		auto& d3d12_barrier = d3d12_barriers[i];
+		d3d12_barrier =
+		{
+			.SyncBefore = D3DHelper::sync_stage_D3D(barrier.src_stage),
+			.SyncAfter = D3DHelper::sync_stage_D3D(barrier.dst_stage),
+			.AccessBefore = D3DHelper::access_flags_D3D(barrier.src_access),
+			.AccessAfter = D3DHelper::access_flags_D3D(barrier.dst_access),
+			.LayoutBefore = D3DHelper::layout_D3D(barrier.src_layout),
+			.LayoutAfter = D3DHelper::layout_D3D(barrier.dst_layout),
+			.pResource = static_cast<ID3D12Resource*>(barrier.resource),
+			.Subresources =
+			{
+				.IndexOrFirstMipLevel = barrier.subresource_range.base_mip_level,
+				.NumMipLevels = barrier.subresource_range.mip_level_count,
+				.FirstArraySlice = barrier.subresource_range.base_array_layer,
+				.NumArraySlices = barrier.subresource_range.array_layer_count,
+				.FirstPlane = 0,
+				.NumPlanes = 1,
+			},
+			.Flags = barrier.discard ? D3D12_TEXTURE_BARRIER_FLAG_DISCARD : D3D12_TEXTURE_BARRIER_FLAG_NONE,
+		};
+	}
+
+	D3D12_BARRIER_GROUP barrier_group = 
+	{
+		.Type = D3D12_BARRIER_TYPE_TEXTURE,
+		.NumBarriers = count,
+		.pTextureBarriers = d3d12_barriers.data(),
+	};
+
+	command_list->Barrier(count, &barrier_group); // TODO: is this scope enough
 }
 
 void D3D12Context::wait_all()

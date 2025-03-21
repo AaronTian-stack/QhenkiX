@@ -189,3 +189,313 @@ D3D12_PRIMITIVE_TOPOLOGY D3DHelper::get_primitive_topology(const PrimitiveTopolo
 	}
 	return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 }
+
+D3D12_BARRIER_SYNC D3DHelper::sync_stage_D3D(SyncStage stage)
+{
+    D3D12_BARRIER_SYNC sync = {};
+
+    if (stage & SYNC_NONE)
+    {
+        sync |= D3D12_BARRIER_SYNC_NONE;
+    }
+    if (stage & SYNC_ALL)
+    {
+        sync |= D3D12_BARRIER_SYNC_ALL;
+    }
+    if (stage & SYNC_DRAW)
+    {
+        sync |= D3D12_BARRIER_SYNC_DRAW;
+    }
+    if (stage & SYNC_INDEX_INPUT)
+    {
+        sync |= D3D12_BARRIER_SYNC_INDEX_INPUT;
+    }
+    if (stage & SYNC_VERTEX_SHADING)
+    {
+        sync |= D3D12_BARRIER_SYNC_VERTEX_SHADING;
+    }
+    if (stage & SYNC_PIXEL_SHADING)
+    {
+        sync |= D3D12_BARRIER_SYNC_PIXEL_SHADING;
+    }
+    if (stage & SYNC_DEPTH_STENCIL)
+    {
+        sync |= D3D12_BARRIER_SYNC_DEPTH_STENCIL;
+    }
+    if (stage & SYNC_RENDER_TARGET)
+    {
+        sync |= D3D12_BARRIER_SYNC_RENDER_TARGET;
+    }
+    if (stage & SYNC_COMPUTE_SHADING)
+    {
+        sync |= D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+    }
+    if (stage & SYNC_RAYTRACING)
+    {
+        sync |= D3D12_BARRIER_SYNC_RAYTRACING;
+    }
+    if (stage & SYNC_COPY)
+    {
+        sync |= D3D12_BARRIER_SYNC_COPY;
+    }
+    if (stage & SYNC_RESOLVE)
+    {
+        sync |= D3D12_BARRIER_SYNC_RESOLVE;
+    }
+    if (stage & SYNC_EXECUTE_INDIRECT)
+    {
+        sync |= D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+    }
+    if (stage & SYNC_PREDICATION)
+    {
+        sync |= D3D12_BARRIER_SYNC_PREDICATION;
+    }
+    if (stage & SYNC_ALL_SHADING)
+    {
+        sync |= D3D12_BARRIER_SYNC_ALL_SHADING;
+    }
+    if (stage & SYNC_NON_PIXEL_SHADING)
+    {
+        sync |= D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
+    }
+    if (stage & SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO)
+    {
+        sync |= D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
+    }
+    if (stage & SYNC_CLEAR_UNORDERED_ACCESS_VIEW)
+    {
+        sync |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
+    }
+    if (stage & SYNC_VIDEO_DECODE)
+    {
+        sync |= D3D12_BARRIER_SYNC_VIDEO_DECODE;
+    }
+    if (stage & SYNC_VIDEO_PROCESS)
+    {
+        sync |= D3D12_BARRIER_SYNC_VIDEO_PROCESS;
+    }
+    if (stage & SYNC_VIDEO_ENCODE)
+    {
+        sync |= D3D12_BARRIER_SYNC_VIDEO_ENCODE;
+    }
+    if (stage & SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE)
+    {
+        sync |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+    }
+    if (stage & SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE)
+    {
+        sync |= D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
+    }
+
+    return sync;
+}
+
+D3D12_BARRIER_ACCESS D3DHelper::access_flags_D3D(AccessFlags access)
+{
+	D3D12_BARRIER_ACCESS flags = {};
+
+	if (access & ACCESS_COMMON)
+	{
+		flags |= D3D12_BARRIER_ACCESS_COMMON;
+	}
+	if (access & ACCESS_VERTEX_BUFFER)
+	{
+		flags |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
+	}
+	if (access & ACCESS_UNIFORM_BUFFER)
+	{
+		flags |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
+	}
+	if (access & ACCESS_INDEX_BUFFER)
+	{
+		flags |= D3D12_BARRIER_ACCESS_INDEX_BUFFER;
+	}
+	if (access & ACCESS_RENDER_TARGET)
+	{
+		flags |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
+	}
+	if (access & ACCESS_STORAGE_ACCESS)
+	{
+		flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+	}
+	if (access & ACCESS_DEPTH_STENCIL_WRITE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+	}
+	if (access & ACCESS_DEPTH_STENCIL_READ)
+	{
+		flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+	}
+	if (access & ACCESS_SHADER_RESOURCE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+	}
+	if (access & ACCESS_STREAM_OUTPUT)
+	{
+		flags |= D3D12_BARRIER_ACCESS_STREAM_OUTPUT;
+	}
+	if (access & ACCESS_INDIRECT_ARGUMENT)
+	{
+		flags |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
+	}
+	if (access & ACCESS_COPY_DEST)
+	{
+		flags |= D3D12_BARRIER_ACCESS_COPY_DEST;
+	}
+	if (access & ACCESS_COPY_SOURCE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
+	}
+	if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ)
+	{
+		flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+	}
+	if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+	}
+	if (access & ACCESS_SHADING_RATE_SOURCE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
+	}
+	if (access & ACCESS_VIDEO_DECODE_READ)
+	{
+		flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ;
+	}
+	if (access & ACCESS_VIDEO_DECODE_WRITE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE;
+	}
+	if (access & ACCESS_VIDEO_PROCESS_READ)
+	{
+		flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_READ;
+	}
+	if (access & ACCESS_VIDEO_PROCESS_WRITE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_WRITE;
+	}
+	if (access & ACCESS_VIDEO_ENCODE_READ)
+	{
+		flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ;
+	}
+	if (access & ACCESS_VIDEO_ENCODE_WRITE)
+	{
+		flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE;
+	}
+	if (access & NO_ACCESS)
+	{
+		flags |= D3D12_BARRIER_ACCESS_NO_ACCESS;
+	}
+
+	return flags;
+}
+
+D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
+{
+	D3D12_BARRIER_LAYOUT state = {};
+    switch (layout)
+    {
+    case Layout::UNDEFINED:
+        state = D3D12_BARRIER_LAYOUT_UNDEFINED;
+        break;
+    case Layout::COMMON:
+        state = D3D12_BARRIER_LAYOUT_COMMON;
+        break;
+    case Layout::PRESENT:
+        state = D3D12_BARRIER_LAYOUT_PRESENT;
+        break;
+    case Layout::LAYOUT_GENERIC_READ:
+        state = D3D12_BARRIER_LAYOUT_GENERIC_READ;
+        break;
+    case Layout::RENDER_TARGET:
+        state = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
+        break;
+    case Layout::UNORDERED_ACCESS:
+        state = D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
+        break;
+    case Layout::DEPTH_STENCIL_WRITE:
+        state = D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
+        break;
+    case Layout::DEPTH_STENCIL_READ:
+        state = D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
+        break;
+    case Layout::SHADER_RESOURCE:
+        state = D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+        break;
+    case Layout::COPY_SOURCE:
+        state = D3D12_BARRIER_LAYOUT_COPY_SOURCE;
+        break;
+    case Layout::COPY_DEST:
+        state = D3D12_BARRIER_LAYOUT_COPY_DEST;
+        break;
+    case Layout::RESOLVE_SOURCE:
+        state = D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE;
+        break;
+    case Layout::RESOLVE_DEST:
+        state = D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
+        break;
+    case Layout::SHADING_RATE_SOURCE:
+        state = D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE;
+        break;
+    case Layout::VIDEO_DECODE_READ:
+        state = D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ;
+        break;
+    case Layout::VIDEO_DECODE_WRITE:
+        state = D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE;
+        break;
+    case Layout::VIDEO_PROCESS_READ:
+        state = D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_READ;
+        break;
+    case Layout::VIDEO_PROCESS_WRITE:
+        state = D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE;
+        break;
+    case Layout::VIDEO_ENCODE_READ:
+        state = D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ;
+        break;
+    case Layout::VIDEO_ENCODE_WRITE:
+        state = D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE;
+        break;
+    case Layout::DIRECT_QUEUE_COMMON:
+        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON;
+        break;
+    case Layout::DIRECT_QUEUE_GENERIC_READ:
+        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ;
+        break;
+    case Layout::DIRECT_QUEUE_UNORDERED_ACCESS:
+        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS;
+        break;
+    case Layout::DIRECT_QUEUE_SHADER_RESOURCE:
+        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE;
+        break;
+    case Layout::DIRECT_QUEUE_COPY_SOURCE:
+        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE;
+        break;
+    case Layout::DIRECT_QUEUE_COPY_DEST:
+        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST;
+        break;
+    case Layout::COMPUTE_QUEUE_COMMON:
+        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON;
+        break;
+    case Layout::COMPUTE_QUEUE_GENERIC_READ:
+        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ;
+        break;
+    case Layout::COMPUTE_QUEUE_UNORDERED_ACCESS:
+        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS;
+        break;
+    case Layout::COMPUTE_QUEUE_SHADER_RESOURCE:
+        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE;
+        break;
+    case Layout::COMPUTE_QUEUE_COPY_SOURCE:
+        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE;
+        break;
+    case Layout::COMPUTE_QUEUE_COPY_DEST:
+        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST;
+        break;
+    case Layout::VIDEO_QUEUE_COMMON:
+        state = D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON;
+        break;
+    default:
+        throw std::runtime_error("D3DHelper: Invalid layout");
+    }
+    return state;
+}

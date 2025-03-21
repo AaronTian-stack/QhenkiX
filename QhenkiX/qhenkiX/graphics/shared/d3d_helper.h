@@ -10,6 +10,7 @@
 #include <graphics/qhenki/enums.h>
 
 #include "D3D12MemAlloc.h"
+#include "graphics/qhenki/barrier.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -18,9 +19,13 @@ namespace qhenki::gfx
 	class D3DHelper
 	{
 	public:
-		static const wchar_t* get_shader_model_wchar(const ShaderType type, const ShaderModel model);
-		static const char* get_shader_model_char(const ShaderType type, const ShaderModel model);
-		static DXGI_FORMAT get_dxgi_format(const IndexType format);
-		static D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(const PrimitiveTopology topology);
+		static const wchar_t* get_shader_model_wchar(ShaderType type, ShaderModel model);
+		static const char* get_shader_model_char(ShaderType type, ShaderModel model);
+		static DXGI_FORMAT get_dxgi_format(IndexType format);
+		static D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(PrimitiveTopology topology);
+
+		static D3D12_BARRIER_SYNC sync_stage_D3D(SyncStage stage);
+		static D3D12_BARRIER_ACCESS access_flags_D3D(AccessFlags access);
+		static D3D12_BARRIER_LAYOUT layout_D3D(Layout layout);
 	};
 }

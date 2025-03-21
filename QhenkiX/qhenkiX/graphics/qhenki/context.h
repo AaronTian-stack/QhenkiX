@@ -5,6 +5,7 @@
 #include "swapchain.h"
 #include <graphics/displaywindow.h>
 
+#include "barrier.h"
 #include "buffer.h"
 #include "command_list.h"
 #include "command_pool.h"
@@ -13,6 +14,7 @@
 #include "render_target.h"
 #include "shader_compiler.h"
 #include "descriptor_heap.h"
+#include "descriptor_table.h"
 
 namespace qhenki::gfx
 {
@@ -23,7 +25,7 @@ namespace qhenki::gfx
 		uPtr<ShaderCompiler> shader_compiler;
 
 	public:
-		virtual void create() = 0;
+		virtual void create() = 0; // TODO: return error string for potential dialog box
 		virtual bool is_compatability() = 0;
 
 		// Creates swapchain based off specified description
@@ -87,6 +89,11 @@ namespace qhenki::gfx
 		// TODO: draw indirect count
 
 		virtual void submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue) = 0;
+
+		// Sets ImageBarrier resource to swapchain resource
+		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) = 0;
+		// virtual void set_barrier_resource(unsigned count, const ImageBarrier* barriers, RenderTarget& render_target);
+		virtual void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_all() = 0;
