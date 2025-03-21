@@ -493,6 +493,16 @@ void D3D11Context::submit_command_lists(unsigned count, CommandList* cmd_lists, 
 	// D3D11 does not have command lists
 }
 
+void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index)
+{
+	// D3D11 does not have barriers
+}
+
+void D3D11Context::issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers)
+{
+	// D3D11 does not have barriers
+}
+
 void D3D11Context::wait_all()
 {
     m_device_context_->Flush();

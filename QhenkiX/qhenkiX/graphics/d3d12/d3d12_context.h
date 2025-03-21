@@ -20,6 +20,7 @@ namespace qhenki::gfx
 {
 	class D3D12Context : public Context
 	{
+		D3D12_FEATURE_DATA_D3D12_OPTIONS12 m_options12_ = {}; // Enhanced barriers
 		D3D12_FEATURE_DATA_SHADER_MODEL m_shader_model_ = {};
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS m_options_ = {};
@@ -101,6 +102,9 @@ namespace qhenki::gfx
 		void draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset, int32_t base_vertex_offset) override;
 
 		void submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue) override;
+
+		void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) override;
+		void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) override;
 
 		void wait_all() override;
 

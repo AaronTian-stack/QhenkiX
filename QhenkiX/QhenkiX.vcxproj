@@ -231,9 +231,11 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\barrier.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\enums.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h" />
     <ClInclude Include="qhenkiX\graphics\shared\d3d_helper.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
