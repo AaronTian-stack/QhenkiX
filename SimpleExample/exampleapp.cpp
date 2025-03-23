@@ -184,7 +184,7 @@ void ExampleApp::render()
 		.dst_stage = qhenki::gfx::SyncStage::SYNC_NONE, // No other stages will use swapchain resources
 
 		.src_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
-		.dst_access = qhenki::gfx::AccessFlags::ACCESS_COMMON,
+		.dst_access = qhenki::gfx::AccessFlags::NO_ACCESS,
 
 		.src_layout = qhenki::gfx::Layout::RENDER_TARGET,
 		.dst_layout = qhenki::gfx::Layout::PRESENT,

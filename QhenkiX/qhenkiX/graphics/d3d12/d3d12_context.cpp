@@ -348,28 +348,6 @@ UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESC
     }
 }
 
-UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const
-{
-    D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
-    if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options))))
-    {
-        OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get D3D12 options\n");
-        return 0;
-    }
-    switch (type)
-    {
-    case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
-        return D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
-    case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
-        return D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
-    case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
-    case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
-		return 1 << 20; // 1M
-    default:
-        return 0;
-    }
-}
-
 bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline,
 	Shader& vertex_shader, Shader& pixel_shader, 
 	PipelineLayout* in_layout, PipelineLayout* out_layout, wchar_t const* debug_name)
@@ -469,7 +447,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		.NumElements = static_cast<uint32_t>(input_layout_desc.size())
 	};
 
-	assert(vs12 == nullptr ^ vs11 == nullptr);
+	assert((vs12 == nullptr) ^ (vs11 == nullptr));
 	if ((vs12 && vs12->root_signature_blob) || (vs11 && vs11->root_signature_blob)) // Root signature is contained in the shader
 	{
 		void* blob_ptr;
@@ -847,7 +825,7 @@ void D3D12Context::unmap_buffer(const Buffer& buffer)
 }
 
 void D3D12Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slot, unsigned buffer_count,
-                                       const Buffer* buffers, const UINT* strides, const UINT* strides, const unsigned* offsets)
+                                       const Buffer* buffers, const UINT* strides, const unsigned* offsets)
 {
 	assert(buffer_count <= D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
 
