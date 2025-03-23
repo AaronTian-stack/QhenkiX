@@ -272,5 +272,8 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\fence.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

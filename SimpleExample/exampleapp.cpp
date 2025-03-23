@@ -68,7 +68,7 @@ void ExampleApp::create()
 	{
 		.size = vertices.size() * sizeof(float),
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
-		.visibility = qhenki::gfx::BufferVisibility::GPU
+		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
 	m_context_->create_buffer(desc, vertices.data(), m_vertex_buffer_, L"Interleaved Position/Color Buffer");
 
@@ -77,7 +77,7 @@ void ExampleApp::create()
 	{
 		.size = indices.size() * sizeof(uint32_t),
 		.usage = qhenki::gfx::BufferUsage::INDEX,
-		.visibility = qhenki::gfx::BufferVisibility::GPU
+		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
 	m_context_->create_buffer(index_desc, indices.data(), m_index_buffer_, L"Index Buffer");
 
@@ -184,7 +184,7 @@ void ExampleApp::render()
 		.dst_stage = qhenki::gfx::SyncStage::SYNC_NONE, // No other stages will use swapchain resources
 
 		.src_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
-		.dst_access = qhenki::gfx::AccessFlags::NO_ACCESS,
+		.dst_access = qhenki::gfx::AccessFlags::ACCESS_COMMON,
 
 		.src_layout = qhenki::gfx::Layout::RENDER_TARGET,
 		.dst_layout = qhenki::gfx::Layout::PRESENT,

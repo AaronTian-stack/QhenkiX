@@ -87,10 +87,7 @@ void Application::run(const qhenki::gfx::API api)
 				resize(event.window.data1, event.window.data2);
 			}
         }
-
         render();
-		// Prepare to render the next frame
-		// TODO: move to next frame function?
     }
 	m_context_->wait_all();
 	destroy();
