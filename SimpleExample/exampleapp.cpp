@@ -1,4 +1,5 @@
 #include "exampleapp.h"
+#include <wrl/client.h>
 
 void ExampleApp::create()
 {
@@ -95,10 +96,15 @@ void ExampleApp::create()
 	}
 
 	// TODO: schedule copies to GPU buffers
+
+	// Create fences
+	m_context_->create_fence(m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]);
+	//m_context_->create_fence(m_fence_render_finished_, 0);
 }
 
 void ExampleApp::render()
 {
+	static int count = 0;
 	const auto seconds_elapsed = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
 	// Update matrices
@@ -119,10 +125,10 @@ void ExampleApp::render()
 	memcpy(buffer_pointer, &matrices_, sizeof(CameraMatrices));
 	m_context_->unmap_buffer(m_matrix_buffers_[get_frame_index()]);
 
-	m_context_->reset_command_pool(m_cmd_pools_[get_frame_index()]);
+	throw_if_failed(m_context_->reset_command_pool(m_cmd_pools_[get_frame_index()]));
 
-	qhenki::gfx::CommandList cmd_list;
 	// Create a command list in the open state
+	qhenki::gfx::CommandList cmd_list;
 	m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]);
 
 	// Resource transition
@@ -196,13 +202,36 @@ void ExampleApp::render()
 	m_context_->close_command_list(cmd_list);
 
 	// Submit command list
-	m_context_->submit_command_lists(1, &cmd_list, m_graphics_queue_);
+	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
+	qhenki::gfx::SubmitInfo info{};
+	info.command_list_count = 1;
+	info.command_lists = &cmd_list;
+	info.wait_fence_count = 0;
+	info.signal_fence_count = 1;
+	info.signal_fences = &m_fence_frame_ready_;
+	info.signal_values = &current_fence_value;
+	m_context_->submit_command_lists(info, m_graphics_queue_);
 
 	// Present
-	m_context_->present(m_swapchain_);
+	// TODO: change for Vulkan
+	m_context_->present(m_swapchain_, 0, nullptr, get_frame_index());
 
-	// TODO: signal fence
-	// update frame index
+	increment_frame_index();
+
+	// If next frame is ready to be used, otherwise wait
+	if (m_context_->get_fence_value(m_fence_frame_ready_) < m_fence_frame_ready_val_[get_frame_index()])
+	{
+		qhenki::gfx::WaitInfo wait_info
+		{
+			.wait_all = true,
+			.count = 1,
+			.fences = &m_fence_frame_ready_,
+			.values = &current_fence_value,
+			.timeout = INFINITE
+		};
+		m_context_->wait_fences(wait_info);
+	}
+	m_fence_frame_ready_val_[get_frame_index()] = current_fence_value + 1;
 }
 
 void ExampleApp::resize(int width, int height)

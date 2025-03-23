@@ -272,7 +272,13 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\fence.h">
+    <ClInclude Include="qhenkiX\graphics\qhenki\sync.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\submission.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_fence.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -14,13 +14,19 @@ class ExampleApp : public Application
 	qhenki::gfx::Shader m_vertex_shader_{};
 	qhenki::gfx::Shader m_pixel_shader_{};
 
-	// One commandpool per frame, per thread. Pool allocates lists
+	// One Command Pool per frame, per thread. Pool allocates lists
 	// Command pools for main thread
 	std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools_{};
 
 	qhenki::gfx::Buffer m_vertex_buffer_{};
 	qhenki::gfx::Buffer m_index_buffer_{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers_{};
+
+	//qhenki::gfx::CommandList cmd_list;
+
+	//qhenki::gfx::Fence m_fence_render_finished_{}, m_fence_frame_ready_{};
+	qhenki::gfx::Fence m_fence_frame_ready_{};
+	std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{};
 
 	CameraMatrices matrices_{};
 
