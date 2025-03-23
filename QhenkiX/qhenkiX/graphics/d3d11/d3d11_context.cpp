@@ -488,9 +488,26 @@ void D3D11Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uin
 	m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
 }
 
-void D3D11Context::submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue)
+void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, Queue& queue)
 {
 	// D3D11 does not have command lists
+}
+
+bool D3D11Context::create_fence(Fence& fence, uint64_t initial_value)
+{
+	// D3D11 has fences but these are only for interop with D3D12
+	return true;
+}
+
+uint64_t D3D11Context::get_fence_value(const Fence& fence)
+{
+	return 0;
+}
+
+bool D3D11Context::wait_fences(const WaitInfo& info)
+{
+	// D3D11 does not have fences
+	return true;
 }
 
 void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index)
@@ -508,7 +525,7 @@ void D3D11Context::wait_all()
     m_device_context_->Flush();
 }
 
-bool D3D11Context::present(Swapchain& swapchain)
+bool D3D11Context::present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index)
 {
 	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	const auto result = swap_d3d11->swapchain->Present(1, 0);

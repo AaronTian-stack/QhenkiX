@@ -9,6 +9,7 @@
 #include <application.h>
 
 #include "d3d12_descriptor_heap.h"
+#include "d3d12_fence.h"
 #include "graphics/shared/d3d_helper.h"
 
 using namespace qhenki::gfx;
@@ -126,6 +127,12 @@ void D3D12Context::create()
 	if (FAILED(m_device_->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &m_options_, sizeof(m_options_))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to query feature data\n");
+	}
+
+	m_fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	if (m_fence_event == nullptr)
+	{
+		throw_if_failed(HRESULT_FROM_WIN32(GetLastError()));
 	}
 }
 
@@ -248,8 +255,11 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
 	return true;
 }
 
-bool D3D12Context::present(Swapchain& swapchain)
+bool D3D12Context::present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index)
 {
+	// Vulkan version will use the queue swapchain was created with
+
+	// D3D12 does not actually have to wait on anything
 	const auto result = m_swapchain_->Present(1, 0);
 	return result == S_OK;
 }
@@ -418,7 +428,8 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(shader_compiler.get());
 		assert(d3d12_shader_compiler);
 
-		if (const auto hr = d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, IID_PPV_ARGS(shader_reflection.GetAddressOf())); FAILED(hr))
+		if (const auto hr = d3d12_shader_compiler->m_library_->CreateReflection(&vs_reflection_dxc_buffer, 
+			IID_PPV_ARGS(&shader_reflection)); FAILED(hr))
 		{
 			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
 			return false;
@@ -595,7 +606,8 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		{
 			pso_desc->RTVFormats[i] = desc.rtv_formats[i];
 		}
-		if (const auto hr = m_device_->CreateGraphicsPipelineState(pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state)); FAILED(hr))
+		if (const auto hr = m_device_->CreateGraphicsPipelineState(pso_desc, 
+			IID_PPV_ARGS(&d3d12_pipeline->pipeline_state)); FAILED(hr))
 		{
 			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create Graphics Pipeline State\n");
 			return false;
@@ -969,9 +981,9 @@ bool D3D12Context::close_command_list(CommandList& cmd_list)
 
 bool D3D12Context::reset_command_pool(CommandPool& command_pool)
 {
-	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get())->Get();
+	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get());
 	assert(command_allocator);
-	if (FAILED(command_allocator->Reset()))
+	if (FAILED(command_allocator->Get()->Reset()))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to reset command allocator\n");
 		return false;
@@ -1043,25 +1055,90 @@ void D3D12Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uin
 		start_index_offset, base_vertex_offset, 0);
 }
 
-void D3D12Context::submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue)
+void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue& queue)
 {
 	const auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
 	assert(queue_d3d12);
-	assert(count < 16);
-	std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
-	for (unsigned i = 0; i < count; i++)
+
+	// TODO: examine the overhead this causes
+
+	// Wait on fences
+	for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
 	{
-		const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_lists[i].internal_state.get());
+		const auto fence = static_cast<D3D12Fence*>(submit_info.wait_fences[i].internal_state.get());
+		assert(fence);
+		// GPU side wait
+		throw_if_failed(queue_d3d12->Get()->Wait(fence->fence.Get(), submit_info.wait_values[i]));
+	}
+
+	assert(submit_info.command_list_count < 16);
+	std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
+	for (unsigned i = 0; i < submit_info.command_list_count; i++)
+	{
+		const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(submit_info.command_lists[i].internal_state.get());
 		assert(cmd_list_d3d12);
 		cmd_list_ptrs[i] = cmd_list_d3d12->Get();
 	}
-	queue_d3d12->Get()->ExecuteCommandLists(count, cmd_list_ptrs.data());
+	queue_d3d12->Get()->ExecuteCommandLists(submit_info.command_list_count, cmd_list_ptrs.data());
+
+	// Signal the fences
+	for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
+	{
+		const auto fence = static_cast<D3D12Fence*>(submit_info.signal_fences[i].internal_state.get());
+		assert(fence);
+		const auto result = queue_d3d12->Get()->Signal(fence->fence.Get(), submit_info.signal_values[i]);
+		if (FAILED(result))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to signal fence\n");
+		}
+	}
+}
+
+bool D3D12Context::create_fence(Fence& fence, uint64_t initial_value)
+{
+	fence.internal_state = mkS<D3D12Fence>();
+	const auto fence_d3d12 = static_cast<D3D12Fence*>(fence.internal_state.get());
+	if (FAILED(m_device_->CreateFence(initial_value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence_d3d12->fence.ReleaseAndGetAddressOf()))))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create fence\n");
+		return false;
+	}
+	// Give each fence a handle event as well
+	fence_d3d12->event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	return true;
+}
+
+uint64_t D3D12Context::get_fence_value(const Fence& fence)
+{
+	const auto fence_d3d12 = static_cast<D3D12Fence*>(fence.internal_state.get());
+	assert(fence_d3d12);
+	return fence_d3d12->fence->GetCompletedValue();
+}
+
+bool D3D12Context::wait_fences(const WaitInfo& info)
+{
+	assert(info.count < 16);
+	std::array<HANDLE, 16> wait_handles{};
+	for (auto i = 0; i < info.count; i++)
+	{
+		const auto d3d12_fence = static_cast<D3D12Fence*>(info.fences[i].internal_state.get());
+		assert(d3d12_fence);
+		if (FAILED(d3d12_fence->fence->SetEventOnCompletion(info.values[i], d3d12_fence->event)))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to set event on fence\n");
+			return false;
+		}
+		wait_handles[i] = d3d12_fence->event;
+	}
+	WaitForMultipleObjectsEx(info.count, wait_handles.data(), info.wait_all, info.timeout, FALSE);
+	return true;
 }
 
 void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index)
 {
 	for (unsigned i = 0; i < count; i++)
 	{
+		assert(frame_index == m_swapchain_->GetCurrentBackBufferIndex());
 		barriers[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
 	}
 }

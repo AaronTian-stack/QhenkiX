@@ -4,6 +4,7 @@
 #include <smartpointer.h>
 #include "graphics/qhenki/context.h"
 #include "graphics/qhenki/descriptor_heap.h"
+#include "graphics/qhenki/descriptor_table.h"
 #include <thread>
 
 namespace qhenki::gfx
@@ -47,6 +48,7 @@ protected:
 public:
 	static constexpr UINT m_frames_in_flight = 2;
 	UINT get_frame_index() const { return m_frame_index_; }
+	void increment_frame_index() { m_frame_index_ = (m_frame_index_ + 1) % m_frames_in_flight; }
 
 	bool is_main_thread() const { return std::this_thread::get_id() == m_main_thread_id; }
 

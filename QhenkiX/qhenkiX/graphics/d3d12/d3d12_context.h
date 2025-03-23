@@ -47,6 +47,8 @@ namespace qhenki::gfx
 
 		D3D12RootHasher m_root_reflection_;
 
+		HANDLE m_fence_event = nullptr;
+
 		std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc, bool interleaved) const;
 		void root_signature_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc);
 
@@ -59,7 +61,7 @@ namespace qhenki::gfx
 			Queue& direct_queue, unsigned& frame_index) override;
 		bool resize_swapchain(Swapchain& swapchain, int width, int height) override;
 		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) override;
-		bool present(Swapchain& swapchain) override;
+		bool present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
 
 		uPtr<ShaderCompiler> create_shader_compiler() override;
 		bool create_shader_dynamic(ShaderCompiler* compiler, Shader& shader, const CompilerInput& input) override;
@@ -101,7 +103,11 @@ namespace qhenki::gfx
 		void draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) override;
 		void draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset, int32_t base_vertex_offset) override;
 
-		void submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue) override;
+		void submit_command_lists(const SubmitInfo& submit_info, Queue& queue) override;
+
+		bool create_fence(Fence& fence, uint64_t initial_value) override;
+		uint64_t get_fence_value(const Fence& fence) override;
+		bool wait_fences(const WaitInfo& info) override;
 
 		void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) override;
 		void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) override;

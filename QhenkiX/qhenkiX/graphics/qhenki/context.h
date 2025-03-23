@@ -14,7 +14,7 @@
 #include "render_target.h"
 #include "shader_compiler.h"
 #include "descriptor_heap.h"
-#include "descriptor_table.h"
+#include "submission.h"
 
 namespace qhenki::gfx
 {
@@ -33,7 +33,7 @@ namespace qhenki::gfx
 		                              Queue& direct_queue, unsigned& frame_index) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
 		virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) = 0;
-		virtual bool present(Swapchain& swapchain) = 0;
+		virtual bool present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) = 0;
 
 		virtual uPtr<ShaderCompiler> create_shader_compiler() = 0;
 		// Dynamic shader compilation
@@ -88,7 +88,12 @@ namespace qhenki::gfx
 		// TODO: draw indirect
 		// TODO: draw indirect count
 
-		virtual void submit_command_lists(unsigned count, CommandList* cmd_lists, Queue& queue) = 0;
+		virtual void submit_command_lists(const SubmitInfo& submit_info, Queue& queue) = 0;
+
+		virtual bool create_fence(Fence& fence, uint64_t initial_value) = 0;
+		// If submission is pending value may be out of date
+		virtual uint64_t get_fence_value(const Fence& fence) = 0;
+		virtual bool wait_fences(const WaitInfo& info) = 0;
 
 		// Sets ImageBarrier resource to swapchain resource
 		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) = 0;
