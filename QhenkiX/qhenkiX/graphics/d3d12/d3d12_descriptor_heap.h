@@ -24,6 +24,8 @@ namespace qhenki::gfx
 		bool create(ID3D12Device* device, const D3D12_DESCRIPTOR_HEAP_DESC& desc);
 		// Reserves a block/table of descriptors. Does not actually create any!
 		bool allocate(D3D12MA::VirtualAllocation& alloc, UINT64& alloc_offset, size_t descriptor_count);
+		// Frees a block but doesn't do anything to the descriptors that were there
+		void deallocate(D3D12MA::VirtualAllocation& alloc);
 		bool get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle, size_t offset_bytes, size_t num_descriptor_offset);
 	};
 }

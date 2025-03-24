@@ -31,6 +31,7 @@ bool D3D12DescriptorHeap::allocate(D3D12MA::VirtualAllocation& alloc, UINT64& al
 	desc.Size = descriptor_count * m_descriptor_size_;
 	desc.Alignment = m_descriptor_size_;
 
+	// Virtual block is not thread safe
 	std::scoped_lock lock(m_block_mutex_);
 	if (FAILED(m_block_->Allocate(&desc, &alloc, &alloc_offset)))
 	{
@@ -38,6 +39,12 @@ bool D3D12DescriptorHeap::allocate(D3D12MA::VirtualAllocation& alloc, UINT64& al
 		return false;
 	}
 	return true;
+}
+
+void D3D12DescriptorHeap::deallocate(D3D12MA::VirtualAllocation& alloc)
+{
+	std::scoped_lock lock(m_block_mutex_);
+	m_block_->FreeAllocation(alloc);
 }
 
 bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle, size_t offset_bytes, size_t num_descriptor_offset)
