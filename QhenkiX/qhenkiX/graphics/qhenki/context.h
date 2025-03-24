@@ -31,7 +31,7 @@ namespace qhenki::gfx
 		// Creates swapchain based off specified description
 		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
 		                              Queue& direct_queue, unsigned& frame_index) = 0;
-		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height) = 0;
+		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap) = 0;
 		virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) = 0;
 		virtual bool present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) = 0;
 

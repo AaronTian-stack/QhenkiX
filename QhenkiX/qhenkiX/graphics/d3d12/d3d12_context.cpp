@@ -14,6 +14,55 @@
 
 using namespace qhenki::gfx;
 
+static D3D12DescriptorHeap* to_internal(const DescriptorHeap& ext)
+{
+	auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(ext.internal_state.get());
+	assert(d3d12_heap);
+	return d3d12_heap;
+}
+
+static D3D12Pipeline* to_internal(const GraphicsPipeline& ext)
+{
+	auto d3d12_pipeline = static_cast<D3D12Pipeline*>(ext.internal_state.get());
+	assert(d3d12_pipeline);
+	return d3d12_pipeline;
+}
+
+static ComPtr<ID3D12GraphicsCommandList7>* to_internal(const CommandList& ext)
+{
+	auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(ext.internal_state.get());
+	assert(d3d12_cmd_list);
+	return d3d12_cmd_list;
+}
+
+static ComPtr<ID3D12CommandQueue>* to_internal(const Queue& ext)
+{
+	auto d3d12_queue = static_cast<ComPtr<ID3D12CommandQueue>*>(ext.internal_state.get());
+	assert(d3d12_queue);
+	return d3d12_queue;
+}
+
+static D3D12Fence* to_internal(const Fence& ext)
+{
+	auto d3d12_fence = static_cast<D3D12Fence*>(ext.internal_state.get());
+	assert(d3d12_fence);
+	return d3d12_fence;
+}
+
+static ComPtr<ID3D12CommandAllocator>* to_internal(const CommandPool& ext)
+{
+	auto d3d12_cmd_pool = static_cast<ComPtr<ID3D12CommandAllocator>*>(ext.internal_state.get());
+	assert(d3d12_cmd_pool);
+	return d3d12_cmd_pool;
+}
+
+static ComPtr<D3D12MA::Allocation>* to_internal(const Buffer& ext)
+{
+	auto d3d12_buffer = static_cast<ComPtr<D3D12MA::Allocation>*>(ext.internal_state.get());
+	assert(d3d12_buffer);
+	return d3d12_buffer;
+}
+
 void D3D12Context::create()
 {
 	UINT dxgi_factory_flags = 0;
@@ -129,11 +178,7 @@ void D3D12Context::create()
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to query feature data\n");
 	}
 
-	m_fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-	if (m_fence_event == nullptr)
-	{
-		throw_if_failed(HRESULT_FROM_WIN32(GetLastError()));
-	}
+	create_fence(m_fence_wait_all_, 0);
 }
 
 bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, 
@@ -162,8 +207,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 	swap_chain_fullscreen_descriptor.Windowed = true;
 
 	assert(direct_queue.type == QueueType::GRAPHICS);
-	const auto queue = static_cast<ComPtr<ID3D12CommandQueue>*>(direct_queue.internal_state.get());
-	assert(queue);
+	const auto queue = to_internal(direct_queue);
 
 	ComPtr<IDXGISwapChain1> swapchain1;
 
@@ -171,7 +215,7 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 		queue->Get(),        // SwapChain needs the queue so that it can force a flush on it.
 		window.get_window_handle(),
 		&swap_chain_descriptor,
-		nullptr,
+		&swap_chain_fullscreen_descriptor,
 		nullptr,
 		swapchain1.ReleaseAndGetAddressOf()
 	)))
@@ -199,16 +243,47 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 	return true;
 }
 
-bool D3D12Context::resize_swapchain(Swapchain& swapchain, int width, int height)
+bool D3D12Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap)
 {
-	assert(false);
-	return false;
+	// Update description
+	swapchain.desc.width = width;
+	swapchain.desc.height = height;
+
+	// Stall entire pipeline
+	wait_all();
+
+	// Remove direct references to back buffer resources
+	for (auto& buffer : m_swapchain_buffers_)
+	{
+		buffer->Release();
+	}
+
+	// Remove indirect references to views
+	// Find the descriptors in the heap and release them
+	// Table internal state is allocation info in the heap
+	
+
+	// Resize buffers
+	if (FAILED(m_swapchain_->ResizeBuffers(
+		swapchain.desc.buffer_count,
+		width,
+		height,
+		swapchain.desc.format,
+		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
+	)))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to resize swap chain buffers\n");
+		return false;
+	}
+
+	// Recreate descriptors
+
+	return true;
 }
 
 bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap)
 {
-	const auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(rtv_heap.internal_state.get());
-	assert(d3d12_heap);
+	const auto d3d12_heap = to_internal(rtv_heap);
 	if (d3d12_heap->desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: RTV heap must not be shader visible\n");
@@ -231,6 +306,7 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
 
 	// This will set the offset of the table in the heap
 	// Synchronized internally
+	// This works in blocks rather than individual descriptors, so overkill for RTVs
 	const bool result = d3d12_heap->allocate(allocation, m_swapchain_descriptors_.desc.offset, swapchain.desc.buffer_count);
 	if (!result)
 	{
@@ -364,8 +440,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 {
 	pipeline.internal_state = mkS<D3D12Pipeline>();
 
-	const auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
-	assert(d3d12_pipeline);
+	const auto d3d12_pipeline = to_internal(pipeline);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC* pso_desc;
 	{
@@ -627,8 +702,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 
 bool D3D12Context::bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline)
 {
-	const auto d3d12_pipeline = static_cast<D3D12Pipeline*>(pipeline.internal_state.get());
-	assert(d3d12_pipeline);
+	const auto d3d12_pipeline = to_internal(pipeline);
 	if (d3d12_pipeline->deferred)
 	{
 		// Set current render target info and create the pipeline
@@ -638,8 +712,7 @@ bool D3D12Context::bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeli
 		assert(d3d12_pipeline->input_layout_desc.empty());
 	}
 
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	cmd_list_d3d12->Get()->IASetPrimitiveTopology(d3d12_pipeline->primitive_topology);
 	cmd_list_d3d12->Get()->SetPipelineState(d3d12_pipeline->pipeline_state.Get());
 
@@ -658,8 +731,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 	heap.desc = desc;
 	heap.internal_state = mkS<D3D12DescriptorHeap>();
 
-	const auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(heap.internal_state.get());
-	assert(d3d12_heap);
+	const auto d3d12_heap = to_internal(heap);
 	D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
 
 	switch (desc.type)
@@ -699,7 +771,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 {
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<D3D12MA::Allocation>>();
-	const auto buffer_d3d12 = static_cast<ComPtr<D3D12MA::Allocation>*>(buffer.internal_state.get());
+	const auto buffer_d3d12 = to_internal(buffer);
 
 	D3D12_RESOURCE_DESC resource_desc =
 	{
@@ -802,8 +874,7 @@ void* D3D12Context::map_buffer(const Buffer& buffer)
 	if ((buffer.desc.visibility & CPU_SEQUENTIAL)
 		|| (buffer.desc.visibility & CPU_RANDOM))
 	{
-		const auto allocation = static_cast<ComPtr<D3D12MA::Allocation>*>(buffer.internal_state.get());
-		assert(allocation);
+		const auto allocation = to_internal(buffer);
 		const auto resource = allocation->Get()->GetResource();
 		D3D12_RANGE range(0, 0);
 		void* mapped_ptr;
@@ -825,8 +896,7 @@ void D3D12Context::unmap_buffer(const Buffer& buffer)
 	if ((buffer.desc.visibility & CPU_SEQUENTIAL)
 		|| (buffer.desc.visibility & CPU_RANDOM))
 	{
-		const auto allocation = static_cast<ComPtr<D3D12MA::Allocation>*>(buffer.internal_state.get());
-		assert(allocation);
+		const auto allocation = to_internal(buffer);
 		const auto resource = allocation->Get()->GetResource();
 		resource->Unmap(0, nullptr);
 	}
@@ -841,16 +911,14 @@ void D3D12Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slo
 {
 	assert(buffer_count <= D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
 
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
 
 	// Create views for each buffer
 	std::array<D3D12_VERTEX_BUFFER_VIEW, D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertex_buffer_views;
 	for (unsigned i = 0; i < buffer_count; i++)
 	{
-		const auto allocation = static_cast<ComPtr<D3D12MA::Allocation>*>(buffers[i].internal_state.get());
-		assert(allocation);
+		const auto allocation = to_internal(buffers[i]);
 		const auto resource = allocation->Get()->GetResource();
 
 		vertex_buffer_views[i] =
@@ -861,19 +929,16 @@ void D3D12Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slo
 		};
 	}
 
-	// TODO: is this scope enough?
 	command_list->IASetVertexBuffers(start_slot, buffer_count, vertex_buffer_views.data());
 }
 
 void D3D12Context::bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, IndexType format,
                                      unsigned offset)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
 
-	const auto allocation = static_cast<ComPtr<D3D12MA::Allocation>*>(buffer.internal_state.get());
-	assert(allocation);
+	const auto allocation = to_internal(buffer);
 	const auto resource = allocation->Get()->GetResource();
 	D3D12_INDEX_BUFFER_VIEW view =
 	{
@@ -902,8 +967,7 @@ bool D3D12Context::create_queue(const QueueType type, Queue& queue)
 	}
 	queue.type = type;
 	queue.internal_state = mkS<ComPtr<ID3D12CommandQueue>>();
-	const auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
-	assert(queue_d3d12);
+	const auto queue_d3d12 = to_internal(queue);
 	if (FAILED(m_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(queue_d3d12->ReleaseAndGetAddressOf()))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create command queue\n");
@@ -931,7 +995,7 @@ bool D3D12Context::create_command_pool(CommandPool& command_pool, const Queue& q
 
 	command_pool.queue = &queue;
 	command_pool.internal_state = mkS<ComPtr<ID3D12CommandAllocator>>();
-	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get());
+	const auto command_allocator = to_internal(command_pool);
 
 	if (FAILED(m_device_->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator->ReleaseAndGetAddressOf()))))
 	{
@@ -943,8 +1007,7 @@ bool D3D12Context::create_command_pool(CommandPool& command_pool, const Queue& q
 
 bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool& command_pool)
 {
-	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get());
-	assert(command_allocator);
+	const auto command_allocator = to_internal(command_pool);
 	// create the appropriate command list type
 	switch (command_pool.queue->type)
 	{
@@ -958,7 +1021,7 @@ bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool&
 	default:
 		throw std::runtime_error("D3D12: Not implemented command list type");
 	}
-	const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
+	const auto d3d12_cmd_list = to_internal(cmd_list);
 	if FAILED(m_device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator->Get(),
 		nullptr, IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf())))
 	{
@@ -969,7 +1032,7 @@ bool D3D12Context::create_command_list(CommandList& cmd_list, const CommandPool&
 
 bool D3D12Context::close_command_list(CommandList& cmd_list)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	assert(cmd_list_d3d12);
 	if (FAILED(cmd_list_d3d12->Get()->Close()))
 	{
@@ -981,8 +1044,7 @@ bool D3D12Context::close_command_list(CommandList& cmd_list)
 
 bool D3D12Context::reset_command_pool(CommandPool& command_pool)
 {
-	const auto command_allocator = static_cast<ComPtr<ID3D12CommandAllocator>*>(command_pool.internal_state.get());
-	assert(command_allocator);
+	const auto command_allocator = to_internal(command_pool);
 	if (FAILED(command_allocator->Get()->Reset()))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to reset command allocator\n");
@@ -994,14 +1056,12 @@ bool D3D12Context::reset_command_pool(CommandPool& command_pool)
 void D3D12Context::start_render_pass(CommandList& cmd_list, Swapchain& swapchain,
                                      const RenderTarget* depth_stencil, UINT frame_index)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	auto command_list = cmd_list_d3d12->Get();
 
 	// Get RTV descriptor
 	assert(m_swapchain_descriptors_.desc.heap);
-	const auto rtv_heap = static_cast<D3D12DescriptorHeap*>(m_swapchain_descriptors_.desc.heap->internal_state.get());
-	assert(rtv_heap);
+	const auto rtv_heap = to_internal(*m_swapchain_descriptors_.desc.heap);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle;
 	rtv_heap->get_CPU_descriptor(rtv_handle, m_swapchain_descriptors_.desc.offset, frame_index);
@@ -1023,24 +1083,21 @@ void D3D12Context::start_render_pass(CommandList& cmd_list, unsigned rt_count,
 
 void D3D12Context::set_viewports(CommandList& list, unsigned count, const D3D12_VIEWPORT* viewport)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(list);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->RSSetViewports(count, viewport);
 }
 
 void D3D12Context::set_scissor_rects(CommandList& list, unsigned count, const D3D12_RECT* scissor_rect)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(list);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->RSSetScissorRects(count, scissor_rect);
 }
 
 void D3D12Context::draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->DrawInstanced(vertex_count, 1, start_vertex_offset, 0);
 }
@@ -1048,8 +1105,7 @@ void D3D12Context::draw(CommandList& cmd_list, uint32_t vertex_count, uint32_t s
 void D3D12Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uint32_t start_index_offset,
 	int32_t base_vertex_offset)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
 	command_list->DrawIndexedInstanced(index_count, 1, 
 		start_index_offset, base_vertex_offset, 0);
@@ -1057,16 +1113,14 @@ void D3D12Context::draw_indexed(CommandList& cmd_list, uint32_t index_count, uin
 
 void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue& queue)
 {
-	const auto queue_d3d12 = static_cast<ComPtr<ID3D12CommandQueue>*>(queue.internal_state.get());
-	assert(queue_d3d12);
+	const auto queue_d3d12 = to_internal(queue);
 
 	// TODO: examine the overhead this causes
 
 	// Wait on fences
 	for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
 	{
-		const auto fence = static_cast<D3D12Fence*>(submit_info.wait_fences[i].internal_state.get());
-		assert(fence);
+		const auto fence = to_internal(submit_info.wait_fences[i]);
 		// GPU side wait
 		throw_if_failed(queue_d3d12->Get()->Wait(fence->fence.Get(), submit_info.wait_values[i]));
 	}
@@ -1075,8 +1129,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue& qu
 	std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
 	for (unsigned i = 0; i < submit_info.command_list_count; i++)
 	{
-		const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(submit_info.command_lists[i].internal_state.get());
-		assert(cmd_list_d3d12);
+		const auto cmd_list_d3d12 = to_internal(submit_info.command_lists[i]);
 		cmd_list_ptrs[i] = cmd_list_d3d12->Get();
 	}
 	queue_d3d12->Get()->ExecuteCommandLists(submit_info.command_list_count, cmd_list_ptrs.data());
@@ -1084,8 +1137,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue& qu
 	// Signal the fences
 	for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
 	{
-		const auto fence = static_cast<D3D12Fence*>(submit_info.signal_fences[i].internal_state.get());
-		assert(fence);
+		const auto fence = to_internal(submit_info.signal_fences[i]);
 		const auto result = queue_d3d12->Get()->Signal(fence->fence.Get(), submit_info.signal_values[i]);
 		if (FAILED(result))
 		{
@@ -1097,7 +1149,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue& qu
 bool D3D12Context::create_fence(Fence& fence, uint64_t initial_value)
 {
 	fence.internal_state = mkS<D3D12Fence>();
-	const auto fence_d3d12 = static_cast<D3D12Fence*>(fence.internal_state.get());
+	const auto fence_d3d12 = to_internal(fence);
 	if (FAILED(m_device_->CreateFence(initial_value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence_d3d12->fence.ReleaseAndGetAddressOf()))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create fence\n");
@@ -1110,8 +1162,7 @@ bool D3D12Context::create_fence(Fence& fence, uint64_t initial_value)
 
 uint64_t D3D12Context::get_fence_value(const Fence& fence)
 {
-	const auto fence_d3d12 = static_cast<D3D12Fence*>(fence.internal_state.get());
-	assert(fence_d3d12);
+	const auto fence_d3d12 = to_internal(fence);
 	return fence_d3d12->fence->GetCompletedValue();
 }
 
@@ -1121,8 +1172,7 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
 	std::array<HANDLE, 16> wait_handles{};
 	for (auto i = 0; i < info.count; i++)
 	{
-		const auto d3d12_fence = static_cast<D3D12Fence*>(info.fences[i].internal_state.get());
-		assert(d3d12_fence);
+		const auto d3d12_fence = to_internal(info.fences[i]);
 		if (FAILED(d3d12_fence->fence->SetEventOnCompletion(info.values[i], d3d12_fence->event)))
 		{
 			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to set event on fence\n");
@@ -1145,8 +1195,7 @@ void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, 
 
 void D3D12Context::issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers)
 {
-	const auto cmd_list_d3d12 = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(cmd_list.internal_state.get());
-	assert(cmd_list_d3d12);
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
 
 	assert(count < 16);
@@ -1177,19 +1226,28 @@ void D3D12Context::issue_barrier(CommandList& cmd_list, unsigned count, const Im
 		};
 	}
 
-	D3D12_BARRIER_GROUP barrier_group = 
+	D3D12_BARRIER_GROUP barrier_group =
 	{
 		.Type = D3D12_BARRIER_TYPE_TEXTURE,
 		.NumBarriers = count,
 		.pTextureBarriers = d3d12_barriers.data(),
 	};
 
-	command_list->Barrier(count, &barrier_group); // TODO: is this scope enough
+	command_list->Barrier(count, &barrier_group);
 }
 
 void D3D12Context::wait_all()
 {
-	assert(false);
+	auto value = get_fence_value(m_fence_wait_all_) + 1;
+	const WaitInfo wait_info
+	{
+		.wait_all = true,
+		.count = 1,
+		.fences = &m_fence_wait_all_,
+		.values = &value,
+		.timeout = INFINITE
+	};
+	wait_fences(wait_info);
 }
 
 D3D12Context::~D3D12Context()

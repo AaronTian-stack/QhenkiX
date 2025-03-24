@@ -8,4 +8,11 @@ struct D3D12Fence
 {
 	HANDLE event;
 	ComPtr<ID3D12Fence> fence;
+	~D3D12Fence()
+	{
+		if (event)
+		{
+			CloseHandle(event);
+		}
+	}
 };

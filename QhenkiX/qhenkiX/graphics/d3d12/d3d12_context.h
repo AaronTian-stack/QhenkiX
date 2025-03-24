@@ -47,7 +47,7 @@ namespace qhenki::gfx
 
 		D3D12RootHasher m_root_reflection_;
 
-		HANDLE m_fence_event = nullptr;
+		Fence m_fence_wait_all_{}; // For stalling queues
 
 		std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc, bool interleaved) const;
 		void root_signature_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc);
@@ -59,7 +59,7 @@ namespace qhenki::gfx
 		bool is_compatability() override { return false; }
 		bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, 
 			Queue& direct_queue, unsigned& frame_index) override;
-		bool resize_swapchain(Swapchain& swapchain, int width, int height) override;
+		bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap) override;
 		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) override;
 		bool present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
 

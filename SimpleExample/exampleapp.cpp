@@ -4,7 +4,7 @@
 void ExampleApp::create()
 {
 	auto shader_model = m_context_->is_compatability() ? 
-		qhenki::gfx::ShaderModel::SM_5_0 : qhenki::gfx::ShaderModel::SM_6_0;
+		qhenki::gfx::ShaderModel::SM_5_0 : qhenki::gfx::ShaderModel::SM_6_6;
 
 	auto compiler_flags = CompilerInput::NONE;
 
@@ -104,7 +104,6 @@ void ExampleApp::create()
 
 void ExampleApp::render()
 {
-	static int count = 0;
 	const auto seconds_elapsed = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
 	// Update matrices
@@ -129,7 +128,7 @@ void ExampleApp::render()
 
 	// Create a command list in the open state
 	qhenki::gfx::CommandList cmd_list;
-	m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]);
+	throw_if_failed(m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]));
 
 	// Resource transition
 	qhenki::gfx::ImageBarrier barrier_render = 
@@ -168,7 +167,7 @@ void ExampleApp::render()
 	};
 	m_context_->set_viewports(cmd_list, 1, &viewport);
 	m_context_->set_scissor_rects(cmd_list, 1, &scissor_rect);
-	m_context_->bind_pipeline(cmd_list, m_pipeline_);
+	throw_if_failed(m_context_->bind_pipeline(cmd_list, m_pipeline_));
 
 	/**
 	* TODO: Bind table to pipeline
