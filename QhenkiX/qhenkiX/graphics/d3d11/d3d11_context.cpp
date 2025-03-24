@@ -11,6 +11,13 @@
 
 using namespace qhenki::gfx;
 
+static ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
+{
+	auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
+	assert(d3d11_buffer);
+	return d3d11_buffer;
+}
+
 void D3D11Context::create()
 {
     // Create factory
@@ -98,7 +105,7 @@ bool D3D11Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), frame_index);
 }
 
-bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height)
+bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap)
 {
 	wait_all();
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
@@ -268,8 +275,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 {
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
-	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
-	assert(buffer_d3d11);
+	const auto buffer_d3d11 = to_internal(buffer);
 
 	D3D11_BUFFER_DESC bufferInfo{};
 	bufferInfo.ByteWidth = desc.size;
@@ -342,8 +348,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 void* D3D11Context::map_buffer(const Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
-	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
-	assert(buffer_d3d11);
+	const auto buffer_d3d11 = to_internal(buffer);
 	if (FAILED(m_device_context_->Map(
 		buffer_d3d11->Get(),
 		0, 
@@ -359,8 +364,7 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
 
 void D3D11Context::unmap_buffer(const Buffer& buffer)
 {
-	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
-	assert(buffer_d3d11);
+	const auto buffer_d3d11 = to_internal(buffer);
 	m_device_context_->Unmap(buffer_d3d11->Get(), 0);
 }
 
@@ -371,8 +375,7 @@ void D3D11Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slo
 	std::array<ID3D11Buffer**, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
 	for (unsigned int i = 0; i < buffer_count; i++)
 	{
-		auto buffer = static_cast<ComPtr<ID3D11Buffer>*>(buffers[i].internal_state.get());
-		assert(buffer);
+		auto buffer = to_internal(buffers[i]);
 		buffer_d3d11[i] = buffer->GetAddressOf();
 	}
 
@@ -382,8 +385,7 @@ void D3D11Context::bind_vertex_buffers(CommandList& cmd_list, unsigned start_slo
 void D3D11Context::bind_index_buffer(CommandList& cmd_list, const Buffer& buffer, IndexType format,
                                      unsigned offset)
 {
-	const auto buffer_d3d11 = static_cast<ComPtr<ID3D11Buffer>*>(buffer.internal_state.get());
-	assert(buffer_d3d11);
+	const auto buffer_d3d11 = to_internal(buffer);
 	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), D3DHelper::get_dxgi_format(format), offset);
 }
 

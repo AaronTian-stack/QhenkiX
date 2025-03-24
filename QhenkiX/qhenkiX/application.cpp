@@ -83,7 +83,7 @@ void Application::run(const qhenki::gfx::API api)
 			{
 				m_window_.m_display_info_.width = event.window.data1;
 				m_window_.m_display_info_.height = event.window.data2;
-				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2);
+				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, rtv_heap);
 				resize(event.window.data1, event.window.data2);
 			}
         }
