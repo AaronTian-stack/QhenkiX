@@ -60,7 +60,7 @@ void Application::run(const qhenki::gfx::API api)
 	{
 		.type = qhenki::gfx::DescriptorHeapDesc::Type::RTV,
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-		.descriptor_count = 1000, // TODO: expose max count to context. For now try to stay under 2048
+		.descriptor_count = 2048, // TODO: expose max count to context. For now try to stay under 2048
 	};
 	throw_if_failed(m_context_->create_descriptor_heap(rtv_heap_desc, rtv_heap));
 	
@@ -83,13 +83,13 @@ void Application::run(const qhenki::gfx::API api)
 			{
 				m_window_.m_display_info_.width = event.window.data1;
 				m_window_.m_display_info_.height = event.window.data2;
-				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, rtv_heap);
+				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, rtv_heap, m_frame_index_);
 				resize(event.window.data1, event.window.data2);
 			}
         }
         render();
     }
-	m_context_->wait_all();
+	m_context_->wait_idle(m_graphics_queue_);
 	destroy();
 }
 

@@ -58,9 +58,16 @@ static ComPtr<ID3D12CommandAllocator>* to_internal(const CommandPool& ext)
 
 static ComPtr<D3D12MA::Allocation>* to_internal(const Buffer& ext)
 {
-	auto d3d12_buffer = static_cast<ComPtr<D3D12MA::Allocation>*>(ext.internal_state.get());
-	assert(d3d12_buffer);
-	return d3d12_buffer;
+	auto alloc = static_cast<ComPtr<D3D12MA::Allocation>*>(ext.internal_state.get());
+	assert(alloc);
+	return alloc;
+}
+
+static ComPtr<D3D12MA::VirtualAllocation>* to_internal(const DescriptorTable& ext)
+{
+	auto alloc = static_cast<ComPtr<D3D12MA::VirtualAllocation>*>(ext.internal_state.get());
+	assert(alloc);
+	return alloc;
 }
 
 void D3D12Context::create()
@@ -209,6 +216,8 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 	assert(direct_queue.type == QueueType::GRAPHICS);
 	const auto queue = to_internal(direct_queue);
 
+	m_swapchain_queue_ = &direct_queue; // For resizing
+
 	ComPtr<IDXGISwapChain1> swapchain1;
 
 	if (FAILED(m_dxgi_factory_->CreateSwapChainForHwnd(
@@ -243,25 +252,20 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 	return true;
 }
 
-bool D3D12Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap)
+bool D3D12Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index)
 {
 	// Update description
 	swapchain.desc.width = width;
 	swapchain.desc.height = height;
 
 	// Stall entire pipeline
-	wait_all();
+	wait_idle(*m_swapchain_queue_);
 
 	// Remove direct references to back buffer resources
 	for (auto& buffer : m_swapchain_buffers_)
 	{
 		buffer->Release();
 	}
-
-	// Remove indirect references to views
-	// Find the descriptors in the heap and release them
-	// Table internal state is allocation info in the heap
-	
 
 	// Resize buffers
 	if (FAILED(m_swapchain_->ResizeBuffers(
@@ -277,6 +281,29 @@ bool D3D12Context::resize_swapchain(Swapchain& swapchain, int width, int height,
 	}
 
 	// Recreate descriptors
+	for (int i = 0; i < swapchain.desc.buffer_count; i++)
+	{
+		if (FAILED(m_swapchain_->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers_[i].GetAddressOf()))))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
+			return false;
+		}
+	}
+	auto d3d12_heap = to_internal(rtv_heap);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
+	if (!d3d12_heap->get_CPU_descriptor(rtv_cpu_handle, m_swapchain_descriptors_.desc.offset, 0))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU start descriptor for swapchain RTV table\n");
+		return false;
+	}
+	for (int i = 0; i < swapchain.desc.buffer_count; i++)
+	{
+		// Create an RTV for the i-th buffer
+		m_device_->CreateRenderTargetView(m_swapchain_buffers_[i].Get(), nullptr, rtv_cpu_handle);
+		rtv_cpu_handle.ptr += d3d12_heap->descriptor_size;
+	}
+
+	frame_index = m_swapchain_->GetCurrentBackBufferIndex();
 
 	return true;
 }
@@ -1236,9 +1263,15 @@ void D3D12Context::issue_barrier(CommandList& cmd_list, unsigned count, const Im
 	command_list->Barrier(count, &barrier_group);
 }
 
-void D3D12Context::wait_all()
+void D3D12Context::wait_idle(Queue& queue)
 {
 	auto value = get_fence_value(m_fence_wait_all_) + 1;
+
+	// Signal
+	const auto queue_d3d12 = to_internal(queue);
+	auto fence = to_internal(m_fence_wait_all_);
+	queue_d3d12->Get()->Signal(fence->fence.Get(), value);
+
 	const WaitInfo wait_info
 	{
 		.wait_all = true,

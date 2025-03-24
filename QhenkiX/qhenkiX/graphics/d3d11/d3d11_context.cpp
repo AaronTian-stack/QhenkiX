@@ -105,9 +105,10 @@ bool D3D11Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), frame_index);
 }
 
-bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap)
+bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index)
 {
-	wait_all();
+	//wait_idle(m_swapchain_queue_);
+	m_device_context_->Flush();
     auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	assert(swap_d3d11);
 	assert(swap_d3d11->swapchain);
@@ -522,7 +523,7 @@ void D3D11Context::issue_barrier(CommandList& cmd_list, unsigned count, const Im
 	// D3D11 does not have barriers
 }
 
-void D3D11Context::wait_all()
+void D3D11Context::wait_idle(Queue& queue)
 {
     m_device_context_->Flush();
 }

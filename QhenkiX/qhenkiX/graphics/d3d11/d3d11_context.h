@@ -38,7 +38,7 @@ namespace qhenki::gfx
 		bool is_compatability() override { return true; }
 		bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, 
 			Queue& direct_queue, unsigned& frame_index) override;
-		bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap) override;
+		bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index) override;
 		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) override;
 		bool present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
 
@@ -94,7 +94,7 @@ namespace qhenki::gfx
 		void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) override;
 		void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) override;
 
-		void wait_all() override;
+		void wait_idle(Queue& queue) override;
 		~D3D11Context() override;
 
 		friend struct D3D11GraphicsPipeline;
