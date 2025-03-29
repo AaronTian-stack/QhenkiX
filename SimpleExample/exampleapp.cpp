@@ -59,28 +59,37 @@ void ExampleApp::create()
 		m_context_->create_command_pool(m_cmd_pools_[i], m_graphics_queue_);
 	}
 
+	qhenki::gfx::Buffer vertex_CPU;
+	qhenki::gfx::Buffer index_CPU;
+
 	// Create vertex buffer
 	const auto vertices = std::array{
 		0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
 		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
 		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f
 	};
-	qhenki::gfx::BufferDesc desc =
+	qhenki::gfx::BufferDesc desc
 	{
 		.size = vertices.size() * sizeof(float),
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	m_context_->create_buffer(desc, vertices.data(), m_vertex_buffer_, L"Interleaved Position/Color Buffer");
+	m_context_->create_buffer(desc, vertices.data(), vertex_CPU, L"Interleaved Position/Color Buffer CPU");
+
+	desc.visibility = qhenki::gfx::BufferVisibility::GPU;
+	m_context_->create_buffer(desc, nullptr, m_vertex_buffer_, L"Interleaved Position/Color Buffer GPU");
 
 	const auto indices = std::array{ 0u, 1u, 2u };
-	qhenki::gfx::BufferDesc index_desc =
+	qhenki::gfx::BufferDesc index_desc
 	{
 		.size = indices.size() * sizeof(uint32_t),
 		.usage = qhenki::gfx::BufferUsage::INDEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	m_context_->create_buffer(index_desc, indices.data(), m_index_buffer_, L"Index Buffer");
+	m_context_->create_buffer(index_desc, indices.data(), index_CPU, L"Index Buffer CPU");
+
+	index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
+	m_context_->create_buffer(index_desc, nullptr, m_index_buffer_, L"Index Buffer GPU");
 
 	// Make 2 matrix constant buffers for double buffering
 	// TODO: persistent mapping flag
@@ -95,11 +104,32 @@ void ExampleApp::create()
 		m_context_->create_buffer(matrix_desc, nullptr, m_matrix_buffers_[i], L"Matrix Buffer");
 	}
 
-	// TODO: schedule copies to GPU buffers
-
 	// Create fences
 	m_context_->create_fence(m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]);
-	//m_context_->create_fence(m_fence_render_finished_, 0);
+
+	// Schedule copies to GPU buffers
+	throw_if_failed(m_context_->reset_command_pool(m_cmd_pools_[get_frame_index()]));
+	qhenki::gfx::CommandList cmd_list;
+	throw_if_failed(m_context_->create_command_list(cmd_list, m_cmd_pools_[get_frame_index()]));
+	m_context_->copy_buffer(cmd_list, vertex_CPU, 0, m_vertex_buffer_, 0, desc.size);
+	m_context_->copy_buffer(cmd_list, index_CPU, 0, m_index_buffer_, 0, index_desc.size);
+	m_context_->close_command_list(cmd_list);
+	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
+	qhenki::gfx::SubmitInfo info{};
+	info.command_list_count = 1;
+	info.command_lists = &cmd_list;
+	info.signal_fence_count = 1;
+	info.signal_fences = &m_fence_frame_ready_;
+	info.signal_values = &current_fence_value;
+	m_context_->submit_command_lists(info, m_graphics_queue_);
+
+	qhenki::gfx::WaitInfo wait_info
+	{
+		.count = 1,
+		.fences = &m_fence_frame_ready_,
+		.values = &m_fence_frame_ready_val_[get_frame_index()]
+	};
+	m_context_->wait_fences(wait_info);
 }
 
 void ExampleApp::render()
@@ -149,7 +179,7 @@ void ExampleApp::render()
 	m_context_->start_render_pass(cmd_list, m_swapchain_, nullptr, get_frame_index());
 
 	// Set viewport
-	const D3D12_VIEWPORT viewport =
+	const D3D12_VIEWPORT viewport
 	{
 		.TopLeftX = 0,
 		.TopLeftY = 0,
@@ -158,7 +188,7 @@ void ExampleApp::render()
 		.MinDepth = 0.0f,
 		.MaxDepth = 1.0f,
 	};
-	const D3D12_RECT scissor_rect =
+	const D3D12_RECT scissor_rect
 	{
 		.left = 0,
 		.top = 0,
@@ -202,13 +232,15 @@ void ExampleApp::render()
 
 	// Submit command list
 	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
-	qhenki::gfx::SubmitInfo info{};
-	info.command_list_count = 1;
-	info.command_lists = &cmd_list;
-	info.wait_fence_count = 0;
-	info.signal_fence_count = 1;
-	info.signal_fences = &m_fence_frame_ready_;
-	info.signal_values = &current_fence_value;
+	qhenki::gfx::SubmitInfo info
+	{
+		.wait_fence_count = 0,
+		.command_list_count = 1,
+		.command_lists = &cmd_list,
+		.signal_fence_count = 1,
+		.signal_fences = &m_fence_frame_ready_,
+		.signal_values = &current_fence_value,
+	};
 	m_context_->submit_command_lists(info, m_graphics_queue_);
 
 	// Present

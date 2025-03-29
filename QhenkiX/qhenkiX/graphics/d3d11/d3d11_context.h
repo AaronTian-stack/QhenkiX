@@ -55,6 +55,8 @@ namespace qhenki::gfx
 
 		bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name = nullptr) override;
 
+		void copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_offset, Buffer& dst, UINT64 dst_offset, UINT64 bytes) override;
+
 		void* map_buffer(const Buffer& buffer) override;
 		void unmap_buffer(const Buffer& buffer) override;
 

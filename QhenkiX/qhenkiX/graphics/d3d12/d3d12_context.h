@@ -41,9 +41,6 @@ namespace qhenki::gfx
 		std::mutex m_pipeline_desc_mutex_;
 		boost::object_pool<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_pipeline_desc_pool_;
 
-		ComPtr<IDxcLibrary> m_library_;
-		ComPtr<IDxcCompiler> m_compiler_;
-
 		D3D11ShaderCompiler m_d3d11_shader_compiler_; // Needed for SM < 6.0
 
 		D3D12RootHasher m_root_reflection_;
@@ -76,6 +73,8 @@ namespace qhenki::gfx
 		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override;
 
 		bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name) override;
+
+		void copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_offset, Buffer& dst, UINT64 dst_offset, UINT64 bytes) override;
 
 		void* map_buffer(const Buffer& buffer) override;
 		void unmap_buffer(const Buffer& buffer) override;

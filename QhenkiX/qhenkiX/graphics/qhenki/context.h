@@ -56,10 +56,9 @@ namespace qhenki::gfx
 
 		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
 
-        /**
-        * Write only. Do not read or performance issues may happen.
-		* For persistent mapped buffers (pinned memory only), unmap should do nothing.
-		**/
+		virtual void copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_offset, Buffer& dst, UINT64 dst_offset, UINT64 bytes) = 0;
+
+		// Write only
 		virtual void* map_buffer(const Buffer& buffer) = 0;
 		virtual void unmap_buffer(const Buffer& buffer) = 0;
 
@@ -93,6 +92,7 @@ namespace qhenki::gfx
 		virtual bool create_fence(Fence& fence, uint64_t initial_value) = 0;
 		// If submission is pending value may be out of date
 		virtual uint64_t get_fence_value(const Fence& fence) = 0;
+		// Waits for fences on CPU
 		virtual bool wait_fences(const WaitInfo& info) = 0;
 
 		// Sets ImageBarrier resource to swapchain resource
