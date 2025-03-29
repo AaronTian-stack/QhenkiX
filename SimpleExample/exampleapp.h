@@ -22,7 +22,6 @@ class ExampleApp : public Application
 	qhenki::gfx::Buffer m_index_buffer_{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers_{};
 
-	//qhenki::gfx::Fence m_fence_render_finished_{}, m_fence_frame_ready_{};
 	qhenki::gfx::Fence m_fence_frame_ready_{};
 	std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{};
 

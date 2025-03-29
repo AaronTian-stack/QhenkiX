@@ -82,7 +82,7 @@ void D3D12Context::create()
 #endif
 
 	// Create the DXGI factory
-	if (FAILED(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(&m_dxgi_factory_))))
+	if (FAILED(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(m_dxgi_factory_.ReleaseAndGetAddressOf()))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create DXGI factory\n");
 		throw std::runtime_error("D3D12: Failed to create DXGI factory");
@@ -118,7 +118,7 @@ void D3D12Context::create()
 		OutputDebugString((L"D3D12: Selected adapter: " + std::wstring(desc.Description) + L"\n").c_str());
 	}
 
-	if (FAILED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_device_))))
+	if (FAILED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(m_device_.ReleaseAndGetAddressOf()))))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create device");
 		throw std::runtime_error("D3D12: Failed to create device");
@@ -895,6 +895,19 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	return true;
 }
 
+void D3D12Context::copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_offset, Buffer& dst, UINT64 dst_offset, UINT64 bytes)
+{
+	assert(src_offset + bytes <= src.desc.size);
+	assert(dst_offset + bytes <= dst.desc.size);
+	const auto src_allocation = to_internal(src);
+	const auto dst_allocation = to_internal(dst);
+	const auto src_resource = src_allocation->Get()->GetResource();
+	const auto dst_resource = dst_allocation->Get()->GetResource();
+
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
+	cmd_list_d3d12->Get()->CopyBufferRegion(dst_resource, dst_offset, src_resource, src_offset, bytes);
+}
+
 void* D3D12Context::map_buffer(const Buffer& buffer)
 {
 	// Check if buffer is CPU visible
@@ -1289,7 +1302,7 @@ D3D12Context::~D3D12Context()
     m_swapchain_.Reset();
 	m_dxgi_factory_.Reset();
 #ifdef _DEBUG
-	m_dxgi_debug_->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+	m_dxgi_debug_->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_IGNORE_INTERNAL);
 	m_dxgi_debug_.Reset();
 	m_debug_.Reset();
 #endif

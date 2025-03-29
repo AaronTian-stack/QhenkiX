@@ -346,6 +346,25 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	return true;
 }
 
+void D3D11Context::copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_offset, Buffer& dst, UINT64 dst_offset, UINT64 bytes)
+{
+	assert(src_offset + bytes <= src.desc.size);
+	assert(dst_offset + bytes <= dst.desc.size);
+	const auto src_d3d11 = to_internal(src);
+	const auto dst_d3d11 = to_internal(dst);
+
+	// Assume 1D for now
+	const auto box = CD3D11_BOX(src_offset, 0, 0, src_offset + bytes, 1, 1);
+
+	m_device_context_->CopySubresourceRegion(
+		dst_d3d11->Get(),
+		0, // Dst subresource
+		dst_offset, 0, 0,
+		src_d3d11->Get(),
+		0, // Src subresource
+		&box);
+}
+
 void* D3D11Context::map_buffer(const Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
