@@ -42,6 +42,17 @@ void ExampleApp::create()
 	};
 	m_context_->create_shader_dynamic(nullptr, m_pixel_shader_, pixel_shader);
 
+	// Create pipeline layout
+	qhenki::gfx::LayoutBinding b1
+	{
+		.binding = 0,
+		.count = 1,
+		.type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+	};
+	qhenki::gfx::PipelineLayoutDesc layout_desc{};
+	layout_desc.spaces[0] = { b1 };
+	throw_if_failed(m_context_->create_pipeline_layout(layout_desc, m_pipeline_layout_));
+
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
 	{
@@ -49,7 +60,7 @@ void ExampleApp::create()
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
 		.interleaved = TRUE,
 	};
-	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_, nullptr, nullptr, L"triangle_pipeline");
+	m_context_->create_pipeline(pipeline_desc, m_pipeline_, m_vertex_shader_, m_pixel_shader_, &m_pipeline_layout_, nullptr, L"triangle_pipeline");
 
 	// A graphics queue is already given to the application by the context
 
@@ -63,7 +74,7 @@ void ExampleApp::create()
 	qhenki::gfx::Buffer index_CPU;
 
 	// Create vertex buffer
-	const auto vertices = std::array{
+	constexpr auto vertices = std::array{
 		0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
 		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
 		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f
@@ -79,7 +90,7 @@ void ExampleApp::create()
 	desc.visibility = qhenki::gfx::BufferVisibility::GPU;
 	m_context_->create_buffer(desc, nullptr, m_vertex_buffer_, L"Interleaved Position/Color Buffer GPU");
 
-	const auto indices = std::array{ 0u, 1u, 2u };
+	constexpr auto indices = std::array{ 0u, 1u, 2u };
 	qhenki::gfx::BufferDesc index_desc
 	{
 		.size = indices.size() * sizeof(uint32_t),
@@ -92,20 +103,17 @@ void ExampleApp::create()
 	m_context_->create_buffer(index_desc, nullptr, m_index_buffer_, L"Index Buffer GPU");
 
 	// Make 2 matrix constant buffers for double buffering
+	qhenki::gfx::BufferDesc matrix_desc
+	{
+		.size = sizeof(CameraMatrices),
+		.usage = qhenki::gfx::BufferUsage::UNIFORM,
+		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
+	};
 	// TODO: persistent mapping flag
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		qhenki::gfx::BufferDesc matrix_desc =
-		{
-			.size = sizeof(CameraMatrices),
-			.usage = qhenki::gfx::BufferUsage::UNIFORM,
-			.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
-		};
 		m_context_->create_buffer(matrix_desc, nullptr, m_matrix_buffers_[i], L"Matrix Buffer");
 	}
-
-	// Create fences
-	m_context_->create_fence(m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]);
 
 	// Schedule copies to GPU buffers
 	throw_if_failed(m_context_->reset_command_pool(m_cmd_pools_[get_frame_index()]));
@@ -115,12 +123,14 @@ void ExampleApp::create()
 	m_context_->copy_buffer(cmd_list, index_CPU, 0, m_index_buffer_, 0, index_desc.size);
 	m_context_->close_command_list(cmd_list);
 	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
-	qhenki::gfx::SubmitInfo info{};
-	info.command_list_count = 1;
-	info.command_lists = &cmd_list;
-	info.signal_fence_count = 1;
-	info.signal_fences = &m_fence_frame_ready_;
-	info.signal_values = &current_fence_value;
+	qhenki::gfx::SubmitInfo info
+	{
+		.command_list_count = 1,
+		.command_lists = &cmd_list,
+		.signal_fence_count = 1,
+		.signal_fences = &m_fence_frame_ready_,
+		.signal_values = &current_fence_value,
+	};
 	m_context_->submit_command_lists(info, m_graphics_queue_);
 
 	qhenki::gfx::WaitInfo wait_info
@@ -197,6 +207,9 @@ void ExampleApp::render()
 	};
 	m_context_->set_viewports(cmd_list, 1, &viewport);
 	m_context_->set_scissor_rects(cmd_list, 1, &scissor_rect);
+
+	m_context_->bind_pipeline_layout(cmd_list, m_pipeline_layout_);
+
 	throw_if_failed(m_context_->bind_pipeline(cmd_list, m_pipeline_));
 
 	/**
@@ -231,7 +244,7 @@ void ExampleApp::render()
 	m_context_->close_command_list(cmd_list);
 
 	// Submit command list
-	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
+	auto current_fence_value = m_fence_frame_ready_val_[get_frame_index()];
 	qhenki::gfx::SubmitInfo info
 	{
 		.wait_fence_count = 0,
@@ -243,7 +256,7 @@ void ExampleApp::render()
 	};
 	m_context_->submit_command_lists(info, m_graphics_queue_);
 
-	// Present
+	// You MUST call Present at the end of the render loop
 	// TODO: change for Vulkan
 	m_context_->present(m_swapchain_, 0, nullptr, get_frame_index());
 

@@ -59,6 +59,30 @@ namespace qhenki::gfx
 		sPtr<void> internal_state;
 	};
 
+	struct LayoutBinding
+	{
+		uint32_t binding;
+		uint32_t count;
+		D3D12_DESCRIPTOR_RANGE_TYPE type;
+		// TODO: stage flags
+	};
+
+	struct PushRange
+	{
+		uint32_t offset;
+		uint32_t size;
+		uint32_t binding; // Not relevant in Vulkan
+		// TODO: stage flags
+	};
+
+#define INFINITE_DESCRIPTORS 0xFFFFFFFF
+
+	struct PipelineLayoutDesc
+	{
+		std::vector<PushRange> push_ranges; // TODO: use small vector
+		std::array<std::vector<LayoutBinding>, 4> spaces; // TODO: use small vector
+	};
+
 	struct PipelineLayout
 	{
 		sPtr<void> internal_state;

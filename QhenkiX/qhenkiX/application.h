@@ -23,12 +23,16 @@ namespace qhenki::gfx
  */
 class Application
 {
+public:
+	static constexpr UINT m_frames_in_flight = 2;
+
+private:
 	// Audio
 	// Input
 	// Files 
 	// Preferences
-	std::thread::id m_main_thread_id;
-	qhenki::gfx::API m_graphics_api_;
+	std::thread::id m_main_thread_id{};
+	qhenki::gfx::API m_graphics_api_ = qhenki::gfx::D3D11;
 protected:
 	UINT m_frame_index_ = 0;
 	DisplayWindow m_window_;
@@ -38,6 +42,9 @@ protected:
 	qhenki::gfx::DescriptorHeap rtv_heap{};
 	qhenki::gfx::DescriptorTable swapchain_targets{};
 
+	qhenki::gfx::Fence m_fence_frame_ready_{};
+	std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{0, 0};
+
 	virtual void init_display_window();
 
 	virtual void create() {}
@@ -46,7 +53,6 @@ protected:
 	virtual void destroy() {}
 
 public:
-	static constexpr UINT m_frames_in_flight = 2;
 	UINT get_frame_index() const { return m_frame_index_; }
 	void increment_frame_index() { m_frame_index_ = (m_frame_index_ + 1) % m_frames_in_flight; }
 

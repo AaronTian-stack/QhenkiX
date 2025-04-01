@@ -26,7 +26,6 @@ void Application::init_display_window()
 
 void Application::run(const qhenki::gfx::API api)
 {
-	OutputDebugString(L"Qhenki D3D12: test\n");
 	m_graphics_api_ = api;
 	m_main_thread_id = std::this_thread::get_id();
 	init_display_window();
@@ -66,6 +65,9 @@ void Application::run(const qhenki::gfx::API api)
 	
 	// Make swapchain RTVs (stored internally)
 	throw_if_failed(m_context_->create_swapchain_descriptors(m_swapchain_, rtv_heap));
+
+	// Create fences
+	throw_if_failed(m_context_->create_fence(m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]));
 
 	create();
 	// Starts the main loop

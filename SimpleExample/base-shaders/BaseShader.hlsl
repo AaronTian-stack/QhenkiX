@@ -1,8 +1,8 @@
-//cbuffer CameraBuffer : register(b0)
-//{
-//    float4x4 view;
-//    float4x4 projection;
-//};
+cbuffer CameraBuffer : register(b0)
+{
+    float4x4 view;
+    float4x4 projection;
+};
 
 struct VSInput
 {
@@ -16,7 +16,7 @@ struct VSOutput
     float3 color : COLOR0;
 };
 
-[RootSignature("RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)")]
+//[RootSignature("RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)")]
 VSOutput vs_main(VSInput input)
 {
     VSOutput output = (VSOutput) 0;
