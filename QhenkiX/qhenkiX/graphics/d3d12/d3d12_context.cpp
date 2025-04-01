@@ -768,8 +768,9 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 	const auto spaces = count_non_empty(desc.spaces);
 
 	const unsigned param_count = desc.push_ranges.size() + spaces;
-	assert(param_count <= 10);
-	D3D12_ROOT_PARAMETER params[10]; // TODO: replace with small vector
+	
+	std::array<D3D12_ROOT_PARAMETER, 10> params; // TODO: replace with small vector
+	assert(param_count <= params.size());
 
 	for (unsigned i = 0; i < desc.push_ranges.size(); i++)
 	{
@@ -835,7 +836,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 	{
 		// Default range flags
 		.NumParameters = param_count,
-		.pParameters = params,
+		.pParameters = params.data(),
 		.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
 	};
 

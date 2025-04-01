@@ -104,7 +104,7 @@ namespace qhenki::gfx
 		// virtual void set_barrier_resource(unsigned count, const ImageBarrier* barriers, RenderTarget& render_target);
 		virtual void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
-		//virtual void compatibility_set_shader_resource(unsigned slot,)
+		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) = 0;
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_idle(Queue& queue) = 0;

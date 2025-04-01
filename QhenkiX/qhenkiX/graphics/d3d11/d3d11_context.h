@@ -99,6 +99,8 @@ namespace qhenki::gfx
 		void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) override;
 		void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) override;
 
+		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) override;
+
 		void wait_idle(Queue& queue) override;
 		~D3D11Context() override;
 

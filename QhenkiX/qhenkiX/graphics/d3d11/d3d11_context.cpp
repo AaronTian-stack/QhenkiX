@@ -552,6 +552,27 @@ void D3D11Context::issue_barrier(CommandList& cmd_list, unsigned count, const Im
 	// D3D11 does not have barriers
 }
 
+void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage)
+{
+	std::array<ID3D11Buffer**, 15> buffer_d3d11{};
+	assert(count <= buffer_d3d11.size());
+	for (unsigned i = 0; i < count; i++)
+	{
+		buffer_d3d11[i] = to_internal(buffers[i])->GetAddressOf();
+	}
+	switch (stage)
+	{
+	case PipelineStage::VERTEX:
+		m_device_context_->VSSetConstantBuffers(slot, count, buffer_d3d11[0]);
+		break;
+	case PipelineStage::PIXEL:
+		m_device_context_->PSSetConstantBuffers(slot, count, buffer_d3d11[0]);
+		break;
+	default:
+		throw std::runtime_error("D3D11: Invalid pipeline stage");
+	}
+}
+
 void D3D11Context::wait_idle(Queue& queue)
 {
     m_device_context_->Flush();
