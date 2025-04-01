@@ -147,10 +147,14 @@ void ExampleApp::render()
 	const auto seconds_elapsed = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
 	// Update matrices
-	const XMVECTORF32 eye_pos = { sinf(seconds_elapsed) * 2.0f, 0.0f, cosf(seconds_elapsed) * 2.0f };
-	const XMVECTORF32 focus_pos = { 0.0f, 0.0f, 0.0f };
-	const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f };
-    const auto view = XMMatrixLookAtLH(eye_pos, focus_pos, up);
+	XMVECTOR eye = XMVectorSet(0.0f, sinf(seconds_elapsed), -2.0f, 0.0f);
+	XMVECTOR at = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+
+	XMVECTOR forward = XMVector3Normalize(XMVectorSubtract(at, eye));
+	XMVECTOR right = XMVector3Normalize(XMVector3Cross(forward, XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+	XMVECTOR up = XMVector3Cross(right, forward);
+
+    const auto view = XMMatrixLookAtLH(eye, at, up);
 	const auto dim = this->m_window_.get_display_size();
 	const auto proj = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(dim.x) / static_cast<float>(dim.y), 
 		0.01f, 100.0f);
@@ -211,6 +215,16 @@ void ExampleApp::render()
 	m_context_->bind_pipeline_layout(cmd_list, m_pipeline_layout_);
 
 	throw_if_failed(m_context_->bind_pipeline(cmd_list, m_pipeline_));
+
+	if (m_context_->is_compatability())
+	{
+		m_context_->compatibility_set_constant_buffers(0, 1, 
+			&m_matrix_buffers_[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
+	}
+	else
+	{
+		// TODO
+	}
 
 	/**
 	* TODO: Bind table to pipeline

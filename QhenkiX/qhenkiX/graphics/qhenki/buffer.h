@@ -21,7 +21,7 @@ namespace qhenki::gfx
 		CPU_RANDOM = 1 << 1,
 	};
 
-    // Constant/Uniform buffers must follow D3D11 alignment rules! (equivalent to std140 GLSL)
+    // Constant/Uniform buffers must follow D3D11 alignment rules (equivalent to std140 GLSL)
 	struct BufferDesc
 	{
 		uint64_t size = 0;
