@@ -267,6 +267,16 @@ bool D3D11Context::bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeli
 	return true;
 }
 
+bool D3D11Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout& layout)
+{
+	return true; // D3D11 does not have root signatures
+}
+
+void D3D11Context::bind_pipeline_layout(CommandList& cmd_list, const PipelineLayout& layout)
+{
+	// D3D11 does not have root signatures
+}
+
 bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
 {
 	return true; // D3D11 does not have descriptors

@@ -70,6 +70,13 @@ static ComPtr<D3D12MA::VirtualAllocation>* to_internal(const DescriptorTable& ex
 	return alloc;
 }
 
+static ComPtr<ID3D12RootSignature>* to_internal(const PipelineLayout& ext)
+{
+	auto root_sig = static_cast<ComPtr<ID3D12RootSignature>*>(ext.internal_state.get());
+	assert(root_sig);
+	return root_sig;
+}
+
 void D3D12Context::create()
 {
 	UINT dxgi_factory_flags = 0;
@@ -431,12 +438,12 @@ void D3D12Context::root_signature_reflection(ID3D12ShaderReflection* shader_refl
 {
 	// TODO: finish this
 	assert(false);
-	D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {};
-	for (UINT i = 0; i < shader_desc.BoundResources; i++)
-	{
-		D3D12_SHADER_INPUT_BIND_DESC bind_desc = {};
-		shader_reflection->GetResourceBindingDesc(i, &bind_desc);
-	}
+	//D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {};
+	//for (UINT i = 0; i < shader_desc.BoundResources; i++)
+	//{
+	//	D3D12_SHADER_INPUT_BIND_DESC bind_desc = {};
+	//	shader_reflection->GetResourceBindingDesc(i, &bind_desc);
+	//}
 }
 
 UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const
@@ -563,6 +570,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 	assert((vs12 == nullptr) ^ (vs11 == nullptr));
 	if ((vs12 && vs12->root_signature_blob) || (vs11 && vs11->root_signature_blob)) // Root signature is contained in the shader
 	{
+		assert(!in_layout); // Should not have both
 		void* blob_ptr;
 		size_t blob_size;
 		if (vs11)
@@ -744,6 +752,121 @@ bool D3D12Context::bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeli
 	cmd_list_d3d12->Get()->SetPipelineState(d3d12_pipeline->pipeline_state.Get());
 
 	return true;
+}
+
+bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout& layout)
+{
+	auto count_non_empty = [](const std::array<std::vector<LayoutBinding>, 4>& spaces)
+		{
+		unsigned count = 0;
+		for (const auto& space : spaces)
+		{
+			if (!space.empty()) count++;
+		}
+		return count;
+		};
+	const auto spaces = count_non_empty(desc.spaces);
+
+	const unsigned param_count = desc.push_ranges.size() + spaces;
+	assert(param_count <= 10);
+	D3D12_ROOT_PARAMETER params[10]; // TODO: replace with small vector
+
+	for (unsigned i = 0; i < desc.push_ranges.size(); i++)
+	{
+		const auto& range = desc.push_ranges[i];
+		params[i] =
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+			.Constants =
+			{
+				.ShaderRegister = range.binding,
+				.RegisterSpace = 5, // TODO: change this
+				.Num32BitValues = range.size,
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		};
+	}
+
+	std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> ranges;
+	for (unsigned i = 0; i < desc.spaces.size(); i++)
+	{
+		auto& space = desc.spaces[i];
+		if (space.empty()) continue;
+		// Sort vector of LayoutBindings by binding register
+		std::ranges::sort(space,
+	      [](const LayoutBinding& a, const LayoutBinding& b)
+	      {
+	          return a.binding < b.binding;
+	      });
+		// Assemble ranges dynamically
+		std::vector<D3D12_DESCRIPTOR_RANGE> l_ranges; // TODO: Replace with small vector
+		l_ranges.reserve(space.size());
+		unsigned offset = 0;
+		for (unsigned j = 0; j < space.size(); j++)
+		{
+			const auto& binding = space[j];
+			// Check that this is not the last binding and not infinite register count
+			assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
+			D3D12_DESCRIPTOR_RANGE range
+			{
+				.RangeType = binding.type,
+				.NumDescriptors = binding.count, // TODO: test infinite and bindless
+				.BaseShaderRegister = binding.binding,
+				.RegisterSpace = i,
+				.OffsetInDescriptorsFromTableStart = offset,
+			};
+			offset += binding.count;
+			l_ranges.emplace_back(range);
+		}
+		params[i] =
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable =
+			{
+				.NumDescriptorRanges = static_cast<UINT>(l_ranges.size()),
+				.pDescriptorRanges = l_ranges.data(),
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		};
+		ranges.emplace_back(std::move(l_ranges));
+	}
+
+	D3D12_ROOT_SIGNATURE_DESC root_sig_desc
+	{
+		// Default range flags
+		.NumParameters = param_count,
+		.pParameters = params,
+		.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+	};
+
+	ComPtr<ID3DBlob> root_sig_blob, error_blob;
+	HRESULT hr = D3D12SerializeRootSignature(&root_sig_desc, D3D_ROOT_SIGNATURE_VERSION_1_0,
+		&root_sig_blob, &error_blob);
+	if (FAILED(hr))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to serialize root signature\n");
+		return false;
+	}
+	const void* root_sig_data = root_sig_blob->GetBufferPointer();
+	size_t root_sig_data_size = root_sig_blob->GetBufferSize();
+
+	layout.internal_state = mkS<ComPtr<ID3D12RootSignature>>();
+	auto& root_signature = *static_cast<ComPtr<ID3D12RootSignature>*>(layout.internal_state.get());
+	if(FAILED(m_device_->CreateRootSignature(0, root_sig_data, root_sig_data_size,
+		IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create root signature\n");
+		return false;
+	}
+
+	return true;
+}
+
+void D3D12Context::bind_pipeline_layout(CommandList& cmd_list, const PipelineLayout& layout)
+{
+	auto cmd_list_d3d12 = to_internal(cmd_list);
+	auto layout_d3d12 = to_internal(layout);
+	cmd_list_d3d12->Get()->SetGraphicsRootSignature(layout_d3d12->Get());
 }
 
 bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
@@ -1155,7 +1278,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue& qu
 {
 	const auto queue_d3d12 = to_internal(queue);
 
-	// TODO: examine the overhead this causes
+	// TODO: Examine the overhead this causes
 
 	// Wait on fences
 	for (unsigned i = 0; i < submit_info.wait_fence_count; i++)

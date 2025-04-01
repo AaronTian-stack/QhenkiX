@@ -70,6 +70,9 @@ namespace qhenki::gfx
 
 		bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) override;
 
+		bool create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout& layout) override;
+		void bind_pipeline_layout(CommandList& cmd_list, const PipelineLayout& layout) override;
+
 		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override;
 
 		bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name) override;

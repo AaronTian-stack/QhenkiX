@@ -10,6 +10,7 @@ struct CameraMatrices
 
 class ExampleApp : public Application
 {
+	qhenki::gfx::PipelineLayout m_pipeline_layout_{};
 	qhenki::gfx::GraphicsPipeline m_pipeline_{};
 	qhenki::gfx::Shader m_vertex_shader_{};
 	qhenki::gfx::Shader m_pixel_shader_{};
@@ -21,9 +22,6 @@ class ExampleApp : public Application
 	qhenki::gfx::Buffer m_vertex_buffer_{};
 	qhenki::gfx::Buffer m_index_buffer_{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers_{};
-
-	qhenki::gfx::Fence m_fence_frame_ready_{};
-	std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{};
 
 	CameraMatrices matrices_{};
 

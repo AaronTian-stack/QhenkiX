@@ -49,8 +49,12 @@ namespace qhenki::gfx
          * @return true if the shader was successfully compiled and created, false otherwise.
          */
         virtual bool create_shader_dynamic(ShaderCompiler* compiler, Shader& shader, const CompilerInput& input) = 0;
-		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, PipelineLayout* in_layout, PipelineLayout* out_layout, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline& pipeline, Shader& vertex_shader, Shader& pixel_shader, 
+			PipelineLayout* in_layout, PipelineLayout* out_layout, wchar_t const* debug_name = nullptr) = 0;
 		virtual bool bind_pipeline(CommandList& cmd_list, GraphicsPipeline& pipeline) = 0;
+
+		virtual bool create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout& layout) = 0;
+		virtual void bind_pipeline_layout(CommandList& cmd_list, const PipelineLayout& layout) = 0;
 
 		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
 
@@ -99,6 +103,8 @@ namespace qhenki::gfx
 		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, Swapchain& swapchain, unsigned frame_index) = 0;
 		// virtual void set_barrier_resource(unsigned count, const ImageBarrier* barriers, RenderTarget& render_target);
 		virtual void issue_barrier(CommandList& cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
+
+		//virtual void compatibility_set_shader_resource(unsigned slot,)
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_idle(Queue& queue) = 0;
