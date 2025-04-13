@@ -66,7 +66,7 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\shared\filehelper.cpp">
+    <ClCompile Include="qhenkiX\graphics\shared\file_helper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.cpp">
@@ -76,6 +76,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\shared\math_helper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -248,7 +251,7 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\shared\filehelper.h">
+    <ClInclude Include="qhenkiX\graphics\shared\file_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.h">
@@ -279,6 +282,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_fence.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\shared\math_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

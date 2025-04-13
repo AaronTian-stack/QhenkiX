@@ -14,37 +14,26 @@ bool D3D12DescriptorHeap::create(ID3D12Device* device, const D3D12_DESCRIPTOR_HE
 
 	m_descriptor_size_ = device->GetDescriptorHandleIncrementSize(desc.Type);
 
-	D3D12MA::VIRTUAL_BLOCK_DESC block_desc = {};
-	block_desc.Size = desc.NumDescriptors * m_descriptor_size_;
-	if (FAILED(CreateVirtualBlock(&block_desc, &m_block_)))
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create virtual block\n");
-		return false;
-	}
-
 	return true;
 }
 
-bool D3D12DescriptorHeap::allocate(D3D12MA::VirtualAllocation& alloc, UINT64& alloc_offset, size_t descriptor_count)
+bool D3D12DescriptorHeap::allocate(UINT64& alloc_offset)
 {
-	D3D12MA::VIRTUAL_ALLOCATION_DESC desc{};
-	desc.Size = descriptor_count * m_descriptor_size_;
-	desc.Alignment = m_descriptor_size_;
-
-	// Virtual block is not thread safe
-	std::scoped_lock lock(m_block_mutex_);
-	if (FAILED(m_block_->Allocate(&desc, &alloc, &alloc_offset)))
+	// Check free list
+	if (!m_free_list_.empty())
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get offset from virtual allocation\n");
+		alloc_offset = m_free_list_.back();
+		m_free_list_.pop_back();
+		return true;
+	}
+	if (m_pointer_ >= m_desc_.NumDescriptors)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor, out of memory in heap\n");
 		return false;
 	}
+	// New descriptor
+	alloc_offset = m_pointer_++ * m_descriptor_size_;
 	return true;
-}
-
-void D3D12DescriptorHeap::deallocate(D3D12MA::VirtualAllocation& alloc)
-{
-	std::scoped_lock lock(m_block_mutex_);
-	m_block_->FreeAllocation(alloc);
 }
 
 bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle, size_t offset_bytes, size_t num_descriptor_offset)
@@ -57,4 +46,16 @@ bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle
 	handle = m_heap_->GetCPUDescriptorHandleForHeapStart();
 	handle.ptr += offset_bytes + num_descriptor_offset * m_descriptor_size_;
 	return true;
+}
+
+bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE& handle, size_t offset_bytes, size_t num_descriptor_offset)
+{
+	if (m_desc_.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+	{
+		handle = m_heap_->GetGPUDescriptorHandleForHeapStart();
+		handle.ptr += offset_bytes + num_descriptor_offset * m_descriptor_size_;
+		return true;
+	}
+	OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get GPU start for non shader visible heap\n");
+	return false;
 }

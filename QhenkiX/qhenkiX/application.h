@@ -39,8 +39,7 @@ protected:
 	uPtr<qhenki::gfx::Context> m_context_ = nullptr;
 	qhenki::gfx::Swapchain m_swapchain_{};
 	qhenki::gfx::Queue m_graphics_queue_{}; // A graphics queue is given to the application by default
-	qhenki::gfx::DescriptorHeap rtv_heap{};
-	qhenki::gfx::DescriptorTable swapchain_targets{};
+	qhenki::gfx::DescriptorHeap m_rtv_heap{}; // Default RTV heap that also contains swapchain descriptors
 
 	qhenki::gfx::Fence m_fence_frame_ready_{};
 	std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{0, 0};

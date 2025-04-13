@@ -15,17 +15,27 @@ namespace qhenki::gfx
 		UINT m_descriptor_size_ = 0;
 		ComPtr<ID3D12DescriptorHeap> m_heap_;
 
-		std::mutex m_block_mutex_;
-		D3D12MA::VirtualBlock* m_block_ = nullptr; // NOT thread safe
+		std::mutex m_mutex_;
+
+		size_t m_pointer_ = 0;
+		std::vector<unsigned> m_free_list_;
 
 	public:
 		const D3D12_DESCRIPTOR_HEAP_DESC& desc = m_desc_;
 		const UINT& descriptor_size = m_descriptor_size_;
 		bool create(ID3D12Device* device, const D3D12_DESCRIPTOR_HEAP_DESC& desc);
-		// Reserves a block/table of descriptors. Does not actually create any!
-		bool allocate(D3D12MA::VirtualAllocation& alloc, UINT64& alloc_offset, size_t descriptor_count);
-		// Frees a block but doesn't do anything to the descriptors that were there
-		void deallocate(D3D12MA::VirtualAllocation& alloc);
+
+		//bool allocate(D3D12MA::VirtualAllocation& alloc, UINT64& alloc_offset, size_t descriptor_count);
+		//void deallocate(D3D12MA::VirtualAllocation& alloc);
+
+		bool allocate(UINT64& alloc_offset);
+		void deallocate(UINT64& alloc_offset);
+
 		bool get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE& handle, size_t offset_bytes, size_t num_descriptor_offset);
+		bool get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE& handle, size_t offset_bytes, size_t num_descriptor_offset);
+		const ComPtr<ID3D12DescriptorHeap>& Get() const
+		{
+			return m_heap_;
+		}
 	};
 }

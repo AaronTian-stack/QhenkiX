@@ -6,7 +6,6 @@
 #include <graphics/displaywindow.h>
 
 #include "barrier.h"
-#include "buffer.h"
 #include "command_list.h"
 #include "command_pool.h"
 #include "pipeline.h"
@@ -14,7 +13,9 @@
 #include "render_target.h"
 #include "shader_compiler.h"
 #include "descriptor_heap.h"
+#include "descriptor_table.h"
 #include "submission.h"
+#include "texture.h"
 
 namespace qhenki::gfx
 {
@@ -57,10 +58,19 @@ namespace qhenki::gfx
 		virtual void bind_pipeline_layout(CommandList& cmd_list, const PipelineLayout& layout) = 0;
 
 		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
+		virtual void set_descriptor_heap(CommandList& cmd_list, const DescriptorHeap& heap) = 0;
+
+		virtual void set_descriptor_table(CommandList& cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
+		// TODO: copy descriptors
 
 		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name = nullptr) = 0;
 
 		virtual void copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_offset, Buffer& dst, UINT64 dst_offset, UINT64 bytes) = 0;
+
+		virtual bool create_texture(const TextureDesc& desc, Texture& texture, wchar_t const* debug_name = nullptr) = 0;
+
+		// Assumes that you are copying to first subresource only TODO: add subresource index argument?
+		virtual bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) = 0;
 
 		// Write only
 		virtual void* map_buffer(const Buffer& buffer) = 0;
@@ -112,10 +122,14 @@ namespace qhenki::gfx
 	};
 }
 
-inline void throw_if_failed(bool result)
-{
-	if (!result)
-	{
-		throw std::runtime_error("Something went wrong!\n");
-	}
+#define THROW_IF_FAILED(result) \
+if (!(result)) \
+{ \
+   throw std::runtime_error("Something went wrong!\n"); \
+}
+
+#define THROW_IF_TRUE(result) \
+if ((result)) \
+{ \
+   throw std::runtime_error("Something went wrong!\n"); \
 }
