@@ -10,7 +10,9 @@
 
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_fence.h"
+#include "d3d12_texture.h"
 #include "graphics/shared/d3d_helper.h"
+#include "graphics/shared/math_helper.h"
 
 using namespace qhenki::gfx;
 
@@ -63,18 +65,48 @@ static ComPtr<D3D12MA::Allocation>* to_internal(const Buffer& ext)
 	return alloc;
 }
 
-static ComPtr<D3D12MA::VirtualAllocation>* to_internal(const DescriptorTable& ext)
-{
-	auto alloc = static_cast<ComPtr<D3D12MA::VirtualAllocation>*>(ext.internal_state.get());
-	assert(alloc);
-	return alloc;
-}
-
 static ComPtr<ID3D12RootSignature>* to_internal(const PipelineLayout& ext)
 {
 	auto root_sig = static_cast<ComPtr<ID3D12RootSignature>*>(ext.internal_state.get());
 	assert(root_sig);
 	return root_sig;
+}
+
+static D3D12Texture* to_internal(const Texture& ext)
+{
+	auto text = static_cast<D3D12Texture*>(ext.internal_state.get());
+	assert(text);
+	return text;
+}
+
+static D3D12_RESOURCE_STATES convert_state(BufferUsage usage)
+{
+	D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON;
+    if (usage & (BufferUsage::VERTEX | BufferUsage::UNIFORM))  
+    {  
+       initial_state |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;  
+    }  
+    if (usage & BufferUsage::INDEX)  
+    {  
+       initial_state |= D3D12_RESOURCE_STATE_INDEX_BUFFER;  
+    }  
+    if (usage & BufferUsage::STORAGE)  
+    {  
+       initial_state |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;  
+    }  
+    if (usage & BufferUsage::INDIRECT)  
+    {  
+       initial_state |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;  
+    }  
+    if (usage & BufferUsage::TRANSFER_SRC)  
+    {  
+       initial_state |= D3D12_RESOURCE_STATE_COPY_SOURCE;  
+    }  
+    if (usage & BufferUsage::TRANSFER_DST)  
+    {  
+       initial_state |= D3D12_RESOURCE_STATE_COPY_DEST;  
+    }
+	return initial_state;
 }
 
 void D3D12Context::create()
@@ -169,8 +201,9 @@ void D3D12Context::create()
 		.pAdapter = adapter.Get(),
 	};
 	// These flags are optional but recommended.
-	allocatorDesc.Flags = D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED |
-		D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+    allocatorDesc.Flags = static_cast<D3D12MA::ALLOCATOR_FLAGS>(
+       D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED |
+       D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
 
 	if (FAILED(CreateAllocator(&allocatorDesc, &m_allocator_)))
 	{
@@ -246,9 +279,9 @@ bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 	}
 	frame_index = this->m_swapchain_->GetCurrentBackBufferIndex();
 
-	for (int i = 0; i < swapchain_desc.buffer_count; i++)
+	for (unsigned i = 0; i < swapchain_desc.buffer_count; i++)
 	{
-		if (FAILED(m_swapchain_->GetBuffer(i, IID_PPV_ARGS(&m_swapchain_buffers_[i]))))
+		if (FAILED(m_swapchain_->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers_[i].ReleaseAndGetAddressOf()))))
 		{
 			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
 			return false;
@@ -288,7 +321,7 @@ bool D3D12Context::resize_swapchain(Swapchain& swapchain, int width, int height,
 	}
 
 	// Recreate descriptors
-	for (int i = 0; i < swapchain.desc.buffer_count; i++)
+	for (unsigned i = 0; i < swapchain.desc.buffer_count; i++)
 	{
 		if (FAILED(m_swapchain_->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers_[i].GetAddressOf()))))
 		{
@@ -297,17 +330,19 @@ bool D3D12Context::resize_swapchain(Swapchain& swapchain, int width, int height,
 		}
 	}
 	auto d3d12_heap = to_internal(rtv_heap);
-	D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
-	if (!d3d12_heap->get_CPU_descriptor(rtv_cpu_handle, m_swapchain_descriptors_.desc.offset, 0))
+
+	THROW_IF_TRUE(swapchain.desc.buffer_count > m_swapchain_buffers_.size());
+
+	for (unsigned i = 0; i < swapchain.desc.buffer_count; i++)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU start descriptor for swapchain RTV table\n");
-		return false;
-	}
-	for (int i = 0; i < swapchain.desc.buffer_count; i++)
-	{
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
+		if (!d3d12_heap->get_CPU_descriptor(rtv_cpu_handle, m_swapchain_descriptors_[i].offset, 0))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU start descriptor for swapchain RTV table\n");
+			return false;
+		}
 		// Create an RTV for the i-th buffer
 		m_device_->CreateRenderTargetView(m_swapchain_buffers_[i].Get(), nullptr, rtv_cpu_handle);
-		rtv_cpu_handle.ptr += d3d12_heap->descriptor_size;
 	}
 
 	frame_index = m_swapchain_->GetCurrentBackBufferIndex();
@@ -329,37 +364,27 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
 		return false;
 	}
 
-	m_swapchain_descriptors_.desc =
-	{
-		.descriptor_count = swapchain.desc.buffer_count,
-		.heap = &rtv_heap,
-	};
+	THROW_IF_TRUE(swapchain.desc.buffer_count > m_swapchain_buffers_.size());
 
-	m_swapchain_descriptors_.internal_state = mkS<D3D12MA::VirtualAllocation>();
-	auto& allocation = *static_cast<D3D12MA::VirtualAllocation*>(m_swapchain_descriptors_.internal_state.get());
-
-	// This will set the offset of the table in the heap
-	// Synchronized internally
-	// This works in blocks rather than individual descriptors, so overkill for RTVs
-	const bool result = d3d12_heap->allocate(allocation, m_swapchain_descriptors_.desc.offset, swapchain.desc.buffer_count);
-	if (!result)
+	for (unsigned i = 0; i < swapchain.desc.buffer_count; i++)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate RTV descriptors\n");
-		return false;
-	}
-
-	// Virtual allocation made. Now create RTVs in the table position
-	D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
-	if (!d3d12_heap->get_CPU_descriptor(rtv_cpu_handle, m_swapchain_descriptors_.desc.offset, 0))
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU start descriptor for swapchain RTV table\n");
-		return false;
-	}
-	for (int i = 0; i < swapchain.desc.buffer_count; i++)
-	{
+		if (d3d12_heap->allocate(m_swapchain_descriptors_[i].offset))
+		{
+			m_swapchain_descriptors_[i].heap = &rtv_heap;
+		}
+		else
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for swapchain RTV\n");
+			return false;
+		}
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
+		if (!d3d12_heap->get_CPU_descriptor(rtv_cpu_handle, m_swapchain_descriptors_[i].offset, 0))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU start descriptor for swapchain RTV\n");
+			return false;
+		}
 		// Create an RTV for the i-th buffer
 		m_device_->CreateRenderTargetView(m_swapchain_buffers_[i].Get(), nullptr, rtv_cpu_handle);
-		rtv_cpu_handle.ptr += d3d12_heap->descriptor_size;
 	}
 	
 	return true;
@@ -767,7 +792,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 		};
 	const auto spaces = count_non_empty(desc.spaces);
 
-	const unsigned param_count = desc.push_ranges.size() + spaces;
+	const UINT param_count = desc.push_ranges.size() + spaces;
 	
 	std::array<D3D12_ROOT_PARAMETER, 10> params; // TODO: replace with small vector
 	assert(param_count <= params.size());
@@ -918,6 +943,36 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 	return true;
 }
 
+void D3D12Context::set_descriptor_heap(CommandList& cmd_list, const DescriptorHeap& heap)
+{
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
+	const auto heap_d3d12 = to_internal(heap);
+	if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV || heap.desc.type == DescriptorHeapDesc::Type::SAMPLER)
+	{
+		cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heap_d3d12->Get().GetAddressOf());
+	}
+	else
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+	}
+}
+
+void D3D12Context::set_descriptor_table(CommandList& cmd_list, unsigned index, const Descriptor& gpu_descriptor)
+{
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
+	assert(gpu_descriptor.heap);
+
+	const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
+	D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
+	if (!heap_d3d12->get_GPU_descriptor(gpu_handle, gpu_descriptor.offset, 0))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get GPU descriptor handle\n");
+		return;
+	}
+
+	cmd_list_d3d12->Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
+}
+
 bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name)
 {
 	buffer.desc = desc;
@@ -955,29 +1010,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		allocation_desc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 	}
 
-	D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON;
-	switch (desc.usage)
-	{
-	case VERTEX:
-	case UNIFORM:
-		initial_state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-		break;
-	case INDEX:
-		initial_state = D3D12_RESOURCE_STATE_INDEX_BUFFER;
-		break;
-	case STORAGE:
-		initial_state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-		break;
-	case INDIRECT:
-		initial_state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
-		break;
-	case TRANSFER_SRC:
-		initial_state = D3D12_RESOURCE_STATE_COPY_SOURCE;
-		break;
-	case TRANSFER_DST:
-		initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
-		break;
-	}
+	D3D12_RESOURCE_STATES initial_state = convert_state(desc.usage);
 
 	if (FAILED(m_allocator_->CreateResource(
 		&allocation_desc,
@@ -1012,6 +1045,10 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		}
 	}
 
+#ifdef _DEBUG
+	buffer_d3d12->Get()->SetName(debug_name);
+#endif
+
 	// Need to also create the associated view
 	// This is determined by the buffer usage, some views will need a heap to be created (CBV, SRV, UAV)
 	// This is done in a separate step exposed to the developer
@@ -1030,6 +1067,133 @@ void D3D12Context::copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_of
 
 	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	cmd_list_d3d12->Get()->CopyBufferRegion(dst_resource, dst_offset, src_resource, src_offset, bytes);
+}
+
+bool D3D12Context::create_texture(const TextureDesc& desc, Texture& texture,
+                                  wchar_t const* debug_name)
+{
+	if (desc.height > 1 && desc.dimension == TextureDimension::TEXTURE_1D)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Tried to initialize 1D texture with height > 1\n");
+		return false;
+	}
+
+	texture.desc = desc;
+	texture.internal_state = mkS<D3D12Texture>();
+	const auto texture_d3d12 = to_internal(texture);
+	D3D12_RESOURCE_DESC resource_desc =
+	{
+		.Alignment = 0,
+		.Width = desc.width,
+		.Height = desc.height,
+		.DepthOrArraySize = desc.depth_or_array_size,
+		.MipLevels = desc.mip_levels,
+		.Format = desc.format,
+		.SampleDesc = // TODO: options for RT usage
+		{
+			.Count = 1,
+			.Quality = 0,
+		},
+		.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+		.Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: need to set flags for RT and UAV
+	};
+
+	switch (desc.dimension)
+	{
+	case TextureDimension::TEXTURE_1D:
+		resource_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+		break;
+	case TextureDimension::TEXTURE_2D:
+		resource_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		break;
+	case TextureDimension::TEXTURE_3D:
+		resource_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+		break;
+	}
+
+	D3D12MA::ALLOCATION_DESC allocation_desc
+	{
+		.HeapType = D3D12_HEAP_TYPE_DEFAULT,
+	};
+
+	if (FAILED(m_allocator_->CreateResource(
+		&allocation_desc,
+		&resource_desc,
+		convert_state(desc.usage), // Common use should be as copy destination (need to transition later)
+		nullptr,
+		texture_d3d12->allocation.ReleaseAndGetAddressOf(),
+		IID_NULL, NULL)))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create texture\n");
+		return false;
+	}
+
+#ifdef _DEBUG
+	texture_d3d12->allocation.Get()->SetName(debug_name);
+#endif
+
+	return true;
+}
+
+bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture)
+{
+	const uint32_t num_subresources = texture.desc.mip_levels * texture.desc.depth_or_array_size;
+	// Get info to know how big staging needs to be
+	const auto texture_allocation = to_internal(texture);
+	const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
+
+	UINT64 size;
+	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(num_subresources); // TODO: replace with small vector
+	std::vector<UINT> row_sizes(num_subresources); // TODO: replace with small vector
+	m_device_->GetCopyableFootprints(&desc, 0, num_subresources, 0,
+		layouts.data(), row_sizes.data(), nullptr, &size);
+
+	BufferDesc staging_desc
+	{
+		.size = size,
+		.usage = BufferUsage::TRANSFER_SRC,
+		.visibility = CPU_SEQUENTIAL,
+	};
+	if (!create_buffer(staging_desc, data, staging, nullptr))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create staging buffer for texture copy\n");
+		return false;
+	}
+
+	// get pointer to the staging buffer
+	uint8_t* upload_memory = static_cast<uint8_t*>(map_buffer(staging));
+	// memcpy from data to staging buffer based off footprint data
+
+	const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& subResourceLayout = layouts[0];
+	uint8_t* destination_sub_resource_memory = upload_memory + subResourceLayout.Offset;
+	const uint64_t sub_resource_pitch = MathHelper::align_u32(subResourceLayout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	memcpy(destination_sub_resource_memory, data, std::min(sub_resource_pitch, texture.desc.width));
+
+	// https://alextardif.com/D3D11To12P3.html for entire copy details
+
+	// Record commands to copy subresources from staging to texture
+	
+	D3D12_TEXTURE_COPY_LOCATION destination
+	{
+		.pResource = texture_allocation->allocation.Get()->GetResource(),
+		.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+		.SubresourceIndex = 0,
+	};
+
+	const auto staging_internal = to_internal(staging);
+
+	D3D12_TEXTURE_COPY_LOCATION source
+	{
+		.pResource = staging_internal->Get()->GetResource(),
+		.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+		.PlacedFootprint = layouts[0],
+		// PlacedFootprint offset is 0 since handled by allocator
+	};
+
+	const auto cmd_list_d3d12 = to_internal(cmd_list);
+	cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+
+	return true;
 }
 
 void* D3D12Context::map_buffer(const Buffer& buffer)
@@ -1221,14 +1385,14 @@ void D3D12Context::start_render_pass(CommandList& cmd_list, Swapchain& swapchain
                                      const RenderTarget* depth_stencil, UINT frame_index)
 {
 	const auto cmd_list_d3d12 = to_internal(cmd_list);
-	auto command_list = cmd_list_d3d12->Get();
+	const auto command_list = cmd_list_d3d12->Get();
 
 	// Get RTV descriptor
-	assert(m_swapchain_descriptors_.desc.heap);
-	const auto rtv_heap = to_internal(*m_swapchain_descriptors_.desc.heap);
+	assert(m_swapchain_descriptors_[0].heap && (m_swapchain_descriptors_[0].heap == m_swapchain_descriptors_[1].heap));
+	const auto rtv_heap = to_internal(*m_swapchain_descriptors_[0].heap);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle;
-	rtv_heap->get_CPU_descriptor(rtv_handle, m_swapchain_descriptors_.desc.offset, frame_index);
+	rtv_heap->get_CPU_descriptor(rtv_handle, m_swapchain_descriptors_[frame_index].offset, 0);
 
 	// TODO: depth stencil
 	command_list->OMSetRenderTargets(1, &rtv_handle, 
@@ -1286,7 +1450,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue& qu
 	{
 		const auto fence = to_internal(submit_info.wait_fences[i]);
 		// GPU side wait
-		throw_if_failed(queue_d3d12->Get()->Wait(fence->fence.Get(), submit_info.wait_values[i]));
+		THROW_IF_FAILED(queue_d3d12->Get()->Wait(fence->fence.Get(), submit_info.wait_values[i]));
 	}
 
 	assert(submit_info.command_list_count < 16);
@@ -1334,7 +1498,7 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
 {
 	assert(info.count < 16);
 	std::array<HANDLE, 16> wait_handles{};
-	for (auto i = 0; i < info.count; i++)
+	for (unsigned i = 0; i < info.count; i++)
 	{
 		const auto d3d12_fence = to_internal(info.fences[i]);
 		if (FAILED(d3d12_fence->fence->SetEventOnCompletion(info.values[i], d3d12_fence->event)))

@@ -16,8 +16,8 @@ namespace qhenki::gfx
 		{
 			CPU,
 			GPU,
-		} visibility; // RTV is CPU only
-		size_t descriptor_count;
+		} visibility; // RTV, DSV is CPU only
+		unsigned descriptor_count;
 	};
 
 	struct DescriptorHeap

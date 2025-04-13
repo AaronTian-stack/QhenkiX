@@ -1,6 +1,6 @@
 namespace qhenki::gfx
 {
-	enum BufferUsage : uint8_t
+	enum class BufferUsage : uint8_t
 	{
 		VERTEX = 1 << 0,
 		INDEX = 1 << 1,
@@ -10,6 +10,18 @@ namespace qhenki::gfx
 		TRANSFER_SRC = 1 << 5,
 		TRANSFER_DST = 1 << 6,
 	};
+
+	constexpr BufferUsage operator|(BufferUsage lhs, BufferUsage rhs) {
+		using Underlying = std::underlying_type_t<BufferUsage>;
+		return static_cast<BufferUsage>(
+			static_cast<Underlying>(lhs) | static_cast<Underlying>(rhs)
+			);
+	}
+
+	constexpr bool operator&(BufferUsage lhs, BufferUsage rhs) {
+		using Underlying = std::underlying_type_t<BufferUsage>;
+		return (static_cast<Underlying>(lhs) & static_cast<Underlying>(rhs)) != 0;
+	}
 
 	enum BufferVisibility : uint8_t
 	{

@@ -20,11 +20,15 @@ struct VSOutput
 VSOutput vs_main(VSInput input)
 {
     VSOutput output;
-
+#ifdef DX11
     float4 worldPosition = float4(input.position, 1.0);
     output.position = mul(viewProj, worldPosition);
     output.color = input.color;
-
+#endif
+#ifdef DX12
+    output.position = float4(input.position, 1.0);
+    output.color = input.color;
+#endif
     return output;
 }
 

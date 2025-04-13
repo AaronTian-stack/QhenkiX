@@ -23,6 +23,11 @@ class ExampleApp : public Application
 	qhenki::gfx::Buffer m_index_buffer_{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers_{};
 
+	qhenki::gfx::Texture m_texture_{};
+
+	qhenki::gfx::DescriptorHeap m_CPU_heap{};
+	qhenki::gfx::DescriptorHeap m_GPU_heap_{};
+
 	CameraMatrices matrices_{};
 
 protected:

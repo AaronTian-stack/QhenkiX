@@ -185,7 +185,8 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp" />
-    <ClCompile Include="qhenkiX\graphics\shared\filehelper.cpp" />
+    <ClCompile Include="qhenkiX\graphics\shared\file_helper.cpp" />
+    <ClCompile Include="qhenkiX\graphics\shared\math_helper.cpp" />
     <ClCompile Include="src\D3D12MemAlloc.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
     <ClCompile Include="qhenkiX\application.cpp" />
@@ -234,6 +235,7 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_texture.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\barrier.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h" />
@@ -241,6 +243,7 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\sync.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\submission.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\texture.h" />
     <ClInclude Include="qhenkiX\graphics\shared\d3d_helper.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
@@ -254,7 +257,8 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\swapchain.h" />
     <ClInclude Include="qhenkiX\graphics\mesh.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\buffer.h" />
-    <ClInclude Include="qhenkiX\graphics\shared\filehelper.h" />
+    <ClInclude Include="qhenkiX\graphics\shared\file_helper.h" />
+    <ClInclude Include="qhenkiX\graphics\shared\math_helper.h" />
     <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h" />
     <ClInclude Include="qhenkiX\application.h" />
     <ClInclude Include="qhenkiX\graphics\camera.h" />

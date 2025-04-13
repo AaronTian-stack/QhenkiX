@@ -43,7 +43,7 @@ void Application::run(const qhenki::gfx::API api)
 	}
 	m_context_->create();
 
-	throw_if_failed(m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, m_graphics_queue_));
+	THROW_IF_FAILED(m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, m_graphics_queue_));
 
 	const qhenki::gfx::SwapchainDesc swapchain_desc =
 	{
@@ -52,22 +52,22 @@ void Application::run(const qhenki::gfx::API api)
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 		.buffer_count = m_frames_in_flight,
 	};
-	throw_if_failed(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
+	THROW_IF_FAILED(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
 		m_graphics_queue_, m_frame_index_));
 
 	qhenki::gfx::DescriptorHeapDesc rtv_heap_desc
 	{
 		.type = qhenki::gfx::DescriptorHeapDesc::Type::RTV,
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-		.descriptor_count = 2048, // TODO: expose max count to context. For now try to stay under 2048
+		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	throw_if_failed(m_context_->create_descriptor_heap(rtv_heap_desc, rtv_heap));
+	THROW_IF_FAILED(m_context_->create_descriptor_heap(rtv_heap_desc, m_rtv_heap));
 	
 	// Make swapchain RTVs (stored internally)
-	throw_if_failed(m_context_->create_swapchain_descriptors(m_swapchain_, rtv_heap));
+	THROW_IF_FAILED(m_context_->create_swapchain_descriptors(m_swapchain_, m_rtv_heap));
 
 	// Create fences
-	throw_if_failed(m_context_->create_fence(m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]));
+	THROW_IF_FAILED(m_context_->create_fence(m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]));
 
 	create();
 	// Starts the main loop
@@ -85,7 +85,7 @@ void Application::run(const qhenki::gfx::API api)
 			{
 				m_window_.m_display_info_.width = event.window.data1;
 				m_window_.m_display_info_.height = event.window.data2;
-				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, rtv_heap, m_frame_index_);
+				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, m_rtv_heap, m_frame_index_);
 				resize(event.window.data1, event.window.data2);
 			}
         }

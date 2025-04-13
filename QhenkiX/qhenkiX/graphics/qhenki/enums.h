@@ -21,5 +21,6 @@ namespace qhenki::gfx
 	{
 		VERTEX,
 		PIXEL,
+		COMPUTE,
 	};
 }

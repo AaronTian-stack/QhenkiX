@@ -3,7 +3,6 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <dxgidebug.h>
-#include <dxcapi.h>
 #include <boost/pool/object_pool.hpp>
 
 #include <D3D12MemAlloc.h>
@@ -34,8 +33,8 @@ namespace qhenki::gfx
 		ComPtr<D3D12MA::Allocator> m_allocator_;
 
 		ComPtr<IDXGISwapChain3> m_swapchain_;
-		std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers_;
-		DescriptorTable m_swapchain_descriptors_{};
+		std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers_; // 2 is upper limit
+		std::array<Descriptor, 2> m_swapchain_descriptors_{}; // 2 is upper limit
 		Queue* m_swapchain_queue_ = nullptr;
 
 		std::mutex m_pipeline_desc_mutex_;
@@ -74,10 +73,16 @@ namespace qhenki::gfx
 		void bind_pipeline_layout(CommandList& cmd_list, const PipelineLayout& layout) override;
 
 		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override;
+		void set_descriptor_heap(CommandList& cmd_list, const DescriptorHeap& heap) override;
+
+		void set_descriptor_table(CommandList& cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
 
 		bool create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name) override;
 
 		void copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_offset, Buffer& dst, UINT64 dst_offset, UINT64 bytes) override;
+
+		bool create_texture(const TextureDesc& desc, Texture& texture, wchar_t const* debug_name) override;
+		bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) override;
 
 		void* map_buffer(const Buffer& buffer) override;
 		void unmap_buffer(const Buffer& buffer) override;

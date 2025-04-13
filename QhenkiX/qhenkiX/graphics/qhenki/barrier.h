@@ -157,10 +157,10 @@ namespace qhenki::gfx
 		ImageSubresourceRange subresource_range;
 	};
 
-    struct MemoryBarrier
-    {
+    //struct MemoryBarrier
+    //{
      
-    };
+    //};
 	struct BufferBarrier
 	{
 		

@@ -282,34 +282,44 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 	return true; // D3D11 does not have descriptors
 }
 
+void D3D11Context::set_descriptor_heap(CommandList& cmd_list, const DescriptorHeap& heap)
+{
+	// D3D11 does not have descriptors
+}
+
+void D3D11Context::set_descriptor_table(CommandList& cmd_list, unsigned index, const Descriptor& gpu_descriptor)
+{
+	// D3D11 does not have descriptors
+}
+
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer& buffer, wchar_t const* debug_name)
 {
 	buffer.desc = desc;
 	buffer.internal_state = mkS<ComPtr<ID3D11Buffer>>();
 	const auto buffer_d3d11 = to_internal(buffer);
 
-	D3D11_BUFFER_DESC bufferInfo{};
-	bufferInfo.ByteWidth = desc.size;
-	switch(desc.usage)
+	D3D11_BUFFER_DESC buffer_info{};
+	buffer_info.ByteWidth = desc.size;
+	switch (desc.usage)
 	{
-		case VERTEX:
-			bufferInfo.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		case BufferUsage::VERTEX:
+			buffer_info.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			break;
-		case INDEX:
-			bufferInfo.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		case BufferUsage::INDEX:
+			buffer_info.BindFlags = D3D11_BIND_INDEX_BUFFER;
 			break;
-		case UNIFORM:
-			bufferInfo.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		case BufferUsage::UNIFORM:
+			buffer_info.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 			break;
-		case STORAGE:
-			bufferInfo.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		case BufferUsage::STORAGE:
+			buffer_info.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 			break;
-		case INDIRECT:
-			bufferInfo.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
+		case BufferUsage::INDIRECT:
+			buffer_info.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
 			break;
-		case TRANSFER_SRC:
-		case TRANSFER_DST:
-			bufferInfo.BindFlags = 0; // TODO: check this
+		case BufferUsage::TRANSFER_SRC:
+		case BufferUsage::TRANSFER_DST:
+			buffer_info.BindFlags = 0; // TODO: check this
 			break;
 		default:
 			OutputDebugString(L"Qhenki D3D11 ERROR: Buffer type not implemented");
@@ -318,13 +328,13 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	if ((desc.visibility & CPU_SEQUENTIAL) 
 		|| (desc.visibility & CPU_RANDOM))
 	{
-		bufferInfo.Usage = D3D11_USAGE_DYNAMIC;
-		bufferInfo.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		buffer_info.Usage = D3D11_USAGE_DYNAMIC;
+		buffer_info.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	}
 	else
 	{
-		bufferInfo.Usage = D3D11_USAGE_DEFAULT;
-		bufferInfo.CPUAccessFlags = 0;
+		buffer_info.Usage = D3D11_USAGE_DEFAULT;
+		buffer_info.CPUAccessFlags = 0;
 	}
 	// misc flags
 	//TODO bufferInfo.StructureByteStride = 0;
@@ -332,10 +342,11 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	D3D11_SUBRESOURCE_DATA resource_data;
 	resource_data.pSysMem = data;
 
-	const auto resource_data_ptr = data ? &resource_data : nullptr;
+	// Only prefill if explicitly CPU visible, you will need to copy to device local memory like D3D12
+	const auto resource_data_ptr = data && buffer_info.CPUAccessFlags == D3D11_CPU_ACCESS_WRITE ? &resource_data : nullptr;
 
 	if (FAILED(m_device_->CreateBuffer(
-		&bufferInfo,
+		&buffer_info,
 		resource_data_ptr,
 		&*buffer_d3d11)))
 	{
@@ -364,15 +375,29 @@ void D3D11Context::copy_buffer(CommandList& cmd_list, Buffer& src, UINT64 src_of
 	const auto dst_d3d11 = to_internal(dst);
 
 	// Assume 1D for now
-	const auto box = CD3D11_BOX(src_offset, 0, 0, src_offset + bytes, 1, 1);
+	const auto box = CD3D11_BOX(static_cast<long>(src_offset), 0, 0, static_cast<long>(src_offset + bytes), 1, 1);
 
+	// Copy entire buffer for now
+	// TODO: per subresource
 	m_device_context_->CopySubresourceRegion(
 		dst_d3d11->Get(),
 		0, // Dst subresource
-		dst_offset, 0, 0,
+		static_cast<long>(dst_offset), 0, 0,
 		src_d3d11->Get(),
 		0, // Src subresource
 		&box);
+}
+
+bool D3D11Context::create_texture(const TextureDesc& desc, Texture& texture, wchar_t const* debug_name)
+{
+	assert(false);
+	return false;
+}
+
+bool D3D11Context::copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture)
+{
+	assert(false);
+	return false;
 }
 
 void* D3D11Context::map_buffer(const Buffer& buffer)
@@ -567,6 +592,9 @@ void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned co
 		break;
 	case PipelineStage::PIXEL:
 		m_device_context_->PSSetConstantBuffers(slot, count, buffer_d3d11[0]);
+		break;
+	case PipelineStage::COMPUTE:
+		m_device_context_->CSSetConstantBuffers(slot, count, buffer_d3d11[0]);
 		break;
 	default:
 		throw std::runtime_error("D3D11: Invalid pipeline stage");
