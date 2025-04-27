@@ -4,11 +4,11 @@ namespace qhenki::gfx
 	{
 		VERTEX = 1 << 0,
 		INDEX = 1 << 1,
-		UNIFORM = 1 << 2,
-		STORAGE = 1 << 3,
+		UNIFORM = 1 << 2, // CONSTANT
+		STORAGE = 1 << 3, // UAV
 		INDIRECT = 1 << 4,
-		TRANSFER_SRC = 1 << 5,
-		TRANSFER_DST = 1 << 6,
+		COPY_SRC = 1 << 5,
+		COPY_DST = 1 << 6,
 	};
 
 	constexpr BufferUsage operator|(BufferUsage lhs, BufferUsage rhs) {
@@ -37,7 +37,7 @@ namespace qhenki::gfx
 	struct BufferDesc
 	{
 		uint64_t size = 0;
-		BufferUsage usage;
+		BufferUsage usage; // Only used in Vulkan
 		BufferVisibility visibility;
 	};
 
