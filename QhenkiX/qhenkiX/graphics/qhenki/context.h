@@ -28,7 +28,7 @@ namespace qhenki::gfx
 
 	public:
 		virtual void create() = 0; // TODO: return error string for potential dialog box
-		virtual bool is_compatability() = 0;
+		virtual bool is_compatibility() = 0;
 
 		// Creates swapchain based off specified description
 		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,

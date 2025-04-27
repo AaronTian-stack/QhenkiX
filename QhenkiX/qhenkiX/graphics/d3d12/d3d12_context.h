@@ -53,7 +53,7 @@ namespace qhenki::gfx
 
 	public:
 		void create() override;
-		bool is_compatability() override { return false; }
+		bool is_compatibility() override { return false; }
 		bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, 
 			Queue& direct_queue, unsigned& frame_index) override;
 		bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index) override;

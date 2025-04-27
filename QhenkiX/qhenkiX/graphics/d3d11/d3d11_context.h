@@ -35,7 +35,7 @@ namespace qhenki::gfx
 		static void set_debug_name(_In_ ID3D11DeviceChild* device_resource, _In_z_ const char(&debug_name)[TDebugNameLength]);
 
 		void create() override;
-		bool is_compatability() override { return true; }
+		bool is_compatibility() override { return true; }
 		bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, 
 			Queue& direct_queue, unsigned& frame_index) override;
 		bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index) override;

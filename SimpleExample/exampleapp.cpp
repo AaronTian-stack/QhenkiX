@@ -3,14 +3,14 @@
 
 void ExampleApp::create()
 {
-	auto shader_model = m_context_->is_compatability() ? 
+	auto shader_model = m_context_->is_compatibility() ? 
 		qhenki::gfx::ShaderModel::SM_5_0 : qhenki::gfx::ShaderModel::SM_6_6;
 
 	auto compiler_flags = CompilerInput::NONE;
 
 	std::vector<std::wstring> defines;
 	defines.reserve(1);
-	if (m_context_->is_compatability())
+	if (m_context_->is_compatibility())
 	{
 		defines.push_back(L"DX11");
 	}
@@ -287,7 +287,7 @@ void ExampleApp::render()
 	THROW_IF_FAILED(m_context_->bind_pipeline(&cmd_list, m_pipeline_));
 
 	// Bind resources
-	if (m_context_->is_compatability())
+	if (m_context_->is_compatibility())
 	{
 		m_context_->compatibility_set_constant_buffers(0, 1, 
 			&m_matrix_buffers_[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
