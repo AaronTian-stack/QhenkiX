@@ -342,10 +342,6 @@ void ExampleApp::render()
 	// TODO: change for Vulkan
 	m_context_->present(m_swapchain_, 0, nullptr, get_frame_index());
 
-	// You MUST call Present at the end of the render loop
-	// TODO: change for Vulkan
-	m_context_->present(m_swapchain_, 0, nullptr, get_frame_index());
-
 	increment_frame_index();
 
 	// If next frame is ready to be used, otherwise wait
