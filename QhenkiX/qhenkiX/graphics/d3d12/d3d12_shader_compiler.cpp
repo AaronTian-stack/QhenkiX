@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include "graphics/shared/d3d_helper.h"
-#include "graphics/shared/filehelper.h"
+#include "graphics/shared/file_helper.h"
 
 using namespace qhenki::gfx;
 using namespace qhenki::util;
@@ -118,11 +118,11 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
 
 D3D12ShaderCompiler::D3D12ShaderCompiler()
 {
-	if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&m_library_))))
+	if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library_.ReleaseAndGetAddressOf()))))
 	{
 		throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcLibrary");
 	}
-	if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler_))))
+	if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_compiler_.ReleaseAndGetAddressOf()))))
 	{
 		throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcCompiler");
 	}

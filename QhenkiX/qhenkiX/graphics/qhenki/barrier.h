@@ -3,7 +3,7 @@
 
 namespace qhenki::gfx
 {
-	// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-sync
+	// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#synchronization
 	// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineStageFlagBits.html
 	enum SyncStage : uint32_t
 	{
@@ -70,7 +70,7 @@ namespace qhenki::gfx
 		//// Provided by VK_EXT_device_generated_commands
 		//VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_EXT = 0x00020000,
 	};
-    // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-access
+    // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#access-transitions
     // https://registry.khronos.org/vulkan/specs/latest/man/html/VkAccessFlagBits2.html
 	enum AccessFlags : uint32_t
 	{
@@ -103,6 +103,7 @@ namespace qhenki::gfx
 
 		// No VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT due to no input attachments
 	};
+	// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#equivalent-d3d12_barrier_layout-for-each-d3d12_resource_states-bit
 	enum class Layout
 	{
 		UNDEFINED,
@@ -157,12 +158,12 @@ namespace qhenki::gfx
 		ImageSubresourceRange subresource_range;
 	};
 
-    struct MemoryBarrier
-    {
+    //struct MemoryBarrier
+    //{
      
-    };
-	struct BufferBarrier
-	{
-		
-	};
+    //};
+	//struct BufferBarrier
+	//{
+	//	
+	//};
 }

@@ -16,4 +16,11 @@ namespace qhenki::gfx
 		LINE_LIST,
 		LINE_STRIP,
 	};
+
+	enum class PipelineStage : uint8_t
+	{
+		VERTEX,
+		PIXEL,
+		COMPUTE,
+	};
 }

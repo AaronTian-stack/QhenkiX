@@ -4,6 +4,7 @@
 #include <smartpointer.h>
 #include "graphics/qhenki/context.h"
 #include "graphics/qhenki/descriptor_heap.h"
+#include "graphics/qhenki/descriptor_table.h"
 #include <thread>
 
 namespace qhenki::gfx
@@ -22,20 +23,26 @@ namespace qhenki::gfx
  */
 class Application
 {
+public:
+	static constexpr UINT m_frames_in_flight = 2;
+
+private:
 	// Audio
 	// Input
 	// Files 
 	// Preferences
-	std::thread::id m_main_thread_id;
-	qhenki::gfx::API m_graphics_api_;
+	std::thread::id m_main_thread_id{};
+	qhenki::gfx::API m_graphics_api_ = qhenki::gfx::D3D11;
 protected:
 	UINT m_frame_index_ = 0;
 	DisplayWindow m_window_;
 	uPtr<qhenki::gfx::Context> m_context_ = nullptr;
 	qhenki::gfx::Swapchain m_swapchain_{};
 	qhenki::gfx::Queue m_graphics_queue_{}; // A graphics queue is given to the application by default
-	qhenki::gfx::DescriptorHeap rtv_heap{};
-	qhenki::gfx::DescriptorTable swapchain_targets{};
+	qhenki::gfx::DescriptorHeap m_rtv_heap{}; // Default RTV heap that also contains swapchain descriptors
+
+	qhenki::gfx::Fence m_fence_frame_ready_{};
+	std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{0, 0};
 
 	virtual void init_display_window();
 
@@ -45,8 +52,8 @@ protected:
 	virtual void destroy() {}
 
 public:
-	static constexpr UINT m_frames_in_flight = 2;
 	UINT get_frame_index() const { return m_frame_index_; }
+	void increment_frame_index() { m_frame_index_ = (m_frame_index_ + 1) % m_frames_in_flight; }
 
 	bool is_main_thread() const { return std::this_thread::get_id() == m_main_thread_id; }
 

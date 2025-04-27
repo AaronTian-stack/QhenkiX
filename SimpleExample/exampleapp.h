@@ -10,17 +10,26 @@ struct CameraMatrices
 
 class ExampleApp : public Application
 {
+	qhenki::gfx::PipelineLayout m_pipeline_layout_{};
 	qhenki::gfx::GraphicsPipeline m_pipeline_{};
 	qhenki::gfx::Shader m_vertex_shader_{};
 	qhenki::gfx::Shader m_pixel_shader_{};
 
-	// One commandpool per frame, per thread. Pool allocates lists
+	// One Command Pool per frame, per thread. Pool allocates lists
 	// Command pools for main thread
 	std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools_{};
 
 	qhenki::gfx::Buffer m_vertex_buffer_{};
 	qhenki::gfx::Buffer m_index_buffer_{};
+
+	std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors_{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers_{};
+
+	qhenki::gfx::Descriptor m_texture_descriptor_{};
+	qhenki::gfx::Texture m_texture_{};
+
+	qhenki::gfx::DescriptorHeap m_CPU_heap_{};
+	qhenki::gfx::DescriptorHeap m_GPU_heap_{};
 
 	CameraMatrices matrices_{};
 

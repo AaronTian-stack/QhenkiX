@@ -6,7 +6,7 @@
 #include <wrl/client.h>
 
 #include "graphics/shared/d3d_helper.h"
-#include <graphics/shared/filehelper.h>
+#include <graphics/shared/file_helper.h>
 
 using Microsoft::WRL::ComPtr;
 using namespace qhenki::gfx;
@@ -50,7 +50,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	// convert the define into D3D_SHADER_MACRO
     for (const auto& define : input.defines)
     {
-        // convert the define into D3D_SHADER_MACRO
+        // convert the defines into D3D_SHADER_MACRO
         // split the string at the first '='
         std::string define_str(define.begin(), define.end());
         size_t pos = define_str.find('=');
@@ -60,14 +60,16 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 			auto& substr1 = defines.back();
 			defines.push_back(define_str.substr(pos + 1));
 			auto& substr2 = defines.back();
-            macros.push_back({ substr1.c_str(), substr2.c_str() });
+            macros.push_back({ .Name= substr1.c_str(), .Definition= substr2.c_str() });
         }
         else
         {
-            macros.push_back({ define_str.c_str(), nullptr });
+			defines.push_back(define_str);
+			auto& substr1 = defines.back();
+            macros.push_back({ .Name= substr1.c_str(), .Definition= nullptr});
         }
     }
-    macros.push_back({ nullptr, nullptr });
+    macros.push_back({ .Name= nullptr, .Definition= nullptr});
 
 	const auto target = D3DHelper::get_shader_model_char(input.shader_type, input.min_shader_model);
 	assert(target);
