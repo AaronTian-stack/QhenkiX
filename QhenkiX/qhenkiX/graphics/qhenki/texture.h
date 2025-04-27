@@ -1,8 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
 
-#include "buffer.h"
-
 namespace qhenki::gfx
 {
 	enum class TextureDimension : uint8_t
@@ -16,10 +14,10 @@ namespace qhenki::gfx
 		uint32_t height = 0;
 		uint16_t depth_or_array_size = 1;
 		uint16_t mip_levels = 1;
-		DXGI_FORMAT format; // TODO: replace
+		DXGI_FORMAT format; // TODO: replace type
 		//uint16_t sample_count = 1;
 		TextureDimension dimension;
-		BufferUsage usage;
+		Layout initial_layout;
 	};
 
 	struct Texture
