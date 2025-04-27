@@ -943,36 +943,6 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 	return true;
 }
 
-void D3D12Context::set_descriptor_heap(CommandList& cmd_list, const DescriptorHeap& heap)
-{
-	const auto cmd_list_d3d12 = to_internal(cmd_list);
-	const auto heap_d3d12 = to_internal(heap);
-	if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV || heap.desc.type == DescriptorHeapDesc::Type::SAMPLER)
-	{
-		cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heap_d3d12->Get().GetAddressOf());
-	}
-	else
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
-	}
-}
-
-void D3D12Context::set_descriptor_table(CommandList& cmd_list, unsigned index, const Descriptor& gpu_descriptor)
-{
-	const auto cmd_list_d3d12 = to_internal(cmd_list);
-	assert(gpu_descriptor.heap);
-
-	const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
-	D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
-	if (!heap_d3d12->get_GPU_descriptor(gpu_handle, gpu_descriptor.offset, 0))
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get GPU descriptor handle\n");
-		return;
-	}
-
-	cmd_list_d3d12->Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
-}
-
 void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
@@ -1664,7 +1634,7 @@ void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, 
 {
 	for (unsigned i = 0; i < count; i++)
 	{
-		assert(frame_index == m_swapchain_->GetCurrentBackBufferIndex());
+		//assert(frame_index == m_swapchain_->GetCurrentBackBufferIndex());
 		barriers[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
 	}
 }

@@ -6,6 +6,7 @@
 #include <graphics/displaywindow.h>
 
 #include "barrier.h"
+#include "buffer.h"
 #include "command_list.h"
 #include "command_pool.h"
 #include "pipeline.h"

@@ -137,15 +137,8 @@ void ExampleApp::create()
 	// TODO: persistent mapping flag
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		.size = sizeof(CameraMatrices),
-		.usage = qhenki::gfx::BufferUsage::UNIFORM,
-		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
-	};
-	// TODO: persistent mapping flag
-	for (int i = 0; i < m_frames_in_flight; i++)
-	{
 		THROW_IF_FAILED(m_context_->create_buffer(matrix_desc, nullptr, &m_matrix_buffers_[i], L"Matrix Buffer"));
-		THROW_IF_FAILED(m_context_->create_descriptor(m_matrix_buffers_[i], m_CPU_heap_, &m_matrix_descriptors_[i]));
+		//THROW_IF_FAILED(m_context_->create_descriptor(m_matrix_buffers_[i], m_CPU_heap_, &m_matrix_descriptors_[i]));
 	}
 
 	// Create texture
