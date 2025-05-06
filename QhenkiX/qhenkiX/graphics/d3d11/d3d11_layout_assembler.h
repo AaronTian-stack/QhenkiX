@@ -8,8 +8,6 @@
 #include <wrl/client.h>
 #include <tsl/robin_map.h>
 
-#include "graphics/qhenki/disposable.h"
-
 using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
@@ -20,7 +18,7 @@ namespace qhenki::gfx
 		std::vector<D3D11_INPUT_ELEMENT_DESC> desc;
 	};
 
-	class D3D11LayoutAssembler : public Disposable
+	class D3D11LayoutAssembler
 	{
 		std::mutex m_layout_mutex_; // compile shaders from multiple threads?
 		tsl::robin_map<size_t, D3D11Layout> m_layout_map_;
@@ -51,7 +49,5 @@ namespace qhenki::gfx
 		ID3D11InputLayout* create_input_layout_reflection(ID3D11Device* const device,
 			ID3DBlob* const vertex_shader_blob,
 			bool interleaved);
-
-		void dispose() override;
 	};
 }

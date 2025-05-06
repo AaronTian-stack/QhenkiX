@@ -28,7 +28,11 @@ namespace qhenki::gfx
 		bool allocate(UINT64* alloc_offset);
 		void deallocate(UINT64* alloc_offset);
 
+		unsigned descriptor_count_to_bytes(unsigned count) const;
+
+		// offsets are additional to start of heap
 		bool get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes, size_t num_descriptor_offset) const;
+		// offsets are additional to start of heap
 		bool get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes, size_t num_descriptor_offset) const;
 		const ComPtr<ID3D12DescriptorHeap>& Get() const
 		{

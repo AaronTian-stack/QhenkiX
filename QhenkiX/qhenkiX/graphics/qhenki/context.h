@@ -15,6 +15,7 @@
 #include "shader_compiler.h"
 #include "descriptor_heap.h"
 #include "descriptor_table.h"
+#include "sampler.h"
 #include "submission.h"
 #include "texture.h"
 
@@ -60,13 +61,14 @@ namespace qhenki::gfx
 
 		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
+		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) = 0;
 
 		virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
-		virtual bool copy_descriptors(unsigned count, const Descriptor* src, const Descriptor* dst) = 0;
-		virtual bool get_descriptor(unsigned count, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		virtual bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) = 0;
+		virtual bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 
 		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name = nullptr) = 0;
-		virtual bool create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		virtual bool create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type) = 0;
 
 		virtual void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) = 0;
 
@@ -75,6 +77,9 @@ namespace qhenki::gfx
 
 		// Assumes that you are copying to first subresource only. Texture should be CPU visible TODO: add subresource index argument?
 		virtual bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) = 0;
+
+		virtual bool create_sampler(const SamplerDesc& desc, Sampler* sampler) = 0;
+		//virtual bool create_descriptor(const Sampler& sampler, ) = 0;
 
 		// Write only
 		virtual void* map_buffer(const Buffer& buffer) = 0;

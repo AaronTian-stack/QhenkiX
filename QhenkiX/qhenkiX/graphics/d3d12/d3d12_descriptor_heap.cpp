@@ -43,13 +43,13 @@ void D3D12DescriptorHeap::deallocate(UINT64* alloc_offset)
 	assert(false);
 }
 
+unsigned D3D12DescriptorHeap::descriptor_count_to_bytes(unsigned count) const
+{
+	return count * m_descriptor_size_;
+}
+
 bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes, size_t num_descriptor_offset) const
 {
-	if (m_desc_.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU start for shader visible heap\n");
-		return false;
-	}
 	*handle = m_heap_->GetCPUDescriptorHandleForHeapStart();
 	handle->ptr += offset_bytes + num_descriptor_offset * m_descriptor_size_;
 	return true;

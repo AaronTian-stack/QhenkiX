@@ -240,6 +240,7 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\enums.h" />
+    <ClInclude Include="qhenkiX\graphics\qhenki\sampler.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\sync.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\submission.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h" />
@@ -249,7 +250,6 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\context.h" />
     <ClInclude Include="include\smartpointer.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\disposable.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\pipeline.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\queue.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\render_target.h" />

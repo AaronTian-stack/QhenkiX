@@ -31,6 +31,8 @@ class ExampleApp : public Application
 	qhenki::gfx::DescriptorHeap m_CPU_heap_{};
 	qhenki::gfx::DescriptorHeap m_GPU_heap_{};
 
+	qhenki::gfx::DescriptorHeap m_sampler_heap_{};
+
 	CameraMatrices matrices_{};
 
 protected:

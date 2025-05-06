@@ -499,3 +499,41 @@ D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
     }
     return state;
 }
+
+D3D12_FILTER D3DHelper::filter(SamplerDesc::Filter min, SamplerDesc::Filter mag, SamplerDesc::Filter mip, SamplerDesc::ComparisonFunc func, UINT
+                               max_anisotropy)
+{
+	// https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
+	// Assemble the bitmask ourselves
+	UINT filter = 0;
+	// If linear then set bit to 1 in MIN MAG MIP
+	// Why does Microsoft leave a 0 in between each bitmask bit???
+	if (max_anisotropy == 0)
+	{
+		if (mip == SamplerDesc::Filter::LINEAR)
+		{
+			filter |= D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+		}
+		if (min == SamplerDesc::Filter::LINEAR)
+		{
+			filter |= D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+		}
+		if (mag == SamplerDesc::Filter::LINEAR)
+		{
+			filter |= D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+		}
+		if (func != SamplerDesc::ComparisonFunc::NONE)
+		{
+			filter |= D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+		}
+	}
+	else
+	{
+		if (func == SamplerDesc::ComparisonFunc::NONE)
+		{
+			return D3D12_FILTER_ANISOTROPIC;
+		}
+		return D3D12_FILTER_COMPARISON_ANISOTROPIC;
+	}
+	return static_cast<D3D12_FILTER>(filter);
+}

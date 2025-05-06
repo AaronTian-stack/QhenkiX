@@ -74,13 +74,14 @@ namespace qhenki::gfx
 
 		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override;
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
+		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) override;
 
 		void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
-		bool copy_descriptors(unsigned count, const Descriptor* src, const Descriptor* dst) override;
-		bool get_descriptor(unsigned count, DescriptorHeap& heap, Descriptor* descriptor) override;
+		bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
+		bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor) override;
 
 		bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name) override;
-		bool create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor) override;
+		bool create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type) override;
 
 		void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) override;
 
@@ -88,6 +89,8 @@ namespace qhenki::gfx
 		bool create_descriptor(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) override;
 
 		bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) override;
+
+		bool create_sampler(const SamplerDesc& desc, Sampler* sampler) override;
 
 		void* map_buffer(const Buffer& buffer) override;
 		void unmap_buffer(const Buffer& buffer) override;

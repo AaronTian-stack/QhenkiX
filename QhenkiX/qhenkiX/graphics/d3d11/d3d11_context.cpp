@@ -18,6 +18,27 @@ static ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
 	return d3d11_buffer;
 }
 
+static D3D11Swapchain* to_internal(const Swapchain& ext)
+{
+	auto d3d11_swapchain = static_cast<D3D11Swapchain*>(ext.internal_state.get());
+	assert(d3d11_swapchain);
+	return d3d11_swapchain;
+}
+
+static D3D11Shader* to_internal(const Shader& ext)
+{
+	auto d3d11_shader = static_cast<D3D11Shader*>(ext.internal_state.get());
+	assert(d3d11_shader);
+	return d3d11_shader;
+}
+
+static D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
+{
+	auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
+	assert(d3d11_pipeline);
+	return d3d11_pipeline;
+}
+
 void D3D11Context::create()
 {
     // Create factory
@@ -101,17 +122,14 @@ bool D3D11Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& 
 {
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
-	auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
+	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
 	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), frame_index);
 }
 
 bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index)
 {
-	//wait_idle(m_swapchain_queue_);
 	m_device_context_->Flush();
-    auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	assert(swap_d3d11);
-	assert(swap_d3d11->swapchain);
+	const auto swap_d3d11 = to_internal(swapchain);
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
@@ -150,11 +168,9 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 	// D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
 	pipeline->internal_state = mkS<D3D11GraphicsPipeline>();
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline->internal_state.get());
-	const auto d3d11_vertex_shader = static_cast<D3D11Shader*>(vertex_shader.internal_state.get());
-	const auto d3d11_pixel_shader = static_cast<D3D11Shader*>(pixel_shader.internal_state.get());
+	const auto d3d11_vertex_shader = to_internal(vertex_shader);
+	const auto d3d11_pixel_shader = to_internal(pixel_shader);
 	assert(d3d11_pipeline);
-	assert(d3d11_vertex_shader);
-	assert(d3d11_pixel_shader);
 
 	d3d11_pipeline->vertex_shader_ = vertex_shader.internal_state.get();
 	d3d11_pipeline->pixel_shader_ = pixel_shader.internal_state.get();
@@ -261,8 +277,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 
 bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline)
 {
-	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline.internal_state.get());
-	assert(d3d11_pipeline);
+	const auto d3d11_pipeline = to_internal(pipeline);
 	d3d11_pipeline->bind(m_device_context_.Get());
 	return true;
 }
@@ -287,18 +302,24 @@ void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
 	// D3D11 does not have descriptors
 }
 
+void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap,
+	const DescriptorHeap& sampler_heap)
+{
+	// D3D11 does not have descriptors
+}
+
 void D3D11Context::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
 {
 	// D3D11 does not have descriptors
 }
 
-bool D3D11Context::copy_descriptors(unsigned count, const Descriptor* src, const Descriptor* dst)
+bool D3D11Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
 {
 	// D3D11 does not have descriptors
 	return true;
 }
 
-bool D3D11Context::get_descriptor(unsigned count, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D11Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor)
 {
 	// D3D11 does not have descriptors
 	return true;
@@ -379,7 +400,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	return true;
 }
 
-bool D3D11Context::create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D11Context::create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type)
 {
 	// D3D11 does not have descriptors
 	return true;
@@ -422,6 +443,18 @@ bool D3D11Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 {
 	assert(false);
 	return false;
+}
+
+bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
+{
+	assert(sampler);
+	sampler->internal_state = mkS<ComPtr<ID3D11SamplerState>>();
+
+	D3D11_SAMPLER_DESC sampler_desc = {};
+
+
+
+	return true;
 }
 
 void* D3D11Context::map_buffer(const Buffer& buffer)
@@ -497,7 +530,7 @@ bool D3D11Context::reset_command_pool(CommandPool* command_pool)
 void D3D11Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain,
                                      const RenderTarget* depth_stencil, UINT frame_index)
 {
-	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
+	const auto swap_d3d11 = to_internal(swapchain);
 	const auto rtv = swap_d3d11->sc_render_target.Get();
 	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	// TODO: optional clear, user set values
@@ -637,7 +670,7 @@ void D3D11Context::wait_idle(Queue& queue)
 
 bool D3D11Context::present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index)
 {
-	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
+	const auto swap_d3d11 = to_internal(swapchain);
 	const auto result = swap_d3d11->swapchain->Present(1, 0);
     return result == S_OK;
 }
@@ -649,7 +682,6 @@ std::unique_ptr<ShaderCompiler> D3D11Context::create_shader_compiler()
 
 D3D11Context::~D3D11Context()
 {
-	m_layout_assembler_.dispose();
     m_device_context_->ClearState();
     m_device_context_->Flush();
     m_device_context_.Reset();
