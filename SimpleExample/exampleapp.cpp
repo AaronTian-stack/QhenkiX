@@ -53,13 +53,13 @@ void ExampleApp::create()
 	};
 	qhenki::gfx::LayoutBinding b2 // SRV for texture
 	{
-		.binding = 1,
+		.binding = 1, // TODO: figure out how to handle this for Vulkan
 		.count = 1,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 	};
 	qhenki::gfx::LayoutBinding b3 // Sampler for texture
 	{
-		.binding = 2,
+		.binding = 0,
 		.count = 1,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
 	};
@@ -107,7 +107,7 @@ void ExampleApp::create()
 
 	// A graphics queue is already given to the application by the context
 
-	// Allocate command pool(s)/allocator(s) from queue
+	// Allocate Command Pool(s)/Allocator(s) from queue
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
 		THROW_IF_FAILED(m_context_->create_command_pool(&m_cmd_pools_[i], m_graphics_queue_));
@@ -119,13 +119,13 @@ void ExampleApp::create()
 	// Create vertex buffer
 	constexpr auto vertices = std::array
 	{
-		0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f
+		Vertex{ { 0.0f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.5f, 1.0f } },
+		Vertex{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+		Vertex{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } }
 	};
 	qhenki::gfx::BufferDesc desc
 	{
-		.size = vertices.size() * sizeof(float),
+		.size = vertices.size() * sizeof(Vertex),
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
@@ -175,16 +175,23 @@ void ExampleApp::create()
 	// Create CPU descriptor for texture
 	THROW_IF_FAILED(m_context_->create_descriptor(m_texture_, m_CPU_heap_, &m_texture_descriptor_));
 
-	// TODO Create sampler / descriptor
-
+	// Create sampler
+	qhenki::gfx::SamplerDesc sampler_desc
+	{
+		.min_filter = qhenki::gfx::SamplerDesc::Filter::NEAREST,
+		.mag_filter = qhenki::gfx::SamplerDesc::Filter::NEAREST,
+	}; // Default parameters
+	THROW_IF_FAILED(m_context_->create_sampler(sampler_desc, &m_sampler_));
+	// Create sampler descriptor
+	THROW_IF_FAILED(m_context_->create_descriptor(m_sampler_, m_sampler_heap_, &m_sampler_descriptor_));
 
 	// Texture data
 	constexpr auto checkerboard = std::array
 	{
-		0xFF000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF000000,
-		0xFFFFFFFF, 0xFF000000, 0xFF000000, 0xFFFFFFFF,
-		0xFFFFFFFF, 0xFF000000, 0xFF000000, 0xFFFFFFFF,
-		0xFF000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF000000
+		0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF,
+		0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF,
+		0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF,
+		0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF
 	};
 	qhenki::gfx::Buffer texture_staging; // Must keep in scope until copy is done
 
@@ -316,7 +323,10 @@ void ExampleApp::render()
 		m_context_->compatibility_set_constant_buffers(0, 1, 
 			&m_matrix_buffers_[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
 		// TODO: bind texture
-		// TODO: bind sampler
+
+		m_context_->compatibility_set_textures(0, 1, &m_texture_, qhenki::gfx::PipelineStage::PIXEL);
+
+		m_context_->compatibility_set_samplers(0, 1, &m_sampler_, qhenki::gfx::PipelineStage::PIXEL);
 	}
 	else
 	{
@@ -327,9 +337,9 @@ void ExampleApp::render()
 		m_context_->set_descriptor_table(&cmd_list, 0, descriptor);
 
 		// Copy matrix and texture descriptors to GPU heap
-		THROW_IF_FAILED(m_context_->copy_descriptors(1, m_matrix_descriptors_[get_frame_index()], descriptor)); // 0
-		THROW_IF_FAILED(m_context_->get_descriptor(1, m_GPU_heap_, &descriptor));
-		THROW_IF_FAILED(m_context_->copy_descriptors(1, m_texture_descriptor_, descriptor)); // 1
+		THROW_IF_FAILED(m_context_->copy_descriptors(1, m_matrix_descriptors_[get_frame_index()], descriptor));
+		THROW_IF_FAILED(m_context_->get_descriptor(1, m_GPU_heap_, &descriptor)); // 1
+		THROW_IF_FAILED(m_context_->copy_descriptors(1, m_texture_descriptor_, descriptor));
 
 		// Sampler
 		THROW_IF_FAILED(m_context_->get_descriptor(0, m_sampler_heap_, &descriptor));
@@ -337,7 +347,7 @@ void ExampleApp::render()
 	}
 
 	const unsigned int offset = 0;
-	const unsigned int stride = 6 * sizeof(float);
+	constexpr auto stride = static_cast<UINT>(sizeof(Vertex));
 	m_context_->bind_vertex_buffers(&cmd_list, 0, 1, &m_vertex_buffer_, &stride, &offset);
 	m_context_->bind_index_buffer(&cmd_list, m_index_buffer_, qhenki::gfx::IndexType::UINT32, 0);
 

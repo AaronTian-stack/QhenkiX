@@ -13,16 +13,20 @@ namespace qhenki::gfx
 		{
 			WRAP,
 			MIRROR,
+			CLAMP,
 			BORDER,
 		};
 		enum class ComparisonFunc
 		{
 			NONE,
-			LT,
-			LTEQ,
-			EQ,
-			GTEQ,
-			GT,
+			NEVER,
+			LESS,
+			EQUAL,
+			LESS_OR_EQUAL,
+			GREATER,
+			NOT_EQUAL,
+			GREATER_OR_EQUAL,
+			ALWAYS,
 		};
 		unsigned max_anisotropy = 0; // 0 to disable
 		float min_lod = 0;

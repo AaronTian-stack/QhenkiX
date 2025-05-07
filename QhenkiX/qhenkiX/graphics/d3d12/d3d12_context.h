@@ -91,6 +91,7 @@ namespace qhenki::gfx
 		bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) override;
 
 		bool create_sampler(const SamplerDesc& desc, Sampler* sampler) override;
+		bool create_descriptor(const Sampler& sampler, DescriptorHeap& heap, Descriptor* descriptor) override;
 
 		void* map_buffer(const Buffer& buffer) override;
 		void unmap_buffer(const Buffer& buffer) override;
@@ -132,6 +133,8 @@ namespace qhenki::gfx
 
 		// D3D12 does not implement compability functions
 		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) override {}
+		void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, PipelineStage stage) override {}
+		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) override {}
 
 		void wait_idle(Queue& queue) override;
 

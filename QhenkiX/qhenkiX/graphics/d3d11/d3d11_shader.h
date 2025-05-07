@@ -21,11 +21,11 @@ namespace qhenki::gfx
 
 	class D3D11Shader
 	{
-		qhenki::gfx::ShaderType m_type_;
+		ShaderType m_type_;
 		std::variant<ComPtr<ID3D11PixelShader>, D3D11VertexShader> m_shader_;
 
 	public:
-		D3D11Shader(ID3D11Device* const device, const qhenki::gfx::ShaderType shader_type, const std::wstring& name,
+		D3D11Shader(ID3D11Device* const device, const ShaderType shader_type, const std::wstring& name,
 			const CompilerOutput& output, bool& result);
 
 		friend class D3D11Context;

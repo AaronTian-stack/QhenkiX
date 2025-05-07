@@ -8,6 +8,13 @@ struct CameraMatrices
 	XMFLOAT4X4 invViewProj;
 };
 
+struct Vertex
+{
+	XMFLOAT3 position;
+	XMFLOAT3 color;
+	XMFLOAT2 texcoord;
+};
+
 class ExampleApp : public Application
 {
 	qhenki::gfx::PipelineLayout m_pipeline_layout_{};
@@ -27,6 +34,8 @@ class ExampleApp : public Application
 
 	qhenki::gfx::Descriptor m_texture_descriptor_{};
 	qhenki::gfx::Texture m_texture_{};
+	qhenki::gfx::Descriptor m_sampler_descriptor_{};
+	qhenki::gfx::Sampler m_sampler_{};
 
 	qhenki::gfx::DescriptorHeap m_CPU_heap_{};
 	qhenki::gfx::DescriptorHeap m_GPU_heap_{};

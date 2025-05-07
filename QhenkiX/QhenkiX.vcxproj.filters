@@ -293,5 +293,8 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\sampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -411,7 +411,11 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 		compiler = shader_compiler.get();
 	}
 	CompilerOutput output = {};
-	const bool result = compiler->compile(input, output);
+	if (!compiler->compile(input, output))
+	{
+		OutputDebugStringA(output.error_message.c_str());
+		return false;
+	}
 
 	*shader =
 	{
@@ -420,7 +424,7 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 		.internal_state = output.internal_state, // IDxcBlob
 	};
 
-	return result;
+	return true;
 }
 
 std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
@@ -463,6 +467,7 @@ void D3D12Context::root_signature_reflection(ID3D12ShaderReflection* shader_refl
 {
 	// TODO: finish this
 	assert(false);
+	throw std::runtime_error("D3D12: Root signature reflection not implemented");
 	//D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {};
 	//for (UINT i = 0; i < shader_desc.BoundResources; i++)
 	//{
@@ -799,6 +804,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 
 	for (unsigned i = 0; i < desc.push_ranges.size(); i++)
 	{
+		assert(false);
 		const auto& range = desc.push_ranges[i];
 		params[i] =
 		{
@@ -1044,7 +1050,8 @@ bool D3D12Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHe
 	return true;
 }
 
-bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name)
+bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer,
+	wchar_t const* debug_name)
 {
 	buffer->desc = desc;
 	buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>();
@@ -1098,6 +1105,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		return false;
 	}
 	const auto resource = buffer_d3d12->Get()->GetResource();
+	
 	if (data)
 	{
 		// If this is a CPU visible buffer memcpy the data
@@ -1305,7 +1313,7 @@ bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 
 	UINT64 size;
 	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(num_subresources); // TODO: replace with small vector
-	std::vector<UINT> row_sizes(num_subresources); // TODO: replace with small vector
+	std::vector<UINT> row_sizes(num_subresources); // For subresource height TODO: replace with small vector
 	m_device_->GetCopyableFootprints(&desc, 0, num_subresources, 0,
 		layouts.data(), row_sizes.data(), nullptr, &size);
 
@@ -1321,17 +1329,24 @@ bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 		return false;
 	}
 
-	// get pointer to the staging buffer
 	uint8_t* upload_memory = static_cast<uint8_t*>(map_buffer(staging));
 	// memcpy from data to staging buffer based off footprint data
 
 	constexpr auto subresource_index = 0;
 
-	const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& subResourceLayout = layouts[subresource_index];
-	uint8_t* destination_sub_resource_memory = upload_memory + subResourceLayout.Offset;
-	const uint64_t sub_resource_pitch = MathHelper::align_u32(subResourceLayout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-	memcpy(destination_sub_resource_memory, data, std::min(sub_resource_pitch, texture.desc.width));
+	const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& sub_resource_layout = layouts[subresource_index];
+	uint8_t* destination_sub_resource_memory = upload_memory + sub_resource_layout.Offset;
+	const uint64_t sub_resource_pitch = MathHelper::align_u32(sub_resource_layout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
 
+	const auto bytes_row = texture.desc.width * D3DHelper::bytes_per_pixel(texture.desc.format);
+	for (uint32_t y = 0; y < texture.desc.height; ++y)
+	{
+		auto row_ptr = static_cast<const uint8_t*>(data);
+		memcpy(destination_sub_resource_memory, &row_ptr[y * bytes_row],
+			std::min(sub_resource_pitch, bytes_row));
+		destination_sub_resource_memory += sub_resource_pitch;
+	}
+	
 	// https://alextardif.com/D3D11To12P3.html for entire copy details
 
 	// Record commands to copy subresources from staging to texture
@@ -1362,8 +1377,48 @@ bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 
 bool D3D12Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
 {
-	assert(false);
-	return false;
+	// D3D12 samplers are descriptors and do not have a separate object
+	sampler->desc = desc;
+	return true;
+}
+
+bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap& heap, Descriptor* descriptor)
+{
+	const auto heap_d3d12 = to_internal(heap);
+	if (heap.desc.type != DescriptorHeapDesc::Type::SAMPLER)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+		return false;
+	}
+	if (!heap_d3d12->allocate(&descriptor->offset))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
+		return false;
+	}
+	descriptor->heap = &heap;
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
+	if (!heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
+		return false;
+	}
+	const auto& desc = sampler.desc;
+	D3D12_SAMPLER_DESC sampler_desc
+	{
+		.Filter = D3DHelper::filter(
+			desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
+		.AddressU = D3DHelper::texture_address_mode(desc.address_mode_u),
+		.AddressV = D3DHelper::texture_address_mode(desc.address_mode_v),
+		.AddressW = D3DHelper::texture_address_mode(desc.address_mode_w),
+		.MipLODBias = desc.mip_lod_bias,
+		.MaxAnisotropy = desc.max_anisotropy,
+		.ComparisonFunc = D3DHelper::comparison_func(desc.comparison_func),
+		.BorderColor = { desc.border_color[0], desc.border_color[1],desc.border_color[2] , desc.border_color[3] },
+		.MinLOD = desc.min_lod,
+		.MaxLOD = desc.max_lod,
+	};
+	m_device_->CreateSampler(&sampler_desc, cpu_handle);
+	return true;
 }
 
 void* D3D12Context::map_buffer(const Buffer& buffer)

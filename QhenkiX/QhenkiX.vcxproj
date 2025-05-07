@@ -229,6 +229,7 @@
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_texture.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_fence.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.h" />

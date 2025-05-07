@@ -7,6 +7,7 @@
 #include "d3d11_swapchain.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_shader_compiler.h"
+#include "d3d11_texture.h"
 #include "graphics/shared/d3d_helper.h"
 
 using namespace qhenki::gfx;
@@ -37,6 +38,20 @@ static D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
 	auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
 	assert(d3d11_pipeline);
 	return d3d11_pipeline;
+}
+
+static ComPtr<ID3D11SamplerState>* to_internal(const Sampler& ext)
+{
+	auto d3d11_sampler = static_cast<ComPtr<ID3D11SamplerState>*>(ext.internal_state.get());
+	assert(d3d11_sampler);
+	return d3d11_sampler;
+}
+
+static D3D11TextureVariant* to_internal(const Texture& ext)
+{
+	auto d3d11_texture = static_cast<D3D11TextureVariant*>(ext.internal_state.get());
+	assert(d3d11_texture);
+	return d3d11_texture;
 }
 
 void D3D11Context::create()
@@ -149,6 +164,7 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 	// ID3DBlob
 	if (!compiler->compile(input, output))
 	{
+		OutputDebugStringA(output.error_message.c_str());
 		return false;
 	}
 
@@ -200,7 +216,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 			.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
 			.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
 		};
-		if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, &d3d11_pipeline->rasterizer_state_)))
+		if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, d3d11_pipeline->rasterizer_state_.ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Rasterizer State");
 			succeeded = false;
@@ -265,7 +281,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 			},
 		};
 
-		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, &d3d11_pipeline->depth_stencil_state_)))
+		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, d3d11_pipeline->depth_stencil_state_.ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Depth Stencil State\n");
 			succeeded = false;
@@ -279,49 +295,6 @@ bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 {
 	const auto d3d11_pipeline = to_internal(pipeline);
 	d3d11_pipeline->bind(m_device_context_.Get());
-	return true;
-}
-
-bool D3D11Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout* layout)
-{
-	return true; // D3D11 does not have root signatures
-}
-
-void D3D11Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
-{
-	// D3D11 does not have root signatures
-}
-
-bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
-{
-	return true; // D3D11 does not have descriptors
-}
-
-void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
-{
-	// D3D11 does not have descriptors
-}
-
-void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap,
-	const DescriptorHeap& sampler_heap)
-{
-	// D3D11 does not have descriptors
-}
-
-void D3D11Context::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
-{
-	// D3D11 does not have descriptors
-}
-
-bool D3D11Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
-{
-	// D3D11 does not have descriptors
-	return true;
-}
-
-bool D3D11Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor)
-{
-	// D3D11 does not have descriptors
 	return true;
 }
 
@@ -376,6 +349,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	resource_data.pSysMem = data;
 
 	// Only prefill if explicitly CPU visible, you will need to copy to device local memory like D3D12
+	// TODO: get rid of this feature to make it consistent with D3D12?
 	const auto resource_data_ptr = data && buffer_info.CPUAccessFlags == D3D11_CPU_ACCESS_WRITE ? &resource_data : nullptr;
 
 	if (FAILED(m_device_->CreateBuffer(
@@ -429,8 +403,88 @@ void D3D11Context::copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 
 
 bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name)
 {
-	assert(false);
-	return false;
+	texture->desc = desc;
+	texture->internal_state = mkS<D3D11TextureVariant>();
+	auto texture_d3d11 = static_cast<D3D11TextureVariant*>(texture->internal_state.get());
+
+	// TODO: RT, UAV BindFlags
+	UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
+	if (D3DHelper::is_depth_stencil_format(desc.format))
+	{
+		bind_flags |= D3D11_BIND_DEPTH_STENCIL;
+	}
+
+	if (desc.dimension == TextureDimension::TEXTURE_1D)
+	{
+		D3D11_TEXTURE1D_DESC texture_desc
+		{
+			.Width = static_cast<UINT>(desc.width),
+			.MipLevels = desc.mip_levels,
+			.ArraySize = desc.depth_or_array_size,
+			.Format = desc.format,
+			.Usage = D3D11_USAGE_DEFAULT,
+			.BindFlags = bind_flags,
+			.CPUAccessFlags = 0,
+			.MiscFlags = 0,
+		};
+
+		*texture_d3d11 = ComPtr<ID3D11Texture1D>();
+		if (FAILED(m_device_->CreateTexture1D(&texture_desc, nullptr, 
+			std::get<ComPtr<ID3D11Texture1D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+		{
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 1D texture\n");
+			return false;
+		}
+	}
+	else if (desc.dimension == TextureDimension::TEXTURE_2D)
+	{
+		D3D11_TEXTURE2D_DESC texture_desc
+		{
+			.Width = static_cast<UINT>(desc.width),
+			.Height = static_cast<UINT>(desc.height),
+			.MipLevels = desc.mip_levels,
+			.ArraySize = desc.depth_or_array_size,
+			.Format = desc.format,
+			.SampleDesc = { 1, 0 }, // TODO: sample count
+			.Usage = D3D11_USAGE_DEFAULT,
+			.BindFlags = bind_flags,
+			.CPUAccessFlags = 0,
+			.MiscFlags = 0, // TODO: cubemaps?
+		};
+
+		*texture_d3d11 = ComPtr<ID3D11Texture2D>();
+		if (FAILED(m_device_->CreateTexture2D(&texture_desc, nullptr,
+			std::get<ComPtr<ID3D11Texture2D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+		{
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 2D texture\n");
+			return false;
+		}
+	}
+	else if (desc.dimension == TextureDimension::TEXTURE_3D)
+	{
+		D3D11_TEXTURE3D_DESC texture_desc
+		{
+			.Width = static_cast<UINT>(desc.width),
+			.Height = static_cast<UINT>(desc.height),
+			.Depth = static_cast<UINT>(desc.depth_or_array_size),
+			.MipLevels = desc.mip_levels,
+			.Format = desc.format,
+			.Usage = D3D11_USAGE_DEFAULT,
+			.BindFlags = bind_flags,
+			.CPUAccessFlags = 0,
+			.MiscFlags = 0,
+		};
+
+		*texture_d3d11 = ComPtr<ID3D11Texture3D>();
+		if (FAILED(m_device_->CreateTexture3D(&texture_desc, nullptr,
+			std::get<ComPtr<ID3D11Texture3D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+		{
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 3D texture\n");
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool D3D11Context::create_descriptor(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
@@ -441,18 +495,81 @@ bool D3D11Context::create_descriptor(const Texture& texture, DescriptorHeap& hea
 
 bool D3D11Context::copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture)
 {
-	assert(false);
-	return false;
+	D3D11_BOX box
+	{
+		.left = 0,
+		.top = 0, // TODO: 3D texture
+		.front = 0, // TODO: 3D texture
+		.right = static_cast<UINT>(texture.desc.width),
+		.bottom = texture.desc.height,
+		.back = 1, // TODO: which subresource
+	};
+
+	ID3D11Resource* resource;
+	auto texture_d3d11 = to_internal(texture);
+	// Check if texture is 1D, 2D or 3D
+	const auto texture_1d = std::get_if<ComPtr<ID3D11Texture1D>>(texture_d3d11);
+	const auto texture_2d = std::get_if<ComPtr<ID3D11Texture2D>>(texture_d3d11);
+	const auto texture_3d = std::get_if<ComPtr<ID3D11Texture3D>>(texture_d3d11);
+	if (texture_1d)
+	{
+		resource = texture_1d->Get();
+	}
+	else if (texture_2d)
+	{
+		resource = texture_2d->Get();
+	}
+	else if (texture_3d)
+	{
+		resource = texture_3d->Get();
+	}
+	else
+	{
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get texture resource\n");
+		return false;
+	}
+
+	m_device_context_->UpdateSubresource(
+		resource,
+		0, // TODO: which subresource
+		&box,
+		data,
+		texture.desc.width * D3DHelper::bytes_per_pixel(texture.desc.format), // TODO: which subresource
+		0);
+
+	return true;
 }
 
 bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
 {
 	assert(sampler);
+	sampler->desc = desc;
 	sampler->internal_state = mkS<ComPtr<ID3D11SamplerState>>();
+	auto sampler_d3d11 = static_cast<ComPtr<ID3D11SamplerState>*>(sampler->internal_state.get());
 
-	D3D11_SAMPLER_DESC sampler_desc = {};
+	D3D11_SAMPLER_DESC sampler_desc
+	{
+		.Filter = static_cast<D3D11_FILTER>(D3DHelper::filter(
+			desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy)), // Shared type values D3D12
+		.AddressU = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(D3DHelper::texture_address_mode(desc.address_mode_u)), // Same in D3D11, D3D12
+		.AddressV = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(D3DHelper::texture_address_mode(desc.address_mode_v)),
+		.AddressW = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(D3DHelper::texture_address_mode(desc.address_mode_w)),
+		.MipLODBias = desc.mip_lod_bias,
+		.MaxAnisotropy = desc.max_anisotropy,
+		.ComparisonFunc = desc.comparison_func == SamplerDesc::ComparisonFunc::NONE ? D3D11_COMPARISON_NEVER :
+			static_cast<D3D11_COMPARISON_FUNC>(D3DHelper::comparison_func(desc.comparison_func)), // D3D11 doesn't have NONE
+		.BorderColor = { desc.border_color[0], desc.border_color[1],desc.border_color[2] , desc.border_color[3] },
+		.MinLOD = desc.min_lod,
+		.MaxLOD = desc.max_lod,
+	};
 
+	auto result = m_device_->CreateSamplerState(&sampler_desc, sampler_d3d11->ReleaseAndGetAddressOf());
 
+	if (FAILED(result))
+	{
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create sampler state\n");
+		return false;
+	}
 
 	return true;
 }
@@ -657,6 +774,37 @@ void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned co
 		break;
 	case PipelineStage::COMPUTE:
 		m_device_context_->CSSetConstantBuffers(slot, count, buffer_d3d11[0]);
+		break;
+	default:
+		throw std::runtime_error("D3D11: Invalid pipeline stage");
+	}
+}
+
+void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, PipelineStage stage)
+{
+	assert(false);
+
+	// TODO: specify as UAV, SRV...
+}
+
+void D3D11Context::compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage)
+{
+	std::array<ID3D11SamplerState**, 15> sampler_d3d11{};
+	assert(count <= sampler_d3d11.size());
+	for (unsigned i = 0; i < count; i++)
+	{
+		sampler_d3d11[i] = to_internal(samplers[i])->GetAddressOf();
+	}
+	switch (stage)
+	{
+	case PipelineStage::VERTEX:
+		m_device_context_->VSSetSamplers(slot, count, sampler_d3d11[0]);
+		break;
+	case PipelineStage::PIXEL:
+		m_device_context_->PSSetSamplers(slot, count, sampler_d3d11[0]);
+		break;
+	case PipelineStage::COMPUTE:
+		m_device_context_->CSSetSamplers(slot, count, sampler_d3d11[0]);
 		break;
 	default:
 		throw std::runtime_error("D3D11: Invalid pipeline stage");
