@@ -500,8 +500,7 @@ D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
     return state;
 }
 
-D3D12_FILTER D3DHelper::filter(SamplerDesc::Filter min, SamplerDesc::Filter mag, SamplerDesc::Filter mip, SamplerDesc::ComparisonFunc func, UINT
-                               max_anisotropy)
+D3D12_FILTER D3DHelper::filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy)
 {
 	// https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
 	// Assemble the bitmask ourselves
@@ -510,26 +509,26 @@ D3D12_FILTER D3DHelper::filter(SamplerDesc::Filter min, SamplerDesc::Filter mag,
 	// Why does Microsoft leave a 0 in between each bitmask bit???
 	if (max_anisotropy == 0)
 	{
-		if (mip == SamplerDesc::Filter::LINEAR)
+		if (mip == Filter::LINEAR)
 		{
 			filter |= D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
 		}
-		if (min == SamplerDesc::Filter::LINEAR)
+		if (min == Filter::LINEAR)
 		{
 			filter |= D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
 		}
-		if (mag == SamplerDesc::Filter::LINEAR)
+		if (mag == Filter::LINEAR)
 		{
 			filter |= D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
 		}
-		if (func != SamplerDesc::ComparisonFunc::NONE)
+		if (func != ComparisonFunc::NONE)
 		{
 			filter |= D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
 		}
 	}
 	else
 	{
-		if (func == SamplerDesc::ComparisonFunc::NONE)
+		if (func == ComparisonFunc::NONE)
 		{
 			return D3D12_FILTER_ANISOTROPIC;
 		}
@@ -538,44 +537,44 @@ D3D12_FILTER D3DHelper::filter(SamplerDesc::Filter min, SamplerDesc::Filter mag,
 	return static_cast<D3D12_FILTER>(filter);
 }
 
-D3D12_TEXTURE_ADDRESS_MODE D3DHelper::texture_address_mode(SamplerDesc::AddressMode mode)
+D3D12_TEXTURE_ADDRESS_MODE D3DHelper::texture_address_mode(AddressMode mode)
 {
 	switch (mode)
 	{
-	case SamplerDesc::AddressMode::WRAP:
+	case AddressMode::WRAP:
 		return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	case SamplerDesc::AddressMode::MIRROR:
+	case AddressMode::MIRROR:
 		return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-	case SamplerDesc::AddressMode::CLAMP:
+	case AddressMode::CLAMP:
 		return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	case SamplerDesc::AddressMode::BORDER:
+	case AddressMode::BORDER:
 		return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 	default:
 		throw std::runtime_error("D3DHelper: Invalid texture address mode");
 	}
 }
 
-D3D12_COMPARISON_FUNC D3DHelper::comparison_func(SamplerDesc::ComparisonFunc func)
+D3D12_COMPARISON_FUNC D3DHelper::comparison_func(ComparisonFunc func)
 {
 	switch (func)
 	{
-	case SamplerDesc::ComparisonFunc::NONE:
+	case ComparisonFunc::NONE:
 		return D3D12_COMPARISON_FUNC_NONE;
-	case SamplerDesc::ComparisonFunc::NEVER:
+	case ComparisonFunc::NEVER:
 		return D3D12_COMPARISON_FUNC_NEVER;
-	case SamplerDesc::ComparisonFunc::LESS:
+	case ComparisonFunc::LESS:
 		return D3D12_COMPARISON_FUNC_LESS;
-	case SamplerDesc::ComparisonFunc::EQUAL:
+	case ComparisonFunc::EQUAL:
 		return D3D12_COMPARISON_FUNC_EQUAL;
-	case SamplerDesc::ComparisonFunc::LESS_OR_EQUAL:
+	case ComparisonFunc::LESS_OR_EQUAL:
 		return D3D12_COMPARISON_FUNC_LESS_EQUAL;
-	case SamplerDesc::ComparisonFunc::GREATER:
+	case ComparisonFunc::GREATER:
 		return D3D12_COMPARISON_FUNC_GREATER;
-	case SamplerDesc::ComparisonFunc::NOT_EQUAL:
+	case ComparisonFunc::NOT_EQUAL:
 		return D3D12_COMPARISON_FUNC_NOT_EQUAL;
-	case SamplerDesc::ComparisonFunc::GREATER_OR_EQUAL:
+	case ComparisonFunc::GREATER_OR_EQUAL:
 		return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-	case SamplerDesc::ComparisonFunc::ALWAYS:
+	case ComparisonFunc::ALWAYS:
 		return D3D12_COMPARISON_FUNC_ALWAYS;
 	default:
 		throw std::runtime_error("D3DHelper: Invalid comparison function");

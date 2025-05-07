@@ -48,12 +48,8 @@ PSOutput ps_main(PSInput input)
 {
     PSOutput output;
     
-#ifdef DX12
     float3 multColor = g_texture.Sample(samp, input.uv).rgb * input.color;
     output.color = float4(multColor, 1.0);
-#else
-    output.color = float4(input.color, 1.0);
-#endif
    
     return output;
 }

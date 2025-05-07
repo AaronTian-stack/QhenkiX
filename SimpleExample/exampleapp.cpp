@@ -178,8 +178,8 @@ void ExampleApp::create()
 	// Create sampler
 	qhenki::gfx::SamplerDesc sampler_desc
 	{
-		.min_filter = qhenki::gfx::SamplerDesc::Filter::NEAREST,
-		.mag_filter = qhenki::gfx::SamplerDesc::Filter::NEAREST,
+		.min_filter = qhenki::gfx::Filter::NEAREST,
+		.mag_filter = qhenki::gfx::Filter::NEAREST,
 	}; // Default parameters
 	THROW_IF_FAILED(m_context_->create_sampler(sampler_desc, &m_sampler_));
 	// Create sampler descriptor
@@ -324,7 +324,7 @@ void ExampleApp::render()
 			&m_matrix_buffers_[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
 		// TODO: bind texture
 
-		m_context_->compatibility_set_textures(0, 1, &m_texture_, qhenki::gfx::PipelineStage::PIXEL);
+		m_context_->compatibility_set_textures(1, 1, &m_texture_, qhenki::gfx::PipelineStage::PIXEL);
 
 		m_context_->compatibility_set_samplers(0, 1, &m_sampler_, qhenki::gfx::PipelineStage::PIXEL);
 	}

@@ -47,11 +47,28 @@ static ComPtr<ID3D11SamplerState>* to_internal(const Sampler& ext)
 	return d3d11_sampler;
 }
 
-static D3D11TextureVariant* to_internal(const Texture& ext)
+static D3D11Texture* to_internal(const Texture& ext)
 {
-	auto d3d11_texture = static_cast<D3D11TextureVariant*>(ext.internal_state.get());
+	auto d3d11_texture = static_cast<D3D11Texture*>(ext.internal_state.get());
 	assert(d3d11_texture);
 	return d3d11_texture;
+}
+
+ID3D11Resource* get_texture_resource(D3D11Texture& tex)
+{
+	if (std::holds_alternative<ComPtr<ID3D11Texture1D>>(tex.texture))
+	{
+		return std::get<ComPtr<ID3D11Texture1D>>(tex.texture).Get();
+	}
+	if (std::holds_alternative<ComPtr<ID3D11Texture2D>>(tex.texture))
+	{
+		return std::get<ComPtr<ID3D11Texture2D>>(tex.texture).Get();
+	}
+	if (std::holds_alternative<ComPtr<ID3D11Texture3D>>(tex.texture))
+	{
+		return std::get<ComPtr<ID3D11Texture3D>>(tex.texture).Get();
+	}
+	return nullptr;
 }
 
 void D3D11Context::create()
@@ -404,8 +421,9 @@ void D3D11Context::copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 
 bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name)
 {
 	texture->desc = desc;
-	texture->internal_state = mkS<D3D11TextureVariant>();
-	auto texture_d3d11 = static_cast<D3D11TextureVariant*>(texture->internal_state.get());
+	texture->internal_state = mkS<D3D11Texture>();
+	auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
+	texture_d3d11->desc = &texture->desc;
 
 	// TODO: RT, UAV BindFlags
 	UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
@@ -428,9 +446,9 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 			.MiscFlags = 0,
 		};
 
-		*texture_d3d11 = ComPtr<ID3D11Texture1D>();
+		texture_d3d11->texture = ComPtr<ID3D11Texture1D>();
 		if (FAILED(m_device_->CreateTexture1D(&texture_desc, nullptr, 
-			std::get<ComPtr<ID3D11Texture1D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+			std::get<ComPtr<ID3D11Texture1D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 1D texture\n");
 			return false;
@@ -452,9 +470,9 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 			.MiscFlags = 0, // TODO: cubemaps?
 		};
 
-		*texture_d3d11 = ComPtr<ID3D11Texture2D>();
+		texture_d3d11->texture = ComPtr<ID3D11Texture2D>();
 		if (FAILED(m_device_->CreateTexture2D(&texture_desc, nullptr,
-			std::get<ComPtr<ID3D11Texture2D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+			std::get<ComPtr<ID3D11Texture2D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 2D texture\n");
 			return false;
@@ -475,9 +493,9 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 			.MiscFlags = 0,
 		};
 
-		*texture_d3d11 = ComPtr<ID3D11Texture3D>();
+		texture_d3d11->texture = ComPtr<ID3D11Texture3D>();
 		if (FAILED(m_device_->CreateTexture3D(&texture_desc, nullptr,
-			std::get<ComPtr<ID3D11Texture3D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+			std::get<ComPtr<ID3D11Texture3D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 3D texture\n");
 			return false;
@@ -504,28 +522,12 @@ bool D3D11Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 		.bottom = texture.desc.height,
 		.back = 1, // TODO: which subresource
 	};
-
-	ID3D11Resource* resource;
+	
 	auto texture_d3d11 = to_internal(texture);
-	// Check if texture is 1D, 2D or 3D
-	const auto texture_1d = std::get_if<ComPtr<ID3D11Texture1D>>(texture_d3d11);
-	const auto texture_2d = std::get_if<ComPtr<ID3D11Texture2D>>(texture_d3d11);
-	const auto texture_3d = std::get_if<ComPtr<ID3D11Texture3D>>(texture_d3d11);
-	if (texture_1d)
+	ID3D11Resource* resource = get_texture_resource(*texture_d3d11);
+	if (!resource)
 	{
-		resource = texture_1d->Get();
-	}
-	else if (texture_2d)
-	{
-		resource = texture_2d->Get();
-	}
-	else if (texture_3d)
-	{
-		resource = texture_3d->Get();
-	}
-	else
-	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get texture resource\n");
+		OutputDebugString(L"Qhenki D3D11 ERROR: copy_to_texture Failed to get texture resource\n");
 		return false;
 	}
 
@@ -556,7 +558,7 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
 		.AddressW = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(D3DHelper::texture_address_mode(desc.address_mode_w)),
 		.MipLODBias = desc.mip_lod_bias,
 		.MaxAnisotropy = desc.max_anisotropy,
-		.ComparisonFunc = desc.comparison_func == SamplerDesc::ComparisonFunc::NONE ? D3D11_COMPARISON_NEVER :
+		.ComparisonFunc = desc.comparison_func == ComparisonFunc::NONE ? D3D11_COMPARISON_NEVER :
 			static_cast<D3D11_COMPARISON_FUNC>(D3DHelper::comparison_func(desc.comparison_func)), // D3D11 doesn't have NONE
 		.BorderColor = { desc.border_color[0], desc.border_color[1],desc.border_color[2] , desc.border_color[3] },
 		.MinLOD = desc.min_lod,
@@ -782,9 +784,35 @@ void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned co
 
 void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, PipelineStage stage)
 {
-	assert(false);
-
 	// TODO: specify as UAV, SRV...
+
+	std::array<ID3D11ShaderResourceView**, 15> srv_d3d11{};
+
+	for (unsigned i = 0; i < count; i++)
+	{
+		auto texture_d3d11 = to_internal(textures[i]);
+		// TODO: if (SRV)
+		if (!texture_d3d11->shader_resource_view)
+		{
+			// Lazy create SRV (access whole resource)
+			auto resource = get_texture_resource(*texture_d3d11);
+			m_device_->CreateShaderResourceView(resource, nullptr, texture_d3d11->shader_resource_view.ReleaseAndGetAddressOf());
+		}
+		srv_d3d11[i] = texture_d3d11->shader_resource_view.GetAddressOf();
+	}
+
+	switch (stage)
+	{
+	case PipelineStage::VERTEX:
+		m_device_context_->VSSetShaderResources(slot, count, srv_d3d11[0]);
+		break;
+	case PipelineStage::PIXEL:
+		m_device_context_->PSSetShaderResources(slot, count, srv_d3d11[0]);
+		break;
+	case PipelineStage::COMPUTE:
+		m_device_context_->CSSetShaderResources(slot, count, srv_d3d11[0]);
+		break;
+	}
 }
 
 void D3D11Context::compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage)
