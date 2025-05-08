@@ -10,13 +10,11 @@
 #undef max
 #include <tsl/robin_map.h>
 
-#include "graphics/qhenki/disposable.h"
-
 using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-	class D3D12RootHasher : public Disposable
+	class D3D12RootHasher
 	{
 		std::mutex m_root_mutex_;
 		tsl::robin_map<size_t, ComPtr<ID3D12RootSignature>> m_root_map_;
@@ -37,7 +35,5 @@ namespace qhenki::gfx
 		 * @return A pointer to the created ID3D12RootSignature object. nullptr if the root signature already exists (might be hash collision) or creation failed.
 		 */
 		ID3D12RootSignature* add_root_signature(ID3D12Device* device, const void* root_data, size_t root_size);
-
-		void dispose() override;
 	};
 }

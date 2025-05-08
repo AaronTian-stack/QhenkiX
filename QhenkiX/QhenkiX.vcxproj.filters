@@ -134,9 +134,6 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\swapchain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\disposable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="qhenkiX\graphics\qhenki\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -291,6 +288,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\shared\math_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\qhenki\sampler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,53 +1,55 @@
-cbuffer CameraBuffer : register(b0)
-{
-    float4x4 viewProj;
-    float4x4 invViewProj;
-};
+cbuffer CameraBuffer : register(b0)  
+{  
+    float4x4 viewProj;  
+    float4x4 invViewProj;  
+};  
 
-struct VSInput
-{
+Texture2D g_texture : register(t1);
+
+#ifdef DX12
+SamplerState samp : register(s0, space1);
+#endif
+#ifdef DX11
+SamplerState samp : register(s0);
+#endif
+
+struct VSInput  
+{  
     float3 position : POSITION;
     float3 color : COLOR0;
-};
+    float2 uv : TEXCOORD0;
+}; 
 
-struct VSOutput
-{
+struct PSInput  
+{  
     float4 position : SV_Position;
     float3 color : COLOR0;
+    float2 uv : TEXCOORD0;
 };
+ 
+PSInput vs_main(VSInput input)
+{  
+    PSInput output;
 
-//[RootSignature("RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)")]
-VSOutput vs_main(VSInput input)
-{
-    VSOutput output;
-#ifdef DX11
     float4 worldPosition = float4(input.position, 1.0);
     output.position = mul(viewProj, worldPosition);
     output.color = input.color;
-#endif
-#ifdef DX12
-    output.position = float4(input.position, 1.0);
-    output.color = input.color;
-#endif
-    return output;
+    output.uv = input.uv;
+    
+    return output;  
 }
 
-// ----
-
-struct PSInput
-{
-    float4 position : SV_Position;
-    float3 color : COLOR0;
-};
-
-struct PSOutput
-{
+struct PSOutput  
+{  
     float4 color : SV_Target0;
 };
 
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
-    output.color = float4(input.color, 1.0);
+    
+    float3 multColor = g_texture.Sample(samp, input.uv).rgb * input.color;
+    output.color = float4(multColor, 1.0);
+   
     return output;
 }

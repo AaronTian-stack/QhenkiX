@@ -411,7 +411,11 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 		compiler = shader_compiler.get();
 	}
 	CompilerOutput output = {};
-	const bool result = compiler->compile(input, output);
+	if (!compiler->compile(input, output))
+	{
+		OutputDebugStringA(output.error_message.c_str());
+		return false;
+	}
 
 	*shader =
 	{
@@ -420,7 +424,7 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 		.internal_state = output.internal_state, // IDxcBlob
 	};
 
-	return result;
+	return true;
 }
 
 std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
@@ -463,6 +467,7 @@ void D3D12Context::root_signature_reflection(ID3D12ShaderReflection* shader_refl
 {
 	// TODO: finish this
 	assert(false);
+	throw std::runtime_error("D3D12: Root signature reflection not implemented");
 	//D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {};
 	//for (UINT i = 0; i < shader_desc.BoundResources; i++)
 	//{
@@ -781,7 +786,7 @@ bool D3D12Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 
 bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout* layout)
 {
-	auto count_non_empty = [](const std::array<std::vector<LayoutBinding>, 4>& spaces)
+	auto count_non_empty = [](const std::array<std::vector<LayoutBinding>, MAX_SPACES>& spaces)
 		{
 		unsigned count = 0;
 		for (const auto& space : spaces)
@@ -799,6 +804,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 
 	for (unsigned i = 0; i < desc.push_ranges.size(); i++)
 	{
+		assert(false);
 		const auto& range = desc.push_ranges[i];
 		params[i] =
 		{
@@ -814,6 +820,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 	}
 
 	std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> ranges;
+	ranges.reserve(desc.spaces.size());
 	for (unsigned i = 0; i < desc.spaces.size(); i++)
 	{
 		auto& space = desc.spaces[i];
@@ -871,6 +878,11 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 	if (FAILED(hr))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to serialize root signature\n");
+		// Output error blob
+		if (error_blob)
+		{
+			OutputDebugStringA(static_cast<char*>(error_blob->GetBufferPointer()));
+		}
 		return false;
 	}
 	const void* root_sig_data = root_sig_blob->GetBufferPointer();
@@ -957,6 +969,23 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
 	}
 }
 
+void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap,
+	const DescriptorHeap& sampler_heap)
+{
+	const auto cmd_list_d3d12 = to_internal(*cmd_list);
+	const auto heap_d3d12 = to_internal(heap);
+	const auto sampler_heap_d3d12 = to_internal(sampler_heap);
+	if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
+	{
+		ID3D12DescriptorHeap* heaps[] = { heap_d3d12->Get().Get(), sampler_heap_d3d12->Get().Get() };
+		cmd_list_d3d12->Get()->SetDescriptorHeaps(2, heaps);
+	}
+	else
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+	}
+}
+
 void D3D12Context::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
@@ -973,10 +1002,10 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, unsigned index, c
 	cmd_list_d3d12->Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
 }
 
-bool D3D12Context::copy_descriptors(unsigned count, const Descriptor* src, const Descriptor* dst)
+bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
 {
-	const auto src_heap_d3d12 = to_internal(*src->heap);
-	const auto dst_heap_d3d12 = to_internal(*dst->heap);
+	const auto src_heap_d3d12 = to_internal(*src.heap);
+	const auto dst_heap_d3d12 = to_internal(*dst.heap);
 
 	if (src_heap_d3d12->desc.Type != dst_heap_d3d12->desc.Type)
 	{
@@ -991,42 +1020,38 @@ bool D3D12Context::copy_descriptors(unsigned count, const Descriptor* src, const
 	}
 
 	D3D12_CPU_DESCRIPTOR_HANDLE src_cpu_handle;
-	if (!src_heap_d3d12->get_CPU_descriptor(&src_cpu_handle, src->offset, 0))
+	if (!src_heap_d3d12->get_CPU_descriptor(&src_cpu_handle, src.offset, 0))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
 		return false;
 	}
+
 	D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
-	if (!dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst->offset, 0))
+	if (!dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset, 0))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
 		return false;
 	}
+
 	m_device_->CopyDescriptorsSimple(count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
 
 	return true;
 }
 
-bool D3D12Context::get_descriptor(unsigned count, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D12Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor)
 {
 	const auto heap_d3d12 = to_internal(heap);
 	assert(descriptor);
-	descriptor->heap = &heap;
-
-	// TODO: get GPU descriptor?
-
-	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-	if (!heap_d3d12->get_CPU_descriptor(&cpu_handle, 0, count))
+	*descriptor =
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
-		return false;
-	}
-
-	descriptor->offset = cpu_handle.ptr;
+		.heap = &heap,
+		.offset = heap_d3d12->descriptor_count_to_bytes(descriptor_count_offset),
+	};
 	return true;
 }
 
-bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name)
+bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer,
+	wchar_t const* debug_name)
 {
 	buffer->desc = desc;
 	buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>();
@@ -1080,6 +1105,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		return false;
 	}
 	const auto resource = buffer_d3d12->Get()->GetResource();
+	
 	if (data)
 	{
 		// If this is a CPU visible buffer memcpy the data
@@ -1112,23 +1138,50 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	return true;
 }
 
-bool D3D12Context::create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D12Context::create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type)
 {
 	const auto buffer_d3d12 = to_internal(buffer);
-	const auto heap_d3d12 = to_internal(heap);
+	const auto heap_d3d12 = to_internal(cpu_heap);
+	if (cpu_heap.desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+		return false;
+	}
 	if (!heap_d3d12->allocate(&descriptor->offset))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for buffer\n");
 		return false;
 	}
-	descriptor->heap = &heap;
+	descriptor->heap = &cpu_heap;
+
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
 	if (!heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
 		return false;
 	}
-	m_device_->CreateShaderResourceView(buffer_d3d12->Get()->GetResource(), nullptr, cpu_handle); // READ ONLY!
+
+	if (type == BufferDescriptorType::CBV)
+	{
+		if (buffer.desc.size != MathHelper::align_u32(buffer.desc.size, 256))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Constant buffer size is not aligned to 256 bytes\n");
+			return false;
+		}
+		D3D12_CONSTANT_BUFFER_VIEW_DESC desc
+		{
+			.BufferLocation = buffer_d3d12->Get()->GetResource()->GetGPUVirtualAddress(),
+			.SizeInBytes = static_cast<UINT>(buffer.desc.size),
+		};
+		m_device_->CreateConstantBufferView(&desc, cpu_handle);
+	}
+	else if (type == BufferDescriptorType::UAV)
+	{
+		assert(false);
+		// TODO: need pDesc
+		m_device_->CreateUnorderedAccessView(buffer_d3d12->Get()->GetResource(), nullptr, nullptr, cpu_handle);
+	}
+
 	return true;
 }
 
@@ -1245,6 +1298,7 @@ bool D3D12Context::create_descriptor(const Texture& texture, DescriptorHeap& hea
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
 		return false;
 	}
+	// TODO: what kind of view
 	m_device_->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
 	return true;
@@ -1259,7 +1313,7 @@ bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 
 	UINT64 size;
 	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(num_subresources); // TODO: replace with small vector
-	std::vector<UINT> row_sizes(num_subresources); // TODO: replace with small vector
+	std::vector<UINT> row_sizes(num_subresources); // For subresource height TODO: replace with small vector
 	m_device_->GetCopyableFootprints(&desc, 0, num_subresources, 0,
 		layouts.data(), row_sizes.data(), nullptr, &size);
 
@@ -1275,17 +1329,24 @@ bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 		return false;
 	}
 
-	// get pointer to the staging buffer
 	uint8_t* upload_memory = static_cast<uint8_t*>(map_buffer(staging));
 	// memcpy from data to staging buffer based off footprint data
 
 	constexpr auto subresource_index = 0;
 
-	const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& subResourceLayout = layouts[subresource_index];
-	uint8_t* destination_sub_resource_memory = upload_memory + subResourceLayout.Offset;
-	const uint64_t sub_resource_pitch = MathHelper::align_u32(subResourceLayout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-	memcpy(destination_sub_resource_memory, data, std::min(sub_resource_pitch, texture.desc.width));
+	const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& sub_resource_layout = layouts[subresource_index];
+	uint8_t* destination_sub_resource_memory = upload_memory + sub_resource_layout.Offset;
+	const uint64_t sub_resource_pitch = MathHelper::align_u32(sub_resource_layout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
 
+	const auto bytes_row = texture.desc.width * D3DHelper::bytes_per_pixel(texture.desc.format);
+	for (uint32_t y = 0; y < texture.desc.height; ++y)
+	{
+		auto row_ptr = static_cast<const uint8_t*>(data);
+		memcpy(destination_sub_resource_memory, &row_ptr[y * bytes_row],
+			std::min(sub_resource_pitch, bytes_row));
+		destination_sub_resource_memory += sub_resource_pitch;
+	}
+	
 	// https://alextardif.com/D3D11To12P3.html for entire copy details
 
 	// Record commands to copy subresources from staging to texture
@@ -1311,6 +1372,52 @@ bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 	const auto cmd_list_d3d12 = to_internal(cmd_list);
 	cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
 
+	return true;
+}
+
+bool D3D12Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
+{
+	// D3D12 samplers are descriptors and do not have a separate object
+	sampler->desc = desc;
+	return true;
+}
+
+bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap& heap, Descriptor* descriptor)
+{
+	const auto heap_d3d12 = to_internal(heap);
+	if (heap.desc.type != DescriptorHeapDesc::Type::SAMPLER)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+		return false;
+	}
+	if (!heap_d3d12->allocate(&descriptor->offset))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
+		return false;
+	}
+	descriptor->heap = &heap;
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
+	if (!heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
+		return false;
+	}
+	const auto& desc = sampler.desc;
+	D3D12_SAMPLER_DESC sampler_desc
+	{
+		.Filter = D3DHelper::filter(
+			desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
+		.AddressU = D3DHelper::texture_address_mode(desc.address_mode_u),
+		.AddressV = D3DHelper::texture_address_mode(desc.address_mode_v),
+		.AddressW = D3DHelper::texture_address_mode(desc.address_mode_w),
+		.MipLODBias = desc.mip_lod_bias,
+		.MaxAnisotropy = desc.max_anisotropy,
+		.ComparisonFunc = D3DHelper::comparison_func(desc.comparison_func),
+		.BorderColor = { desc.border_color[0], desc.border_color[1],desc.border_color[2] , desc.border_color[3] },
+		.MinLOD = desc.min_lod,
+		.MaxLOD = desc.max_lod,
+	};
+	m_device_->CreateSampler(&sampler_desc, cpu_handle);
 	return true;
 }
 
@@ -1561,7 +1668,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* qu
 {
 	const auto queue_d3d12 = to_internal(*queue);
 
-	// TODO: Examine the overhead this causes
+	// TODO: examine the overhead this causes
 
 	// Wait on fences
 	for (unsigned i = 0; i < submit_info.wait_fence_count; i++)

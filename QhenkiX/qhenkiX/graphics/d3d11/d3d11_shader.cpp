@@ -19,7 +19,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 	ID3D11DeviceChild* device_resource = nullptr;
 	switch (shader_type)
 	{
-	case ShaderType::VERTEX_SHADER:
+	case VERTEX_SHADER:
 	{
 		m_shader_ = D3D11VertexShader();
 		if (FAILED(device->CreateVertexShader(
@@ -39,7 +39,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 		}
 		break;
 	}
-	case ShaderType::PIXEL_SHADER:
+	case PIXEL_SHADER:
 	{
 		m_shader_ = ComPtr<ID3D11PixelShader>();
 		if (FAILED(device->CreatePixelShader(

@@ -15,6 +15,7 @@
 #include "shader_compiler.h"
 #include "descriptor_heap.h"
 #include "descriptor_table.h"
+#include "sampler.h"
 #include "submission.h"
 #include "texture.h"
 
@@ -60,21 +61,33 @@ namespace qhenki::gfx
 
 		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
+		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) = 0;
 
 		virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
-		virtual bool copy_descriptors(unsigned count, const Descriptor* src, const Descriptor* dst) = 0;
-		virtual bool get_descriptor(unsigned count, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		virtual bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) = 0;
+		virtual bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 
 		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name = nullptr) = 0;
-		virtual bool create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		virtual bool create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type) = 0;
 
 		virtual void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) = 0;
 
 		virtual bool create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name = nullptr) = 0;
 		virtual bool create_descriptor(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 
-		// Assumes that you are copying to first subresource only. Texture should be CPU visible TODO: add subresource index argument?
-		virtual bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) = 0;
+        /**
+		 * @brief Creates staging buffer with data pointer and copies it to the texture. TODO: add subresource index argument?
+         * 
+         * @param cmd_list Reference to the command list used to record the copy operation.
+         * @param data Pointer to the data to be copied.
+		 * @param staging Reference to the staging buffer assumed to be uninitialized.
+         * @param texture Reference to the destination texture where the data will be copied.
+         * @return true if the copy operation was successful, false otherwise.
+         */
+        virtual bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) = 0;
+
+		virtual bool create_sampler(const SamplerDesc& desc, Sampler* sampler) = 0;
+		virtual bool create_descriptor(const Sampler& sampler, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 
 		// Write only
 		virtual void* map_buffer(const Buffer& buffer) = 0;
@@ -119,6 +132,8 @@ namespace qhenki::gfx
 		virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
 		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) = 0;
+		virtual void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, PipelineStage stage) = 0;
+		virtual void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) = 0;
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_idle(Queue& queue) = 0;

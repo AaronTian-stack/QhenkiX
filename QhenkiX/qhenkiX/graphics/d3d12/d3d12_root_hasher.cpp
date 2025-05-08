@@ -39,9 +39,3 @@ ID3D12RootSignature* D3D12RootHasher::add_root_signature(ID3D12Device* device, c
 	m_root_map_[hash] = root_signature;
 	return root_signature.Get();
 }
-
-void D3D12RootHasher::dispose()
-{
-	std::lock_guard lock(m_root_mutex_);
-	m_root_map_.clear();
-}

@@ -499,3 +499,225 @@ D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
     }
     return state;
 }
+
+D3D12_FILTER D3DHelper::filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy)
+{
+	// https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
+	// Assemble the bitmask ourselves
+	UINT filter = 0;
+	// If linear then set bit to 1 in MIN MAG MIP
+	// Why does Microsoft leave a 0 in between each bitmask bit???
+	if (max_anisotropy == 0)
+	{
+		if (mip == Filter::LINEAR)
+		{
+			filter |= D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+		}
+		if (min == Filter::LINEAR)
+		{
+			filter |= D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+		}
+		if (mag == Filter::LINEAR)
+		{
+			filter |= D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+		}
+		if (func != ComparisonFunc::NONE)
+		{
+			filter |= D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+		}
+	}
+	else
+	{
+		if (func == ComparisonFunc::NONE)
+		{
+			return D3D12_FILTER_ANISOTROPIC;
+		}
+		return D3D12_FILTER_COMPARISON_ANISOTROPIC;
+	}
+	return static_cast<D3D12_FILTER>(filter);
+}
+
+D3D12_TEXTURE_ADDRESS_MODE D3DHelper::texture_address_mode(AddressMode mode)
+{
+	switch (mode)
+	{
+	case AddressMode::WRAP:
+		return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	case AddressMode::MIRROR:
+		return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	case AddressMode::CLAMP:
+		return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	case AddressMode::BORDER:
+		return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	default:
+		throw std::runtime_error("D3DHelper: Invalid texture address mode");
+	}
+}
+
+D3D12_COMPARISON_FUNC D3DHelper::comparison_func(ComparisonFunc func)
+{
+	switch (func)
+	{
+	case ComparisonFunc::NONE:
+		return D3D12_COMPARISON_FUNC_NONE;
+	case ComparisonFunc::NEVER:
+		return D3D12_COMPARISON_FUNC_NEVER;
+	case ComparisonFunc::LESS:
+		return D3D12_COMPARISON_FUNC_LESS;
+	case ComparisonFunc::EQUAL:
+		return D3D12_COMPARISON_FUNC_EQUAL;
+	case ComparisonFunc::LESS_OR_EQUAL:
+		return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	case ComparisonFunc::GREATER:
+		return D3D12_COMPARISON_FUNC_GREATER;
+	case ComparisonFunc::NOT_EQUAL:
+		return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+	case ComparisonFunc::GREATER_OR_EQUAL:
+		return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+	case ComparisonFunc::ALWAYS:
+		return D3D12_COMPARISON_FUNC_ALWAYS;
+	default:
+		throw std::runtime_error("D3DHelper: Invalid comparison function");
+	}
+}
+
+UINT D3DHelper::bytes_per_pixel(DXGI_FORMAT format)
+{
+	switch (format)
+	{
+		// UNORM/SNORM/FLOAT/UINT/SINT with simple channel counts
+	case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+	case DXGI_FORMAT_R32G32B32A32_FLOAT:
+	case DXGI_FORMAT_R32G32B32A32_UINT:
+	case DXGI_FORMAT_R32G32B32A32_SINT:
+		return 16;
+
+	case DXGI_FORMAT_R32G32B32_TYPELESS:
+	case DXGI_FORMAT_R32G32B32_FLOAT:
+	case DXGI_FORMAT_R32G32B32_UINT:
+	case DXGI_FORMAT_R32G32B32_SINT:
+		return 12;
+
+	case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+	case DXGI_FORMAT_R16G16B16A16_FLOAT:
+	case DXGI_FORMAT_R16G16B16A16_UNORM:
+	case DXGI_FORMAT_R16G16B16A16_UINT:
+	case DXGI_FORMAT_R16G16B16A16_SNORM:
+	case DXGI_FORMAT_R16G16B16A16_SINT:
+	case DXGI_FORMAT_R32G32_TYPELESS:
+	case DXGI_FORMAT_R32G32_FLOAT:
+	case DXGI_FORMAT_R32G32_UINT:
+	case DXGI_FORMAT_R32G32_SINT:
+	case DXGI_FORMAT_R32G8X24_TYPELESS:
+	case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		return 8;
+
+	case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+	case DXGI_FORMAT_R10G10B10A2_UNORM:
+	case DXGI_FORMAT_R10G10B10A2_UINT:
+	case DXGI_FORMAT_R11G11B10_FLOAT:
+	case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+	case DXGI_FORMAT_R8G8B8A8_UNORM:
+	case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+	case DXGI_FORMAT_R8G8B8A8_UINT:
+	case DXGI_FORMAT_R8G8B8A8_SNORM:
+	case DXGI_FORMAT_R8G8B8A8_SINT:
+	case DXGI_FORMAT_R16G16_TYPELESS:
+	case DXGI_FORMAT_R16G16_FLOAT:
+	case DXGI_FORMAT_R16G16_UNORM:
+	case DXGI_FORMAT_R16G16_UINT:
+	case DXGI_FORMAT_R16G16_SNORM:
+	case DXGI_FORMAT_R16G16_SINT:
+	case DXGI_FORMAT_R32_TYPELESS:
+	case DXGI_FORMAT_D32_FLOAT:
+	case DXGI_FORMAT_R32_FLOAT:
+	case DXGI_FORMAT_R32_UINT:
+	case DXGI_FORMAT_R32_SINT:
+	case DXGI_FORMAT_R24G8_TYPELESS:
+	case DXGI_FORMAT_D24_UNORM_S8_UINT:
+	case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		return 4;
+
+	case DXGI_FORMAT_R8G8_TYPELESS:
+	case DXGI_FORMAT_R8G8_UNORM:
+	case DXGI_FORMAT_R8G8_UINT:
+	case DXGI_FORMAT_R8G8_SNORM:
+	case DXGI_FORMAT_R8G8_SINT:
+	case DXGI_FORMAT_R16_TYPELESS:
+	case DXGI_FORMAT_R16_FLOAT:
+	case DXGI_FORMAT_D16_UNORM:
+	case DXGI_FORMAT_R16_UNORM:
+	case DXGI_FORMAT_R16_UINT:
+	case DXGI_FORMAT_R16_SNORM:
+	case DXGI_FORMAT_R16_SINT:
+		return 2;
+
+	case DXGI_FORMAT_R8_TYPELESS:
+	case DXGI_FORMAT_R8_UNORM:
+	case DXGI_FORMAT_R8_UINT:
+	case DXGI_FORMAT_R8_SNORM:
+	case DXGI_FORMAT_R8_SINT:
+	case DXGI_FORMAT_A8_UNORM:
+		return 1; // 8 bits / 8 = 1 byte
+
+	case DXGI_FORMAT_R1_UNORM:
+		return 0; // 1 bit / 8 = 0 bytes (rounded down)
+
+	// Block-compressed formats: bytes *per pixel* = (blockSizeBytes) / (4×4 pixels)
+	case DXGI_FORMAT_BC1_TYPELESS:
+	case DXGI_FORMAT_BC1_UNORM:
+	case DXGI_FORMAT_BC1_UNORM_SRGB:
+	case DXGI_FORMAT_BC4_TYPELESS:
+	case DXGI_FORMAT_BC4_UNORM:
+	case DXGI_FORMAT_BC4_SNORM:
+		return 8; // PER BLOCK
+
+	case DXGI_FORMAT_BC2_TYPELESS:
+	case DXGI_FORMAT_BC2_UNORM:
+	case DXGI_FORMAT_BC2_UNORM_SRGB:
+	case DXGI_FORMAT_BC3_TYPELESS:
+	case DXGI_FORMAT_BC3_UNORM:
+	case DXGI_FORMAT_BC3_UNORM_SRGB:
+	case DXGI_FORMAT_BC5_TYPELESS:
+	case DXGI_FORMAT_BC5_UNORM:
+	case DXGI_FORMAT_BC5_SNORM:
+	case DXGI_FORMAT_BC6H_TYPELESS:
+	case DXGI_FORMAT_BC6H_UF16:
+	case DXGI_FORMAT_BC6H_SF16:
+	case DXGI_FORMAT_BC7_TYPELESS:
+	case DXGI_FORMAT_BC7_UNORM:
+	case DXGI_FORMAT_BC7_UNORM_SRGB:
+		return 1; // 128 bits / 16 pixels = 8 bits per pixel / 8 = 1 byte
+
+	// Packed formats  
+	case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+	case DXGI_FORMAT_R8G8_B8G8_UNORM:
+	case DXGI_FORMAT_G8R8_G8B8_UNORM:
+		return 4; // 32 bits / 8 = 4 bytes
+
+	// YUV formats (treat as 2 bytes per pixel here—actual packing is more complex)
+	case DXGI_FORMAT_YUY2:
+	case DXGI_FORMAT_Y210:
+	case DXGI_FORMAT_Y216:
+		return 2; // 16 bits / 8 = 2 bytes
+
+    // Depth-stencil typeless/reserved
+    case DXGI_FORMAT_UNKNOWN:
+    default:
+		return 0; // or assert/throw for unsupported formats
+	}
+}
+
+bool D3DHelper::is_depth_stencil_format(DXGI_FORMAT format)
+{
+	switch (format)
+	{
+	case DXGI_FORMAT_D16_UNORM:
+	case DXGI_FORMAT_D24_UNORM_S8_UINT:
+	case DXGI_FORMAT_D32_FLOAT:
+	case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		return true;
+	default:
+		return false;
+	}
+}

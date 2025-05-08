@@ -220,11 +220,3 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
 
 	return layout.Get();
 }
-
-void D3D11LayoutAssembler::dispose()
-{
-	std::lock_guard lock(m_layout_mutex_);
-	m_layout_map_.clear();
-	m_layout_logical_map_.clear();
-	m_layout_desc_.clear();
-}

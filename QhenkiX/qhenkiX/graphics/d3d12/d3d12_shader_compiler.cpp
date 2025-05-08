@@ -207,7 +207,6 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		{
 			output.error_message = errors->GetStringPointer();
 		}
-
 		return false;
 	}
 

@@ -7,6 +7,7 @@ using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
+    // https://devblogs.microsoft.com/pix/using-automatic-shader-pdb-resolution-in-pix/
     struct ShaderDebugName
     {
         uint16_t Flags;       // Reserved, must be set to zero.

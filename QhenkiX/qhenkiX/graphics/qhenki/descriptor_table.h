@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include "descriptor_heap.h"
 
 namespace qhenki::gfx
@@ -26,5 +25,11 @@ namespace qhenki::gfx
 		{
 			return { desc.heap, desc.offset };
 		}
+	};
+
+	enum class BufferDescriptorType
+	{
+		CBV,
+		UAV,
 	};
 }

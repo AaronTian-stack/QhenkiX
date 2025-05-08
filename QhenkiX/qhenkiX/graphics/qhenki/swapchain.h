@@ -19,5 +19,4 @@ namespace qhenki::gfx
 		RenderTarget render_target;
 		sPtr<void> internal_state;
 	};
-
 }

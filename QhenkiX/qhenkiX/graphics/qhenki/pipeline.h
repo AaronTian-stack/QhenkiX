@@ -75,12 +75,13 @@ namespace qhenki::gfx
 		// TODO: stage flags
 	};
 
-#define INFINITE_DESCRIPTORS 0xFFFFFFFF
+constexpr auto INFINITE_DESCRIPTORS = 0xFFFFFFFF;
+constexpr size_t MAX_SPACES = 6; // 6 is arbitrary, defined based off Vulkan max descriptor sets
 
 	struct PipelineLayoutDesc
 	{
 		std::vector<PushRange> push_ranges; // TODO: use small vector
-		std::array<std::vector<LayoutBinding>, 4> spaces; // TODO: use small vector
+		std::array<std::vector<LayoutBinding>, MAX_SPACES> spaces; // TODO: use small vector
 	};
 
 	struct PipelineLayout
