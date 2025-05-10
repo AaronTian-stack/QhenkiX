@@ -1280,7 +1280,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 	return true;
 }
 
-bool D3D12Context::create_descriptor(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D12Context::create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
 {
 	const auto texture_d3d12 = to_internal(texture);
 	const auto heap_d3d12 = to_internal(heap);
@@ -1298,7 +1298,8 @@ bool D3D12Context::create_descriptor(const Texture& texture, DescriptorHeap& hea
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
 		return false;
 	}
-	// TODO: what kind of view
+	
+	// TODO: description
 	m_device_->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
 	return true;

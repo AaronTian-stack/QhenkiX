@@ -423,7 +423,6 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 	texture->desc = desc;
 	texture->internal_state = mkS<D3D11Texture>();
 	auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
-	texture_d3d11->desc = &texture->desc;
 
 	// TODO: RT, UAV BindFlags
 	UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
@@ -505,9 +504,24 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 	return true;
 }
 
-bool D3D11Context::create_descriptor(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D11Context::create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
 {
-	// D3D11 does not have descriptors
+	auto texture_d3d11 = to_internal(texture);
+
+	descriptor->heap = &heap;
+	descriptor->offset = texture_d3d11->shader_resource_views.size();
+
+	texture_d3d11->shader_resource_views.push_back({});
+
+	auto resource = get_texture_resource(*texture_d3d11);
+
+	// TODO: description
+	if (FAILED(m_device_->CreateShaderResourceView(resource, nullptr, 
+		texture_d3d11->shader_resource_views.back().ReleaseAndGetAddressOf())))
+	{
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture SRV\n");
+		return false;
+	}
 	return true;
 }
 
@@ -782,35 +796,86 @@ void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned co
 	}
 }
 
-void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, PipelineStage stage)
+void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage)
 {
-	// TODO: specify as UAV, SRV...
+	// Read or write (as UAV not RT) access
 
-	std::array<ID3D11ShaderResourceView**, 15> srv_d3d11{};
+    union ResourceViews {
+           std::array<ID3D11UnorderedAccessView**, 15> unordered_access_views;
+           std::array<ID3D11ShaderResourceView**, 15> shader_resource_views;
+       } resource_views;
+
+	switch (flag)
+	{
+	case ACCESS_STORAGE_ACCESS:
+		resource_views.unordered_access_views = std::array<ID3D11UnorderedAccessView**, 15>{};
+		break;
+	case ACCESS_SHADER_RESOURCE:
+		resource_views.shader_resource_views = std::array<ID3D11ShaderResourceView**, 15>{};
+		break;
+	default:
+		OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
+		return;
+	}
 
 	for (unsigned i = 0; i < count; i++)
 	{
 		auto texture_d3d11 = to_internal(textures[i]);
-		// TODO: if (SRV)
-		if (!texture_d3d11->shader_resource_view)
+		// The descriptor offset is used as index into vector
+		switch (flag)
 		{
-			// Lazy create SRV (access whole resource)
-			auto resource = get_texture_resource(*texture_d3d11);
-			m_device_->CreateShaderResourceView(resource, nullptr, texture_d3d11->shader_resource_view.ReleaseAndGetAddressOf());
+		case ACCESS_STORAGE_ACCESS:
+			resource_views.unordered_access_views[i] = texture_d3d11->unordered_access_views[descriptors[i].offset].GetAddressOf();
+			break;
+		case ACCESS_SHADER_RESOURCE:
+			resource_views.shader_resource_views[i] = texture_d3d11->shader_resource_views[descriptors[i].offset].GetAddressOf();
+			break;
+		default:
+			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
+			return;
 		}
-		srv_d3d11[i] = texture_d3d11->shader_resource_view.GetAddressOf();
 	}
+	const UINT n1 = -1;
 
-	switch (stage)
+	switch (flag)
 	{
-	case PipelineStage::VERTEX:
-		m_device_context_->VSSetShaderResources(slot, count, srv_d3d11[0]);
+	//case ACCESS_RENDER_TARGET:
+	case ACCESS_STORAGE_ACCESS:
+		switch (stage)
+		{
+			// TODO: need a better way of doing this
+			// D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
+		case PipelineStage::VERTEX:
+			m_device_context_->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr,
+				slot, count, resource_views.unordered_access_views[0], &n1);
+			break;
+		case PipelineStage::PIXEL:
+			m_device_context_->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr,
+				slot, count, resource_views.unordered_access_views[0], &n1);
+			break;
+		case PipelineStage::COMPUTE:
+			m_device_context_->CSSetUnorderedAccessViews(slot, count, resource_views.unordered_access_views[0], nullptr);
+			break;
+		default:
+			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid pipeline stage for storage access\n");
+		}
 		break;
-	case PipelineStage::PIXEL:
-		m_device_context_->PSSetShaderResources(slot, count, srv_d3d11[0]);
+	case ACCESS_SHADER_RESOURCE:
+		switch (stage)
+		{
+		case PipelineStage::VERTEX:
+			m_device_context_->VSSetShaderResources(slot, count, resource_views.shader_resource_views[0]);
+			break;
+		case PipelineStage::PIXEL:
+			m_device_context_->PSSetShaderResources(slot, count, resource_views.shader_resource_views[0]);
+			break;
+		case PipelineStage::COMPUTE:
+			m_device_context_->CSSetShaderResources(slot, count, resource_views.shader_resource_views[0]);
+			break;
+		}
 		break;
-	case PipelineStage::COMPUTE:
-		m_device_context_->CSSetShaderResources(slot, count, srv_d3d11[0]);
+	default:
+		OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
 		break;
 	}
 }
