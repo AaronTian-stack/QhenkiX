@@ -185,16 +185,6 @@ void ExampleApp::create()
 	// Create sampler descriptor
 	THROW_IF_FAILED(m_context_->create_descriptor(m_sampler_, m_sampler_heap_, &m_sampler_descriptor_));
 
-	// Create sampler
-	qhenki::gfx::SamplerDesc sampler_desc
-	{
-		.min_filter = qhenki::gfx::Filter::NEAREST,
-		.mag_filter = qhenki::gfx::Filter::NEAREST,
-	}; // Default parameters
-	THROW_IF_FAILED(m_context_->create_sampler(sampler_desc, &m_sampler_));
-	// Create sampler descriptor
-	THROW_IF_FAILED(m_context_->create_descriptor(m_sampler_, m_sampler_heap_, &m_sampler_descriptor_));
-
 	// Texture data
 	constexpr auto checkerboard = std::array
 	{
