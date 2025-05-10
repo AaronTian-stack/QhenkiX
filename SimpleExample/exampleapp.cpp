@@ -173,7 +173,7 @@ void ExampleApp::create()
 	THROW_IF_FAILED(m_context_->create_texture(texture_desc, &m_texture_, L"Checkerboard Texture"));
 
 	// Create CPU descriptor for texture
-	THROW_IF_FAILED(m_context_->create_descriptor(m_texture_, m_CPU_heap_, &m_texture_descriptor_));
+	THROW_IF_FAILED(m_context_->create_descriptor_texture_view(m_texture_, m_CPU_heap_, &m_texture_descriptor_));
 
 	// Create sampler
 	qhenki::gfx::SamplerDesc sampler_desc
@@ -324,7 +324,8 @@ void ExampleApp::render()
 			&m_matrix_buffers_[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
 		// TODO: bind texture
 
-		m_context_->compatibility_set_textures(1, 1, &m_texture_, qhenki::gfx::PipelineStage::PIXEL);
+		m_context_->compatibility_set_textures(1, 1, &m_texture_, &m_texture_descriptor_, 
+			qhenki::gfx::ACCESS_SHADER_RESOURCE, qhenki::gfx::PipelineStage::PIXEL);
 
 		m_context_->compatibility_set_samplers(0, 1, &m_sampler_, qhenki::gfx::PipelineStage::PIXEL);
 	}

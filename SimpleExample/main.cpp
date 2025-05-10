@@ -2,7 +2,7 @@
 
 int main()
 {
-	// Run simple example application for the qhenki::gfxX Game Framework.
+	// Run simple example application for the QhenkiX Game Framework.
 	ExampleApp app;
 	app.run(qhenki::gfx::D3D11);
 

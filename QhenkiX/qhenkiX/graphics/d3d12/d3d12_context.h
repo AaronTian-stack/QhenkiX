@@ -86,7 +86,7 @@ namespace qhenki::gfx
 		void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) override;
 
 		bool create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name) override;
-		bool create_descriptor(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) override;
+		bool create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) override;
 
 		bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) override;
 
@@ -133,7 +133,7 @@ namespace qhenki::gfx
 
 		// D3D12 does not implement compability functions
 		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) override {}
-		void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, PipelineStage stage) override {}
+		void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) override {}
 		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) override {}
 
 		void wait_idle(Queue& queue) override;

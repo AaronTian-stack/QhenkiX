@@ -73,7 +73,10 @@ namespace qhenki::gfx
 		virtual void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) = 0;
 
 		virtual bool create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name = nullptr) = 0;
-		virtual bool create_descriptor(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		// TODO: add description
+		virtual bool create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		// virtual bool create_descriptor_storage(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		// virtual bool create_descriptor_render_target(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 
         /**
 		 * @brief Creates staging buffer with data pointer and copies it to the texture. TODO: add subresource index argument?
@@ -132,7 +135,7 @@ namespace qhenki::gfx
 		virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
 		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) = 0;
-		virtual void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, PipelineStage stage) = 0;
+		virtual void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) = 0;
 		virtual void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) = 0;
 
 		// Wait for device to idle, should only be used on program exit
