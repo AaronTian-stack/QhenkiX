@@ -31,13 +31,13 @@ void Application::run(const qhenki::gfx::API api)
 	init_display_window();
 	switch (api)
 	{
-	case qhenki::gfx::D3D11:
+	case qhenki::gfx::API::D3D11:
 		m_context_ = mkU<qhenki::gfx::D3D11Context>();
 		break;
-	case qhenki::gfx::D3D12:
+	case qhenki::gfx::API::D3D12:
 		m_context_ = mkU<qhenki::gfx::D3D12Context>();
 		break;
-	case qhenki::gfx::Vulkan: 
+	case qhenki::gfx::API::Vulkan:
 	default:
 		throw std::runtime_error("API not implemented");
 	}

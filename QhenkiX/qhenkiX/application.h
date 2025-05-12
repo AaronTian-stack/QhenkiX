@@ -9,7 +9,7 @@
 
 namespace qhenki::gfx
 {
-	enum API
+	enum class API
 	{
 		D3D11,
 		D3D12,
@@ -32,7 +32,7 @@ private:
 	// Files 
 	// Preferences
 	std::thread::id m_main_thread_id{};
-	qhenki::gfx::API m_graphics_api_ = qhenki::gfx::D3D11;
+	qhenki::gfx::API m_graphics_api_ = qhenki::gfx::API::D3D11;
 protected:
 	UINT m_frame_index_ = 0;
 	DisplayWindow m_window_;
