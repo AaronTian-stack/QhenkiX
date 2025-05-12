@@ -15,7 +15,7 @@ struct Vertex
 	XMFLOAT2 texcoord;
 };
 
-class ExampleApp : public Application
+class ExampleApp : public qhenki::Application
 {
 	qhenki::gfx::PipelineLayout m_pipeline_layout_{};
 	qhenki::gfx::GraphicsPipeline m_pipeline_{};

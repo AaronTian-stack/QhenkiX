@@ -4,6 +4,8 @@
 #include <graphics/d3d11/d3d11_context.h>
 #include <graphics/d3d12/d3d12_context.h>
 
+using namespace qhenki;
+
 /**
  * This could be overridden to set up the display window with custom settings.
  * For example opening a settings window first to allow the user to select some settings.
@@ -31,13 +33,13 @@ void Application::run(const qhenki::gfx::API api)
 	init_display_window();
 	switch (api)
 	{
-	case qhenki::gfx::API::D3D11:
-		m_context_ = mkU<qhenki::gfx::D3D11Context>();
+	case gfx::API::D3D11:
+		m_context_ = mkU<gfx::D3D11Context>();
 		break;
-	case qhenki::gfx::API::D3D12:
-		m_context_ = mkU<qhenki::gfx::D3D12Context>();
+	case gfx::API::D3D12:
+		m_context_ = mkU<gfx::D3D12Context>();
 		break;
-	case qhenki::gfx::API::Vulkan:
+	case gfx::API::Vulkan:
 	default:
 		throw std::runtime_error("API not implemented");
 	}
@@ -45,7 +47,7 @@ void Application::run(const qhenki::gfx::API api)
 
 	THROW_IF_FAILED(m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue_));
 
-	const qhenki::gfx::SwapchainDesc swapchain_desc =
+	const gfx::SwapchainDesc swapchain_desc =
 	{
 		.width = m_window_.m_display_info_.width,
 		.height = m_window_.m_display_info_.height,
@@ -55,10 +57,10 @@ void Application::run(const qhenki::gfx::API api)
 	THROW_IF_FAILED(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
 		m_graphics_queue_, m_frame_index_));
 
-	qhenki::gfx::DescriptorHeapDesc rtv_heap_desc
+	gfx::DescriptorHeapDesc rtv_heap_desc
 	{
-		.type = qhenki::gfx::DescriptorHeapDesc::Type::RTV,
-		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
+		.type = gfx::DescriptorHeapDesc::Type::RTV,
+		.visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
 	THROW_IF_FAILED(m_context_->create_descriptor_heap(rtv_heap_desc, m_rtv_heap));
@@ -95,4 +97,4 @@ void Application::run(const qhenki::gfx::API api)
 	destroy();
 }
 
-Application::~Application() {}
+Application::~Application() = default;
