@@ -34,7 +34,7 @@ See the [examples](Examples/README.md) for use cases of the library.
     ```
 2. Open `QhenkiX.vcxproj` or add the project to your already existing desired Visual Studio solution.
 3. Build QhenkiX in the desired mode (Debug/Release) to produce a static library (`.lib`). Link this to your project.
-4. Add `QhenkiX/include` as an include path. 
+4. Add `QhenkiX/include`, `QhenkiX/qhenkiX`, `QhenkiX/SDL3-3.2.4/include`, and `QhenkiX\imgui` as include paths. 
 5. Follow the steps in the [Linking Section](#linking).
 6. Extend the [Application](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/application.h) class and start writing your graphics code. See the [examples](Examples/README.md).
 
@@ -59,6 +59,7 @@ This project relies on the following dependencies:
 - [DXC (DirectX Shader Compiler)](https://github.com/microsoft/DirectXShaderCompiler) - (MIT License)
 - [SDL3](https://github.com/libsdl-org/SDL) - (zlib License)
 - [DirectXTex](https://github.com/microsoft/DirectXTex) - (MIT License)
+- [Dear ImGui](https://github.com/ocornut/imgui) - (MIT License)
 
 ## Documentation
 
