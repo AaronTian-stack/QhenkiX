@@ -59,6 +59,7 @@ This project relies on the following dependencies:
 - [DXC (DirectX Shader Compiler)](https://github.com/microsoft/DirectXShaderCompiler) - (MIT License)
 - [SDL3](https://github.com/libsdl-org/SDL) - (zlib License)
 - [DirectXTex](https://github.com/microsoft/DirectXTex) - (MIT License)
+- [Dear ImGui](https://github.com/ocornut/imgui) - (MIT License)
 
 ## Documentation
 
