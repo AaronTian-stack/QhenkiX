@@ -35,6 +35,10 @@ namespace qhenki::gfx
 		ComPtr<IDXGISwapChain3> m_swapchain_;
 		std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers_; // 2 is upper limit
 		std::array<Descriptor, 2> m_swapchain_descriptors_{}; // 2 is upper limit
+
+		D3D12DescriptorHeap m_imgui_heap{}; // ImGUI only
+		std::array<Descriptor, 2> m_imgui_descriptors_{}; // ImGUI only
+
 		Queue* m_swapchain_queue_ = nullptr;
 
 		std::mutex m_pipeline_desc_mutex_;
@@ -54,8 +58,8 @@ namespace qhenki::gfx
 	public:
 		void create() override;
 		bool is_compatibility() override { return false; }
-		bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, 
-			Queue& direct_queue, unsigned& frame_index) override;
+		bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
+		                      Queue& direct_queue, unsigned& frame_index) override;
 		bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index) override;
 		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) override;
 		bool present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
@@ -130,6 +134,11 @@ namespace qhenki::gfx
 		void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override;
 
 		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
+
+		void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
+		void start_imgui_frame() override;
+		void render_imgui_draw_data(CommandList* cmd_list) override;
+		void destroy_imgui() override;
 
 		// D3D12 does not implement compability functions
 		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) override {}

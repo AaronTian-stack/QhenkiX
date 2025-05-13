@@ -32,7 +32,7 @@ namespace qhenki::gfx
 		virtual bool is_compatibility() = 0;
 
 		// Creates swapchain based off specified description
-		virtual bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
+		virtual bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
 		                              Queue& direct_queue, unsigned& frame_index) = 0;
 		virtual bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index) = 0;
 		virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) = 0;
@@ -133,6 +133,11 @@ namespace qhenki::gfx
 		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index) = 0;
 		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) = 0;
 		virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
+
+		virtual void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) = 0;
+		virtual void start_imgui_frame() = 0;
+		virtual void render_imgui_draw_data(CommandList* cmd_list) = 0;
+		virtual void destroy_imgui() = 0;
 
 		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) = 0;
 		virtual void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) = 0;

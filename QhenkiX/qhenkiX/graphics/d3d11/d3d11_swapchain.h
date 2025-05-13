@@ -15,7 +15,7 @@ namespace qhenki::gfx
 	{
 		ComPtr<IDXGISwapChain1> swapchain;
 		ComPtr<ID3D11RenderTargetView> sc_render_target;
-		bool create(const SwapchainDesc& desc, DisplayWindow& window,
+		bool create(const SwapchainDesc& desc, const DisplayWindow& window,
 		            IDXGIFactory2* dxgi_factory, ID3D11Device* device, unsigned& frame_index);
 		bool create_swapchain_resources(ID3D11Device* device);
 		bool resize(ID3D11Device* device, ID3D11DeviceContext* device_context, int width, int height);

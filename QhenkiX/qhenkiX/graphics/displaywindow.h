@@ -45,8 +45,11 @@ namespace qhenki
 
 		[[nodiscard]] XMUINT2 get_display_size() const;
 
-		const DisplayInfo& get_display_info() const;
-		HWND get_window_handle();
+		[[nodiscard]] const DisplayInfo& get_display_info() const;
+
+		[[nodiscard]] SDL_Window* get_window() const;
+
+		[[nodiscard]] HWND get_window_handle() const;
 
 		bool set_fullscreen(bool fullscreen);
 		bool set_resolution(int width, int height);

@@ -36,8 +36,8 @@ namespace qhenki::gfx
 
 		void create() override;
 		bool is_compatibility() override { return true; }
-		bool create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain, 
-			Queue& direct_queue, unsigned& frame_index) override;
+		bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
+		                      Queue& direct_queue, unsigned& frame_index) override;
 		bool resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index) override;
 		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap) override;
 		bool present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
@@ -117,6 +117,11 @@ namespace qhenki::gfx
 		void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override;
 
 		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
+
+		void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
+		void start_imgui_frame() override;
+		void render_imgui_draw_data(CommandList* cmd_list) override;
+		void destroy_imgui() override;
 
 		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) override;
 		void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) override;

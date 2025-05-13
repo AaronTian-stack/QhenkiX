@@ -1,5 +1,9 @@
 #include "d3d12_context.h"
 
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_dx12.h"
+
 #include <d3d12shader.h>
 #include <d3dcompiler.h>
 
@@ -11,6 +15,7 @@
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_fence.h"
 #include "d3d12_texture.h"
+
 #include "graphics/shared/d3d_helper.h"
 #include "graphics/shared/math_helper.h"
 
@@ -228,8 +233,8 @@ void D3D12Context::create()
 	create_fence(&m_fence_wait_all_, 0);
 }
 
-bool D3D12Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, 
-	Swapchain& swapchain, Queue& direct_queue, unsigned& frame_index)
+bool D3D12Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc,
+                                    Swapchain& swapchain, Queue& direct_queue, unsigned& frame_index)
 {
 	swapchain.desc = swapchain_desc;
 
@@ -1793,6 +1798,85 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 	};
 
 	command_list->Barrier(count, &barrier_group);
+}
+
+void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
+{
+	// Create dedicated heap for ImGUI
+	D3D12_DESCRIPTOR_HEAP_DESC desc
+	{
+		.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		.NumDescriptors = swapchain.desc.buffer_count,
+		.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+		.NodeMask = 0,
+	};
+	m_imgui_heap.create(m_device_.Get(), desc);
+
+	const auto queue_d3d12 = to_internal(*m_swapchain_queue_);
+
+	ImGui_ImplDX12_InitInfo init_info = {};
+	init_info.Device = m_device_.Get();
+	init_info.CommandQueue = queue_d3d12->Get();
+	init_info.NumFramesInFlight = swapchain.desc.buffer_count;
+	init_info.RTVFormat = swapchain.desc.format;
+	init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
+	init_info.SrvDescriptorHeap = m_imgui_heap.Get().Get();
+
+    struct qinfo
+    {
+	    D3D12DescriptorHeap* heap;
+	    std::array<Descriptor, 2>* descriptors;
+    } info
+	{
+		.heap = &m_imgui_heap,
+		.descriptors = &m_imgui_descriptors_,
+	};
+
+	init_info.UserData = &info;
+
+	init_info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle)
+	{
+		const auto qin = static_cast<qinfo*>(info->UserData);
+		static UINT index = 0;
+
+		auto& array = *qin->descriptors;
+
+		qin->heap->allocate(&array[index].offset);
+
+		qin->heap->get_CPU_descriptor(out_cpu_handle, array[index].offset, 0);
+		qin->heap->get_GPU_descriptor(out_gpu_handle, array[index].offset, 0);
+
+		index++;
+	};
+	init_info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle)
+	{
+		// TODO
+			OutputDebugString(L"WARNING: ImGUI descriptors not freed");
+	};
+	ImGui_ImplSDL3_InitForD3D(window.get_window());
+	ImGui_ImplDX12_Init(&init_info);
+}
+
+void D3D12Context::start_imgui_frame()
+{
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
+}
+
+void D3D12Context::render_imgui_draw_data(CommandList* cmd_list)
+{
+	const auto cmd_list_d3d12 = to_internal(*cmd_list);
+	ID3D12DescriptorHeap* heaps[] = { m_imgui_heap.Get().Get() };
+	cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heaps);
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd_list_d3d12->Get());
+}
+
+void D3D12Context::destroy_imgui()
+{
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
 }
 
 void D3D12Context::wait_idle(Queue& queue)

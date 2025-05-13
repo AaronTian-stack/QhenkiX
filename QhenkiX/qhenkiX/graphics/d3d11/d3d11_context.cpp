@@ -1,5 +1,9 @@
 #include "d3d11_context.h"
 
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_dx11.h"
+
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
 
@@ -149,8 +153,8 @@ void D3D11Context::create()
 	shader_compiler = mkU<D3D11ShaderCompiler>();
 }
 
-bool D3D11Context::create_swapchain(DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
-	Queue& direct_queue, unsigned& frame_index)
+bool D3D11Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
+                                    Queue& direct_queue, unsigned& frame_index)
 {
 	swapchain.desc = swapchain_desc;
 	swapchain.internal_state = mkS<D3D11Swapchain>();
@@ -772,6 +776,31 @@ void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 	// D3D11 does not have barriers
 }
 
+void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
+{
+	ImGui_ImplSDL3_InitForD3D(window.get_window());
+	ImGui_ImplDX11_Init(m_device_.Get(), m_device_context_.Get());
+}
+
+void D3D11Context::start_imgui_frame()
+{
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
+}
+
+void D3D11Context::render_imgui_draw_data(CommandList* cmd_list)
+{
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+}
+
+void D3D11Context::destroy_imgui()
+{
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
+}
+
 void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage)
 {
 	std::array<ID3D11Buffer**, 15> buffer_d3d11{};
@@ -927,6 +956,7 @@ D3D11Context::~D3D11Context()
     m_device_context_->Flush();
     m_device_context_.Reset();
     m_dxgi_factory_.Reset();
+	m_layout_assembler_.clear_maps();
 #if _DEBUG
     m_debug_->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
     m_debug_.Reset();
