@@ -45,9 +45,6 @@
     <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\mesh.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -79,6 +76,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\shared\math_helper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\perspective_camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -123,9 +123,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\smartpointer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\qhenki\context.h">
@@ -294,6 +291,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\perspective_camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

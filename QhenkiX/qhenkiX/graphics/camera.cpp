@@ -40,15 +40,22 @@ void Camera::translate(XMFLOAT3 t)
 
 void Camera::unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height)
 {
-	assert(false);
-	float x = screen.x - viewport_x;
-	// TODO: need render target height!
-	//float y = window_height - screen.y - viewportY;
-}
+    float ndc_x = (screen.x - viewport_x) / viewport_width * 2.0f - 1.0f;
+    float ndc_y = 1.0f - ((screen.y - viewport_y) / viewport_height) * 2.0f;
+    float ndc_z = screen.z * 2.0f - 1.0f; // Assuming screen.z is in [0, 1] (depth)
 
-void Camera::unproject(XMFLOAT3& screen)
-{
-	unproject(screen, 0, 0, viewport_width, viewport_height);
+    XMVECTOR ndc = XMVectorSet(ndc_x, ndc_y, ndc_z, 1.0f);
+
+    XMMATRIX inv_view_proj = XMLoadFloat4x4(&inverse_view_projection_);
+    XMVECTOR world = XMVector4Transform(ndc, inv_view_proj);
+
+    float w = XMVectorGetW(world);
+    if (w != 0.0f) 
+	{
+        world = XMVectorScale(world, 1.0f / w);
+    }
+
+    XMStoreFloat3(&screen, world);
 }
 
 void Camera::project(XMFLOAT3& world, float viewport_x, float viewport_y, float viewport_width, float viewport_height)
@@ -56,33 +63,18 @@ void Camera::project(XMFLOAT3& world, float viewport_x, float viewport_y, float 
 	assert(false);
 }
 
-void Camera::project(XMFLOAT3& world)
-{
-	assert(false);
-}
-
 void Camera::look_at(float x, float y, float z)
 {
-	const XMVECTOR target = XMVectorSet(x, y, z, 0);
-	const XMVECTOR forward = XMLoadFloat3(&forward_);
 	const XMVECTOR eye = XMLoadFloat3(&position_);
-	XMVECTOR up = XMLoadFloat3(&up_);
+	const XMVECTOR target = XMVectorSet(x, y, z, 0);
+	const XMVECTOR up = XMLoadFloat3(&up_);
 
-	const XMVECTOR tmp = XMVector3Normalize(XMVectorSubtract(target, eye));
-	if (!XMVector3Equal(tmp, XMVectorZero()))
-	{
-		const float dot = XMVectorGetX(XMVector3Dot(tmp, up));
-		if (std::fabs(dot - 1.f) < 0.000000001f)
-		{
-			up = XMVectorScale(forward, -1);
-		}
-		else if (fabs(dot + 1.f) < 0.000000001f)
-		{
-			up = forward;
-		}
-		XMStoreFloat3(&forward_, tmp);
-		XMStoreFloat3(&up_, XMVector3Normalize(up));
-	}
+	XMMATRIX view = XMMatrixLookAtLH(eye, target, up);
+	XMVECTOR det;
+	XMMATRIX invView = XMMatrixInverse(&det, view);
+
+	XMStoreFloat3(&forward_, XMVector3Normalize(invView.r[2]));
+	XMStoreFloat3(&up_, XMVector3Normalize(invView.r[1]));
 }
 
 void Camera::look_at(XMFLOAT3 target)

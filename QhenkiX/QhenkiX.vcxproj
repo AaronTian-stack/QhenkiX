@@ -184,6 +184,7 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.cpp" />
+    <ClCompile Include="qhenkiX\graphics\perspective_camera.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\file_helper.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\math_helper.cpp" />
@@ -195,7 +196,6 @@
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_context.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader.cpp" />
-    <ClCompile Include="qhenkiX\graphics\mesh.cpp" />
     <ClCompile Include="qhenkiX\graphics\orthographic_camera.cpp" />
     <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp" />
     <ClCompile Include="qhenkiX\util\viewport\viewport.cpp" />
@@ -237,6 +237,7 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_texture.h" />
+    <ClInclude Include="qhenkiX\graphics\perspective_camera.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\barrier.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h" />
@@ -256,7 +257,6 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\render_target.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\shader.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\swapchain.h" />
-    <ClInclude Include="qhenkiX\graphics\mesh.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\buffer.h" />
     <ClInclude Include="qhenkiX\graphics\shared\file_helper.h" />
     <ClInclude Include="qhenkiX\graphics\shared\math_helper.h" />
