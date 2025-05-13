@@ -2,6 +2,8 @@
 
 #include "displaywindow.h"
 
+using namespace qhenki;
+
 void DisplayWindow::create_window(const DisplayInfo& info, int monitor_index)
 {
 	create_window_internal(info, monitor_index);
