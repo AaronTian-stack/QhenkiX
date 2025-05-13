@@ -376,7 +376,6 @@ void ExampleApp::render()
 	auto current_fence_value = m_fence_frame_ready_val_[get_frame_index()];
 	qhenki::gfx::SubmitInfo info
 	{
-		.wait_fence_count = 0,
 		.command_list_count = 1,
 		.command_lists = &cmd_list,
 		.signal_fence_count = 1,

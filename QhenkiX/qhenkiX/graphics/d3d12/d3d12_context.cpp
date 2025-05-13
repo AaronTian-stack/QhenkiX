@@ -1669,16 +1669,6 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* qu
 {
 	const auto queue_d3d12 = to_internal(*queue);
 
-	// TODO: examine the overhead this causes
-
-	// Wait on fences
-	for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
-	{
-		const auto fence = to_internal(submit_info.wait_fences[i]);
-		// GPU side wait
-		THROW_IF_FAILED(queue_d3d12->Get()->Wait(fence->fence.Get(), submit_info.wait_values[i]));
-	}
-
 	assert(submit_info.command_list_count < 16);
 	std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
 	for (unsigned i = 0; i < submit_info.command_list_count; i++)

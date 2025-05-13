@@ -9,9 +9,6 @@ namespace qhenki::gfx
 	// vkQueueSubmit2
 	struct SubmitInfo
 	{
-		uint32_t wait_fence_count;
-		Fence* wait_fences;
-		uint64_t* wait_values;
 		// TODO: stage mask
 		uint32_t command_list_count;
 		CommandList* command_lists;
