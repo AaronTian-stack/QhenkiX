@@ -23,6 +23,6 @@ Operations demonstrated:
 
 ![simple example](../Media/simpleexample.gif)
 
-## ImGUI
+## ImGUIExample
 
 SimpleExample but with ImGUI integration. See ImGUI functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)
