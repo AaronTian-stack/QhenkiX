@@ -34,7 +34,7 @@ See the [examples](Examples/README.md) for use cases of the library.
     ```
 2. Open `QhenkiX.vcxproj` or add the project to your already existing desired Visual Studio solution.
 3. Build QhenkiX in the desired mode (Debug/Release) to produce a static library (`.lib`). Link this to your project.
-4. Add (`QhenkiX/include`) as an include path. 
+4. Add `QhenkiX/include` as an include path. 
 5. Follow the steps in the [Linking Section](#linking).
 6. Extend the [Application](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/application.h) class and start writing your graphics code. See the [examples](Examples/README.md).
 
@@ -67,7 +67,7 @@ This project is mostly made for my own use and will be frequently subject to lar
 ## Notes
 
 - The DirectX debug layer is only enabled when the project is built in Debug mode.
-- FXC depends on `dxcompiler_47.dll` which is not included with this library. This is included with the Windows SDK and that specific version is used by `D3DCompileFromFile`. I will eventually bundle a specific version of the DLL with the library.
+- FXC depends on `d3dcompiler_47.dll` which is not included with this library. This is included with the Windows SDK and that specific version is used by `D3DCompileFromFile`. I will eventually bundle a specific version of the DLL with the library.
 - It should be possible to run the D3D11 backend on Windows 7 or 8, I just need to refactor (bundling D3D12 headers with the library directly) and maybe add a special compile macro.
 
 ## References
