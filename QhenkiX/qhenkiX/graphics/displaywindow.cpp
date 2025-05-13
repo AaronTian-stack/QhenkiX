@@ -29,7 +29,6 @@ std::vector<SDL_DisplayMode> DisplayWindow::get_monitors()
 XMUINT2 DisplayWindow::get_display_size() const
 {
 	return {static_cast<uint32_t>(m_display_info_.width), static_cast<uint32_t>(m_display_info_.height)};
-
 }
 
 const DisplayInfo& DisplayWindow::get_display_info() const
@@ -37,7 +36,12 @@ const DisplayInfo& DisplayWindow::get_display_info() const
 	return m_display_info_;
 }
 
-HWND DisplayWindow::get_window_handle()
+SDL_Window* DisplayWindow::get_window() const
+{
+	return m_window_;
+}
+
+HWND DisplayWindow::get_window_handle() const
 {
 	return m_hwnd_;
 }

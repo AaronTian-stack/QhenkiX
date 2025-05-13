@@ -4,6 +4,9 @@
 #include <graphics/d3d11/d3d11_context.h>
 #include <graphics/d3d12/d3d12_context.h>
 
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+
 using namespace qhenki;
 
 /**
@@ -13,6 +16,19 @@ using namespace qhenki;
  */
 void Application::init_display_window()
 {
+	std::string title = "QhenkiX Application";
+	switch (m_graphics_api_)
+	{
+		case gfx::API::D3D11:
+			title += " | DX11";
+			break;
+		case gfx::API::D3D12:
+			title += " | DX12";
+			break;
+		default:
+			break;
+	}
+
 	DisplayInfo info
 	{
 		.width = 1280,
@@ -20,13 +36,13 @@ void Application::init_display_window()
 		.fullscreen = false,
 		.undecorated = false,
 		.resizable = true,
-		.title = "QhenkiX Application",
+		.title = title,
 	};
-	
+
 	m_window_.create_window(info, 0);
 }
 
-void Application::run(const qhenki::gfx::API api)
+void Application::run(const gfx::API api)
 {
 	m_graphics_api_ = api;
 	m_main_thread_id = std::this_thread::get_id();
@@ -55,7 +71,7 @@ void Application::run(const qhenki::gfx::API api)
 		.buffer_count = m_frames_in_flight,
 	};
 	THROW_IF_FAILED(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
-		m_graphics_queue_, m_frame_index_));
+			m_graphics_queue_, m_frame_index_));
 
 	gfx::DescriptorHeapDesc rtv_heap_desc
 	{
@@ -90,6 +106,8 @@ void Application::run(const qhenki::gfx::API api)
 				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, m_rtv_heap, m_frame_index_);
 				resize(event.window.data1, event.window.data2);
 			}
+			if (ImGui::GetCurrentContext())
+				ImGui_ImplSDL3_ProcessEvent(&event);
         }
         render();
     }

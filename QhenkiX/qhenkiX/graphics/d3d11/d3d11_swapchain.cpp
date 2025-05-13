@@ -3,7 +3,7 @@
 
 using namespace qhenki::gfx;
 
-bool D3D11Swapchain::create(const SwapchainDesc& desc, DisplayWindow& window, IDXGIFactory2* const dxgi_factory,
+bool D3D11Swapchain::create(const SwapchainDesc& desc, const DisplayWindow& window, IDXGIFactory2* const dxgi_factory,
                             ID3D11Device* const device, unsigned& frame_index)
 {
     frame_index = 0;

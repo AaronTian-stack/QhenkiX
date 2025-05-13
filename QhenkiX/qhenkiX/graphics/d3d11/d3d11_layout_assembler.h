@@ -49,5 +49,7 @@ namespace qhenki::gfx
 		ID3D11InputLayout* create_input_layout_reflection(ID3D11Device* const device,
 			ID3DBlob* const vertex_shader_blob,
 			bool interleaved);
+
+		void clear_maps();
 	};
 }

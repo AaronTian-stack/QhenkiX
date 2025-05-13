@@ -18,7 +18,11 @@ Operations demonstrated:
 - Dynamic shader compilation
 - Shader compile macros to support multiple backends
 - Rendering pipeline setup
-- Fine grained barrier synchronization
-- Double buffering with fences
+- Fine grained barrier synchronization (uses enhanced barriers in D3D12 backend)
+- Double frame buffering with fences
 
 ![simple example](../Media/simpleexample.gif)
+
+## ImGUIExample
+
+SimpleExample but with ImGUI integration. See ImGUI functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)

@@ -28,6 +28,11 @@ namespace qhenki::gfx
 		bool allocate(UINT64* alloc_offset);
 		void deallocate(UINT64* alloc_offset);
 
+		/**
+		 * Converts count number of descriptors into size in bytes
+		 * @param count number of descriptors
+		 * @return The size of count descriptors in bytes
+		 */
 		unsigned descriptor_count_to_bytes(unsigned count) const;
 
 		// offsets are additional to start of heap

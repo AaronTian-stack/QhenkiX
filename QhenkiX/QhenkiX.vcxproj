@@ -127,7 +127,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -155,7 +155,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -178,6 +178,15 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="imgui\imgui.cpp" />
+    <ClCompile Include="imgui\imgui_demo.cpp" />
+    <ClCompile Include="imgui\imgui_draw.cpp" />
+    <ClCompile Include="imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="imgui\imgui_impl_dx12.cpp" />
+    <ClCompile Include="imgui\imgui_impl_sdl3.cpp" />
+    <ClCompile Include="imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="imgui\imgui_tables.cpp" />
+    <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_pipeline.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp" />
@@ -202,6 +211,7 @@
     <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="imgui\imgui_impl_sdl3.h" />
     <ClInclude Include="include\boost\assert.hpp" />
     <ClInclude Include="include\boost\config.hpp" />
     <ClInclude Include="include\boost\config\abi_prefix.hpp" />
@@ -225,7 +235,17 @@
     <ClInclude Include="include\boost\integer_fwd.hpp" />
     <ClInclude Include="include\boost\limits.hpp" />
     <ClInclude Include="include\boost\version.hpp" />
+    <ClInclude Include="imgui\imconfig.h" />
+    <ClInclude Include="imgui\imgui.h" />
+    <ClInclude Include="imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="imgui\imgui_impl_dx12.h" />
     <ClInclude Include="include\D3D12MemAlloc.h" />
+    <ClInclude Include="include\imgui\imgui_impl_vulkan.h" />
+    <ClInclude Include="imgui\imgui_impl_win32.h" />
+    <ClInclude Include="imgui\imgui_internal.h" />
+    <ClInclude Include="imgui\imstb_rectpack.h" />
+    <ClInclude Include="imgui\imstb_textedit.h" />
+    <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
@@ -273,6 +293,9 @@
     <ClInclude Include="qhenkiX\util\scaling.h" />
     <ClInclude Include="qhenkiX\util\viewport\scaling_viewport.h" />
     <ClInclude Include="qhenkiX\graphics\qhenki\shader_compiler.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="imgui\LICENSE.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
