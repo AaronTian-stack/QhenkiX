@@ -4,7 +4,7 @@ This folder contains a collection of example projects demonstrating the usage of
 
 ## SimpleExample
 
-Demonstrates basic usage of the QhenkiX library. Extends the `Application` class and implements a rendering loop of a textured triangle with vertex colors and an animated camera. [DirectXMath](https://github.com/microsoft/DirectXMath) is used as the linear algebra library.
+Demonstrates basic usage of the QhenkiX library. Extends the `Application` class and implements a rendering loop of a textured and animated triangle with vertex colors. [DirectXMath](https://github.com/microsoft/DirectXMath) is used as the linear algebra library.
 
 Operations demonstrated:
 
@@ -25,4 +25,4 @@ Operations demonstrated:
 
 ## ImGUIExample
 
-SimpleExample but with ImGUI integration. See ImGUI functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)
+"HelloTriangle" application (SimpleExample without textures or animation) with ImGUI integration. See ImGUI functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)
