@@ -23,6 +23,6 @@ Operations demonstrated:
 
 ![simple example](../Media/simpleexample.gif)
 
-## ImGUIExample
+## ImGuiExample
 
-"HelloTriangle" application (SimpleExample without textures or animation) with ImGUI integration. See ImGUI functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)
+"HelloTriangle" application (SimpleExample without textures or animation) with ImGui integration. See ImGui functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)

@@ -33,28 +33,7 @@ void ImGUIExampleApp::create()
 	};
 	THROW_IF_FAILED(m_context_->create_shader_dynamic(nullptr, &m_pixel_shader_, pixel_shader));
 
-	// Create pipeline layout
-	qhenki::gfx::LayoutBinding b1 // Constant buffer for camera matrix
-	{
-		.binding = 0,
-		.count = 1,
-		.type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-	};
-	qhenki::gfx::LayoutBinding b2 // SRV for texture
-	{
-		.binding = 1, // TODO: figure out how to handle this for Vulkan
-		.count = 1,
-		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	};
-	qhenki::gfx::LayoutBinding b3 // Sampler for texture
-	{
-		.binding = 0,
-		.count = 1,
-		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
-	};
 	qhenki::gfx::PipelineLayoutDesc layout_desc{};
-	layout_desc.spaces[0] = { b1, b2 };
-	layout_desc.spaces[1] = { b3 }; // Samplers need their own space/table
 	THROW_IF_FAILED(m_context_->create_pipeline_layout(layout_desc, &m_pipeline_layout_));
 
 	// Create GPU heap
