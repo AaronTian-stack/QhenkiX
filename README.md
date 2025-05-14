@@ -21,8 +21,9 @@ As a very brief summary, here are some notable current features and design choic
 - Separate resource binding models for "modern" and "compatibility" graphics backends
     - Modern interface resembles D3D12 binding model which allows for flexible and performant binding patterns such as bindless descriptors
     - Compatibility interface allows for simple binding of resources to slots with minimal additional code
+- ImGUI integration
 
-See the [examples](Examples/README.md) for use cases of the library.
+See the [examples](https://github.com/AaronTian-stack/QhenkiX/tree/main/Examples) for use cases of the library.
 
 ## Installation / Build
 
