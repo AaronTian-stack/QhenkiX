@@ -1,13 +1,23 @@
 ﻿#include "perspective_camera.h"
 
+using namespace qhenki;
+
 void PerspectiveCamera::update(bool update_frustum)
 {
-	XMStoreFloat4x4(&projection_, XMMatrixPerspectiveFovLH(fov, viewport_width / viewport_height, near, far));
-	XMStoreFloat4x4(&view_, XMMatrixLookToLH(XMLoadFloat3(&position_), XMLoadFloat3(&forward_), XMLoadFloat3(&up_)));
-	XMStoreFloat4x4(&view_projection_, XMMatrixMultiply(XMLoadFloat4x4(&view_), XMLoadFloat4x4(&projection_)));
-	XMStoreFloat4x4(&inverse_view_projection_, XMMatrixInverse(nullptr, XMLoadFloat4x4(&view_projection_)));
+	auto proj = XMMatrixPerspectiveFovLH(fov, viewport_width / viewport_height, near_plane, far_plane);
+
+	transform_.basis_.orthonormalize();
+	auto view = transform_.to_matrix_simd();
+
+	auto view_proj = XMMatrixTranspose(XMMatrixMultiply(view, proj));
+	auto inv_view_proj = XMMatrixInverse(nullptr, view_proj);
+
+	XMStoreFloat4x4(&matrices_.view_projection_, view_proj);
+	XMStoreFloat4x4(&matrices_.inverse_view_projection_, inv_view_proj);
+	XMStoreFloat4x4(&matrices_.projection_, proj);
+
 	if (update_frustum)
 	{
-		BoundingFrustum::CreateFromMatrix(frustum, XMLoadFloat4x4(&view_projection_));
+		BoundingFrustum::CreateFromMatrix(frustum, proj);
 	}
 }
