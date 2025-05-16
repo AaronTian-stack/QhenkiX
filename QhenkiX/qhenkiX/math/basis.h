@@ -16,10 +16,18 @@ struct Basis
 		x.y, y.y, z.y,
 		x.z, y.z, z.z) {}
 	explicit Basis(const XMFLOAT3X3& basis) : basis_(basis) {}
+	explicit Basis(const XMFLOAT3& axis, float angle);
 	static Basis identity();
+
+	XMFLOAT3 axis_x() const { return { basis_._11, basis_._12, basis_._13 }; }
+	XMFLOAT3 axis_y() const { return { basis_._21, basis_._22, basis_._23 }; }
+	XMFLOAT3 axis_z() const { return { basis_._31, basis_._32, basis_._33 }; }
 
 	void orthonormalize();
 	Basis orthonormalized() const;
+
+	void normalize();
+	Basis normalized() const;
 
 	/**
 	 * Rotate basis around global axis.
@@ -47,6 +55,8 @@ struct Basis
 	// TODO: euler angles
 
 	Basis& look_to(const XMFLOAT3& p, const XMFLOAT3& up);
+
+	XMMATRIX to_matrix() const;
 
 	XMMATRIX invert();
 	XMMATRIX transpose();

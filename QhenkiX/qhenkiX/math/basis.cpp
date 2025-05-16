@@ -1,5 +1,11 @@
 #include "basis.h"
 
+Basis::Basis(const XMFLOAT3& axis, float angle)
+{
+	XMMATRIX rotation = XMMatrixRotationAxis(XMLoadFloat3(&axis), angle);
+	XMStoreFloat3x3(&basis_, rotation);
+}
+
 Basis Basis::identity()
 {
 	return {};
@@ -17,25 +23,43 @@ void Basis::orthonormalize()
     
     {
         XMVECTOR x_dot_y = XMVector3Dot(x, y);
-        y = XMVectorSubtract(y, XMVectorScale(x, XMVectorGetX(x_dot_y)));
+        y -= x * XMVectorGetX(x_dot_y);
         y = XMVector3Normalize(y);
     }
     
     {
         XMVECTOR x_dot_z = XMVector3Dot(x, z);
         XMVECTOR y_dot_z = XMVector3Dot(y, z);
-        z = XMVectorSubtract(z, XMVectorScale(x, XMVectorGetX(x_dot_z)));
-        z = XMVectorSubtract(z, XMVectorScale(y, XMVectorGetX(y_dot_z)));
+        z = XMVectorSubtract(z, x * XMVectorGetX(x_dot_z));
+        z = XMVectorSubtract(z, y * XMVectorGetX(y_dot_z));
         z = XMVector3Normalize(z);
     }
 
-	XMStoreFloat3x3(&basis_, XMMatrixTranspose(XMMATRIX(x, y, z, XMVectorZero())));
+	XMStoreFloat3x3(&basis_, XMMatrixTranspose({ x, y, z, XMVectorZero() }));
 }
 
 Basis Basis::orthonormalized() const
 {
 	Basis result = *this;
 	result.orthonormalize();
+	return result;
+}
+
+void Basis::normalize()
+{
+	XMVECTOR x = XMVectorSet(basis_._11, basis_._21, basis_._31, 0.0f);
+	XMVECTOR y = XMVectorSet(basis_._12, basis_._22, basis_._32, 0.0f);
+	XMVECTOR z = XMVectorSet(basis_._13, basis_._23, basis_._33, 0.0f);
+	x = XMVector3Normalize(x);
+	y = XMVector3Normalize(y);
+	z = XMVector3Normalize(z);
+	XMStoreFloat3x3(&basis_, XMMatrixTranspose({ x, y, z, XMVectorZero() }));
+}
+
+Basis Basis::normalized() const
+{
+	Basis result = *this;
+	result.normalize();
 	return result;
 }
 
@@ -86,8 +110,17 @@ XMFLOAT4 Basis::to_quaternion() const
 
 Basis& Basis::look_to(const XMFLOAT3& p, const XMFLOAT3& up)
 {
-	XMStoreFloat3x3(&basis_,XMMatrixLookToLH(XMVectorZero(), XMLoadFloat3(&p), XMLoadFloat3(&up)));
+	auto z = XMVector3Normalize(XMLoadFloat3(&p));
+	auto y = XMVector3Normalize(XMLoadFloat3(&up));
+	auto x = XMVector3Cross(z, y);
+	y = XMVector3Cross(x, z);
+	XMStoreFloat3x3(&basis_, XMMatrixTranspose({ x, y, z, XMVectorZero() }));
 	return *this;
+}
+
+XMMATRIX Basis::to_matrix() const
+{
+	return XMLoadFloat3x3(&basis_);
 }
 
 XMMATRIX Basis::invert()
