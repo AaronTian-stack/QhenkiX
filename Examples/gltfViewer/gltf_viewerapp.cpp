@@ -1,4 +1,5 @@
 #include "gltf_viewerapp.h"
+
 #include <wrl/client.h>
 
 #include "imgui.h"
@@ -241,6 +242,8 @@ void gltfViewerApp::create()
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Docking Branch
 	m_context_->init_imgui(m_window_, m_swapchain_);
 
+	m_camera_controller_.set_camera(&m_camera_);
+
 	qhenki::gfx::WaitInfo wait_info
 	{
 		.count = 1,
@@ -253,17 +256,64 @@ void gltfViewerApp::create()
 void gltfViewerApp::render()
 {
 	m_context_->start_imgui_frame();
-	ImGui::ShowDemoWindow();
+	{
+		//ImGui::ShowDemoWindow();
+		const float PAD = 10.0f;
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImVec2 work_pos = viewport->WorkPos;
+		ImVec2 work_size = viewport->WorkSize;
+		ImVec2 window_pos;
+		window_pos.x = work_pos.x + work_size.x - PAD;
+		window_pos.y = work_pos.y + PAD;
+		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, { 1.0f, 0.0f });
+		ImGui::SetNextWindowBgAlpha(0.5f);
+		if (ImGui::Begin("Overlay", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize
+			| ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings))
+		{
+			ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
+		}
+
+		if (ImGui::BeginMainMenuBar())
+		{
+			if (ImGui::MenuItem("Quit")) 
+			{
+				m_QUIT_ = true;
+			}
+			ImGui::EndMainMenuBar();
+		}
+
+		ImGui::End();
+	}
 
 	const auto dim = this->m_window_.get_display_size();
 	m_camera_.viewport_width = static_cast<float>(dim.x);
 	m_camera_.viewport_height = static_cast<float>(dim.y);
 
-	m_camera_.transform_.translation_ = XMFLOAT3(0.f, 0.f, -2.0f);
+	ImGuiIO& io = ImGui::GetIO();
+	if (!io.WantCaptureMouse)
+	{
+		constexpr auto speed = 0.01f;
+		const auto delta = m_input_manager_.get_mouse_delta();
+		bool left = m_input_manager_.is_mouse_button_down(SDL_BUTTON_LEFT);
+		bool right = m_input_manager_.is_mouse_button_down(SDL_BUTTON_RIGHT);
+		SDL_SetWindowRelativeMouseMode(m_window_.get_window(), left || right);
+		if (left)
+		{
+			m_camera_controller_.rotate(delta.x * speed, delta.y * speed);
+		}
+		if (right)
+		{
+			m_camera_controller_.translate(-delta.x * speed, delta.y * speed);
+		}
+		if (m_input_manager_.get_mouse_scroll().y != 0)
+		{
+			auto desired_distance = m_camera_controller_.get_target_distance() +
+				m_input_manager_.get_mouse_scroll().y * 0.2f;
+			m_camera_controller_.set_target_distance(desired_distance);
+		}
+	}
 
-	m_camera_.transform_.basis_.rotate_axis({ 0.f, 0.f, 1.f }, (0.01f));
-
-	m_camera_.update();
+	m_camera_.update(false);
 
 	// Update matrix buffer
 	const auto buffer_pointer = m_context_->map_buffer(m_matrix_buffers_[get_frame_index()]);

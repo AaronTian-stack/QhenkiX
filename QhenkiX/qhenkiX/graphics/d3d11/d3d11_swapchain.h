@@ -4,7 +4,7 @@
 #include <dxgi1_2.h>
 #include <wrl/client.h>
 
-#include "graphics/displaywindow.h"
+#include "graphics/display_window.h"
 #include "graphics/qhenki/swapchain.h"
 
 using Microsoft::WRL::ComPtr;

@@ -79,36 +79,38 @@ void Application::run(const gfx::API api)
 		.visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FAILED(m_context_->create_descriptor_heap(rtv_heap_desc, m_rtv_heap));
+	THROW_IF_FAILED(m_context_->create_descriptor_heap(rtv_heap_desc, m_rtv_heap_));
 	
 	// Make swapchain RTVs (stored internally)
-	THROW_IF_FAILED(m_context_->create_swapchain_descriptors(m_swapchain_, m_rtv_heap));
+	THROW_IF_FAILED(m_context_->create_swapchain_descriptors(m_swapchain_, m_rtv_heap_));
 
 	// Create fences
 	THROW_IF_FAILED(m_context_->create_fence(&m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]));
 
 	create();
 	// Starts the main loop
-    bool quit = false;
-    while (!quit)
+    while (!m_QUIT_)
     {
+		m_input_manager_.reset_mouse_scroll();
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
             if (event.type == SDL_EVENT_QUIT)
             {
-                quit = true;
+				m_QUIT_ = true;
             }
 			if (event.type == SDL_EVENT_WINDOW_RESIZED)
 			{
 				m_window_.m_display_info_.width = event.window.data1;
 				m_window_.m_display_info_.height = event.window.data2;
-				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, m_rtv_heap, m_frame_index_);
+				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, m_rtv_heap_, m_frame_index_);
 				resize(event.window.data1, event.window.data2);
 			}
+			m_input_manager_.handle_extra_events(event);
 			if (ImGui::GetCurrentContext())
 				ImGui_ImplSDL3_ProcessEvent(&event);
         }
+		m_input_manager_.update(m_window_.get_window()); // After all SDL events
         render();
     }
 	m_context_->wait_idle(m_graphics_queue_);
