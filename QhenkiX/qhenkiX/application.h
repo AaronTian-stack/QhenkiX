@@ -1,10 +1,12 @@
 #pragma once
 
-#include "graphics/displaywindow.h"
+#include "graphics/display_window.h"
 #include <smartpointer.h>
 #include "graphics/qhenki/context.h"
 #include "graphics/qhenki/descriptor_heap.h"
 #include <thread>
+
+#include "input/input_manager.h"
 
 namespace qhenki
 {
@@ -28,19 +30,21 @@ namespace qhenki
 		static constexpr UINT m_frames_in_flight = 2;
 
 	private:
-		// Audio
-		// Input
-		// Files 
-		// Preferences
 		std::thread::id m_main_thread_id{};
 		gfx::API m_graphics_api_ = gfx::API::D3D11;
 	protected:
+		// Audio
+		InputManager m_input_manager_{}; // Input
+		// Files 
+		// Preferences
+
+		bool m_QUIT_ = false; // Set to true when the application should quit
 		UINT m_frame_index_ = 0;
 		DisplayWindow m_window_;
 		uPtr<gfx::Context> m_context_ = nullptr;
 		gfx::Swapchain m_swapchain_{};
 		gfx::Queue m_graphics_queue_{}; // A graphics queue is given to the application by default
-		gfx::DescriptorHeap m_rtv_heap{}; // Default RTV heap that also contains swapchain descriptors
+		gfx::DescriptorHeap m_rtv_heap_{}; // Default RTV heap that also contains swapchain descriptors
 
 		gfx::Fence m_fence_frame_ready_{};
 		std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{ 0, 0 };
