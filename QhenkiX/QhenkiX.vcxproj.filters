@@ -108,6 +108,12 @@
     <ClCompile Include="imgui\imgui_impl_sdl3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="qhenkiX\math\basis.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\math\transform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="qhenkiX\application.h">
@@ -354,6 +360,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui_impl_sdl3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\math\basis.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\math\transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
