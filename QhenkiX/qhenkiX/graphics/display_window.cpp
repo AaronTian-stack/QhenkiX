@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include "displaywindow.h"
+#include "display_window.h"
 
 using namespace qhenki;
 

@@ -27,7 +27,7 @@ namespace qhenki
 		Camera(const float vw, const float vh) : viewport_width(vw), viewport_height(vh) {}
 		virtual ~Camera() {};
 
-		float near_plane = 0.1f;
+		float near_plane = 0.001f;
 		float far_plane = 100.f;
 
 		float viewport_width = 0;
@@ -38,8 +38,7 @@ namespace qhenki
 		/**
 		 * Updates view, projection, view_projection, inverse_view_projection
 		 */
-		virtual void update(bool update_frustum) = 0;
-		virtual void update() { update(true); }
+		virtual void update(bool update_frustum = false) = 0;
 
 		void unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
 

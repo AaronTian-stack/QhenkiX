@@ -18,7 +18,7 @@
     <ClCompile Include="qhenkiX\application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\displaywindow.cpp">
+    <ClCompile Include="qhenkiX\graphics\display_window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader.cpp">
@@ -114,12 +114,18 @@
     <ClCompile Include="qhenkiX\math\transform.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="qhenkiX\input\input_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qhenkiX\graphics\arcball_camera_controller.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="qhenkiX\application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\displaywindow.h">
+    <ClInclude Include="qhenkiX\graphics\display_window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader.h">
@@ -366,6 +372,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\math\transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\input\input_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qhenkiX\graphics\arcball_camera_controller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
