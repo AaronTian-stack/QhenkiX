@@ -178,6 +178,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="qhenkiX\math\basis.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -197,6 +198,7 @@
     <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\file_helper.cpp" />
     <ClCompile Include="qhenkiX\graphics\shared\math_helper.cpp" />
+    <ClCompile Include="qhenkiX\math\transform.cpp" />
     <ClCompile Include="src\D3D12MemAlloc.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
     <ClCompile Include="qhenkiX\application.cpp" />
@@ -211,6 +213,7 @@
     <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="qhenkiX\math\basis.h" />
     <ClInclude Include="imgui\imgui_impl_sdl3.h" />
     <ClInclude Include="include\boost\assert.hpp" />
     <ClInclude Include="include\boost\config.hpp" />
@@ -280,6 +283,7 @@
     <ClInclude Include="qhenkiX\graphics\qhenki\buffer.h" />
     <ClInclude Include="qhenkiX\graphics\shared\file_helper.h" />
     <ClInclude Include="qhenkiX\graphics\shared\math_helper.h" />
+    <ClInclude Include="qhenkiX\math\transform.h" />
     <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h" />
     <ClInclude Include="qhenkiX\application.h" />
     <ClInclude Include="qhenkiX\graphics\camera.h" />
