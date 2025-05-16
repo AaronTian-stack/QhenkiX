@@ -2,6 +2,7 @@ cbuffer CameraBuffer : register(b0)
 {  
     float4x4 viewProj;  
     float4x4 invViewProj;  
+    float4x4 proj;
 };  
 
 Texture2D g_texture : register(t1);

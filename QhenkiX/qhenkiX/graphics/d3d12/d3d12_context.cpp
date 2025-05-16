@@ -1851,7 +1851,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
 	init_info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle)
 	{
 		// TODO
-			OutputDebugString(L"WARNING: ImGUI descriptors not freed");
+			OutputDebugString(L"WARNING: ImGui descriptors not freed\n");
 	};
 	ImGui_ImplSDL3_InitForD3D(window.get_window());
 	ImGui_ImplDX12_Init(&init_info);
