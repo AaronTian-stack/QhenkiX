@@ -33,7 +33,7 @@ PSInput vs_main(VSInput input)
     PSInput output;
 
     float4 worldPosition = float4(input.position, 1.0);
-    output.position = mul(viewProj, worldPosition);
+    output.position = mul(worldPosition, viewProj);
     output.color = input.color;
     output.uv = input.uv;
     
