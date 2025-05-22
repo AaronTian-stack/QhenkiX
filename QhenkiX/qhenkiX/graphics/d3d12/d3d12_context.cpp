@@ -634,40 +634,29 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		root_signature_reflection(shader_reflection.Get(), shader_desc);
 	}
 
-	if (desc.rasterizer_state.has_value())
+	auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
 	{
-		pso_desc->RasterizerState =
+		return D3D12_RASTERIZER_DESC
 		{
-			.FillMode = desc.rasterizer_state->fill_mode,
-			.CullMode = desc.rasterizer_state->cull_mode,
-			.FrontCounterClockwise = desc.rasterizer_state->front_counter_clockwise,
-			.DepthBias = desc.rasterizer_state->depth_bias,
-			.DepthBiasClamp = desc.rasterizer_state->depth_bias_clamp,
-			.SlopeScaledDepthBias = desc.rasterizer_state->slope_scaled_depth_bias,
-			.DepthClipEnable = desc.rasterizer_state->depth_clip_enable,
+			r.fill_mode,
+			r.cull_mode,
+			r.front_counter_clockwise,
+			r.depth_bias,
+			r.depth_bias_clamp,
+			r.slope_scaled_depth_bias,
+			r.depth_clip_enable,
+			FALSE, // MultisampleEnable
+			FALSE, // AntialiasedLineEnable
+			0,     // ForcedSampleCount
+			D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF
+		};
+	};
 
-			.MultisampleEnable = FALSE,
-			.AntialiasedLineEnable = FALSE,
-			.ForcedSampleCount = 0,
-			.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF
-		};
+	if (desc.rasterizer_state.has_value()) {
+		pso_desc->RasterizerState = make_d3d12_rasterizer_desc(*desc.rasterizer_state);
 	}
-	else
-	{
-		pso_desc->RasterizerState =
-		{
-			.FillMode = D3D12_FILL_MODE_SOLID,
-			.CullMode = D3D12_CULL_MODE_BACK,
-			.FrontCounterClockwise = FALSE,
-			.DepthBias = D3D12_DEFAULT_DEPTH_BIAS,
-			.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP,
-			.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS,
-			.DepthClipEnable = TRUE,
-			.MultisampleEnable = FALSE,
-			.AntialiasedLineEnable = FALSE,
-			.ForcedSampleCount = 0,
-			.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
-		};
+	else {
+		pso_desc->RasterizerState = make_d3d12_rasterizer_desc(RasterizerDesc{});
 	}
 
 	if (desc.blend_desc.has_value())
