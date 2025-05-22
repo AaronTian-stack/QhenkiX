@@ -2,7 +2,7 @@
 
 #include <application.h>
 
-#include "graphics/arcball_camera_controller.h"
+#include "graphics/arcball_controller.h"
 #include "graphics/perspective_camera.h"
 
 struct Vertex
@@ -40,7 +40,7 @@ class gltfViewerApp : public qhenki::Application
 	qhenki::gfx::DescriptorHeap m_sampler_heap_{};
 
 	qhenki::PerspectiveCamera m_camera_{};
-	qhenki::ArcBallCameraController m_camera_controller_{};
+	qhenki::ArcBallController m_camera_controller_{};
 
 protected:
 	void create() override;

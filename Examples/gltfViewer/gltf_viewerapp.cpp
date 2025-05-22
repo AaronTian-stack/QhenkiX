@@ -122,8 +122,8 @@ void gltfViewerApp::create()
 	constexpr auto vertices = std::array
 	{
 		Vertex{ { 0.0f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.5f, 1.0f } },
+		Vertex{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
 		Vertex{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-		Vertex{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } }
 	};
 	qhenki::gfx::BufferDesc desc
 	{
@@ -242,7 +242,7 @@ void gltfViewerApp::create()
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Docking Branch
 	m_context_->init_imgui(m_window_, m_swapchain_);
 
-	m_camera_controller_.set_camera(&m_camera_);
+	m_camera_controller_.set_camera(&m_camera_.transform_);
 
 	qhenki::gfx::WaitInfo wait_info
 	{

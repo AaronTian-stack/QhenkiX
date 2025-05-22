@@ -178,7 +178,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="qhenkiX\graphics\arcball_camera_controller.cpp" />
+    <ClCompile Include="qhenkiX\graphics\arcball_controller.cpp" />
     <ClCompile Include="qhenkiX\input\input_manager.cpp" />
     <ClCompile Include="qhenkiX\math\basis.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -215,7 +215,7 @@
     <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="qhenkiX\graphics\arcball_camera_controller.h" />
+    <ClInclude Include="qhenkiX\graphics\arcball_controller.h" />
     <ClInclude Include="qhenkiX\input\input_manager.h" />
     <ClInclude Include="qhenkiX\math\basis.h" />
     <ClInclude Include="imgui\imgui_impl_sdl3.h" />

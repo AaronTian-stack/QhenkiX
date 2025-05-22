@@ -117,7 +117,7 @@
     <ClCompile Include="qhenkiX\input\input_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\arcball_camera_controller.cpp">
+    <ClCompile Include="qhenkiX\graphics\arcball_controller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -377,7 +377,7 @@
     <ClInclude Include="qhenkiX\input\input_manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\arcball_camera_controller.h">
+    <ClInclude Include="qhenkiX\graphics\arcball_controller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
