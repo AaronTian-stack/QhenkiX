@@ -652,12 +652,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		};
 	};
 
-	if (desc.rasterizer_state.has_value()) {
-		pso_desc->RasterizerState = make_d3d12_rasterizer_desc(*desc.rasterizer_state);
-	}
-	else {
-		pso_desc->RasterizerState = make_d3d12_rasterizer_desc(RasterizerDesc{});
-	}
+	pso_desc->RasterizerState = make_d3d12_rasterizer_desc(desc.rasterizer_state.value_or(RasterizerDesc{}));
 
 	if (desc.blend_desc.has_value())
 	{

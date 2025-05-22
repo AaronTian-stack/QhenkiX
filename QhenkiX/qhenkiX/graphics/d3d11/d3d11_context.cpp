@@ -222,26 +222,24 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 	bool succeeded = input_layout_ != nullptr;
 
 	// Create Rasterizer state object
-	if (const auto& rs = desc.rasterizer_state; rs.has_value())
+	const RasterizerDesc rs = desc.rasterizer_state.value_or(RasterizerDesc{});
+	D3D11_RASTERIZER_DESC rasterizer_desc =
 	{
-		D3D11_RASTERIZER_DESC rasterizer_desc =
-		{
-			.FillMode = static_cast<D3D11_FILL_MODE>(rs->fill_mode),
-			.CullMode = static_cast<D3D11_CULL_MODE>(rs->cull_mode),
-			.FrontCounterClockwise = rs->front_counter_clockwise,
-			.DepthBias = rs->depth_bias,
-			.DepthBiasClamp = rs->depth_bias_clamp,
-			.SlopeScaledDepthBias = rs->slope_scaled_depth_bias,
-			.DepthClipEnable = rs->depth_clip_enable,
-			.ScissorEnable = FALSE, // Scissor enable not included (TODO: add later?)
-			.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
-			.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
-		};
-		if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, d3d11_pipeline->rasterizer_state_.ReleaseAndGetAddressOf())))
-		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Rasterizer State");
-			succeeded = false;
-		}
+		.FillMode = static_cast<D3D11_FILL_MODE>(rs.fill_mode),
+		.CullMode = static_cast<D3D11_CULL_MODE>(rs.cull_mode),
+		.FrontCounterClockwise = rs.front_counter_clockwise,
+		.DepthBias = rs.depth_bias,
+		.DepthBiasClamp = rs.depth_bias_clamp,
+		.SlopeScaledDepthBias = rs.slope_scaled_depth_bias,
+		.DepthClipEnable = rs.depth_clip_enable,
+		.ScissorEnable = FALSE, // Scissor enable not included (TODO: add later?)
+		.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
+		.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
+	};
+	if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, d3d11_pipeline->rasterizer_state_.ReleaseAndGetAddressOf())))
+	{
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Rasterizer State");
+		succeeded = false;
 	}
 
 	// Create Blend state
