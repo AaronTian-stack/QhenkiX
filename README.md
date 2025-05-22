@@ -78,4 +78,4 @@ This project is mostly made for my own use and will be frequently subject to lar
 
 ## License
 
-This project is licensed under the [MPL 2.0](./LICENSE) license.
+This project is licensed under the [MIT](./LICENSE) license.

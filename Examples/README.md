@@ -1,6 +1,6 @@
 # QhenkiX Examples
 
-This folder contains a collection of example projects demonstrating the usage of the QhenkiX library. Each example is organized as a separate Visual Studio project which has QhenkiX as a local reference.  
+This folder contains a collection of example projects demonstrating the usage of the QhenkiX library. Each example is organized as a separate Visual Studio project which has QhenkiX as a local reference, so if you are linking against a already compiled version you will need to change the project settings. The include paths also assume that you have the source code (I will eventually bundle separate headers with the library).
 
 ## SimpleExample
 
