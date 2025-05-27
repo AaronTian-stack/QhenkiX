@@ -1,5 +1,7 @@
 #include "basis.h"
 
+using namespace qhenki;
+
 Basis::Basis(const XMFLOAT3& axis, float angle)
 {
 	XMMATRIX rotation = XMMatrixRotationAxis(XMLoadFloat3(&axis), angle);
