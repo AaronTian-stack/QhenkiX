@@ -34,7 +34,7 @@ namespace qhenki::gfx
 		std::optional<ComPtr<ID3D11InputLayout>> create_input_layout_manual(ID3D11Device* const device,
 			ID3DBlob* const vertex_shader_blob);
 
-		static std::vector<D3D11_INPUT_ELEMENT_DESC> create_input_layout_desc(ID3D11ShaderReflection* vs_reflection, bool interleaved);
+		static std::vector<D3D11_INPUT_ELEMENT_DESC> create_input_layout_desc(ID3D11ShaderReflection* vs_reflection, bool increment_slot);
 
 		/**
 		 * @brief Creates an input layout using shader reflection.
@@ -48,7 +48,7 @@ namespace qhenki::gfx
 		 */
 		ID3D11InputLayout* create_input_layout_reflection(ID3D11Device* const device,
 			ID3DBlob* const vertex_shader_blob,
-			bool interleaved);
+			bool increment_slot);
 
 		void clear_maps();
 	};

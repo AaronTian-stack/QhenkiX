@@ -98,7 +98,7 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
     return layout;
 }
 
-std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_desc(ID3D11ShaderReflection* vs_reflection, const bool interleaved)
+std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_desc(ID3D11ShaderReflection* vs_reflection, const bool increment_slot)
 {
 	assert(vs_reflection);
 
@@ -166,7 +166,7 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
 			OutputDebugString((L"D3D11: Invalid mask " + mask_str + L"\n").c_str());
         }
 
-        if (!interleaved) slot++;
+        if (!increment_slot) slot++;
 
         // save element desc
         input_layout_desc.push_back(elementDesc);
@@ -177,7 +177,7 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
 
 ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
 	ID3D11Device* const device,
-	ID3DBlob* const vertex_shader_blob, bool interleaved)
+	ID3DBlob* const vertex_shader_blob, bool increment_slot)
 {
     ComPtr<ID3D11ShaderReflection> pVertexShaderReflection;
     if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(), 
@@ -192,7 +192,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
     D3D11_SHADER_DESC shader_desc;
     pVertexShaderReflection->GetDesc(&shader_desc);
 
-	std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(pVertexShaderReflection.Get(), interleaved);
+	std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(pVertexShaderReflection.Get(), increment_slot);
 
     if (input_layout_desc.empty())
     {

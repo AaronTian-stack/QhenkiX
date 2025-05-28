@@ -51,7 +51,7 @@ namespace qhenki::gfx
 		PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
 		int num_render_targets = -1; // If this is <= 0, pipeline is lazily created based off what render target is bound at draw time
 		std::array<DXGI_FORMAT, 8> rtv_formats{};
-		BOOL interleaved = FALSE; // Whether vertex data is interleaved or not, used during reflection
+		bool increment_slot = false; // Whether to increment slot of input, used during reflection
 	};
 
 	struct GraphicsPipeline

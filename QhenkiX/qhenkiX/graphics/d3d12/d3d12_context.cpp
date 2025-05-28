@@ -433,7 +433,7 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 }
 
 std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
-                                                                      const D3D12_SHADER_DESC& shader_desc, const bool interleaved) const
+                                                                      const D3D12_SHADER_DESC& shader_desc, const bool increment_slot) const
 {
 	assert(shader_reflection);
 
@@ -461,7 +461,7 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
 					.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 					.InstanceDataStepRate = 0u, // TODO: manual options for instancing
 				});
-			if (!interleaved) slot++;
+			if (!increment_slot) slot++;
 		}
 	}
 
@@ -542,7 +542,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		const auto hr_d = shader_reflection->GetDesc(&shader_desc);
 		assert(SUCCEEDED(hr_d));
 		// Input reflection (VS)
-		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.interleaved);
+		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
 		pso_desc->VS =
 		{
@@ -581,7 +581,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		// Input reflection (VS)
 		const auto hr_d = shader_reflection->GetDesc(&shader_desc);
 		assert(SUCCEEDED(hr_d));
-		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.interleaved);
+		d3d12_pipeline->input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
 		pso_desc->VS =
 		{
