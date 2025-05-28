@@ -32,11 +32,6 @@ Transform Transform::affine_invert() const
 
 XMMATRIX Transform::to_matrix_simd() const
 {
-	//XMMATRIX m = XMLoadFloat3x3(&basis_.basis_);
-	//m.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
-	//XMMATRIX translate = XMMatrixTranslation(-translation_.x, -translation_.y, -translation_.z); // negate
-	//return XMMatrixMultiply(translate, m);
-
 	auto eye = XMLoadFloat3(&translation_);
 	auto axis_y = basis_.axis_y();
 	auto up = XMLoadFloat3(&axis_y);
