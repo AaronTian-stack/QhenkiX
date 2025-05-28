@@ -216,7 +216,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 	assert(true_vs);
 
 	ID3D11InputLayout* input_layout_ = m_layout_assembler_.create_input_layout_reflection(m_device_.Get(),
-		true_vs->vertex_shader_blob.Get(), desc.interleaved);
+		true_vs->vertex_shader_blob.Get(), desc.increment_slot);
 	d3d11_pipeline->input_layout_ = input_layout_;
 
 	bool succeeded = input_layout_ != nullptr;
@@ -325,31 +325,26 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
 	D3D11_BUFFER_DESC buffer_info{};
 	buffer_info.ByteWidth = desc.size;
-	switch (desc.usage)
-	{
-		case BufferUsage::VERTEX:
-			buffer_info.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-			break;
-		case BufferUsage::INDEX:
-			buffer_info.BindFlags = D3D11_BIND_INDEX_BUFFER;
-			break;
-		case BufferUsage::UNIFORM:
-			buffer_info.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-			break;
-		case BufferUsage::STORAGE:
-			buffer_info.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-			break;
-		case BufferUsage::INDIRECT:
-			buffer_info.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
-			break;
-		case BufferUsage::COPY_SRC:
-		case BufferUsage::COPY_DST:
-			buffer_info.BindFlags = 0; // TODO: check this
-			break;
-		default:
-			OutputDebugString(L"Qhenki D3D11 ERROR: Buffer type not implemented");
-			throw std::runtime_error("D3D11: Buffer type not implemented");
-	}
+    if (desc.usage & BufferUsage::VERTEX)
+    {
+		buffer_info.BindFlags |= D3D11_BIND_VERTEX_BUFFER;
+    }
+    if (desc.usage & BufferUsage::INDEX)
+    {
+		buffer_info.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    }
+    if (desc.usage & BufferUsage::UNIFORM)
+    {
+		buffer_info.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    }
+    if (desc.usage & BufferUsage::STORAGE)
+    {
+		buffer_info.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+    }
+    if (desc.usage & BufferUsage::INDIRECT)
+    {
+		buffer_info.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
+    }
 	if ((desc.visibility & CPU_SEQUENTIAL) 
 		|| (desc.visibility & CPU_RANDOM))
 	{

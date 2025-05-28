@@ -1,3 +1,7 @@
+#pragma once
+
+#include <smartpointer.h>
+
 namespace qhenki::gfx
 {
 	enum class BufferUsage : uint8_t
@@ -37,7 +41,7 @@ namespace qhenki::gfx
 	struct BufferDesc
 	{
 		uint64_t size = 0;
-		BufferUsage usage; // Only used in Vulkan
+		BufferUsage usage; // Only used in D3D11 / Vulkan
 		BufferVisibility visibility;
 	};
 
