@@ -347,9 +347,10 @@ void ExampleApp::render()
 		m_context_->set_descriptor_table(&cmd_list, 1, descriptor);
 	}
 
-	const unsigned int offset = 0;
-	constexpr auto stride = static_cast<UINT>(sizeof(Vertex));
-	m_context_->bind_vertex_buffers(&cmd_list, 0, 1, &m_vertex_buffer_, &stride, &offset);
+	const unsigned offset = 0;
+	auto stride = static_cast<unsigned>(sizeof(Vertex));
+	const auto buffers = &m_vertex_buffer_;
+	m_context_->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, &stride, &offset);
 	m_context_->bind_index_buffer(&cmd_list, m_index_buffer_, qhenki::gfx::IndexType::UINT32, 0);
 
 	m_context_->draw_indexed(&cmd_list, 3, 0, 0);

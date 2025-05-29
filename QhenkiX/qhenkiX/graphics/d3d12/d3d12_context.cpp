@@ -1450,7 +1450,7 @@ void D3D12Context::unmap_buffer(const Buffer& buffer)
 }
 
 void D3D12Context::bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count,
-                                       const Buffer* buffers, const UINT* strides, const unsigned* offsets)
+	const Buffer* const* buffers, const unsigned* const strides, const unsigned* const offsets)
 {
 	assert(buffer_count <= D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
 
@@ -1461,13 +1461,13 @@ void D3D12Context::bind_vertex_buffers(CommandList* cmd_list, unsigned start_slo
 	std::array<D3D12_VERTEX_BUFFER_VIEW, D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertex_buffer_views;
 	for (unsigned i = 0; i < buffer_count; i++)
 	{
-		const auto allocation = to_internal(buffers[i]);
+		const auto allocation = to_internal(*buffers[i]);
 		const auto resource = allocation->Get()->GetResource();
 
 		vertex_buffer_views[i] =
 		{
 			.BufferLocation = resource->GetGPUVirtualAddress() + offsets[i],
-			.SizeInBytes = static_cast<UINT>(buffers[i].desc.size - offsets[i]),
+			.SizeInBytes = static_cast<UINT>((*buffers[i]).desc.size - offsets[i]),
 			.StrideInBytes = strides[i],
 		};
 	}

@@ -312,6 +312,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 
 bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline)
 {
+	std::scoped_lock lock(m_context_mutex_);
 	const auto d3d11_pipeline = to_internal(pipeline);
 	d3d11_pipeline->bind(m_device_context_.Get());
 	return true;
@@ -398,14 +399,16 @@ void D3D11Context::copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 
 {
 	assert(src_offset + bytes <= src.desc.size);
 	assert(dst_offset + bytes <= dst->desc.size);
+
 	const auto src_d3d11 = to_internal(src);
 	const auto dst_d3d11 = to_internal(*dst);
 
 	// Assume 1D for now
 	const auto box = CD3D11_BOX(static_cast<long>(src_offset), 0, 0, static_cast<long>(src_offset + bytes), 1, 1);
-
+	
 	// Copy entire buffer for now
 	// TODO: per subresource
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->CopySubresourceRegion(
 		dst_d3d11->Get(),
 		0, // Dst subresource
@@ -542,6 +545,7 @@ bool D3D11Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 		return false;
 	}
 
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->UpdateSubresource(
 		resource,
 		0, // TODO: which subresource
@@ -591,6 +595,7 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped_resource;
 	const auto buffer_d3d11 = to_internal(buffer);
+	std::scoped_lock lock(m_context_mutex_);
 	if (FAILED(m_device_context_->Map(
 		buffer_d3d11->Get(),
 		0, 
@@ -607,20 +612,21 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
 void D3D11Context::unmap_buffer(const Buffer& buffer)
 {
 	const auto buffer_d3d11 = to_internal(buffer);
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->Unmap(buffer_d3d11->Get(), 0);
 }
 
-void D3D11Context::bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const UINT* strides, const
-                                       unsigned* offsets)
+void D3D11Context::bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count, 
+	const Buffer* const* buffers, const unsigned* const strides, const unsigned* const offsets)
 {
 	assert(buffer_count <= D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
 	std::array<ID3D11Buffer**, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
 	for (unsigned int i = 0; i < buffer_count; i++)
 	{
-		auto buffer = to_internal(buffers[i]);
+		auto buffer = to_internal(*buffers[i]);
 		buffer_d3d11[i] = buffer->GetAddressOf();
 	}
-
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides, offsets);
 }
 
@@ -628,6 +634,7 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer
                                      unsigned offset)
 {
 	const auto buffer_d3d11 = to_internal(buffer);
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), D3DHelper::get_dxgi_format(format), offset);
 }
 
@@ -664,14 +671,15 @@ void D3D11Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain
 	const auto rtv = swap_d3d11->sc_render_target.Get();
 	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	// TODO: optional clear, user set values
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->ClearRenderTargetView(rtv, clear_color);
-
 	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
 
 void D3D11Context::start_render_pass(CommandList* cmd_list, unsigned rt_count,
                                      const RenderTarget* rts, const RenderTarget* depth_stencil)
 {
+	std::scoped_lock lock(m_context_mutex_);
     std::array<ID3D11RenderTargetView**, 8> rtvs{};
     // Clear render target views (if applicable)
 	for (unsigned int i = 0; i < rt_count; i++)
@@ -712,23 +720,27 @@ void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_
 		};
 
     }
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->RSSetViewports(count, m_viewports_.data());
 }
 
 void D3D11Context::set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect)
 {
 	// D3D12_RECT = D3D11_RECT = RECT
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->RSSetScissorRects(count, scissor_rect);
 }
 
 void D3D11Context::draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->Draw(vertex_count, start_vertex_offset);
 }
 
 void D3D11Context::draw_indexed(CommandList* cmd_list, uint32_t index_count, uint32_t start_index_offset,
                                 int32_t base_vertex_offset)
 {
+	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
 }
 

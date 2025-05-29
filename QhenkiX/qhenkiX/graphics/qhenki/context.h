@@ -96,7 +96,7 @@ namespace qhenki::gfx
 		virtual void* map_buffer(const Buffer& buffer) = 0;
 		virtual void unmap_buffer(const Buffer& buffer) = 0;
 
-		virtual void bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* buffers, const UINT* strides, const unsigned* offsets) = 0;
+		virtual void bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count, const Buffer* const* buffers, const unsigned* const strides, const unsigned* const offsets) = 0;
 		virtual void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) = 0;
 		// TODO: bind compute pipeline
 

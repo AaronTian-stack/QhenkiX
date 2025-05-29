@@ -101,7 +101,7 @@ namespace qhenki::gfx
 		void unmap_buffer(const Buffer& buffer) override;
 
 		void bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count,
-		                         const Buffer* buffers, const UINT* strides, const unsigned* offsets) override;
+		                         const Buffer* const* buffers, const unsigned* const strides, const unsigned* const offsets) override;
 
 		void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format,
 		                       unsigned offset) override;

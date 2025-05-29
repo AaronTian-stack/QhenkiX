@@ -29,6 +29,8 @@ namespace qhenki::gfx
 
 		std::array<D3D11_VIEWPORT, 16> m_viewports_;
 
+		std::mutex m_context_mutex_; // For anything that uses the device context. Do not call Context methods from each other to prevent deadlock
+
 	public:
 		// Will not work with things that don't derive from ID3D11DeviceChild
 		template<UINT TDebugNameLength>
@@ -81,7 +83,7 @@ namespace qhenki::gfx
 		void unmap_buffer(const Buffer& buffer) override;
 
 		void bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count,
-		                         const Buffer* buffers, const UINT* strides, const unsigned* offsets) override;
+								 const Buffer* const* buffers, const unsigned* const strides, const unsigned* const offsets) override;
 		void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format,
 		                       unsigned offset) override;
 
