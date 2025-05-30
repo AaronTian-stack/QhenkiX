@@ -125,7 +125,7 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
             .SemanticIndex = paramDesc.SemanticIndex,
             .InputSlot = slot,
             .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
-            //// TODO: INSTANCING
+            // TODO: INSTANCING
             .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
             .InstanceDataStepRate = 0,
         };
@@ -159,14 +159,14 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         {
             std::wstring mask_str;
 			mask_str.reserve(4);
-			for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
 			{
-				mask_str.push_back((paramDesc.Mask & (1 << i)) ? L'1' : L'0');
+				mask_str.push_back((paramDesc.Mask & (1 << j)) ? L'1' : L'0');
 			}
 			OutputDebugString((L"D3D11: Invalid mask " + mask_str + L"\n").c_str());
         }
 
-        if (!increment_slot) slot++;
+        if (increment_slot) slot++;
 
         // save element desc
         input_layout_desc.push_back(elementDesc);

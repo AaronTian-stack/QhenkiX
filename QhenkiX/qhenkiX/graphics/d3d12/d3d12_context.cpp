@@ -461,7 +461,7 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
 					.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 					.InstanceDataStepRate = 0u, // TODO: manual options for instancing
 				});
-			if (!increment_slot) slot++;
+			if (increment_slot) slot++;
 		}
 	}
 

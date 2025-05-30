@@ -150,13 +150,17 @@ namespace qhenki::gfx
 }
 
 #define THROW_IF_FAILED(result) \
-if (!(result)) \
-{ \
-   throw std::runtime_error("Something went wrong!\n"); \
-}
+do { \
+	if (FAILED(result)) \
+	{ \
+		throw std::runtime_error("Something went wrong!\n"); \
+	} \
+} while (0)
 
 #define THROW_IF_TRUE(result) \
+	do { \
 if ((result)) \
 { \
    throw std::runtime_error("Something went wrong!\n"); \
-}
+} \
+} while (0)
