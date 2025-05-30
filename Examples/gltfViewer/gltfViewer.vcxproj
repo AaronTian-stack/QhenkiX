@@ -120,7 +120,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\qhenkiX;$(SolutionDir)QhenkiX\QhenkiX\include;$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\include;$(SolutionDir)QhenkiX\QhenkiX\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\qhenkiX;$(SolutionDir)QhenkiX\QhenkiX\include;$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\include;$(SolutionDir)QhenkiX\QhenkiX\imgui;$(ProjectDir)include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -138,7 +138,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\qhenkiX;$(SolutionDir)QhenkiX\QhenkiX\include;$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\include;$(SolutionDir)QhenkiX\QhenkiX\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\qhenkiX;$(SolutionDir)QhenkiX\QhenkiX\include;$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\include;$(SolutionDir)QhenkiX\QhenkiX\imgui;$(ProjectDir)include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -151,11 +151,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="gltf_loader.cpp" />
     <ClCompile Include="gltf_viewerapp.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="gltf_loader.h" />
+    <ClInclude Include="gltf_model.h" />
     <ClInclude Include="gltf_viewerapp.h" />
+    <ClInclude Include="include\json.hpp" />
+    <ClInclude Include="include\stb_image.h" />
+    <ClInclude Include="include\stb_image_write.h" />
+    <ClInclude Include="include\tiny_gltf.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(SolutionDir)QhenkiX\QhenkiX\QhenkiX.vcxproj">

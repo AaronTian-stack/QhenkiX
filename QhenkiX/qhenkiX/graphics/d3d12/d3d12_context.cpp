@@ -1269,27 +1269,58 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 	return true;
 }
 
+bool allocate_arb_texture_descriptor(DescriptorHeap& heap, D3D12DescriptorHeap* const heap_d3d12, Descriptor* const descriptor, 
+	const wchar_t* message, D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+{
+	assert(cpu_handle);
+	if (heap.desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type for ");
+		OutputDebugString(message);
+		OutputDebugString(L"\n");
+		return false;
+	}
+
+	if (!heap_d3d12->allocate(&descriptor->offset))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
+		OutputDebugString(message);
+		OutputDebugString(L"\n");
+		return false;
+	}
+	descriptor->heap = &heap;
+	;
+	if (!heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset, 0))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
+		return false;
+	}
+	return true;
+}
+
 bool D3D12Context::create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
 {
 	const auto texture_d3d12 = to_internal(texture);
 	const auto heap_d3d12 = to_internal(heap);
 
-	if (!heap_d3d12->allocate(&descriptor->offset))
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for texture\n");
-		return false;
-	}
-	descriptor->heap = &heap;
-
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-	if (!heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0))
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
-		return false;
-	}
+	allocate_arb_texture_descriptor(heap, heap_d3d12, descriptor, L"SRV", &cpu_handle);
 	
 	// TODO: description
 	m_device_->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
+
+	return true;
+}
+
+bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
+{
+	const auto texture_d3d12 = to_internal(texture);
+	const auto heap_d3d12 = to_internal(heap);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
+	allocate_arb_texture_descriptor(heap, heap_d3d12, descriptor, L"DSV", &cpu_handle);
+
+	m_device_->CreateDepthStencilView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
 	return true;
 }

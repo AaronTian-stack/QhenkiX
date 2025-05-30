@@ -332,19 +332,19 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     }
     if (desc.usage & BufferUsage::INDEX)
     {
-		buffer_info.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		buffer_info.BindFlags |= D3D11_BIND_INDEX_BUFFER;
     }
     if (desc.usage & BufferUsage::UNIFORM)
     {
-		buffer_info.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		buffer_info.BindFlags |= D3D11_BIND_CONSTANT_BUFFER;
     }
     if (desc.usage & BufferUsage::STORAGE)
     {
-		buffer_info.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
     }
     if (desc.usage & BufferUsage::INDIRECT)
     {
-		buffer_info.BindFlags = D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
+		buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
     }
 	if ((desc.visibility & CPU_SEQUENTIAL) 
 		|| (desc.visibility & CPU_RANDOM))
@@ -422,14 +422,14 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 {
 	texture->desc = desc;
 	texture->internal_state = mkS<D3D11Texture>();
-	auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
+	const auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
 
-	// TODO: RT, UAV BindFlags
 	UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
 	if (D3DHelper::is_depth_stencil_format(desc.format))
 	{
-		bind_flags |= D3D11_BIND_DEPTH_STENCIL;
+		bind_flags = D3D11_BIND_DEPTH_STENCIL; // Overwrite
 	}
+	// TODO: could also be RT or UAV, need BindFlags
 
 	if (desc.dimension == TextureDimension::TEXTURE_1D)
 	{
@@ -506,6 +506,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 
 bool D3D11Context::create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
 {
+	assert(descriptor);
 	auto texture_d3d11 = to_internal(texture);
 
 	descriptor->heap = &heap;
@@ -513,7 +514,8 @@ bool D3D11Context::create_descriptor_texture_view(const Texture& texture, Descri
 
 	texture_d3d11->shader_resource_views.push_back({});
 
-	auto resource = get_texture_resource(*texture_d3d11);
+	const auto resource = get_texture_resource(*texture_d3d11);
+	assert(resource);
 
 	// TODO: description
 	if (FAILED(m_device_->CreateShaderResourceView(resource, nullptr, 
@@ -522,6 +524,28 @@ bool D3D11Context::create_descriptor_texture_view(const Texture& texture, Descri
 		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture SRV\n");
 		return false;
 	}
+	return true;
+}
+
+bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
+{
+	assert(descriptor);
+	auto texture_d3d11 = to_internal(texture);
+
+	descriptor->heap = &heap;
+	descriptor->offset = texture_d3d11->depth_stencil_views.size();
+
+	texture_d3d11->depth_stencil_views.push_back({});
+	const auto resource = get_texture_resource(*texture_d3d11);
+	assert(resource);
+
+	if (FAILED(m_device_->CreateDepthStencilView(resource, nullptr, 
+		texture_d3d11->depth_stencil_views.back().ReleaseAndGetAddressOf())))
+	{
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture DSV\n");
+		return false;
+	}
+
 	return true;
 }
 

@@ -14,5 +14,6 @@ namespace qhenki::gfx
 		std::vector<ComPtr<ID3D11ShaderResourceView>> shader_resource_views;
 		std::vector<ComPtr<ID3D11RenderTargetView>> render_target_views;
 		std::vector<ComPtr<ID3D11UnorderedAccessView>> unordered_access_views;
+		std::vector<ComPtr<ID3D11DepthStencilView>> depth_stencil_views;
 	};
 }

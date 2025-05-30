@@ -91,6 +91,7 @@ namespace qhenki::gfx
 
 		bool create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name) override;
 		bool create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) override;
+		bool create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) override;
 
 		bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) override;
 

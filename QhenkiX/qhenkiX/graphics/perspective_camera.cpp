@@ -9,7 +9,7 @@ void PerspectiveCamera::update(bool update_frustum)
 	transform_.basis_.orthonormalize();
 	auto view = transform_.to_matrix_simd();
 
-	auto view_proj = XMMatrixTranspose(XMMatrixMultiply(view, proj));
+	auto view_proj = XMMatrixTranspose(view * proj);
 	auto inv_view_proj = XMMatrixInverse(nullptr, view_proj);
 
 	XMStoreFloat4x4(&matrices_.view_projection_, view_proj);
