@@ -21,7 +21,7 @@ void ImGUIExampleApp::create()
 		.entry_point = L"vs_main",
 		.min_shader_model = shader_model,
 	};
-	THROW_IF_FAILED(m_context_->create_shader_dynamic(nullptr, &m_vertex_shader_, vertex_shader));
+	THROW_IF_FALSE(m_context_->create_shader_dynamic(nullptr, &m_vertex_shader_, vertex_shader));
 
 	CompilerInput pixel_shader =
 	{
@@ -31,10 +31,10 @@ void ImGUIExampleApp::create()
 		.entry_point = L"ps_main",
 		.min_shader_model = shader_model,
 	};
-	THROW_IF_FAILED(m_context_->create_shader_dynamic(nullptr, &m_pixel_shader_, pixel_shader));
+	THROW_IF_FALSE(m_context_->create_shader_dynamic(nullptr, &m_pixel_shader_, pixel_shader));
 
 	qhenki::gfx::PipelineLayoutDesc layout_desc{};
-	THROW_IF_FAILED(m_context_->create_pipeline_layout(layout_desc, &m_pipeline_layout_));
+	THROW_IF_FALSE(m_context_->create_pipeline_layout(layout_desc, &m_pipeline_layout_));
 
 	// Create GPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_GPU
@@ -43,7 +43,7 @@ void ImGUIExampleApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FAILED(m_context_->create_descriptor_heap(heap_desc_GPU, m_GPU_heap_));
+	THROW_IF_FALSE(m_context_->create_descriptor_heap(heap_desc_GPU, m_GPU_heap_));
 
 	// Create CPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_CPU
@@ -52,7 +52,7 @@ void ImGUIExampleApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // CPU heap has no size limit
 	};
-	THROW_IF_FAILED(m_context_->create_descriptor_heap(heap_desc_CPU, m_CPU_heap_));
+	THROW_IF_FALSE(m_context_->create_descriptor_heap(heap_desc_CPU, m_CPU_heap_));
 
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
@@ -61,7 +61,7 @@ void ImGUIExampleApp::create()
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
 		.increment_slot = true,
 	};
-	THROW_IF_FAILED(m_context_->create_pipeline(pipeline_desc, &m_pipeline_, 
+	THROW_IF_FALSE(m_context_->create_pipeline(pipeline_desc, &m_pipeline_, 
 			m_vertex_shader_, m_pixel_shader_, &m_pipeline_layout_, nullptr, L"triangle_pipeline"));
 
 	// A graphics queue is already given to the application by the context
@@ -69,7 +69,7 @@ void ImGUIExampleApp::create()
 	// Allocate Command Pool(s)/Allocator(s) from queue
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		THROW_IF_FAILED(m_context_->create_command_pool(&m_cmd_pools_[i], m_graphics_queue_));
+		THROW_IF_FALSE(m_context_->create_command_pool(&m_cmd_pools_[i], m_graphics_queue_));
 	}
 
 	qhenki::gfx::Buffer vertex_CPU;
@@ -88,10 +88,10 @@ void ImGUIExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FAILED(m_context_->create_buffer(desc, vertices.data(), &vertex_CPU, L"Interleaved Position/Color Buffer CPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(desc, vertices.data(), &vertex_CPU, L"Interleaved Position/Color Buffer CPU"));
 
 	desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FAILED(m_context_->create_buffer(desc, nullptr, &m_vertex_buffer_, L"Interleaved Position/Color Buffer GPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(desc, nullptr, &m_vertex_buffer_, L"Interleaved Position/Color Buffer GPU"));
 
 	constexpr auto indices = std::array{ 0u, 1u, 2u };
 	qhenki::gfx::BufferDesc index_desc
@@ -100,19 +100,19 @@ void ImGUIExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::INDEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FAILED(m_context_->create_buffer(index_desc, indices.data(), &index_CPU, L"Index Buffer CPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(index_desc, indices.data(), &index_CPU, L"Index Buffer CPU"));
 
 	index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FAILED(m_context_->create_buffer(index_desc, nullptr, &m_index_buffer_, L"Index Buffer GPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(index_desc, nullptr, &m_index_buffer_, L"Index Buffer GPU"));
 
 	// Schedule copies to GPU buffers / texture
-	THROW_IF_FAILED(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
 	qhenki::gfx::CommandList cmd_list;
-	THROW_IF_FAILED(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
 	m_context_->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer_, 0, desc.size);
 	m_context_->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer_, 0, index_desc.size);
 
-	THROW_IF_FAILED(m_context_->close_command_list(&cmd_list));
+	THROW_IF_FALSE(m_context_->close_command_list(&cmd_list));
 	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
 	qhenki::gfx::SubmitInfo info
 	{
@@ -140,7 +140,7 @@ void ImGUIExampleApp::create()
 		.fences = &m_fence_frame_ready_,
 		.values = &m_fence_frame_ready_val_[get_frame_index()]
 	};
-	THROW_IF_FAILED(m_context_->wait_fences(wait_info)); // Block CPU until done
+	THROW_IF_FALSE(m_context_->wait_fences(wait_info)); // Block CPU until done
 }
 
 void ImGUIExampleApp::render()
@@ -150,11 +150,11 @@ void ImGUIExampleApp::render()
 
 	const auto dim = this->m_window_.get_display_size();
 
-	THROW_IF_FAILED(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
 
 	// Create a command list in the open state
 	qhenki::gfx::CommandList cmd_list;
-	THROW_IF_FAILED(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
 
 	// Resource transition
 	qhenki::gfx::ImageBarrier barrier_render = 
@@ -198,7 +198,7 @@ void ImGUIExampleApp::render()
 
 	m_context_->set_descriptor_heap(&cmd_list, m_GPU_heap_);
 
-	THROW_IF_FAILED(m_context_->bind_pipeline(&cmd_list, m_pipeline_));
+	THROW_IF_FALSE(m_context_->bind_pipeline(&cmd_list, m_pipeline_));
 
 	const unsigned int offset = 0;
 	constexpr auto stride = static_cast<UINT>(sizeof(Vertex));

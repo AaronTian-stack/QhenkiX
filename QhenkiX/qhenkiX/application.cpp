@@ -61,7 +61,7 @@ void Application::run(const gfx::API api)
 	}
 	m_context_->create();
 
-	THROW_IF_FAILED(m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue_));
+	THROW_IF_FALSE(m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue_));
 
 	const gfx::SwapchainDesc swapchain_desc =
 	{
@@ -70,7 +70,7 @@ void Application::run(const gfx::API api)
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 		.buffer_count = m_frames_in_flight,
 	};
-	THROW_IF_FAILED(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
+	THROW_IF_FALSE(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
 			m_graphics_queue_, m_frame_index_));
 
 	gfx::DescriptorHeapDesc rtv_heap_desc
@@ -79,13 +79,13 @@ void Application::run(const gfx::API api)
 		.visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FAILED(m_context_->create_descriptor_heap(rtv_heap_desc, m_rtv_heap_));
+	THROW_IF_FALSE(m_context_->create_descriptor_heap(rtv_heap_desc, m_rtv_heap_));
 	
 	// Make swapchain RTVs (stored internally)
-	THROW_IF_FAILED(m_context_->create_swapchain_descriptors(m_swapchain_, m_rtv_heap_));
+	THROW_IF_FALSE(m_context_->create_swapchain_descriptors(m_swapchain_, m_rtv_heap_));
 
 	// Create fences
-	THROW_IF_FAILED(m_context_->create_fence(&m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->create_fence(&m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]));
 
 	create();
 	// Starts the main loop

@@ -77,6 +77,7 @@ namespace qhenki::gfx
 		virtual bool create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 		// virtual bool create_descriptor_storage(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 		// virtual bool create_descriptor_render_target(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		virtual bool create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 
         /**
 		 * @brief Creates staging buffer with data pointer and copies it to the texture. TODO: add subresource index argument?
@@ -149,9 +150,9 @@ namespace qhenki::gfx
 	};
 }
 
-#define THROW_IF_FAILED(result) \
+#define THROW_IF_FALSE(result) \
 do { \
-	if (FAILED(result)) \
+	if (!result) \
 	{ \
 		throw std::runtime_error("Something went wrong!\n"); \
 	} \

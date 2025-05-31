@@ -52,6 +52,7 @@ namespace qhenki
 		virtual void init_display_window();
 
 		virtual void create() {}
+		// The swapchain is automatically resized before this is called
 		virtual void render() {}
 		virtual void resize(int width, int height) {}
 		virtual void destroy() {}

@@ -31,7 +31,7 @@ void ExampleApp::create()
 		.min_shader_model = shader_model,
 		.defines = defines,
 	};
-	THROW_IF_FAILED(m_context_->create_shader_dynamic(nullptr, &m_vertex_shader_, vertex_shader));
+	THROW_IF_FALSE(m_context_->create_shader_dynamic(nullptr, &m_vertex_shader_, vertex_shader));
 
 	CompilerInput pixel_shader =
 	{
@@ -42,7 +42,7 @@ void ExampleApp::create()
 		.min_shader_model = shader_model,
 		.defines = defines,
 	};
-	THROW_IF_FAILED(m_context_->create_shader_dynamic(nullptr, &m_pixel_shader_, pixel_shader));
+	THROW_IF_FALSE(m_context_->create_shader_dynamic(nullptr, &m_pixel_shader_, pixel_shader));
 
 	// Create pipeline layout
 	qhenki::gfx::LayoutBinding b1 // Constant buffer for camera matrix
@@ -66,7 +66,7 @@ void ExampleApp::create()
 	qhenki::gfx::PipelineLayoutDesc layout_desc{};
 	layout_desc.spaces[0] = { b1, b2 };
 	layout_desc.spaces[1] = { b3 }; // Samplers need their own space/table
-	THROW_IF_FAILED(m_context_->create_pipeline_layout(layout_desc, &m_pipeline_layout_));
+	THROW_IF_FALSE(m_context_->create_pipeline_layout(layout_desc, &m_pipeline_layout_));
 
 	// Create GPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_GPU
@@ -75,7 +75,7 @@ void ExampleApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FAILED(m_context_->create_descriptor_heap(heap_desc_GPU, m_GPU_heap_));
+	THROW_IF_FALSE(m_context_->create_descriptor_heap(heap_desc_GPU, m_GPU_heap_));
 
 	// Create CPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_CPU
@@ -84,7 +84,7 @@ void ExampleApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // CPU heap has no size limit
 	};
-	THROW_IF_FAILED(m_context_->create_descriptor_heap(heap_desc_CPU, m_CPU_heap_));
+	THROW_IF_FALSE(m_context_->create_descriptor_heap(heap_desc_CPU, m_CPU_heap_));
 
 	// Create Sampler Heap
 	qhenki::gfx::DescriptorHeapDesc sampler_heap_desc
@@ -93,7 +93,7 @@ void ExampleApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU, // Create samplers directly on GPU heap
 		.descriptor_count = 16, // TODO: expose max count to context
 	};
-	THROW_IF_FAILED(m_context_->create_descriptor_heap(sampler_heap_desc, m_sampler_heap_));
+	THROW_IF_FALSE(m_context_->create_descriptor_heap(sampler_heap_desc, m_sampler_heap_));
 
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
@@ -102,7 +102,7 @@ void ExampleApp::create()
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
 		.increment_slot = true,
 	};
-	THROW_IF_FAILED(m_context_->create_pipeline(pipeline_desc, &m_pipeline_, 
+	THROW_IF_FALSE(m_context_->create_pipeline(pipeline_desc, &m_pipeline_, 
 			m_vertex_shader_, m_pixel_shader_, &m_pipeline_layout_, nullptr, L"triangle_pipeline"));
 
 	// A graphics queue is already given to the application by the context
@@ -110,7 +110,7 @@ void ExampleApp::create()
 	// Allocate Command Pool(s)/Allocator(s) from queue
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		THROW_IF_FAILED(m_context_->create_command_pool(&m_cmd_pools_[i], m_graphics_queue_));
+		THROW_IF_FALSE(m_context_->create_command_pool(&m_cmd_pools_[i], m_graphics_queue_));
 	}
 
 	qhenki::gfx::Buffer vertex_CPU;
@@ -129,10 +129,10 @@ void ExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FAILED(m_context_->create_buffer(desc, vertices.data(), &vertex_CPU, L"Interleaved Position/Color Buffer CPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(desc, vertices.data(), &vertex_CPU, L"Interleaved Position/Color Buffer CPU"));
 
 	desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FAILED(m_context_->create_buffer(desc, nullptr, &m_vertex_buffer_, L"Interleaved Position/Color Buffer GPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(desc, nullptr, &m_vertex_buffer_, L"Interleaved Position/Color Buffer GPU"));
 
 	constexpr auto indices = std::array{ 0u, 1u, 2u };
 	qhenki::gfx::BufferDesc index_desc
@@ -141,10 +141,10 @@ void ExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::INDEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FAILED(m_context_->create_buffer(index_desc, indices.data(), &index_CPU, L"Index Buffer CPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(index_desc, indices.data(), &index_CPU, L"Index Buffer CPU"));
 
 	index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FAILED(m_context_->create_buffer(index_desc, nullptr, &m_index_buffer_, L"Index Buffer GPU"));
+	THROW_IF_FALSE(m_context_->create_buffer(index_desc, nullptr, &m_index_buffer_, L"Index Buffer GPU"));
 
 	// Make 2 matrix constant buffers for double buffering
 	qhenki::gfx::BufferDesc matrix_desc
@@ -156,8 +156,8 @@ void ExampleApp::create()
 	// TODO: persistent mapping flag
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		THROW_IF_FAILED(m_context_->create_buffer(matrix_desc, nullptr, &m_matrix_buffers_[i], L"Matrix Buffer"));
-		THROW_IF_FAILED(m_context_->create_descriptor(m_matrix_buffers_[i], m_CPU_heap_, 
+		THROW_IF_FALSE(m_context_->create_buffer(matrix_desc, nullptr, &m_matrix_buffers_[i], L"Matrix Buffer"));
+		THROW_IF_FALSE(m_context_->create_descriptor(m_matrix_buffers_[i], m_CPU_heap_, 
 			&m_matrix_descriptors_[i], qhenki::gfx::BufferDescriptorType::CBV));
 	}
 
@@ -170,10 +170,10 @@ void ExampleApp::create()
 		.dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
 		.initial_layout = qhenki::gfx::Layout::COPY_DEST,
 	};
-	THROW_IF_FAILED(m_context_->create_texture(texture_desc, &m_texture_, L"Checkerboard Texture"));
+	THROW_IF_FALSE(m_context_->create_texture(texture_desc, &m_texture_, L"Checkerboard Texture"));
 
 	// Create CPU descriptor for texture
-	THROW_IF_FAILED(m_context_->create_descriptor_texture_view(m_texture_, m_CPU_heap_, &m_texture_descriptor_));
+	THROW_IF_FALSE(m_context_->create_descriptor_texture_view(m_texture_, m_CPU_heap_, &m_texture_descriptor_));
 
 	// Create sampler
 	qhenki::gfx::SamplerDesc sampler_desc
@@ -181,9 +181,9 @@ void ExampleApp::create()
 		.min_filter = qhenki::gfx::Filter::NEAREST,
 		.mag_filter = qhenki::gfx::Filter::NEAREST,
 	}; // Default parameters
-	THROW_IF_FAILED(m_context_->create_sampler(sampler_desc, &m_sampler_));
+	THROW_IF_FALSE(m_context_->create_sampler(sampler_desc, &m_sampler_));
 	// Create sampler descriptor
-	THROW_IF_FAILED(m_context_->create_descriptor(m_sampler_, m_sampler_heap_, &m_sampler_descriptor_));
+	THROW_IF_FALSE(m_context_->create_descriptor(m_sampler_, m_sampler_heap_, &m_sampler_descriptor_));
 
 	// Texture data
 	constexpr auto checkerboard = std::array
@@ -196,13 +196,13 @@ void ExampleApp::create()
 	qhenki::gfx::Buffer texture_staging; // Must keep in scope until copy is done
 
 	// Schedule copies to GPU buffers / texture
-	THROW_IF_FAILED(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
 	qhenki::gfx::CommandList cmd_list;
-	THROW_IF_FAILED(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
 	m_context_->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer_, 0, desc.size);
 	m_context_->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer_, 0, index_desc.size);
 
-	THROW_IF_FAILED(m_context_->copy_to_texture(cmd_list, checkerboard.data(), texture_staging, m_texture_));
+	THROW_IF_FALSE(m_context_->copy_to_texture(cmd_list, checkerboard.data(), texture_staging, m_texture_));
 
 	// Transition texture
 	qhenki::gfx::ImageBarrier barrier_render =
@@ -219,7 +219,7 @@ void ExampleApp::create()
 	m_context_->set_barrier_resource(1, &barrier_render, m_texture_);
 	m_context_->issue_barrier(&cmd_list, 1, &barrier_render);
 
-	THROW_IF_FAILED(m_context_->close_command_list(&cmd_list));
+	THROW_IF_FALSE(m_context_->close_command_list(&cmd_list));
 	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
 	qhenki::gfx::SubmitInfo info
 	{
@@ -238,7 +238,7 @@ void ExampleApp::create()
 		.fences = &m_fence_frame_ready_,
 		.values = &m_fence_frame_ready_val_[get_frame_index()]
 	};
-	THROW_IF_FAILED(m_context_->wait_fences(wait_info)); // Block CPU until done
+	THROW_IF_FALSE(m_context_->wait_fences(wait_info)); // Block CPU until done
 }
 
 void ExampleApp::render()
@@ -263,15 +263,15 @@ void ExampleApp::render()
 
 	// Update matrix buffer
 	const auto buffer_pointer = m_context_->map_buffer(m_matrix_buffers_[get_frame_index()]);
-	THROW_IF_FAILED(buffer_pointer);
+	THROW_IF_FALSE(buffer_pointer);
 	memcpy(buffer_pointer, &matrices_, sizeof(CameraMatrices));
 	m_context_->unmap_buffer(m_matrix_buffers_[get_frame_index()]);
 
-	THROW_IF_FAILED(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
 
 	// Create a command list in the open state
 	qhenki::gfx::CommandList cmd_list;
-	THROW_IF_FAILED(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
+	THROW_IF_FALSE(m_context_->create_command_list(&cmd_list, m_cmd_pools_[get_frame_index()]));
 
 	// Resource transition
 	qhenki::gfx::ImageBarrier barrier_render = 
@@ -315,7 +315,7 @@ void ExampleApp::render()
 
 	m_context_->set_descriptor_heap(&cmd_list, m_GPU_heap_, m_sampler_heap_);
 
-	THROW_IF_FAILED(m_context_->bind_pipeline(&cmd_list, m_pipeline_));
+	THROW_IF_FALSE(m_context_->bind_pipeline(&cmd_list, m_pipeline_));
 
 	// Bind resources
 	if (m_context_->is_compatibility())
@@ -332,18 +332,18 @@ void ExampleApp::render()
 	else
 	{
 		qhenki::gfx::Descriptor descriptor; // Location of start of GPU heap
-		THROW_IF_FAILED(m_context_->get_descriptor(0, m_GPU_heap_, &descriptor));
+		THROW_IF_FALSE(m_context_->get_descriptor(0, m_GPU_heap_, &descriptor));
 
 		// Parameter 0 is table, set to start at beginning of GPU heap
 		m_context_->set_descriptor_table(&cmd_list, 0, descriptor);
 
 		// Copy matrix and texture descriptors to GPU heap
-		THROW_IF_FAILED(m_context_->copy_descriptors(1, m_matrix_descriptors_[get_frame_index()], descriptor));
-		THROW_IF_FAILED(m_context_->get_descriptor(1, m_GPU_heap_, &descriptor)); // 1
-		THROW_IF_FAILED(m_context_->copy_descriptors(1, m_texture_descriptor_, descriptor));
+		THROW_IF_FALSE(m_context_->copy_descriptors(1, m_matrix_descriptors_[get_frame_index()], descriptor));
+		THROW_IF_FALSE(m_context_->get_descriptor(1, m_GPU_heap_, &descriptor)); // 1
+		THROW_IF_FALSE(m_context_->copy_descriptors(1, m_texture_descriptor_, descriptor));
 
 		// Sampler
-		THROW_IF_FAILED(m_context_->get_descriptor(0, m_sampler_heap_, &descriptor));
+		THROW_IF_FALSE(m_context_->get_descriptor(0, m_sampler_heap_, &descriptor));
 		m_context_->set_descriptor_table(&cmd_list, 1, descriptor);
 	}
 
