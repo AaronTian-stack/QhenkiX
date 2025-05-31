@@ -1216,6 +1216,11 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 		.Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: need to set flags for RT and UAV
 		//.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
 	};
+	if (D3DHelper::is_depth_stencil_format(desc.format))
+	{
+		resource_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // Overwrite
+		// TODO: RT, UAV flags
+	}
 
 	switch (desc.dimension)
 	{
@@ -1269,11 +1274,11 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 	return true;
 }
 
-bool allocate_arb_texture_descriptor(DescriptorHeap& heap, D3D12DescriptorHeap* const heap_d3d12, Descriptor* const descriptor, 
-	const wchar_t* message, D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+bool allocate_arb_texture_descriptor(DescriptorHeap& heap, D3D12DescriptorHeap* const heap_d3d12, DescriptorHeapDesc::Type expected_type,
+	Descriptor* const descriptor, const wchar_t* message, D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
 	assert(cpu_handle);
-	if (heap.desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
+	if (heap.desc.type != expected_type)
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type for ");
 		OutputDebugString(message);
@@ -1304,7 +1309,10 @@ bool D3D12Context::create_descriptor_texture_view(const Texture& texture, Descri
 	const auto heap_d3d12 = to_internal(heap);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-	allocate_arb_texture_descriptor(heap, heap_d3d12, descriptor, L"SRV", &cpu_handle);
+	if (!allocate_arb_texture_descriptor(heap, heap_d3d12, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, L"SRV", &cpu_handle))
+	{
+		return false;
+	}
 	
 	// TODO: description
 	m_device_->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
@@ -1318,7 +1326,10 @@ bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 	const auto heap_d3d12 = to_internal(heap);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-	allocate_arb_texture_descriptor(heap, heap_d3d12, descriptor, L"DSV", &cpu_handle);
+	if (allocate_arb_texture_descriptor(heap, heap_d3d12, DescriptorHeapDesc::Type::DSV, descriptor, L"DSV", &cpu_handle))
+	{
+		return false;
+	}
 
 	m_device_->CreateDepthStencilView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
@@ -1650,7 +1661,7 @@ void D3D12Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain
 }
 
 void D3D12Context::start_render_pass(CommandList* cmd_list, unsigned rt_count,
-                                     const RenderTarget* rts, const RenderTarget* depth_stencil)
+                                     const RenderTarget* const* rts, const RenderTarget* const depth_stencil)
 {
 	assert(false);
 }
@@ -1748,24 +1759,24 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
 	return true;
 }
 
-void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index)
+void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index)
 {
 	for (unsigned i = 0; i < count; i++)
 	{
 		assert(frame_index == m_swapchain_->GetCurrentBackBufferIndex());
-		barriers[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
+		(*barriers)[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
 	}
 }
 
-void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
+void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target)
 {
 	for (unsigned i = 0; i < count; i++)
 	{
-		barriers[i].resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
+		(*barriers)[i].resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
 	}
 }
 
-void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
@@ -1774,7 +1785,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 	std::array<D3D12_TEXTURE_BARRIER, 16> d3d12_barriers;
 	for (unsigned i = 0; i < count; i++)
 	{
-		const auto& barrier = barriers[i];
+		const auto& barrier = *barriers[i];
 
 		if (!barrier.resource)
 		{

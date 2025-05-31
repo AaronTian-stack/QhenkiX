@@ -117,7 +117,7 @@ namespace qhenki::gfx
 
 		void start_render_pass(CommandList* cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) override;
 
-		void start_render_pass(CommandList* cmd_list, unsigned rt_count, const RenderTarget* rts, const RenderTarget* depth_stencil) override;
+		void start_render_pass(CommandList* cmd_list, unsigned rt_count, const RenderTarget* const* rts, const RenderTarget* depth_stencil) override;
 
 		void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) override;
 		void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) override;
@@ -131,10 +131,10 @@ namespace qhenki::gfx
 		uint64_t get_fence_value(const Fence& fence) override;
 		bool wait_fences(const WaitInfo& info) override;
 
-		void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index) override;
-		void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override;
+		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index) override;
+		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target) override;
 
-		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
+		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers) override;
 
 		void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
 		void start_imgui_frame() override;
@@ -142,9 +142,9 @@ namespace qhenki::gfx
 		void destroy_imgui() override;
 
 		// D3D12 does not implement compability functions
-		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) override {}
-		void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) override {}
-		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) override {}
+		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage) override {}
+		void compatibility_set_textures(unsigned slot, unsigned count, Texture* const* textures, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override {}
+		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage) override {}
 
 		void wait_idle(Queue& queue) override;
 

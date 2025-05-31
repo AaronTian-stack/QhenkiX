@@ -59,7 +59,7 @@ void ImGUIExampleApp::create()
 	{
 		.num_render_targets = 1,
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
-		.increment_slot = true,
+		.increment_slot = false,
 	};
 	THROW_IF_FALSE(m_context_->create_pipeline(pipeline_desc, &m_pipeline_, 
 			m_vertex_shader_, m_pixel_shader_, &m_pipeline_layout_, nullptr, L"triangle_pipeline"));
@@ -168,8 +168,9 @@ void ImGUIExampleApp::render()
 		.src_layout = qhenki::gfx::Layout::PRESENT,
 		.dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
 	};
-	m_context_->set_barrier_resource(1, &barrier_render, m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, &barrier_render);
+	std::array barriers = { &barrier_render };
+	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Clear back buffer / Start render pass
 	m_context_->start_render_pass(&cmd_list, m_swapchain_, nullptr, get_frame_index());
@@ -224,8 +225,9 @@ void ImGUIExampleApp::render()
 		.src_layout = qhenki::gfx::Layout::RENDER_TARGET,
 		.dst_layout = qhenki::gfx::Layout::PRESENT,
 	};
-	m_context_->set_barrier_resource(1, &barrier_present, m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, &barrier_present);
+	barriers = { &barrier_present };
+	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Close the command list
 	m_context_->close_command_list(&cmd_list);

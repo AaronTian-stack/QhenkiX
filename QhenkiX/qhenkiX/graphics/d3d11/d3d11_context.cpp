@@ -697,19 +697,20 @@ void D3D11Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain
 	// TODO: optional clear, user set values
 	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->ClearRenderTargetView(rtv, clear_color);
+	//m_device_context_->ClearDepthStencilView()
 	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
 }
 
 void D3D11Context::start_render_pass(CommandList* cmd_list, unsigned rt_count,
-                                     const RenderTarget* rts, const RenderTarget* depth_stencil)
+                                     const RenderTarget* const* rts, const RenderTarget* const depth_stencil)
 {
 	std::scoped_lock lock(m_context_mutex_);
     std::array<ID3D11RenderTargetView**, 8> rtvs{};
     // Clear render target views (if applicable)
 	for (unsigned int i = 0; i < rt_count; i++)
 	{
-		const auto& [clear_color, clear_color_value] = rts[i].desc;
-		const auto d3d11_rtv = static_cast<ComPtr<ID3D11RenderTargetView>*>(rts[i].internal_state.get());
+		const auto& [clear_color, clear_color_value] = rts[i]->desc;
+		const auto d3d11_rtv = static_cast<ComPtr<ID3D11RenderTargetView>*>(rts[i]->internal_state.get());
 		assert(d3d11_rtv);
 		if (clear_color)
 		{
@@ -790,17 +791,17 @@ bool D3D11Context::wait_fences(const WaitInfo& info)
 	return true;
 }
 
-void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index)
+void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index)
 {
 	// D3D11 does not have barriers
 }
 
-void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
+void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target)
 {
 	// D3D11 does not have barriers
 }
 
-void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers)
 {
 	// D3D11 does not have barriers
 }
@@ -820,6 +821,7 @@ void D3D11Context::start_imgui_frame()
 
 void D3D11Context::render_imgui_draw_data(CommandList* cmd_list)
 {
+	std::scoped_lock lock(m_context_mutex_);
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
@@ -830,13 +832,13 @@ void D3D11Context::destroy_imgui()
 	ImGui::DestroyContext();
 }
 
-void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage)
+void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage)
 {
 	std::array<ID3D11Buffer**, 15> buffer_d3d11{};
 	assert(count <= buffer_d3d11.size());
 	for (unsigned i = 0; i < count; i++)
 	{
-		buffer_d3d11[i] = to_internal(buffers[i])->GetAddressOf();
+		buffer_d3d11[i] = to_internal(*buffers[i])->GetAddressOf();
 	}
 	switch (stage)
 	{
@@ -854,7 +856,7 @@ void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned co
 	}
 }
 
-void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage)
+void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Texture* const* textures, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
 {
 	// Read or write (as UAV not RT) access
 
@@ -878,15 +880,15 @@ void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Tex
 
 	for (unsigned i = 0; i < count; i++)
 	{
-		auto texture_d3d11 = to_internal(textures[i]);
+		auto texture_d3d11 = to_internal(*textures[i]);
 		// The descriptor offset is used as index into vector
 		switch (flag)
 		{
 		case ACCESS_STORAGE_ACCESS:
-			resource_views.unordered_access_views[i] = texture_d3d11->unordered_access_views[descriptors[i].offset].GetAddressOf();
+			resource_views.unordered_access_views[i] = texture_d3d11->unordered_access_views[(*descriptors)[i].offset].GetAddressOf();
 			break;
 		case ACCESS_SHADER_RESOURCE:
-			resource_views.shader_resource_views[i] = texture_d3d11->shader_resource_views[descriptors[i].offset].GetAddressOf();
+			resource_views.shader_resource_views[i] = texture_d3d11->shader_resource_views[(*descriptors)[i].offset].GetAddressOf();
 			break;
 		default:
 			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
@@ -938,13 +940,13 @@ void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Tex
 	}
 }
 
-void D3D11Context::compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage)
+void D3D11Context::compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage)
 {
 	std::array<ID3D11SamplerState**, 15> sampler_d3d11{};
 	assert(count <= sampler_d3d11.size());
 	for (unsigned i = 0; i < count; i++)
 	{
-		sampler_d3d11[i] = to_internal(samplers[i])->GetAddressOf();
+		sampler_d3d11[i] = to_internal(*samplers[i])->GetAddressOf();
 	}
 	switch (stage)
 	{

@@ -303,8 +303,9 @@ void gltfViewerApp::render()
 		.src_layout = qhenki::gfx::Layout::PRESENT,
 		.dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
 	};
-	m_context_->set_barrier_resource(1, &barrier_render, m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, &barrier_render);
+	std::array barriers = { &barrier_render };
+	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Clear back buffer / Start render pass
 	m_context_->start_render_pass(&cmd_list, m_swapchain_, nullptr, get_frame_index());
@@ -338,10 +339,11 @@ void gltfViewerApp::render()
 	// Bind resources
 	if (m_context_->is_compatibility())
 	{
+		std::array mbs = { &m_matrix_buffers_[get_frame_index()] };
 		m_context_->compatibility_set_constant_buffers(0, 1,
-			&m_matrix_buffers_[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
-
-		m_context_->compatibility_set_samplers(0, 1, &m_sampler_, qhenki::gfx::PipelineStage::PIXEL);
+		                                               mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
+		std::array samps = { &m_sampler_ };
+		m_context_->compatibility_set_samplers(0, 1, samps.data(), qhenki::gfx::PipelineStage::PIXEL);
 	}
 	else
 	{
@@ -357,13 +359,6 @@ void gltfViewerApp::render()
 	}
 
 	{ // Render
-		//const unsigned int offset = 0;
-		//constexpr auto stride = static_cast<UINT>(sizeof(Vertex));
-		//m_context_->bind_vertex_buffers(&cmd_list, 0, 1, &m_vertex_buffer_, &stride, &offset);
-		//m_context_->bind_index_buffer(&cmd_list, m_index_buffer_, qhenki::gfx::IndexType::UINT32, 0);
-
-		//m_context_->draw_indexed(&cmd_list, 3, 0, 0);
-
 		// Draw glTF model
 		std::unique_lock<std::mutex> lock(m_model_mutex_, std::defer_lock);
 		if (lock.try_lock() && m_model_.root_node >= 0) // If not still loading (because it is async function)
@@ -445,8 +440,9 @@ void gltfViewerApp::render()
 		.src_layout = qhenki::gfx::Layout::RENDER_TARGET,
 		.dst_layout = qhenki::gfx::Layout::PRESENT,
 	};
-	m_context_->set_barrier_resource(1, &barrier_present, m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, &barrier_present);
+	barriers = { &barrier_present };
+	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Close the command list
 	m_context_->close_command_list(&cmd_list);
