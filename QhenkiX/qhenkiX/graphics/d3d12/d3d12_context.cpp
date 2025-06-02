@@ -1761,10 +1761,12 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
 
 void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index)
 {
+	assert(barriers);
 	for (unsigned i = 0; i < count; i++)
 	{
 		assert(frame_index == m_swapchain_->GetCurrentBackBufferIndex());
-		(*barriers)[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
+		assert(barriers[i]);
+		barriers[i]->resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
 	}
 }
 
@@ -1772,7 +1774,8 @@ void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* bar
 {
 	for (unsigned i = 0; i < count; i++)
 	{
-		(*barriers)[i].resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
+		assert(barriers[i]);
+		barriers[i]->resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
 	}
 }
 
