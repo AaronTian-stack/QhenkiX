@@ -57,8 +57,8 @@ namespace qhenki::gfx
 		bool create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout* layout) override { return true; }
 		void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override {}
 
-		// D3D11 does not have descriptors
-		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override { return true; }
+		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override;
+		// Heaps only store views in D3D11
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override {}
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) override {}
 
@@ -96,10 +96,10 @@ namespace qhenki::gfx
 
 		bool reset_command_pool(CommandPool* command_pool) override;
 
-		// Recording commands is NOT thread safe in D3D11. TODO: runtime check that this is called from the same thread
+		// Recording commands is NOT thread safe in D3D11
 
 		void start_render_pass(CommandList* cmd_list, Swapchain& swapchain,
-		                       const RenderTarget* depth_stencil, UINT frame_index) override;
+		                       const float* clear_color_values, const RenderTarget* depth_stencil, UINT frame_index) override;
 		void start_render_pass(CommandList* cmd_list, unsigned rt_count,
 		                       const RenderTarget* const* rts, const RenderTarget* depth_stencil) override;
 
@@ -110,16 +110,16 @@ namespace qhenki::gfx
 		void draw_indexed(CommandList* cmd_list, uint32_t index_count, uint32_t start_index_offset,
 		                  int32_t base_vertex_offset) override;
 
-		void submit_command_lists(const SubmitInfo& submit_info, Queue* queue) override;
+		void submit_command_lists(const SubmitInfo& submit_info, Queue* queue) override {}
 
-		bool create_fence(Fence* fence, uint64_t initial_value) override;
-		uint64_t get_fence_value(const Fence& fence) override;
-		bool wait_fences(const WaitInfo& info) override;
+		bool create_fence(Fence* fence, uint64_t initial_value) override { return true; }
+		uint64_t get_fence_value(const Fence& fence) override { return 0; }
+		bool wait_fences(const WaitInfo& info) override { return true; }
 
-		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index) override;
-		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target) override;
+		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index) override {}
+		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target) override {}
 
-		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers) override;
+		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers) override {}
 
 		void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
 		void start_imgui_frame() override;
@@ -127,7 +127,7 @@ namespace qhenki::gfx
 		void destroy_imgui() override;
 
 		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage) override;
-		void compatibility_set_textures(unsigned slot, unsigned count, Texture* const* textures, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override;
+		void compatibility_set_textures(unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override;
 		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage) override;
 
 		void wait_idle(Queue& queue) override;

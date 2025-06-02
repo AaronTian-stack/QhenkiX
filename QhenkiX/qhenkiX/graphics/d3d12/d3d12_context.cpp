@@ -1326,7 +1326,7 @@ bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 	const auto heap_d3d12 = to_internal(heap);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-	if (allocate_arb_texture_descriptor(heap, heap_d3d12, DescriptorHeapDesc::Type::DSV, descriptor, L"DSV", &cpu_handle))
+	if (!allocate_arb_texture_descriptor(heap, heap_d3d12, DescriptorHeapDesc::Type::DSV, descriptor, L"DSV", &cpu_handle))
 	{
 		return false;
 	}

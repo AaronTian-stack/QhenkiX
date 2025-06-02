@@ -11,7 +11,7 @@
 #include "d3d11_swapchain.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_shader_compiler.h"
-#include "d3d11_texture.h"
+#include "d3d11_heap.h"
 #include "graphics/shared/d3d_helper.h"
 
 using namespace qhenki::gfx;
@@ -58,19 +58,40 @@ static D3D11Texture* to_internal(const Texture& ext)
 	return d3d11_texture;
 }
 
+static D3D11_SRV_UAV_Heap* to_internal_srv_uav(const DescriptorHeap& ext)
+{
+	auto d3d11_heap = static_cast<D3D11_SRV_UAV_Heap*>(ext.internal_state.get());
+	assert(d3d11_heap);
+	return d3d11_heap;
+}
+
+static D3D11_RTV_Heap* to_internal_rtv(const DescriptorHeap& ext)
+{
+	auto d3d11_heap = static_cast<D3D11_RTV_Heap*>(ext.internal_state.get());
+	assert(d3d11_heap);
+	return d3d11_heap;
+}
+
+static D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
+{
+	auto d3d11_heap = static_cast<D3D11_DSV_Heap*>(ext.internal_state.get());
+	assert(d3d11_heap);
+	return d3d11_heap;
+}
+
 ID3D11Resource* get_texture_resource(D3D11Texture& tex)
 {
-	if (std::holds_alternative<ComPtr<ID3D11Texture1D>>(tex.texture))
+	if (std::holds_alternative<ComPtr<ID3D11Texture1D>>(tex))
 	{
-		return std::get<ComPtr<ID3D11Texture1D>>(tex.texture).Get();
+		return std::get<ComPtr<ID3D11Texture1D>>(tex).Get();
 	}
-	if (std::holds_alternative<ComPtr<ID3D11Texture2D>>(tex.texture))
+	if (std::holds_alternative<ComPtr<ID3D11Texture2D>>(tex))
 	{
-		return std::get<ComPtr<ID3D11Texture2D>>(tex.texture).Get();
+		return std::get<ComPtr<ID3D11Texture2D>>(tex).Get();
 	}
-	if (std::holds_alternative<ComPtr<ID3D11Texture3D>>(tex.texture))
+	if (std::holds_alternative<ComPtr<ID3D11Texture3D>>(tex))
 	{
-		return std::get<ComPtr<ID3D11Texture3D>>(tex.texture).Get();
+		return std::get<ComPtr<ID3D11Texture3D>>(tex).Get();
 	}
 	return nullptr;
 }
@@ -318,6 +339,31 @@ bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 	return true;
 }
 
+bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
+{
+	switch (desc.type)
+	{
+	case DescriptorHeapDesc::Type::CBV_SRV_UAV:
+			heap.internal_state = mkS<D3D11_SRV_UAV_Heap>();
+			break;
+	case DescriptorHeapDesc::Type::RTV:
+		heap.internal_state = mkS<D3D11_RTV_Heap>();
+		break;
+	case DescriptorHeapDesc::Type::DSV:
+		heap.internal_state = mkS<D3D11_DSV_Heap>();
+		break;
+	case DescriptorHeapDesc::Type::SAMPLER:
+		// D3D11 samplers don't need views
+		break;
+	default:
+		OutputDebugString(L"Qhenki D3D11 ERROR: Unsupported descriptor heap type\n");
+		return false;
+	}
+
+	// Could maybe also force fixed size for slightly stricter match with D3D12
+	return true;
+}
+
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name)
 {
 	buffer->desc = desc;
@@ -422,7 +468,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 {
 	texture->desc = desc;
 	texture->internal_state = mkS<D3D11Texture>();
-	const auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
+	auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
 
 	UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
 	if (D3DHelper::is_depth_stencil_format(desc.format))
@@ -445,9 +491,9 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 			.MiscFlags = 0,
 		};
 
-		texture_d3d11->texture = ComPtr<ID3D11Texture1D>();
+		texture_d3d11->emplace<ComPtr<ID3D11Texture1D>>();
 		if (FAILED(m_device_->CreateTexture1D(&texture_desc, nullptr, 
-			std::get<ComPtr<ID3D11Texture1D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
+			std::get<ComPtr<ID3D11Texture1D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 1D texture\n");
 			return false;
@@ -469,9 +515,9 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 			.MiscFlags = 0, // TODO: cubemaps?
 		};
 
-		texture_d3d11->texture = ComPtr<ID3D11Texture2D>();
+		texture_d3d11->emplace<ComPtr<ID3D11Texture2D>>();
 		if (FAILED(m_device_->CreateTexture2D(&texture_desc, nullptr,
-			std::get<ComPtr<ID3D11Texture2D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
+			std::get<ComPtr<ID3D11Texture2D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 2D texture\n");
 			return false;
@@ -492,9 +538,9 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 			.MiscFlags = 0,
 		};
 
-		texture_d3d11->texture = ComPtr<ID3D11Texture3D>();
+		texture_d3d11->emplace<ComPtr<ID3D11Texture3D>>();
 		if (FAILED(m_device_->CreateTexture3D(&texture_desc, nullptr,
-			std::get<ComPtr<ID3D11Texture3D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
+			std::get<ComPtr<ID3D11Texture3D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 3D texture\n");
 			return false;
@@ -507,19 +553,20 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 bool D3D11Context::create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
 {
 	assert(descriptor);
-	auto texture_d3d11 = to_internal(texture);
+	const auto texture_d3d11 = to_internal(texture);
+	const auto heap_d3d11 = to_internal_srv_uav(heap);
 
 	descriptor->heap = &heap;
-	descriptor->offset = texture_d3d11->shader_resource_views.size();
+	descriptor->offset = heap_d3d11->shader_resource_views.size();
 
-	texture_d3d11->shader_resource_views.push_back({});
+	heap_d3d11->shader_resource_views.push_back({});
 
 	const auto resource = get_texture_resource(*texture_d3d11);
 	assert(resource);
 
 	// TODO: description
 	if (FAILED(m_device_->CreateShaderResourceView(resource, nullptr, 
-		texture_d3d11->shader_resource_views.back().ReleaseAndGetAddressOf())))
+		heap_d3d11->shader_resource_views.back().ReleaseAndGetAddressOf())))
 	{
 		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture SRV\n");
 		return false;
@@ -530,17 +577,18 @@ bool D3D11Context::create_descriptor_texture_view(const Texture& texture, Descri
 bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
 {
 	assert(descriptor);
-	auto texture_d3d11 = to_internal(texture);
+	const auto texture_d3d11 = to_internal(texture);
+	const auto heap_d3d11 = to_internal_dsv(heap);
 
 	descriptor->heap = &heap;
-	descriptor->offset = texture_d3d11->depth_stencil_views.size();
+	descriptor->offset = heap_d3d11->size();
 
-	texture_d3d11->depth_stencil_views.push_back({});
+	heap_d3d11->push_back({});
 	const auto resource = get_texture_resource(*texture_d3d11);
 	assert(resource);
 
 	if (FAILED(m_device_->CreateDepthStencilView(resource, nullptr, 
-		texture_d3d11->depth_stencil_views.back().ReleaseAndGetAddressOf())))
+		heap_d3d11->back().ReleaseAndGetAddressOf())))
 	{
 		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture DSV\n");
 		return false;
@@ -769,43 +817,6 @@ void D3D11Context::draw_indexed(CommandList* cmd_list, uint32_t index_count, uin
 	m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
 }
 
-void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
-{
-	// D3D11 does not have command lists
-}
-
-bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value)
-{
-	// D3D11 has fences but these are only for interop with D3D12
-	return true;
-}
-
-uint64_t D3D11Context::get_fence_value(const Fence& fence)
-{
-	return 0;
-}
-
-bool D3D11Context::wait_fences(const WaitInfo& info)
-{
-	// D3D11 does not have fences
-	return true;
-}
-
-void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index)
-{
-	// D3D11 does not have barriers
-}
-
-void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target)
-{
-	// D3D11 does not have barriers
-}
-
-void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers)
-{
-	// D3D11 does not have barriers
-}
-
 void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
 {
 	ImGui_ImplSDL3_InitForD3D(window.get_window());
@@ -856,7 +867,7 @@ void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned co
 	}
 }
 
-void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Texture* const* textures, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
+void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
 {
 	// Read or write (as UAV not RT) access
 
@@ -880,15 +891,17 @@ void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Tex
 
 	for (unsigned i = 0; i < count; i++)
 	{
-		auto texture_d3d11 = to_internal(*textures[i]);
+		assert(descriptors[i]);
+		assert(descriptors[i]->heap);
+		const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
 		// The descriptor offset is used as index into vector
 		switch (flag)
 		{
 		case ACCESS_STORAGE_ACCESS:
-			resource_views.unordered_access_views[i] = texture_d3d11->unordered_access_views[(*descriptors)[i].offset].GetAddressOf();
+			resource_views.unordered_access_views[i] = heap->unordered_access_views[descriptors[i]->offset].GetAddressOf();
 			break;
 		case ACCESS_SHADER_RESOURCE:
-			resource_views.shader_resource_views[i] = texture_d3d11->shader_resource_views[(*descriptors)[i].offset].GetAddressOf();
+			resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i]->offset].GetAddressOf();
 			break;
 		default:
 			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");

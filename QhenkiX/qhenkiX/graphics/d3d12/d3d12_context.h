@@ -143,7 +143,7 @@ namespace qhenki::gfx
 
 		// D3D12 does not implement compability functions
 		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage) override {}
-		void compatibility_set_textures(unsigned slot, unsigned count, Texture* const* textures, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override {}
+		void compatibility_set_textures(unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override {}
 		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage) override {}
 
 		void wait_idle(Queue& queue) override;

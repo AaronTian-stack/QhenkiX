@@ -325,11 +325,9 @@ void ExampleApp::render()
 		std::array mbs = { &m_matrix_buffers_[get_frame_index()] };
 		m_context_->compatibility_set_constant_buffers(0, 1, 
 			mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
-		// TODO: bind texture
-		std::array txs = { &m_texture_ };
 		std::array dscs = { &m_texture_descriptor_ };
-		m_context_->compatibility_set_textures(1, 1, txs.data(), dscs.data(),
-		                                       qhenki::gfx::ACCESS_SHADER_RESOURCE, qhenki::gfx::PipelineStage::PIXEL);
+		m_context_->compatibility_set_textures(1, 1, dscs.data(), qhenki::gfx::ACCESS_SHADER_RESOURCE,
+		                                       qhenki::gfx::PipelineStage::PIXEL);
 
 		std::array samplers = { &m_sampler_ };
 		m_context_->compatibility_set_samplers(0, 1, samplers.data(), qhenki::gfx::PipelineStage::PIXEL);
