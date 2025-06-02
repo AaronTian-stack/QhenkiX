@@ -736,45 +736,69 @@ bool D3D11Context::reset_command_pool(CommandPool* command_pool)
 	return true; // D3D11 does not have command pools
 }
 
+ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context_, const RenderTarget* const depth_stencil)
+{
+	ID3D11DepthStencilView* ds = nullptr;
+	if (depth_stencil)
+	{
+		if (depth_stencil->clear_type != RenderTarget::ClearType::None)
+		{
+			assert(depth_stencil->descriptor.heap);
+			const auto heap = to_internal_dsv(*depth_stencil->descriptor.heap);
+			assert(heap);
+			ds = heap->at(depth_stencil->descriptor.offset).Get();
+			assert(ds);
+
+			D3D11_CLEAR_FLAG clear = static_cast<D3D11_CLEAR_FLAG>(0);
+			if (depth_stencil->clear_type & RenderTarget::ClearType::Depth)
+			{
+				clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_DEPTH));
+			}
+			if (depth_stencil->clear_type & RenderTarget::ClearType::Stencil)
+			{
+				clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_STENCIL));
+			}
+			assert(clear);
+
+			const auto& [clear_depth_value, clear_stencil_value] = depth_stencil->clear_params.dsv_clear_params;
+			m_device_context_->ClearDepthStencilView(ds, clear, clear_depth_value, clear_stencil_value);
+		}
+	}
+	return ds;
+}
+
 void D3D11Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain,
-                                     const RenderTarget* depth_stencil, UINT frame_index)
+                                     const float* clear_color_values, const RenderTarget* const depth_stencil, UINT frame_index)
 {
 	const auto swap_d3d11 = to_internal(swapchain);
 	const auto rtv = swap_d3d11->sc_render_target.Get();
-	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	// TODO: optional clear, user set values
 	std::scoped_lock lock(m_context_mutex_);
-	m_device_context_->ClearRenderTargetView(rtv, clear_color);
-	//m_device_context_->ClearDepthStencilView()
-	m_device_context_->OMSetRenderTargets(1, &rtv, nullptr);
+	m_device_context_->ClearRenderTargetView(rtv, clear_color_values);
+	ID3D11DepthStencilView* ds = start_dsv(m_device_context_, depth_stencil);
+	m_device_context_->OMSetRenderTargets(1, &rtv, ds);
 }
 
 void D3D11Context::start_render_pass(CommandList* cmd_list, unsigned rt_count,
                                      const RenderTarget* const* rts, const RenderTarget* const depth_stencil)
 {
 	std::scoped_lock lock(m_context_mutex_);
-    std::array<ID3D11RenderTargetView**, 8> rtvs{};
+    std::array<ID3D11RenderTargetView* const*, 8> rtvs{};
     // Clear render target views (if applicable)
 	for (unsigned int i = 0; i < rt_count; i++)
 	{
-		const auto& [clear_color, clear_color_value] = rts[i]->desc;
-		const auto d3d11_rtv = static_cast<ComPtr<ID3D11RenderTargetView>*>(rts[i]->internal_state.get());
-		assert(d3d11_rtv);
-		if (clear_color)
+		assert(rts[i]);
+		const auto heap = to_internal_rtv(*rts[i]->descriptor.heap);
+		assert(heap);
+		// Descriptor is used as index
+		const auto& rtv = heap->at(rts[i]->descriptor.offset);
+		if (rts[i]->clear_type == RenderTarget::ClearType::Color)
 		{
-			m_device_context_->ClearRenderTargetView(d3d11_rtv->Get(), clear_color_value.data());
+			m_device_context_->ClearRenderTargetView(rtv.Get(), rts[i]->clear_params.clear_color_value.data());
 		}
-		rtvs[i] = d3d11_rtv->GetAddressOf();
+		rtvs[i] = rtv.GetAddressOf();
 	}
-    // D3D11 does not have concept of render pass
-    // Set render target views
-    // TODO: depth stencil views
-	ID3D11DepthStencilView* ds = nullptr;
-	if (depth_stencil)
-	{
-		assert(false && "D3D11: Depth Stencil not implemented");
-		m_device_context_->ClearDepthStencilView(ds, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-	}
+	ID3D11DepthStencilView* ds = start_dsv(m_device_context_, depth_stencil);
+
     m_device_context_->OMSetRenderTargets(rt_count, rtvs[0], ds);
 }
 
@@ -791,7 +815,6 @@ void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_
 			.MinDepth = viewport[i].MinDepth,
 			.MaxDepth = viewport[i].MaxDepth,
 		};
-
     }
 	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->RSSetViewports(count, m_viewports_.data());

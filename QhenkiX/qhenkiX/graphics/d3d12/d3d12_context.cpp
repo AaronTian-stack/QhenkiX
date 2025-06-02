@@ -1639,7 +1639,7 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
 }
 
 void D3D12Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain,
-                                     const RenderTarget* depth_stencil, UINT frame_index)
+                                     const float* clear_color_values, const RenderTarget* const depth_stencil, UINT frame_index)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
@@ -1651,13 +1651,40 @@ void D3D12Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain
 	D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle;
 	rtv_heap->get_CPU_descriptor(&rtv_handle, m_swapchain_descriptors_[frame_index].offset, 0);
 
-	// TODO: depth stencil
-	command_list->OMSetRenderTargets(1, &rtv_handle, 
-		FALSE, nullptr);
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
 
-	// TODO: optional clear values
-	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
+	if (depth_stencil)
+	{
+		assert(depth_stencil->descriptor.heap);
+		const auto heap = to_internal(*depth_stencil->descriptor.heap);
+		heap->get_CPU_descriptor(&cpu_handle, depth_stencil->descriptor.offset, 0);
+		command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &cpu_handle);
+	}
+	else
+	{
+		command_list->OMSetRenderTargets(1, &rtv_handle,
+			FALSE, nullptr);
+	}
+
+	command_list->ClearRenderTargetView(rtv_handle, clear_color_values, 0, nullptr);
+	if (depth_stencil)
+	{
+		if (depth_stencil->clear_type != RenderTarget::None)
+		{
+			D3D12_CLEAR_FLAGS clear_flags = static_cast<D3D12_CLEAR_FLAGS>(0);
+			if (depth_stencil->clear_type & RenderTarget::Depth)
+			{
+				clear_flags |= D3D12_CLEAR_FLAG_DEPTH;
+			}
+			if (depth_stencil->clear_type & RenderTarget::Stencil)
+			{
+				clear_flags |= D3D12_CLEAR_FLAG_STENCIL;
+			}
+			assert(clear_flags);
+			auto [clear_depth_value, clear_stencil_value] = depth_stencil->clear_params.dsv_clear_params;
+			command_list->ClearDepthStencilView(cpu_handle, clear_flags, clear_depth_value, clear_stencil_value, 0, nullptr);
+		}
+	}
 }
 
 void D3D12Context::start_render_pass(CommandList* cmd_list, unsigned rt_count,

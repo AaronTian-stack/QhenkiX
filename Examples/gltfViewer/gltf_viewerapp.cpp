@@ -110,6 +110,7 @@ void gltfViewerApp::create()
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
 	{
+		.depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
 		.num_render_targets = 1,
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
 		.increment_slot = true,
@@ -308,7 +309,16 @@ void gltfViewerApp::render()
 	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Clear back buffer / Start render pass
-	m_context_->start_render_pass(&cmd_list, m_swapchain_, nullptr, get_frame_index());
+	std::array clear_values = { 0.f, 0.f, 0.f, 1.f };
+	qhenki::gfx::RenderTarget depth
+	{
+		.clear_params = {
+			.dsv_clear_params = { 1.f, 0 }
+		},
+		.clear_type = qhenki::gfx::RenderTarget::Depth,
+		.descriptor = m_depth_buffer_descriptor_,
+	};
+	m_context_->start_render_pass(&cmd_list, m_swapchain_, clear_values.data(), &depth, get_frame_index());
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport
@@ -378,10 +388,6 @@ void gltfViewerApp::render()
 				const auto& mesh = m_model_.meshes[current_node.mesh_index];
 				for (const auto& prim : mesh.primitives)
 				{
-					std::array<qhenki::gfx::Buffer*, 8> vertex_buffers;
-					std::array<unsigned, 8> offsets;
-					std::array<unsigned, 8> strides;
-
 					for (const auto& attr : prim.attributes)
 					{
 						if (attribute_to_slot.contains(attr.name))
@@ -403,7 +409,6 @@ void gltfViewerApp::render()
 							m_context_->bind_vertex_buffers(&cmd_list, slot, 1, &buffer, &stride, &offset);
 						}
 					}
-
 					const auto& index_accessor = m_model_.accessors[prim.indices];
 					const auto& buffer_view = m_model_.buffer_views[index_accessor.buffer_view];
 					const auto& index_buffer = m_model_.buffers[buffer_view.buffer_index];

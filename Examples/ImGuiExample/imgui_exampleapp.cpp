@@ -173,7 +173,8 @@ void ImGUIExampleApp::render()
 	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Clear back buffer / Start render pass
-	m_context_->start_render_pass(&cmd_list, m_swapchain_, nullptr, get_frame_index());
+	std::array clear_values = { 0.f, 0.f, 0.f, 1.f };
+	m_context_->start_render_pass(&cmd_list, m_swapchain_, clear_values.data(), nullptr, get_frame_index());
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport

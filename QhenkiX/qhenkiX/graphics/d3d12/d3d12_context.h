@@ -115,7 +115,7 @@ namespace qhenki::gfx
 
 		bool reset_command_pool(CommandPool* command_pool) override;
 
-		void start_render_pass(CommandList* cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) override;
+		void start_render_pass(CommandList* cmd_list, Swapchain& swapchain, const float* clear_color_values, const RenderTarget* depth_stencil, UINT frame_index) override;
 
 		void start_render_pass(CommandList* cmd_list, unsigned rt_count, const RenderTarget* const* rts, const RenderTarget* depth_stencil) override;
 

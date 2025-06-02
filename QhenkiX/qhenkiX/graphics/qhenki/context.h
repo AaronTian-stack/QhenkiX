@@ -111,7 +111,7 @@ namespace qhenki::gfx
 		virtual bool reset_command_pool(CommandPool* command_pool) = 0;
 
 		// TODO: optional clear
-		virtual void start_render_pass(CommandList* cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) = 0;
+		virtual void start_render_pass(CommandList* cmd_list, Swapchain& swapchain, const float* clear_color_values, const RenderTarget* depth_stencil, UINT frame_index) = 0;
 		virtual void start_render_pass(CommandList* cmd_list, unsigned int rt_count, const RenderTarget* const* rts, const RenderTarget* depth_stencil) = 0;
 
 		virtual void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;
