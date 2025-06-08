@@ -111,8 +111,8 @@ namespace qhenki::gfx
 		virtual bool reset_command_pool(CommandPool* command_pool) = 0;
 
 		// TODO: optional clear
-		virtual void start_render_pass(CommandList* cmd_list, Swapchain& swapchain, const RenderTarget* depth_stencil, UINT frame_index) = 0;
-		virtual void start_render_pass(CommandList* cmd_list, unsigned int rt_count, const RenderTarget* rts, const RenderTarget* depth_stencil) = 0;
+		virtual void start_render_pass(CommandList* cmd_list, Swapchain& swapchain, const float* clear_color_values, const RenderTarget* depth_stencil, UINT frame_index) = 0;
+		virtual void start_render_pass(CommandList* cmd_list, unsigned int rt_count, const RenderTarget* const* rts, const RenderTarget* depth_stencil) = 0;
 
 		virtual void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;
 		virtual void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) = 0;
@@ -131,18 +131,18 @@ namespace qhenki::gfx
 		virtual bool wait_fences(const WaitInfo& info) = 0;
 
 		// Sets ImageBarrier resource to swapchain resource
-		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index) = 0;
-		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) = 0;
-		virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
+		virtual void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index) = 0;
+		virtual void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target) = 0;
+		virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers) = 0;
 
 		virtual void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) = 0;
 		virtual void start_imgui_frame() = 0;
 		virtual void render_imgui_draw_data(CommandList* cmd_list) = 0;
 		virtual void destroy_imgui() = 0;
 
-		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) = 0;
-		virtual void compatibility_set_textures(unsigned slot, unsigned count, Texture* textures, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) = 0;
-		virtual void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) = 0;
+		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage) = 0;
+		virtual void compatibility_set_textures(unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) = 0;
+		virtual void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage) = 0;
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_idle(Queue& queue) = 0;

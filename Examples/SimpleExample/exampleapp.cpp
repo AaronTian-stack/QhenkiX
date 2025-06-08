@@ -100,7 +100,7 @@ void ExampleApp::create()
 	{
 		.num_render_targets = 1,
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
-		.increment_slot = true,
+		.increment_slot = false,
 	};
 	THROW_IF_FALSE(m_context_->create_pipeline(pipeline_desc, &m_pipeline_, 
 			m_vertex_shader_, m_pixel_shader_, &m_pipeline_layout_, nullptr, L"triangle_pipeline"));
@@ -216,8 +216,9 @@ void ExampleApp::create()
 		.src_layout = qhenki::gfx::Layout::COPY_DEST,
 		.dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
 	};
-	m_context_->set_barrier_resource(1, &barrier_render, m_texture_);
-	m_context_->issue_barrier(&cmd_list, 1, &barrier_render);
+	std::array barriers = { &barrier_render };
+	m_context_->set_barrier_resource(1, barriers.data(), m_texture_);
+	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	THROW_IF_FALSE(m_context_->close_command_list(&cmd_list));
 	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
@@ -285,11 +286,13 @@ void ExampleApp::render()
 		.src_layout = qhenki::gfx::Layout::PRESENT,
 		.dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
 	};
-	m_context_->set_barrier_resource(1, &barrier_render, m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, &barrier_render);
+	std::array barriers = { &barrier_render };
+	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Clear back buffer / Start render pass
-	m_context_->start_render_pass(&cmd_list, m_swapchain_, nullptr, get_frame_index());
+	std::array clear_values = { 0.f, 0.f, 0.f, 1.f };
+	m_context_->start_render_pass(&cmd_list, m_swapchain_, clear_values.data(), nullptr, get_frame_index());
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport
@@ -320,14 +323,15 @@ void ExampleApp::render()
 	// Bind resources
 	if (m_context_->is_compatibility())
 	{
+		std::array mbs = { &m_matrix_buffers_[get_frame_index()] };
 		m_context_->compatibility_set_constant_buffers(0, 1, 
-			&m_matrix_buffers_[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
-		// TODO: bind texture
+			mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
+		std::array dscs = { &m_texture_descriptor_ };
+		m_context_->compatibility_set_textures(1, 1, dscs.data(), qhenki::gfx::ACCESS_SHADER_RESOURCE,
+		                                       qhenki::gfx::PipelineStage::PIXEL);
 
-		m_context_->compatibility_set_textures(1, 1, &m_texture_, &m_texture_descriptor_, 
-			qhenki::gfx::ACCESS_SHADER_RESOURCE, qhenki::gfx::PipelineStage::PIXEL);
-
-		m_context_->compatibility_set_samplers(0, 1, &m_sampler_, qhenki::gfx::PipelineStage::PIXEL);
+		std::array samplers = { &m_sampler_ };
+		m_context_->compatibility_set_samplers(0, 1, samplers.data(), qhenki::gfx::PipelineStage::PIXEL);
 	}
 	else
 	{
@@ -367,8 +371,9 @@ void ExampleApp::render()
 		.src_layout = qhenki::gfx::Layout::RENDER_TARGET,
 		.dst_layout = qhenki::gfx::Layout::PRESENT,
 	};
-	m_context_->set_barrier_resource(1, &barrier_present, m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, &barrier_present);
+	barriers = { &barrier_present };
+	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
 
 	// Close the command list
 	m_context_->close_command_list(&cmd_list);

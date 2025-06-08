@@ -735,6 +735,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		{
 			pso_desc->RTVFormats[i] = desc.rtv_formats[i];
 		}
+		pso_desc->DSVFormat = desc.dsv_format;
 		if (const auto hr = m_device_->CreateGraphicsPipelineState(pso_desc, 
 			IID_PPV_ARGS(&d3d12_pipeline->pipeline_state)); FAILED(hr))
 		{
@@ -1136,10 +1137,13 @@ bool D3D12Context::create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_h
 		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 		return false;
 	}
-	if (!heap_d3d12->allocate(&descriptor->offset))
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for buffer\n");
-		return false;
+		if (!heap_d3d12->allocate(&descriptor->offset))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for buffer\n");
+			return false;
+		}
 	}
 	descriptor->heap = &cpu_heap;
 
@@ -1216,6 +1220,24 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 		.Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: need to set flags for RT and UAV
 		//.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
 	};
+	D3D12_CLEAR_VALUE clear
+	{
+		.Format = desc.format,
+	};
+	D3D12_CLEAR_VALUE* clear_ptr = nullptr;
+	if (D3DHelper::is_depth_stencil_format(desc.format))
+	{
+		clear_ptr = &clear;
+		resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		clear.DepthStencil = { .Depth = 1.0f, .Stencil = 0 };
+		// TODO: UAV flags
+	}
+	else if (desc.is_render_target)
+	{
+		clear_ptr = &clear;
+		resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		clear.Color[0] = clear.Color[1] = clear.Color[2] = clear.Color[3] = 0.0f;
+	}
 
 	switch (desc.dimension)
 	{
@@ -1235,25 +1257,11 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 		.HeapType = D3D12_HEAP_TYPE_DEFAULT,
 	};
 
-	//D3D12_CLEAR_VALUE clear
-	//{
-	//	.Format = desc.format,
-	//};
-	//// If it is a depth format, use depth clear value instead of color
-	//if (desc.format == DXGI_FORMAT_D32_FLOAT || desc.format == DXGI_FORMAT_D24_UNORM_S8_UINT)
-	//{
-	//	clear.DepthStencil = { .Depth= 1.0f, .Stencil= 0};
-	//}
-	//else
-	//{
-	//	clear.Color[0] = clear.Color[1] = clear.Color[2] = clear.Color[3] = 0.0f;
-	//}
-
 	if (FAILED(m_allocator_->CreateResource3(
 		&allocation_desc,
 		&resource_desc,
 		D3DHelper::layout_D3D(desc.initial_layout), // Common use should be as copy destination (need to transition later)
-		nullptr, // TODO: need to set clear value for RT
+		clear_ptr,
 		0, nullptr, // probably not going to cast 
 		texture_d3d12->allocation.ReleaseAndGetAddressOf(),
 		IID_NULL, NULL)))
@@ -1269,27 +1277,66 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 	return true;
 }
 
+bool allocate_arb_texture_descriptor(DescriptorHeap& heap, D3D12DescriptorHeap* const heap_d3d12, DescriptorHeapDesc::Type expected_type,
+	Descriptor* const descriptor, const wchar_t* message, D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+{
+	assert(cpu_handle);
+	if (heap.desc.type != expected_type)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type for ");
+		OutputDebugString(message);
+		OutputDebugString(L"\n");
+		return false;
+	}
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+	{
+		if (!heap_d3d12->allocate(&descriptor->offset))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
+			OutputDebugString(message);
+			OutputDebugString(L"\n");
+			return false;
+		}
+	}
+	descriptor->heap = &heap;
+	;
+	if (!heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset, 0))
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
+		return false;
+	}
+	return true;
+}
+
 bool D3D12Context::create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
 {
 	const auto texture_d3d12 = to_internal(texture);
 	const auto heap_d3d12 = to_internal(heap);
 
-	if (!heap_d3d12->allocate(&descriptor->offset))
-	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for texture\n");
-		return false;
-	}
-	descriptor->heap = &heap;
-
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-	if (!heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0))
+	if (!allocate_arb_texture_descriptor(heap, heap_d3d12, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, L"SRV", &cpu_handle))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get CPU descriptor handle\n");
 		return false;
 	}
 	
 	// TODO: description
 	m_device_->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
+
+	return true;
+}
+
+bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
+{
+	const auto texture_d3d12 = to_internal(texture);
+	const auto heap_d3d12 = to_internal(heap);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
+	if (!allocate_arb_texture_descriptor(heap, heap_d3d12, DescriptorHeapDesc::Type::DSV, descriptor, L"DSV", &cpu_handle))
+	{
+		return false;
+	}
+
+	m_device_->CreateDepthStencilView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
 	return true;
 }
@@ -1380,10 +1427,13 @@ bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap& hea
 		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 		return false;
 	}
-	if (!heap_d3d12->allocate(&descriptor->offset))
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
-		return false;
+		if (!heap_d3d12->allocate(&descriptor->offset))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
+			return false;
+		}
 	}
 	descriptor->heap = &heap;
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
@@ -1597,7 +1647,7 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
 }
 
 void D3D12Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain,
-                                     const RenderTarget* depth_stencil, UINT frame_index)
+                                     const float* clear_color_values, const RenderTarget* const depth_stencil, UINT frame_index)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
@@ -1609,17 +1659,44 @@ void D3D12Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain
 	D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle;
 	rtv_heap->get_CPU_descriptor(&rtv_handle, m_swapchain_descriptors_[frame_index].offset, 0);
 
-	// TODO: depth stencil
-	command_list->OMSetRenderTargets(1, &rtv_handle, 
-		FALSE, nullptr);
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
 
-	// TODO: optional clear values
-	const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
+	if (depth_stencil)
+	{
+		assert(depth_stencil->descriptor.heap);
+		const auto heap = to_internal(*depth_stencil->descriptor.heap);
+		heap->get_CPU_descriptor(&cpu_handle, depth_stencil->descriptor.offset, 0);
+		command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &cpu_handle);
+	}
+	else
+	{
+		command_list->OMSetRenderTargets(1, &rtv_handle,
+			FALSE, nullptr);
+	}
+
+	command_list->ClearRenderTargetView(rtv_handle, clear_color_values, 0, nullptr);
+	if (depth_stencil)
+	{
+		if (depth_stencil->clear_type != RenderTarget::None)
+		{
+			D3D12_CLEAR_FLAGS clear_flags = static_cast<D3D12_CLEAR_FLAGS>(0);
+			if (depth_stencil->clear_type & RenderTarget::Depth)
+			{
+				clear_flags |= D3D12_CLEAR_FLAG_DEPTH;
+			}
+			if (depth_stencil->clear_type & RenderTarget::Stencil)
+			{
+				clear_flags |= D3D12_CLEAR_FLAG_STENCIL;
+			}
+			assert(clear_flags);
+			auto [clear_depth_value, clear_stencil_value] = depth_stencil->clear_params.dsv_clear_params;
+			command_list->ClearDepthStencilView(cpu_handle, clear_flags, clear_depth_value, clear_stencil_value, 0, nullptr);
+		}
+	}
 }
 
 void D3D12Context::start_render_pass(CommandList* cmd_list, unsigned rt_count,
-                                     const RenderTarget* rts, const RenderTarget* depth_stencil)
+                                     const RenderTarget* const* rts, const RenderTarget* const depth_stencil)
 {
 	assert(false);
 }
@@ -1717,24 +1794,27 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
 	return true;
 }
 
-void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index)
+void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index)
 {
+	assert(barriers);
 	for (unsigned i = 0; i < count; i++)
 	{
 		assert(frame_index == m_swapchain_->GetCurrentBackBufferIndex());
-		barriers[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
+		assert(barriers[i]);
+		barriers[i]->resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
 	}
 }
 
-void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
+void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target)
 {
 	for (unsigned i = 0; i < count; i++)
 	{
-		barriers[i].resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
+		assert(barriers[i]);
+		barriers[i]->resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
 	}
 }
 
-void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
@@ -1743,7 +1823,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 	std::array<D3D12_TEXTURE_BARRIER, 16> d3d12_barriers;
 	for (unsigned i = 0; i < count; i++)
 	{
-		const auto& barrier = barriers[i];
+		const auto& barrier = *barriers[i];
 
 		if (!barrier.resource)
 		{

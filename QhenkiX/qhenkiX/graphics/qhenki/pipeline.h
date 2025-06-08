@@ -27,7 +27,7 @@ namespace qhenki::gfx
 		D3D12_DEPTH_STENCILOP_DESC            front_face; // 16
 		D3D12_DEPTH_STENCILOP_DESC            back_face; // 16
 		uint32_t                              depth_enable = TRUE; // 4
-		D3D12_DEPTH_WRITE_MASK                depth_write_mask = D3D12_DEPTH_WRITE_MASK_ZERO; // 4
+		D3D12_DEPTH_WRITE_MASK                depth_write_mask = D3D12_DEPTH_WRITE_MASK_ALL; // 4
 		D3D12_COMPARISON_FUNC                 depth_func = D3D12_COMPARISON_FUNC_LESS; // 4
 		BOOL                                  stencil_enable = FALSE; // 4
 		uint8_t                               stencil_read_mask; // 1
@@ -51,6 +51,7 @@ namespace qhenki::gfx
 		PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
 		int num_render_targets = -1; // If this is <= 0, pipeline is lazily created based off what render target is bound at draw time
 		std::array<DXGI_FORMAT, 8> rtv_formats{};
+		DXGI_FORMAT dsv_format{};
 		bool increment_slot = false; // Whether to increment slot of input, used during reflection
 	};
 

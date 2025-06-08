@@ -49,8 +49,8 @@ PSOutput ps_main(PSInput input)
 {
     PSOutput output;
     
-    float3 multColor = g_texture.Sample(samp, input.uv).rgb * input.color;
-    output.color = float4(multColor, 1.0);
+    //float3 multColor = g_texture.Sample(samp, input.uv).rgb * input.color;
+    output.color = float4(input.color, 1.0);
    
     return output;
 }
