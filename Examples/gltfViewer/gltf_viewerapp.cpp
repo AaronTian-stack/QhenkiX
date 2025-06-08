@@ -113,6 +113,7 @@ void gltfViewerApp::create()
 		.depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
 		.num_render_targets = 1,
 		.rtv_formats = { DXGI_FORMAT_R8G8B8A8_UNORM },
+		.dsv_format = DXGI_FORMAT_D32_FLOAT,
 		.increment_slot = true,
 	};
 	THROW_IF_FALSE(m_context_->create_pipeline(pipeline_desc, &m_pipeline_, 
@@ -138,7 +139,7 @@ void gltfViewerApp::create()
 		.initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
 	};
 	THROW_IF_FALSE(m_context_->create_texture(depth_desc, &m_depth_buffer_, L"Depth Buffer Texture"));
-	m_context_->create_descriptor_depth_stencil(m_depth_buffer_, m_dsv_heap_, &m_depth_buffer_descriptor_);
+	THROW_IF_FALSE(m_context_->create_descriptor_depth_stencil(m_depth_buffer_, m_dsv_heap_, &m_depth_buffer_descriptor_));
 
 	// Make 2 matrix constant buffers for double buffering
 	qhenki::gfx::BufferDesc matrix_desc
@@ -488,7 +489,19 @@ void gltfViewerApp::render()
 
 void gltfViewerApp::resize(int width, int height)
 {
-	// TODO: resize depth buffer
+	m_context_->wait_idle(m_graphics_queue_);
+	// Recreate the depth buffer
+	qhenki::gfx::TextureDesc depth_desc
+	{
+		.width = static_cast<uint64_t>(width),
+		.height = static_cast<uint32_t>(height),
+		.format = DXGI_FORMAT_D32_FLOAT,
+		.dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
+		.initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
+	};
+	THROW_IF_FALSE(m_context_->create_texture(depth_desc, &m_depth_buffer_, L"Depth Buffer Texture"));
+	// This will recreate the descriptor in place since it already has an offset.
+	THROW_IF_FALSE(m_context_->create_descriptor_depth_stencil(m_depth_buffer_, m_dsv_heap_, &m_depth_buffer_descriptor_));
 }
 
 void gltfViewerApp::destroy()

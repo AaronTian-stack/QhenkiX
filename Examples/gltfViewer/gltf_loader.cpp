@@ -116,6 +116,8 @@ void GLTFLoader::process_buffers(const tinygltf::Model& tiny_model, GLTFModel* c
         };
         data.context->wait_fences(wait_info);
     }
+
+    data.context->reset_command_pool(data.pool);
 }
 
 void GLTFLoader::process_accessor_views(const tinygltf::Model& tiny_model, GLTFModel* const model)
