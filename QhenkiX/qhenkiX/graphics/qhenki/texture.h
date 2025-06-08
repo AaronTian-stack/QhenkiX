@@ -18,6 +18,7 @@ namespace qhenki::gfx
 		//uint16_t sample_count = 1;
 		TextureDimension dimension;
 		Layout initial_layout;
+		bool is_render_target = false;
 	};
 
 	struct Texture

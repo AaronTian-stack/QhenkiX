@@ -435,12 +435,6 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	return true;
 }
 
-bool D3D11Context::create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type)
-{
-	// D3D11 does not have descriptors
-	return true;
-}
-
 void D3D11Context::copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes)
 {
 	assert(src_offset + bytes <= src.desc.size);
@@ -557,16 +551,20 @@ bool D3D11Context::create_descriptor_texture_view(const Texture& texture, Descri
 	const auto heap_d3d11 = to_internal_srv_uav(heap);
 
 	descriptor->heap = &heap;
-	descriptor->offset = heap_d3d11->shader_resource_views.size();
-
-	heap_d3d11->shader_resource_views.push_back({});
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+	{
+		descriptor->offset = heap_d3d11->shader_resource_views.size();
+		heap_d3d11->shader_resource_views.push_back({});
+	}
 
 	const auto resource = get_texture_resource(*texture_d3d11);
 	assert(resource);
 
+	auto& view = heap_d3d11->shader_resource_views[descriptor->offset];
+
 	// TODO: description
 	if (FAILED(m_device_->CreateShaderResourceView(resource, nullptr, 
-		heap_d3d11->shader_resource_views.back().ReleaseAndGetAddressOf())))
+		view.ReleaseAndGetAddressOf())))
 	{
 		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture SRV\n");
 		return false;

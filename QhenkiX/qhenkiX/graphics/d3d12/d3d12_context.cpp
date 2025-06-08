@@ -735,6 +735,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		{
 			pso_desc->RTVFormats[i] = desc.rtv_formats[i];
 		}
+		pso_desc->DSVFormat = desc.dsv_format;
 		if (const auto hr = m_device_->CreateGraphicsPipelineState(pso_desc, 
 			IID_PPV_ARGS(&d3d12_pipeline->pipeline_state)); FAILED(hr))
 		{
@@ -1136,10 +1137,13 @@ bool D3D12Context::create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_h
 		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 		return false;
 	}
-	if (!heap_d3d12->allocate(&descriptor->offset))
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for buffer\n");
-		return false;
+		if (!heap_d3d12->allocate(&descriptor->offset))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for buffer\n");
+			return false;
+		}
 	}
 	descriptor->heap = &cpu_heap;
 
@@ -1216,10 +1220,23 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 		.Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: need to set flags for RT and UAV
 		//.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
 	};
+	D3D12_CLEAR_VALUE clear
+	{
+		.Format = desc.format,
+	};
+	D3D12_CLEAR_VALUE* clear_ptr = nullptr;
 	if (D3DHelper::is_depth_stencil_format(desc.format))
 	{
-		resource_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // Overwrite
-		// TODO: RT, UAV flags
+		clear_ptr = &clear;
+		resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		clear.DepthStencil = { .Depth = 1.0f, .Stencil = 0 };
+		// TODO: UAV flags
+	}
+	else if (desc.is_render_target)
+	{
+		clear_ptr = &clear;
+		resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		clear.Color[0] = clear.Color[1] = clear.Color[2] = clear.Color[3] = 0.0f;
 	}
 
 	switch (desc.dimension)
@@ -1240,25 +1257,11 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 		.HeapType = D3D12_HEAP_TYPE_DEFAULT,
 	};
 
-	//D3D12_CLEAR_VALUE clear
-	//{
-	//	.Format = desc.format,
-	//};
-	//// If it is a depth format, use depth clear value instead of color
-	//if (desc.format == DXGI_FORMAT_D32_FLOAT || desc.format == DXGI_FORMAT_D24_UNORM_S8_UINT)
-	//{
-	//	clear.DepthStencil = { .Depth= 1.0f, .Stencil= 0};
-	//}
-	//else
-	//{
-	//	clear.Color[0] = clear.Color[1] = clear.Color[2] = clear.Color[3] = 0.0f;
-	//}
-
 	if (FAILED(m_allocator_->CreateResource3(
 		&allocation_desc,
 		&resource_desc,
 		D3DHelper::layout_D3D(desc.initial_layout), // Common use should be as copy destination (need to transition later)
-		nullptr, // TODO: need to set clear value for RT
+		clear_ptr,
 		0, nullptr, // probably not going to cast 
 		texture_d3d12->allocation.ReleaseAndGetAddressOf(),
 		IID_NULL, NULL)))
@@ -1285,13 +1288,15 @@ bool allocate_arb_texture_descriptor(DescriptorHeap& heap, D3D12DescriptorHeap* 
 		OutputDebugString(L"\n");
 		return false;
 	}
-
-	if (!heap_d3d12->allocate(&descriptor->offset))
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
-		OutputDebugString(message);
-		OutputDebugString(L"\n");
-		return false;
+		if (!heap_d3d12->allocate(&descriptor->offset))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
+			OutputDebugString(message);
+			OutputDebugString(L"\n");
+			return false;
+		}
 	}
 	descriptor->heap = &heap;
 	;
@@ -1422,10 +1427,13 @@ bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap& hea
 		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 		return false;
 	}
-	if (!heap_d3d12->allocate(&descriptor->offset))
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
-		return false;
+		if (!heap_d3d12->allocate(&descriptor->offset))
+		{
+			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
+			return false;
+		}
 	}
 	descriptor->heap = &heap;
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;

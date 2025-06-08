@@ -585,7 +585,7 @@ UINT D3DHelper::bytes_per_pixel(DXGI_FORMAT format)
 {
 	switch (format)
 	{
-		// UNORM/SNORM/FLOAT/UINT/SINT with simple channel counts
+	// UNORM/SNORM/FLOAT/UINT/SINT with simple channel counts
 	case DXGI_FORMAT_R32G32B32A32_TYPELESS:
 	case DXGI_FORMAT_R32G32B32A32_FLOAT:
 	case DXGI_FORMAT_R32G32B32A32_UINT:
