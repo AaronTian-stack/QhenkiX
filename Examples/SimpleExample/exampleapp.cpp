@@ -166,6 +166,7 @@ void ExampleApp::create()
 	{
 		.width = 4,
 		.height = 4,
+		.mip_levels = 3,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 		.dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
 		.initial_layout = qhenki::gfx::Layout::COPY_DEST,
@@ -188,10 +189,16 @@ void ExampleApp::create()
 	// Texture data
 	constexpr auto checkerboard = std::array
 	{
+		// Mip 0
 		0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF,
 		0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF,
 		0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF,
-		0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF
+		0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF,
+		// Mip 1
+		0xFFFF00FF, 0xFFFFFFFF,
+		0xFFFFFFFF, 0xFFFF00FF,
+		// Mip 2
+		0xFF00FFFF,
 	};
 	qhenki::gfx::Buffer texture_staging; // Must keep in scope until copy is done
 
@@ -202,7 +209,7 @@ void ExampleApp::create()
 	m_context_->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer_, 0, desc.size);
 	m_context_->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer_, 0, index_desc.size);
 
-	THROW_IF_FALSE(m_context_->copy_to_texture(cmd_list, checkerboard.data(), texture_staging, m_texture_));
+	THROW_IF_FALSE(m_context_->copy_to_texture(&cmd_list, checkerboard.data(), &texture_staging, &m_texture_));
 
 	// Transition texture
 	qhenki::gfx::ImageBarrier barrier_render =
