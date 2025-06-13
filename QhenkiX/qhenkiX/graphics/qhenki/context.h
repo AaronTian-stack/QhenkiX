@@ -84,13 +84,13 @@ namespace qhenki::gfx
         /**
 		 * @brief Creates staging buffer with data pointer and copies it to the texture. TODO: add subresource index argument?
          * 
-         * @param cmd_list Reference to the command list used to record the copy operation.
+         * @param cmd_list Pointer to the command list used to record the copy operation.
          * @param data Pointer to the data to be copied.
-		 * @param staging Reference to the staging buffer assumed to be uninitialized.
-         * @param texture Reference to the destination texture where the data will be copied.
+		 * @param staging Pointer to the staging buffer assumed to be uninitialized.
+         * @param texture Pointer to the destination texture where the data will be copied.
          * @return true if the copy operation was successful, false otherwise.
          */
-        virtual bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) = 0;
+        virtual bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) = 0;
 
 		virtual bool create_sampler(const SamplerDesc& desc, Sampler* sampler) = 0;
 		virtual bool create_descriptor(const Sampler& sampler, DescriptorHeap& heap, Descriptor* descriptor) = 0;
