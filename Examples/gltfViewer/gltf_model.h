@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 
 #include <math/transform.h>
 #include <graphics/qhenki/buffer.h>
@@ -28,11 +29,39 @@ struct GLTFModel
 	std::vector<BufferView> buffer_views;
 	// animations
 	std::vector<qhenki::gfx::Buffer> buffers;
-	// materials
+
+	struct Material
+	{
+		struct
+		{
+			std::array<float, 4> factor;
+			int index = -1;
+			// texture coordinate set
+		} base_color;
+		struct
+		{
+			float metallic_factor = 0.f;
+			float roughness_factor = 0.f;
+			int index = -1;
+			// texture coordinate set
+		} metallic_roughness;
+		struct
+		{
+			int index = -1;
+			// texture coordinate set
+			float scale = 1.f;
+		} normal;
+		struct
+		{
+			int index = -1;
+			float strength = 1.f;
+		} occlusion;
+	};
+	std::vector<Material> materials;
 
 	struct Primitive
 	{
-		int material = -1; // material index
+		int material_index = -1; // material index
 		int indices = -1; // accessor index
 		struct Attribute
 		{
@@ -53,9 +82,15 @@ struct GLTFModel
 		// camera
 		std::string name;
 		// skin
+		int parent_index = -1;
 		int mesh_index;
 		// light
-		qhenki::Transform transform;
+		qhenki::Transform local_transform;
+		struct
+		{
+			qhenki::Transform transform;
+			bool dirty = true;
+		} global_transform;
 		std::vector<int> children_indices;
 	};
 	std::vector<Node> nodes;
