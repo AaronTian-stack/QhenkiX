@@ -12,7 +12,6 @@ namespace qhenki
 	{
 		XMFLOAT4X4 view_projection_{};
 		XMFLOAT4X4 inverse_view_projection_{};
-		XMFLOAT4X4 projection_{};
 	};
 
 	class Camera

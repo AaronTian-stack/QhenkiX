@@ -14,7 +14,6 @@ void PerspectiveCamera::update(bool update_frustum)
 
 	XMStoreFloat4x4(&matrices_.view_projection_, view_proj);
 	XMStoreFloat4x4(&matrices_.inverse_view_projection_, inv_view_proj);
-	XMStoreFloat4x4(&matrices_.projection_, proj);
 
 	if (update_frustum)
 	{
