@@ -240,14 +240,21 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		if (SUCCEEDED(hr_d))
 		{
 			const auto path = debug_info_path->GetStringPointer();
-			auto result = FileHelper::write_file(path, 
+			auto write_result = FileHelper::write_file(path, 
 				debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
-			assert(result);
+			assert(write_result);
 		}
 	}
 
 	if (FAILED(hr_s) || FAILED(hr_r))
 	{
+		// Get any errors
+		ComPtr<IDxcBlobUtf8> errors = nullptr;
+		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
+		if (errors && errors->GetStringLength())
+		{
+			output.error_message = errors->GetStringPointer();
+		}
 		return false;
 	}
 
