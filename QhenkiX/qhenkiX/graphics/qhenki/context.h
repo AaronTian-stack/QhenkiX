@@ -59,6 +59,8 @@ namespace qhenki::gfx
 		virtual bool create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout* layout) = 0;
 		virtual void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) = 0;
 
+		virtual bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) = 0;
+
 		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) = 0;

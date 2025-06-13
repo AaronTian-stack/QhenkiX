@@ -70,7 +70,6 @@ namespace qhenki::gfx
 
 	struct PushRange
 	{
-		uint32_t offset;
 		uint32_t size;
 		uint32_t binding; // Not relevant in Vulkan
 		// TODO: stage flags

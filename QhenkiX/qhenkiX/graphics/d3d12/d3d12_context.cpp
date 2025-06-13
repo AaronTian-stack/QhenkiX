@@ -789,21 +789,21 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 
 	const UINT param_count = desc.push_ranges.size() + spaces;
 	
-	std::array<D3D12_ROOT_PARAMETER, 10> params; // TODO: replace with small vector
+	std::array<D3D12_ROOT_PARAMETER, 16> params; // TODO: replace with small vector
 	assert(param_count <= params.size());
 
+	int param_index = 0;
 	for (unsigned i = 0; i < desc.push_ranges.size(); i++)
 	{
-		assert(false);
 		const auto& range = desc.push_ranges[i];
-		params[i] =
+		params[param_index++] =
 		{
 			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
 			.Constants =
 			{
 				.ShaderRegister = range.binding,
 				.RegisterSpace = 5, // TODO: change this
-				.Num32BitValues = range.size,
+				.Num32BitValues = (range.size + 3) / 4, // Bytes to 32-bit words conversion rounded up
 			},
 			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
 		};
@@ -841,7 +841,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 			offset += binding.count;
 			l_ranges.emplace_back(range);
 		}
-		params[i] =
+		params[param_index++] =
 		{
 			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 			.DescriptorTable =
@@ -895,6 +895,23 @@ void D3D12Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLay
 	auto cmd_list_d3d12 = to_internal(*cmd_list);
 	auto layout_d3d12 = to_internal(layout);
 	cmd_list_d3d12->Get()->SetGraphicsRootSignature(layout_d3d12->Get());
+}
+
+bool D3D12Context::set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data)
+{
+#ifdef _DEBUG
+	if (offset % 4 != 0)
+	{
+		OutputDebugString(L"Qhenki D3D12 WARNING: Offset is best as multiple of 4 bytes\n");
+	}
+	if (size % 4 != 0)
+	{
+		OutputDebugString(L"Qhenki D3D12 WARNING: Size is best as multiple of 4 bytes\n");
+	}
+#endif
+	const auto cmd_list_d3d12 = to_internal(*cmd_list);
+	cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, (size + 3) / 4, data, (offset + 3) / 4);
+	return true;
 }
 
 bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
