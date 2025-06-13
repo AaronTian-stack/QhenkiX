@@ -47,6 +47,9 @@
     <ClInclude Include="gltf_model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\argparse\argparse.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\lib\x64\SDL3.dll" />
