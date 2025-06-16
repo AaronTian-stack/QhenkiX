@@ -127,7 +127,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui;$(ProjectDir)DirectXTex\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -144,7 +144,7 @@
     </FxCompile>
     <Lib>
       <AdditionalDependencies>SDL3.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib\x64\Debug;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -155,7 +155,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui;$(ProjectDir)DirectXTex\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -174,7 +174,7 @@
     </FxCompile>
     <Lib>
       <AdditionalDependencies>SDL3.lib;DirectXTex.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;dxcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL3-3.2.4\lib\x64;$(ProjectDir)DirectXTex\lib\x64\Release;$(ProjectDir)dxc_2024_07_31\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>

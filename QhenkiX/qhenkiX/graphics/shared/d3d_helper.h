@@ -34,7 +34,6 @@ namespace qhenki::gfx
 		static D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(AddressMode mode);
 		static D3D12_COMPARISON_FUNC comparison_func(ComparisonFunc func);
 
-		static UINT bytes_per_pixel(DXGI_FORMAT format);
 		static bool is_depth_stencil_format(DXGI_FORMAT format);
 	};
 }
