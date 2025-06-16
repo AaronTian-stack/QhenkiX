@@ -24,6 +24,7 @@ namespace qhenki
 		XMFLOAT3 translation_;
 
 		XMMATRIX to_matrix_simd() const;
+		XMFLOAT4X4 to_matrix() const;
 
 		// inverse transform direction (no scale)
 		/**

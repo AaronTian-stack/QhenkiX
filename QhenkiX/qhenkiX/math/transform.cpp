@@ -42,6 +42,14 @@ XMMATRIX Transform::to_matrix_simd() const
 	return XMMatrixLookToLH(eye, forward, up);
 }
 
+XMFLOAT4X4 Transform::to_matrix() const
+{
+	XMMATRIX m = to_matrix_simd();
+	XMFLOAT4X4 result;
+	XMStoreFloat4x4(&result, m);
+	return result;
+}
+
 XMVECTOR Transform::inverse_transform_direction(const XMFLOAT3& d) const
 {
 	Basis no_scale = basis_.orthonormalized();
