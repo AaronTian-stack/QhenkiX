@@ -13,10 +13,11 @@ struct ContextData
 
 class GLTFLoader  
 {  
-    void process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model);  
-    void process_buffers(const tinygltf::Model& tiny_model, GLTFModel* const model, const ContextData& data);  
-    void process_accessor_views(const tinygltf::Model& tiny_model, GLTFModel* const model);
-	void process_meshes(const tinygltf::Model& tiny_model, GLTFModel* const model);
+    void process_nodes(const tinygltf::Model& tiny_model, GLTFModel* model);  
+    std::vector<qhenki::gfx::Buffer> process_buffers(const tinygltf::Model& tiny_model, GLTFModel* model, qhenki::gfx::Context& context, qhenki::gfx::CommandList* cmd_list);
+    void process_accessor_views(const tinygltf::Model& tiny_model, GLTFModel* model);
+	void process_meshes(const tinygltf::Model& tiny_model, GLTFModel* model);
+	void process_textures(const tinygltf::Model& tiny_model, GLTFModel* model, qhenki::gfx::Context& context, qhenki::gfx::CommandList* cmd_list);
 public:  
     bool load(const char* filename, GLTFModel* const model, const ContextData& data);  
 };

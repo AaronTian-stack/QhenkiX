@@ -34,12 +34,12 @@ void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* con
                 m[4], m[5], m[6],
 				m[8], m[9], m[10]);
 			auto translation = XMFLOAT3(m[3], m[7], m[11]);
-            node.transform = qhenki::Transform(qhenki::Basis(matrix3x3), translation);
+            node.local_transform = qhenki::Transform(qhenki::Basis(matrix3x3), translation);
         }
         else
         {
 			auto scale = XMVectorSet(1.f, 1.f, 1.f, 1.f);
-            auto quat = XMVectorSet(1.f, 1.f, 1.f, 1.f);
+            auto quat = XMQuaternionIdentity();
 			auto trans = XMFLOAT3(0.f, 0.f, 0.f);
             if (!tiny_node.scale.empty())
             {
@@ -47,26 +47,44 @@ void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* con
             }
             if (!tiny_node.rotation.empty())
             {
-                quat = XMVectorSet(tiny_node.rotation[0], tiny_node.rotation[1], tiny_node.rotation[2], tiny_node.rotation[3]);
+                // Convert to left hand
+                quat = XMVectorSet(tiny_node.rotation[0], tiny_node.rotation[1], -tiny_node.rotation[2], -tiny_node.rotation[3]);
             }
             if (!tiny_node.translation.empty())
             {
-				trans = XMFLOAT3(tiny_node.translation[0], tiny_node.translation[1], tiny_node.translation[2]);
+                // Convert to left hand
+				trans = XMFLOAT3(tiny_node.translation[0], tiny_node.translation[1], -tiny_node.translation[2]);
             }
 			// TRS, DirectXMath is pre multiplied, so we need to reverse the order
             auto transform = XMMatrixScalingFromVector(scale) * XMMatrixRotationQuaternion(quat);
             XMFLOAT3X3 matrix3x3;
 			XMStoreFloat3x3(&matrix3x3, transform);
-            node.transform = qhenki::Transform(qhenki::Basis(matrix3x3), trans);
+            node.local_transform = qhenki::Transform(qhenki::Basis(matrix3x3), trans);
         }
 	}
+    // Separate traversal to correctly set parents
+    std::vector<int> stack;
+    stack.push_back(model->root_node);
+    while (!stack.empty())
+    {
+		const auto node_index = stack.back();
+        stack.pop_back();
+        for (const auto& child_index : model->nodes[node_index].children_indices)
+        {
+            if (child_index < 0 || child_index >= model->nodes.size())
+            {
+                continue;
+            }
+            auto& child_node = model->nodes[child_index];
+            child_node.parent_index = node_index;
+            stack.push_back(child_index);
+		}
+    }
 }
 
-void GLTFLoader::process_buffers(const tinygltf::Model& tiny_model, GLTFModel* const model, const ContextData& data)
+std::vector<qhenki::gfx::Buffer> GLTFLoader::process_buffers(const tinygltf::Model& tiny_model, GLTFModel* const model, qhenki::gfx::Context& context,
+    qhenki::gfx::CommandList* const cmd_list)
 {
-    qhenki::gfx::CommandList cmd_list;
-    data.context->create_command_list(&cmd_list, *data.pool);
-
     model->buffers.resize(tiny_model.buffers.size());
     // For now just create GPU buffers for everything. Would want to check if inverse bind matrix, which would be CPU only.
     std::vector<qhenki::gfx::Buffer> staging_buffers(tiny_model.buffers.size());
@@ -80,7 +98,7 @@ void GLTFLoader::process_buffers(const tinygltf::Model& tiny_model, GLTFModel* c
             .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
         };
         // CPU staging
-        data.context->create_buffer(desc, tiny_buffer.data.data(), &staging_buffers[i]);
+        context.create_buffer(desc, tiny_buffer.data.data(), &staging_buffers[i]);
         // GPU
         desc = qhenki::gfx::BufferDesc
         {
@@ -88,36 +106,12 @@ void GLTFLoader::process_buffers(const tinygltf::Model& tiny_model, GLTFModel* c
             .usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
             .visibility = qhenki::gfx::BufferVisibility::GPU
         };
-        data.context->create_buffer(desc, nullptr, &model->buffers[i]);
+        context.create_buffer(desc, nullptr, &model->buffers[i]);
 		// Copy from staging to GPU buffer
-        data.context->copy_buffer(&cmd_list, staging_buffers[i], 0, &model->buffers[i], 0, desc.size);
+        context.copy_buffer(cmd_list, staging_buffers[i], 0, &model->buffers[i], 0, desc.size);
     }
-    data.context->close_command_list(&cmd_list);
-
-    { // Wait on transfers
-        qhenki::gfx::Fence fence;
-        data.context->create_fence(&fence, 0);
-        uint64_t fence_value = 1;
-        qhenki::gfx::SubmitInfo submit_info
-        {
-            .command_list_count = 1,
-            .command_lists = &cmd_list,
-            .signal_fence_count = 1,
-            .signal_fences = &fence,
-            .signal_values = &fence_value,
-        };
-        data.context->submit_command_lists(submit_info, data.queue);
-        qhenki::gfx::WaitInfo wait_info
-        {
-            .wait_all = true,
-            .count = 1,
-            .fences = &fence,
-            .values = &fence_value
-        };
-        data.context->wait_fences(wait_info);
-    }
-
-    data.context->reset_command_pool(data.pool);
+    context.close_command_list(cmd_list);
+	return staging_buffers;
 }
 
 void GLTFLoader::process_accessor_views(const tinygltf::Model& tiny_model, GLTFModel* const model)
@@ -159,7 +153,7 @@ void GLTFLoader::process_meshes(const tinygltf::Model& tiny_model, GLTFModel* co
         {
             GLTFModel::Primitive p
             {
-                .material = prim.material,
+                .material_index = prim.material,
                 .indices = prim.indices,
             };
             for (const auto& attr : prim.attributes)
@@ -169,6 +163,12 @@ void GLTFLoader::process_meshes(const tinygltf::Model& tiny_model, GLTFModel* co
             mesh.primitives.push_back(p);
         }
     }
+}
+
+void GLTFLoader::process_textures(const tinygltf::Model& tiny_model, GLTFModel* const model,
+	qhenki::gfx::Context& context, qhenki::gfx::CommandList* const cmd_list)
+{
+
 }
 
 bool GLTFLoader::load(const char* filename, GLTFModel* const model, const ContextData& data)
@@ -213,10 +213,46 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
         return false;
     }
 
+    assert(data.context);
+    assert(data.pool);
+	assert(data.queue);
+
+
+    qhenki::gfx::CommandList buffer_cmd_list, texture_cmd_list;
+    data.context->create_command_list(&buffer_cmd_list, *data.pool);
+	//data.context->create_command_list(&texture_cmd_list, *data.pool);
+
     process_nodes(tiny_model, model);
-    process_buffers(tiny_model, model, data);
     process_accessor_views(tiny_model, model);
 	process_meshes(tiny_model, model);
+	process_textures(tiny_model, model, *data.context, &texture_cmd_list);
+
+    // Staging buffers need to stay in scope until copying is done
+    const auto staging_buffers = process_buffers(tiny_model, model, *data.context, &buffer_cmd_list);
+
+    { // Wait on work
+        qhenki::gfx::Fence fence;
+        data.context->create_fence(&fence, 0);
+        uint64_t fence_value = 1;
+        qhenki::gfx::SubmitInfo submit_info
+        {
+            .command_list_count = 1,
+            .command_lists = &buffer_cmd_list,
+            .signal_fence_count = 1,
+            .signal_fences = &fence,
+            .signal_values = &fence_value,
+        };
+        data.context->submit_command_lists(submit_info, data.queue);
+        qhenki::gfx::WaitInfo wait_info
+        {
+            .wait_all = true,
+            .count = 1,
+            .fences = &fence,
+            .values = &fence_value
+        };
+        data.context->wait_fences(wait_info);
+        data.context->reset_command_pool(data.pool);
+    }
 
     return true;
 }

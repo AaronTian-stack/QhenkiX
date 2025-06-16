@@ -7,6 +7,22 @@
 
 #include <SDL3/SDL_dialog.h>
 
+void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& node)
+{
+	if (node.parent_index > 0)
+	{
+		if (model.nodes[node.parent_index].global_transform.dirty)
+		{
+			update_global_transform(model, model.nodes[node.parent_index]);
+		}
+		// Pre-multiply local transform with parent's global transform
+		// TODO: stop store load every time
+		node.global_transform.transform = model.nodes[node.parent_index].global_transform.transform * node.local_transform;
+	}
+	// Base case local = global
+	node.global_transform.transform = node.local_transform;
+}
+
 void gltfViewerApp::create()
 {
 	auto shader_model = m_context_->is_compatibility() ? 
@@ -70,6 +86,13 @@ void gltfViewerApp::create()
 	qhenki::gfx::PipelineLayoutDesc layout_desc{};
 	layout_desc.spaces[0] = { b1, b2 };
 	layout_desc.spaces[1] = { b3 }; // Samplers need their own space/table
+	layout_desc.push_ranges.push_back(
+		qhenki::gfx::PushRange
+		{
+			.size = sizeof(XMFLOAT4X4) * 2,
+			.binding = 0,
+		}
+	);
 	THROW_IF_FALSE(m_context_->create_pipeline_layout(layout_desc, &m_pipeline_layout_));
 
 	// Create GPU heap
@@ -156,6 +179,17 @@ void gltfViewerApp::create()
 			&m_matrix_descriptors_[i], qhenki::gfx::BufferDescriptorType::CBV));
 	}
 
+	if (m_context_->is_compatibility())
+	{
+		qhenki::gfx::BufferDesc desc
+		{
+			.size = MathHelper::align_u32(sizeof(XMFLOAT4X4) * 2, CONSTANT_BUFFER_ALIGNMENT),
+			.usage = qhenki::gfx::BufferUsage::UNIFORM,
+			.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
+		};
+		THROW_IF_FALSE(m_context_->create_buffer(desc, nullptr, &m_model_buffer, L"Model Buffer"));
+	}
+
 	// Create sampler
 	qhenki::gfx::SamplerDesc sampler_desc
 	{
@@ -221,6 +255,28 @@ void gltfViewerApp::render()
 			| ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings))
 		{
 			ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
+			// Display frametime graph
+			constexpr size_t max_frames = 100;
+			static float frame_times[max_frames];
+			static size_t frame_index = 0;
+			static bool buffer_filled = false;
+
+			// Record new frame time
+			frame_times[frame_index] = ImGui::GetIO().DeltaTime;
+			frame_index = (frame_index + 1) % max_frames;
+			if (frame_index == 0) buffer_filled = true;
+
+			static float ordered_times[max_frames];
+			size_t count = buffer_filled ? max_frames : frame_index;
+
+			for (size_t i = 0; i < count; ++i) 
+			{
+				size_t index = (frame_index + i) % max_frames;
+				ordered_times[i] = frame_times[index];
+			}
+
+			ImGui::PlotLines("##plot", ordered_times, max_frames, 0, "",
+				0.f, 0.05f, ImVec2(ImGui::GetContentRegionAvail().x, 40));
 		}
 
 		if (ImGui::BeginMainMenuBar())
@@ -285,6 +341,7 @@ void gltfViewerApp::render()
 	const auto buffer_pointer = m_context_->map_buffer(m_matrix_buffers_[get_frame_index()]);
 	assert(buffer_pointer);
 	memcpy(buffer_pointer, &m_camera_.matrices, sizeof(qhenki::CameraMatrices));
+	memcpy(static_cast<uint8_t*>(buffer_pointer) + sizeof(qhenki::CameraMatrices), &m_camera_.transform_.translation_, sizeof(XMFLOAT3));
 	m_context_->unmap_buffer(m_matrix_buffers_[get_frame_index()]);
 
 	THROW_IF_FALSE(m_context_->reset_command_pool(&m_cmd_pools_[get_frame_index()]));
@@ -350,19 +407,21 @@ void gltfViewerApp::render()
 	// Bind resources
 	if (m_context_->is_compatibility())
 	{
+		//m_context_->compatibility_set_constant_buffers(1, 1, , qhenki::gfx::PipelineStage::VERTEX);
+
 		std::array mbs = { &m_matrix_buffers_[get_frame_index()] };
 		m_context_->compatibility_set_constant_buffers(0, 1,
 		                                               mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
-		std::array samps = { &m_sampler_ };
-		m_context_->compatibility_set_samplers(0, 1, samps.data(), qhenki::gfx::PipelineStage::PIXEL);
+		std::array samplers = { &m_sampler_ };
+		m_context_->compatibility_set_samplers(0, 1, samplers.data(), qhenki::gfx::PipelineStage::PIXEL);
 	}
 	else
 	{
 		qhenki::gfx::Descriptor descriptor; // Location of start of GPU heap
 		THROW_IF_FALSE(m_context_->get_descriptor(0, m_GPU_heap_, &descriptor));
 
-		// Parameter 0 is table, set to start at beginning of GPU heap
-		m_context_->set_descriptor_table(&cmd_list, 0, descriptor);
+		// Parameter 1 is table, set to start at beginning of GPU heap
+		m_context_->set_descriptor_table(&cmd_list, 1, descriptor);
 
 		// Copy matrix and texture descriptors to GPU heap
 		THROW_IF_FALSE(m_context_->copy_descriptors(1, m_matrix_descriptors_[get_frame_index()], descriptor));
@@ -371,19 +430,23 @@ void gltfViewerApp::render()
 
 	{ // Render
 		// Draw glTF model
-		std::unique_lock<std::mutex> lock(m_model_mutex_, std::defer_lock);
+		std::unique_lock lock(m_model_mutex_, std::defer_lock);
 		if (lock.try_lock() && m_model_.root_node >= 0) // If not still loading (because it is async function)
 		{
-			static std::vector<int> stack;
-			stack.reserve(m_model_.nodes.size());
-			stack.push_back(m_model_.root_node);
-			while (!stack.empty())
+			for (int i = 0; i < m_model_.nodes.size(); i++)
 			{
-				const auto current_node_index = stack.back();
-				const auto& current_node = m_model_.nodes[current_node_index];
-				stack.pop_back();
+				auto& current_node = m_model_.nodes[i];
 
-				// TODO Calculate node global transform
+				// Recalculate node global transform if needed (recursive)
+				update_global_transform(m_model_, current_node);
+
+				XMFLOAT4X4 global_4x4;
+				XMFLOAT4X4 global_4x4_inverse;
+				{
+					auto m = current_node.global_transform.transform.to_matrix_simd();
+					XMStoreFloat4x4(&global_4x4, XMMatrixTranspose(m));
+					XMStoreFloat4x4(&global_4x4_inverse, XMMatrixTranspose(XMMatrixInverse(nullptr, m)));
+				}
 
 				// Draw the node
 				const auto& mesh = m_model_.meshes[current_node.mesh_index];
@@ -396,6 +459,12 @@ void gltfViewerApp::render()
 							const auto slot = attribute_to_slot.at(attr.name);
 
 							const auto& accessor = m_model_.accessors[attr.accessor_index];
+
+							assert(accessor.component_type == TINYGLTF_PARAMETER_TYPE_FLOAT ||
+								accessor.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT ||
+								accessor.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT);
+							assert(accessor.type == TINYGLTF_TYPE_SCALAR || accessor.type == TINYGLTF_TYPE_VEC2 || accessor.type == TINYGLTF_TYPE_VEC3);
+
 							const auto& buffer_view = m_model_.buffer_views[accessor.buffer_view];
 							
 							auto buffer = &m_model_.buffers[buffer_view.buffer_index];
@@ -403,8 +472,38 @@ void gltfViewerApp::render()
 							assert(buffer_view.stride <= std::numeric_limits<unsigned>::max());
 							assert(accessor.offset <= std::numeric_limits<unsigned>::max());
 							unsigned stride = buffer_view.stride;
+							if (stride == 0)
+							{
+								// Tightly packed, infer stride from size of type times number of components
+								auto calc_component_size = [](int component_type)
+								{
+									switch (component_type)
+									{
+										default:
+										case TINYGLTF_PARAMETER_TYPE_FLOAT:
+											return sizeof(float);
+										case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT:
+											return sizeof(short);
+										case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT:
+											return sizeof(unsigned);
+									}
+								};
+								auto calc_type_count = [](int type)
+								{
+									switch (type)
+									{
+										case TINYGLTF_TYPE_SCALAR:
+											return 1;
+										case TINYGLTF_TYPE_VEC2:
+											return 2;
+										default:
+										case TINYGLTF_TYPE_VEC3:
+											return 3;
+									}
+								};
+								stride = calc_component_size(accessor.component_type) * calc_type_count(accessor.type);
+							}
 
-							assert(accessor.type == TINYGLTF_TYPE_SCALAR || accessor.type == TINYGLTF_TYPE_VEC2 || accessor.type == TINYGLTF_TYPE_VEC3);
 							unsigned offset = accessor.offset + buffer_view.offset;
 
 							m_context_->bind_vertex_buffers(&cmd_list, slot, 1, &buffer, &stride, &offset);
@@ -417,14 +516,24 @@ void gltfViewerApp::render()
 						? qhenki::gfx::IndexType::UINT16 : qhenki::gfx::IndexType::UINT32;
 
 					m_context_->bind_index_buffer(&cmd_list, index_buffer, index_type, index_accessor.offset + buffer_view.offset);
+
+					if (m_context_->is_compatibility())
+					{
+						auto p = m_context_->map_buffer(m_model_buffer);
+						memcpy(p, &global_4x4, sizeof(XMFLOAT4X4));
+						memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4), &global_4x4_inverse, sizeof(XMFLOAT4X4));
+						m_context_->unmap_buffer(m_model_buffer);
+						std::array model_buffers = { &m_model_buffer };
+						m_context_->compatibility_set_constant_buffers(1, 1, model_buffers.data(), qhenki::gfx::PipelineStage::VERTEX);
+					}
+					else
+					{
+						m_context_->set_pipeline_constant(&cmd_list, 0, 0, sizeof(XMFLOAT4X4), &global_4x4);
+						m_context_->set_pipeline_constant(&cmd_list, 0, sizeof(XMFLOAT4X4), sizeof(XMFLOAT4X4), &global_4x4_inverse);
+					}
+
 					// Draw
 					m_context_->draw_indexed(&cmd_list, index_accessor.count, 0, 0);
-				}
-
-				// Add the children to the stack
-				for (const auto& child : m_model_.nodes[current_node_index].children_indices)
-				{
-					stack.push_back(child);
 				}
 			}
 			lock.unlock();

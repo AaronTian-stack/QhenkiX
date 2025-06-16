@@ -159,6 +159,7 @@
     <ClInclude Include="gltf_loader.h" />
     <ClInclude Include="gltf_model.h" />
     <ClInclude Include="gltf_viewerapp.h" />
+    <ClInclude Include="include\argparse\argparse.hpp" />
     <ClInclude Include="include\json.hpp" />
     <ClInclude Include="include\stb_image.h" />
     <ClInclude Include="include\stb_image_write.h" />

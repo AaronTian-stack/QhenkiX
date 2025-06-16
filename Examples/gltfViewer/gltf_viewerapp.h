@@ -9,13 +9,6 @@
 #include <tsl/robin_map.h>
 #include <mutex>
 
-struct Vertex
-{
-	XMFLOAT3 position;
-	XMFLOAT3 color;
-	XMFLOAT2 texcoord;
-};
-
 class gltfViewerApp : public qhenki::Application
 {
 	qhenki::gfx::PipelineLayout m_pipeline_layout_{};
@@ -30,6 +23,8 @@ class gltfViewerApp : public qhenki::Application
 
 	std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors_{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers_{};
+
+	qhenki::gfx::Buffer m_model_buffer{};
 
 	qhenki::gfx::Descriptor m_sampler_descriptor_{};
 	qhenki::gfx::Sampler m_sampler_{};
@@ -52,11 +47,13 @@ class gltfViewerApp : public qhenki::Application
 	tsl::robin_map<std::string, int> attribute_to_slot
 	{
 		{"POSITION", 0},
-		//{"NORMAL", 1},
-		{"COLOR_0", 1},
-		{"TEXCOORD_0", 2},
+		{"NORMAL", 1},
+		{"COLOR_0", 2},
+		{"TEXCOORD_0", 3},
 		//{"TEXCOORD_1", 4},
 	};
+
+	void update_global_transform(GLTFModel& model, GLTFModel::Node& node);
 
 protected:
 	void create() override;
