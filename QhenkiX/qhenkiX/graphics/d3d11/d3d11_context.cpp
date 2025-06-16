@@ -6,6 +6,7 @@
 
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
+#include <DirectXTex.h>
 
 #include "d3d11_shader.h"
 #include "d3d11_swapchain.h"
@@ -595,19 +596,9 @@ bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 	return true;
 }
 
-bool D3D11Context::copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture)
+bool D3D11Context::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* const staging, Texture* const texture)
 {
-	D3D11_BOX box
-	{
-		.left = 0,
-		.top = 0, // TODO: 3D texture
-		.front = 0, // TODO: 3D texture
-		.right = static_cast<UINT>(texture.desc.width),
-		.bottom = texture.desc.height,
-		.back = 1, // TODO: which subresource
-	};
-	
-	auto texture_d3d11 = to_internal(texture);
+	const auto texture_d3d11 = to_internal(*texture);
 	ID3D11Resource* resource = get_texture_resource(*texture_d3d11);
 	if (!resource)
 	{
@@ -615,14 +606,46 @@ bool D3D11Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 		return false;
 	}
 
+	assert(BitsPerPixel(texture->desc.format) % 8 == 0); // TODO: check this for compressed formats
+	const auto bpp = BitsPerPixel(texture->desc.format) / 8;
+
 	std::scoped_lock lock(m_context_mutex_);
-	m_device_context_->UpdateSubresource(
-		resource,
-		0, // TODO: which subresource
-		&box,
-		data,
-		texture.desc.width * D3DHelper::bytes_per_pixel(texture.desc.format), // TODO: which subresource
-		0);
+
+	const auto num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
+	size_t data_offset = 0;
+	for (UINT32 subresource = 0; subresource < num_subresources; subresource++)
+	{
+		const UINT32 mip = subresource % texture->desc.mip_levels;
+
+		// Ok because texture max width is less < UINT32
+		const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
+		const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
+		// Ok because upcast
+		const UINT32 mip_depth = std::max(1u, static_cast<UINT32>(texture->desc.depth_or_array_size) >> mip);
+		const UINT32 bytes_per_row = mip_width * bpp; // Pitch of logical resource
+
+		const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
+
+		D3D11_BOX box
+		{
+			.left = 0,
+			.top = 0,
+			.front = 0,
+			.right = static_cast<UINT>(mip_width),
+			.bottom = mip_height,
+			.back = texture->desc.depth_or_array_size,
+		};
+
+		m_device_context_->UpdateSubresource(
+			resource,
+			subresource, // TODO: which subresource
+			&box,
+			src,
+			mip_width * bpp,
+			mip_depth * bpp);
+
+		data_offset += bytes_per_row * mip_height; // Assume data pointer is tightly packed no padding
+	}
 
 	return true;
 }

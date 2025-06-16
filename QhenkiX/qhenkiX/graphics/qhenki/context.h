@@ -59,6 +59,8 @@ namespace qhenki::gfx
 		virtual bool create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout* layout) = 0;
 		virtual void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) = 0;
 
+		virtual bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) = 0;
+
 		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) = 0;
@@ -82,13 +84,13 @@ namespace qhenki::gfx
         /**
 		 * @brief Creates staging buffer with data pointer and copies it to the texture. TODO: add subresource index argument?
          * 
-         * @param cmd_list Reference to the command list used to record the copy operation.
+         * @param cmd_list Pointer to the command list used to record the copy operation.
          * @param data Pointer to the data to be copied.
-		 * @param staging Reference to the staging buffer assumed to be uninitialized.
-         * @param texture Reference to the destination texture where the data will be copied.
+		 * @param staging Pointer to the staging buffer assumed to be uninitialized.
+         * @param texture Pointer to the destination texture where the data will be copied.
          * @return true if the copy operation was successful, false otherwise.
          */
-        virtual bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) = 0;
+        virtual bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) = 0;
 
 		virtual bool create_sampler(const SamplerDesc& desc, Sampler* sampler) = 0;
 		virtual bool create_descriptor(const Sampler& sampler, DescriptorHeap& heap, Descriptor* descriptor) = 0;

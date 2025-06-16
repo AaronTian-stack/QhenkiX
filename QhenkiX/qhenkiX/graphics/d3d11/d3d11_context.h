@@ -57,6 +57,8 @@ namespace qhenki::gfx
 		bool create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayout* layout) override { return true; }
 		void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override {}
 
+		bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) override { return !is_compatibility(); }
+
 		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override;
 		// Heaps only store views in D3D11
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override {}
@@ -75,7 +77,7 @@ namespace qhenki::gfx
 		bool create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) override;
 		bool create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) override;
 
-		bool copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture) override;
+		bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
 
 		bool create_sampler(const SamplerDesc& desc, Sampler* sampler) override;
 		bool create_descriptor(const Sampler& sampler, DescriptorHeap& heap, Descriptor* descriptor) override { return true; }

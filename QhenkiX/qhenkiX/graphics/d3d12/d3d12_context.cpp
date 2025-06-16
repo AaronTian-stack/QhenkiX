@@ -4,6 +4,8 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_dx12.h"
 
+#include <DirectXTex.h>
+
 #include <d3d12shader.h>
 #include <d3dcompiler.h>
 
@@ -789,21 +791,21 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 
 	const UINT param_count = desc.push_ranges.size() + spaces;
 	
-	std::array<D3D12_ROOT_PARAMETER, 10> params; // TODO: replace with small vector
+	std::array<D3D12_ROOT_PARAMETER, 16> params; // TODO: replace with small vector
 	assert(param_count <= params.size());
 
+	int param_index = 0;
 	for (unsigned i = 0; i < desc.push_ranges.size(); i++)
 	{
-		assert(false);
 		const auto& range = desc.push_ranges[i];
-		params[i] =
+		params[param_index++] =
 		{
 			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
 			.Constants =
 			{
 				.ShaderRegister = range.binding,
 				.RegisterSpace = 5, // TODO: change this
-				.Num32BitValues = range.size,
+				.Num32BitValues = (range.size + 3) / 4, // Bytes to 32-bit words conversion rounded up
 			},
 			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
 		};
@@ -841,7 +843,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 			offset += binding.count;
 			l_ranges.emplace_back(range);
 		}
-		params[i] =
+		params[param_index++] =
 		{
 			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 			.DescriptorTable =
@@ -895,6 +897,23 @@ void D3D12Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLay
 	auto cmd_list_d3d12 = to_internal(*cmd_list);
 	auto layout_d3d12 = to_internal(layout);
 	cmd_list_d3d12->Get()->SetGraphicsRootSignature(layout_d3d12->Get());
+}
+
+bool D3D12Context::set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data)
+{
+#ifdef _DEBUG
+	if (offset % 4 != 0)
+	{
+		OutputDebugString(L"Qhenki D3D12 WARNING: Offset is best as multiple of 4 bytes\n");
+	}
+	if (size % 4 != 0)
+	{
+		OutputDebugString(L"Qhenki D3D12 WARNING: Size is best as multiple of 4 bytes\n");
+	}
+#endif
+	const auto cmd_list_d3d12 = to_internal(*cmd_list);
+	cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, (size + 3) / 4, data, (offset + 3) / 4);
+	return true;
 }
 
 bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
@@ -1341,18 +1360,18 @@ bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 	return true;
 }
 
-bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buffer& staging, Texture& texture)
+bool D3D12Context::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* const staging, Texture* const texture)
 {
-	const uint32_t num_subresources = texture.desc.mip_levels * texture.desc.depth_or_array_size;
-	// Get info to know how big staging needs to be
-	const auto texture_allocation = to_internal(texture);
+	const uint32_t num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
+	const auto texture_allocation = to_internal(*texture);
 	const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
 
 	UINT64 size;
 	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(num_subresources); // TODO: replace with small vector
-	std::vector<UINT> row_sizes(num_subresources); // For subresource height TODO: replace with small vector
+	std::vector<UINT> row_counts(num_subresources); // For subresource height TODO: replace with small vector
+	std::vector<UINT64> row_sizes(num_subresources);
 	m_device_->GetCopyableFootprints(&desc, 0, num_subresources, 0,
-		layouts.data(), row_sizes.data(), nullptr, &size);
+		layouts.data(), row_counts.data(), row_sizes.data(), &size);
 
 	BufferDesc staging_desc
 	{
@@ -1360,54 +1379,74 @@ bool D3D12Context::copy_to_texture(CommandList& cmd_list, const void* data, Buff
 		.usage = BufferUsage::COPY_SRC,
 		.visibility = CPU_SEQUENTIAL,
 	};
-	if (!create_buffer(staging_desc, data, &staging, nullptr))
+	if (!create_buffer(staging_desc, nullptr, staging, nullptr))
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create staging buffer for texture copy\n");
 		return false;
 	}
 
-	uint8_t* upload_memory = static_cast<uint8_t*>(map_buffer(staging));
-	// memcpy from data to staging buffer based off footprint data
+	const auto upload_memory = static_cast<uint8_t*>(map_buffer(*staging));
 
-	constexpr auto subresource_index = 0;
+	assert(BitsPerPixel(texture->desc.format) % 8 == 0); // TODO: check if this works for block compressed formats
+	const UINT32 bpp = BitsPerPixel(texture->desc.format) / 8; // Bytes per pixel
 
-	const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& sub_resource_layout = layouts[subresource_index];
-	uint8_t* destination_sub_resource_memory = upload_memory + sub_resource_layout.Offset;
-	const uint64_t sub_resource_pitch = MathHelper::align_u32(sub_resource_layout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	size_t data_offset = 0;
 
-	const auto bytes_row = texture.desc.width * D3DHelper::bytes_per_pixel(texture.desc.format);
-	for (uint32_t y = 0; y < texture.desc.height; ++y)
+	for (UINT32 subresource = 0; subresource < num_subresources; subresource++)
 	{
-		auto row_ptr = static_cast<const uint8_t*>(data);
-		memcpy(destination_sub_resource_memory, &row_ptr[y * bytes_row],
-			std::min(sub_resource_pitch, bytes_row));
-		destination_sub_resource_memory += sub_resource_pitch;
+		const UINT32 mip = subresource % texture->desc.mip_levels;
+
+		// Ok because texture max width is less < UINT32
+		const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
+		const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
+		// Ok because upcast
+		const UINT32 mip_depth = std::max(1u, static_cast<UINT32>(texture->desc.depth_or_array_size) >> mip);
+		const UINT32 bytes_per_row = mip_width * bpp; // Pitch of logical resource
+
+		const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = layouts[subresource];
+		const UINT32 row_pitch = footprint.Footprint.RowPitch; // Pitch of upload buffer
+		const UINT32 slice_pitch = row_pitch * footprint.Footprint.Height;
+		UINT8* dst = &upload_memory[footprint.Offset];
+
+		const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
+
+		for (UINT32 z = 0; z < mip_depth; z++) // 1 for 2D or array textures
+		{
+			UINT8* dst_slice = &dst[z * slice_pitch];
+			const UINT8* src_slice = &src[z * mip_height * bytes_per_row];
+
+			for (UINT32 y = 0; y < mip_height; y++)
+			{
+				memcpy(&dst_slice[y * row_pitch],
+					&src_slice[y * bytes_per_row],
+					bytes_per_row);
+			}
+		}
+
+		data_offset += bytes_per_row * mip_height; // Assume data pointer is tightly packed no padding
 	}
-	
-	// https://alextardif.com/D3D11To12P3.html for entire copy details
 
-	// Record commands to copy subresources from staging to texture
-	
-	D3D12_TEXTURE_COPY_LOCATION destination
+	unmap_buffer(*staging);
+
+	const auto staging_internal = to_internal(*staging);
+	const auto cmd_list_d3d12 = to_internal(*cmd_list);
+	for (UINT subresource_index = 0; subresource_index < num_subresources; subresource_index++)
 	{
-		.pResource = texture_allocation->allocation.Get()->GetResource(),
-		.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-		.SubresourceIndex = 0,
-	};
-
-	const auto staging_internal = to_internal(staging);
-
-	D3D12_TEXTURE_COPY_LOCATION source
-	{
-		.pResource = staging_internal->Get()->GetResource(),
-		.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-		.PlacedFootprint = layouts[subresource_index],
-		// PlacedFootprint offset is 0 since handled by allocator
-	};
-
-	// Copy to texture
-	const auto cmd_list_d3d12 = to_internal(cmd_list);
-	cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+		D3D12_TEXTURE_COPY_LOCATION destination
+		{
+			.pResource = texture_allocation->allocation.Get()->GetResource(),
+			.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+			.SubresourceIndex = subresource_index,
+		};
+		D3D12_TEXTURE_COPY_LOCATION source
+		{
+			.pResource = staging_internal->Get()->GetResource(),
+			.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+			.PlacedFootprint = layouts[subresource_index],
+			// PlacedFootprint offset is 0 since handled by allocator
+		};
+		cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+	}
 
 	return true;
 }
