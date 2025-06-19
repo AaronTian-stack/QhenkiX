@@ -143,9 +143,9 @@ namespace qhenki::gfx
 		virtual void render_imgui_draw_data(CommandList* cmd_list) = 0;
 		virtual void destroy_imgui() = 0;
 
-		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage) = 0;
-		virtual void compatibility_set_textures(unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) = 0;
-		virtual void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage) = 0;
+		virtual void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) = 0;
+		virtual void compatibility_set_textures(unsigned slot, unsigned count, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) = 0;
+		virtual void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) = 0;
 
 		// Wait for device to idle, should only be used on program exit
 		virtual void wait_idle(Queue& queue) = 0;

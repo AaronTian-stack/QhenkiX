@@ -888,13 +888,13 @@ void D3D11Context::destroy_imgui()
 	ImGui::DestroyContext();
 }
 
-void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage)
+void D3D11Context::compatibility_set_constant_buffers(const unsigned slot, const unsigned count, Buffer* const buffers, const PipelineStage stage)
 {
 	std::array<ID3D11Buffer**, 15> buffer_d3d11{};
 	assert(count <= buffer_d3d11.size());
 	for (unsigned i = 0; i < count; i++)
 	{
-		buffer_d3d11[i] = to_internal(*buffers[i])->GetAddressOf();
+		buffer_d3d11[i] = to_internal(buffers[i])->GetAddressOf();
 	}
 	switch (stage)
 	{
@@ -912,7 +912,7 @@ void D3D11Context::compatibility_set_constant_buffers(unsigned slot, unsigned co
 	}
 }
 
-void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
+void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigned count, Descriptor* const descriptors, const AccessFlags flag, const PipelineStage stage)
 {
 	// Read or write (as UAV not RT) access
 
@@ -938,15 +938,15 @@ void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Des
 	{
 		assert(descriptors[i]);
 		assert(descriptors[i]->heap);
-		const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
+		const auto heap = to_internal_srv_uav(*descriptors[i].heap);
 		// The descriptor offset is used as index into vector
 		switch (flag)
 		{
 		case ACCESS_STORAGE_ACCESS:
-			resource_views.unordered_access_views[i] = heap->unordered_access_views[descriptors[i]->offset].GetAddressOf();
+			resource_views.unordered_access_views[i] = heap->unordered_access_views[descriptors[i].offset].GetAddressOf();
 			break;
 		case ACCESS_SHADER_RESOURCE:
-			resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i]->offset].GetAddressOf();
+			resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i].offset].GetAddressOf();
 			break;
 		default:
 			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
@@ -998,13 +998,13 @@ void D3D11Context::compatibility_set_textures(unsigned slot, unsigned count, Des
 	}
 }
 
-void D3D11Context::compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage)
+void D3D11Context::compatibility_set_samplers(const unsigned slot, const unsigned count, Sampler* const samplers, const PipelineStage stage)
 {
 	std::array<ID3D11SamplerState**, 15> sampler_d3d11{};
 	assert(count <= sampler_d3d11.size());
 	for (unsigned i = 0; i < count; i++)
 	{
-		sampler_d3d11[i] = to_internal(*samplers[i])->GetAddressOf();
+		sampler_d3d11[i] = to_internal(samplers[i])->GetAddressOf();
 	}
 	switch (stage)
 	{

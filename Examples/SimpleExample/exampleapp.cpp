@@ -328,15 +328,11 @@ void ExampleApp::render()
 	// Bind resources
 	if (m_context->is_compatibility())
 	{
-		std::array mbs = { &m_matrix_buffers[get_frame_index()] };
 		m_context->compatibility_set_constant_buffers(0, 1, 
-			mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
-		std::array dscs = { &m_texture_descriptor };
-		m_context->compatibility_set_textures(1, 1, dscs.data(), qhenki::gfx::ACCESS_SHADER_RESOURCE,
-		                                       qhenki::gfx::PipelineStage::PIXEL);
-
-		std::array samplers = { &m_sampler };
-		m_context->compatibility_set_samplers(0, 1, samplers.data(), qhenki::gfx::PipelineStage::PIXEL);
+			&m_matrix_buffers[get_frame_index()], qhenki::gfx::PipelineStage::VERTEX);
+		m_context->compatibility_set_textures(1, 1, &m_texture_descriptor, qhenki::gfx::ACCESS_SHADER_RESOURCE,
+		                                      qhenki::gfx::PipelineStage::PIXEL);
+		m_context->compatibility_set_samplers(0, 1, &m_sampler, qhenki::gfx::PipelineStage::PIXEL);
 	}
 	else
 	{

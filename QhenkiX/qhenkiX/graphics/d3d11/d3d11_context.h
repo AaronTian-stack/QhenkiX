@@ -129,9 +129,9 @@ namespace qhenki::gfx
 		void render_imgui_draw_data(CommandList* cmd_list) override;
 		void destroy_imgui() override;
 
-		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* const* buffers, PipelineStage stage) override;
-		void compatibility_set_textures(unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override;
-		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* const* samplers, PipelineStage stage) override;
+		void compatibility_set_constant_buffers(unsigned slot, unsigned count, Buffer* buffers, PipelineStage stage) override;
+		void compatibility_set_textures(unsigned slot, unsigned count, Descriptor* descriptors, AccessFlags flag, PipelineStage stage) override;
+		void compatibility_set_samplers(unsigned slot, unsigned count, Sampler* samplers, PipelineStage stage) override;
 
 		void wait_idle(Queue& queue) override;
 		~D3D11Context() override;
