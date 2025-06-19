@@ -68,6 +68,7 @@ namespace qhenki::gfx
 		virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
 		virtual bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) = 0;
 		virtual bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor) = 0;
+		virtual bool free_descriptor(Descriptor* descriptor) = 0;
 
 		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name = nullptr) = 0;
 		virtual bool create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type) = 0;

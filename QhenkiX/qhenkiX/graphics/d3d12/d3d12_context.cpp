@@ -1059,8 +1059,21 @@ bool D3D12Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHe
 	return true;
 }
 
-bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer,
-	wchar_t const* debug_name)
+bool D3D12Context::free_descriptor(Descriptor* descriptor)
+{
+	assert(descriptor);
+	assert(descriptor->heap);
+	const auto heap_d3d12 = to_internal(*descriptor->heap);
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Cannot free a new descriptor\n");
+		return false;
+	}
+	heap_d3d12->deallocate(&descriptor->offset);
+	return true;
+}
+
+bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name)
 {
 	buffer->desc = desc;
 	buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>();

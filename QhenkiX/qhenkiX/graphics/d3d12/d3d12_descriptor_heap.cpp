@@ -2,6 +2,8 @@
 
 #include <cassert>
 
+#include "graphics/qhenki/descriptor_table.h"
+
 using namespace qhenki::gfx;
 
 bool D3D12DescriptorHeap::create(ID3D12Device* device, const D3D12_DESCRIPTOR_HEAP_DESC& desc)
@@ -21,6 +23,7 @@ bool D3D12DescriptorHeap::create(ID3D12Device* device, const D3D12_DESCRIPTOR_HE
 
 bool D3D12DescriptorHeap::allocate(UINT64* alloc_offset)
 {
+	std::scoped_lock lock(m_mutex_);
 	// Check free list
 	if (!m_free_list_.empty())
 	{
@@ -40,7 +43,14 @@ bool D3D12DescriptorHeap::allocate(UINT64* alloc_offset)
 
 void D3D12DescriptorHeap::deallocate(UINT64* alloc_offset)
 {
-	assert(false);
+	if (*alloc_offset == CREATE_NEW_DESCRIPTOR)
+	{
+		OutputDebugString(L"Qhenki D3D12 ERROR: Attempted to deallocate a descriptor that was never allocated\n");
+		return;
+	}
+	std::scoped_lock lock(m_mutex_);
+	m_free_list_.push_back(*alloc_offset);
+	*alloc_offset = CREATE_NEW_DESCRIPTOR;
 }
 
 unsigned D3D12DescriptorHeap::descriptor_count_to_bytes(unsigned count) const

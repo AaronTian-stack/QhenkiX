@@ -67,6 +67,7 @@ namespace qhenki::gfx
 		void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override {}
 		bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override { return true; }
 		bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap& heap, Descriptor* descriptor) override { return true; }
+		bool free_descriptor(Descriptor* descriptor) override { return true; }
 
 		bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name = nullptr) override;
 		bool create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type) override { return true; }
