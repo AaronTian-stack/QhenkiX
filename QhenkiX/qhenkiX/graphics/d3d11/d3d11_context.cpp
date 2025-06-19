@@ -598,6 +598,7 @@ bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 
 bool D3D11Context::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* const staging, Texture* const texture)
 {
+	assert(!staging);
 	const auto texture_d3d11 = to_internal(*texture);
 	ID3D11Resource* resource = get_texture_resource(*texture_d3d11);
 	if (!resource)

@@ -1375,6 +1375,10 @@ bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 
 bool D3D12Context::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* const staging, Texture* const texture)
 {
+	if (staging->internal_state)
+	{
+		OutputDebugString(L"Qhenki D3D12 WARNING: copy_to_texture staging buffer already allocated, overwriting it\n");
+	}
 	const uint32_t num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
 	const auto texture_allocation = to_internal(*texture);
 	const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
@@ -1912,7 +1916,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 		.pTextureBarriers = d3d12_barriers.data(),
 	};
 
-	command_list->Barrier(count, &barrier_group);
+	command_list->Barrier(1, &barrier_group);
 }
 
 void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
