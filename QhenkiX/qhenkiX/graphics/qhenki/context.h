@@ -82,11 +82,11 @@ namespace qhenki::gfx
 		virtual bool create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
 
         /**
-		 * @brief Creates staging buffer with data pointer and copies it to the texture. TODO: add subresource index argument?
+		 * @brief Creates staging buffer with data pointer and copies it to the texture.
          * 
          * @param cmd_list Pointer to the command list used to record the copy operation.
          * @param data Pointer to the data to be copied.
-		 * @param staging Pointer to the staging buffer assumed to be uninitialized.
+		 * @param staging Pointer to the uninitialized staging buffer.
          * @param texture Pointer to the destination texture where the data will be copied.
          * @return true if the copy operation was successful, false otherwise.
          */
@@ -133,9 +133,9 @@ namespace qhenki::gfx
 		virtual bool wait_fences(const WaitInfo& info) = 0;
 
 		// Sets ImageBarrier resource to swapchain resource
-		virtual void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index) = 0;
-		virtual void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target) = 0;
-		virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers) = 0;
+		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index) = 0;
+		virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) = 0;
+		virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
 		virtual void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) = 0;
 		virtual void start_imgui_frame() = 0;

@@ -118,10 +118,10 @@ namespace qhenki::gfx
 		uint64_t get_fence_value(const Fence& fence) override { return 0; }
 		bool wait_fences(const WaitInfo& info) override { return true; }
 
-		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index) override {}
-		void set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target) override {}
+		void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index) override {}
+		void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override {}
 
-		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers) override {}
+		void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override {}
 
 		void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
 		void start_imgui_frame() override;

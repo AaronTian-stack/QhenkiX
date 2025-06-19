@@ -223,9 +223,8 @@ void ExampleApp::create()
 		.src_layout = qhenki::gfx::Layout::COPY_DEST,
 		.dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
 	};
-	std::array barriers = { &barrier_render };
-	m_context_->set_barrier_resource(1, barriers.data(), m_texture_);
-	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
+	m_context_->set_barrier_resource(1, &barrier_render, m_texture_);
+	m_context_->issue_barrier(&cmd_list, 1, &barrier_render);
 
 	THROW_IF_FALSE(m_context_->close_command_list(&cmd_list));
 	auto current_fence_value = ++m_fence_frame_ready_val_[get_frame_index()];
@@ -293,9 +292,8 @@ void ExampleApp::render()
 		.src_layout = qhenki::gfx::Layout::PRESENT,
 		.dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
 	};
-	std::array barriers = { &barrier_render };
-	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
+	m_context_->set_barrier_resource(1, &barrier_render, m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, &barrier_render);
 
 	// Clear back buffer / Start render pass
 	std::array clear_values = { 0.f, 0.f, 0.f, 1.f };
@@ -378,9 +376,8 @@ void ExampleApp::render()
 		.src_layout = qhenki::gfx::Layout::RENDER_TARGET,
 		.dst_layout = qhenki::gfx::Layout::PRESENT,
 	};
-	barriers = { &barrier_present };
-	m_context_->set_barrier_resource(1, barriers.data(), m_swapchain_, get_frame_index());
-	m_context_->issue_barrier(&cmd_list, 1, barriers.data());
+	m_context_->set_barrier_resource(1, &barrier_present, m_swapchain_, get_frame_index());
+	m_context_->issue_barrier(&cmd_list, 1, &barrier_present);
 
 	// Close the command list
 	m_context_->close_command_list(&cmd_list);

@@ -1833,27 +1833,26 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
 	return true;
 }
 
-void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Swapchain& swapchain, unsigned frame_index)
+void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain, unsigned frame_index)
 {
 	assert(barriers);
 	for (unsigned i = 0; i < count; i++)
 	{
 		assert(frame_index == m_swapchain_->GetCurrentBackBufferIndex());
-		assert(barriers[i]);
-		barriers[i]->resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
+		barriers[i].resource = static_cast<void*>(m_swapchain_buffers_[frame_index].Get());
 	}
 }
 
-void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* const* barriers, const Texture& render_target)
+void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
 {
+	assert(barriers);
 	for (unsigned i = 0; i < count; i++)
 	{
-		assert(barriers[i]);
-		barriers[i]->resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
+		barriers[i].resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());
 	}
 }
 
-void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* const* barriers)
+void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
@@ -1862,11 +1861,11 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 	std::array<D3D12_TEXTURE_BARRIER, 16> d3d12_barriers;
 	for (unsigned i = 0; i < count; i++)
 	{
-		const auto& barrier = *barriers[i];
+		const auto& barrier = barriers[i];
 
 		if (!barrier.resource)
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Barrier resource is null\n");
+			OutputDebugString(L"Qhenki D3D12 ERROR: Barrier resource is null. Barrier was not issued\n");
 			return;
 		}
 
