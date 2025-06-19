@@ -9,14 +9,14 @@ namespace qhenki
 {
 	class InputManager
 	{
-		std::array<bool, SDL_SCANCODE_COUNT> current_keys_{};
-		std::array<bool, SDL_SCANCODE_COUNT> previous_keys_{};
-		XMFLOAT2 mouse_position_{ 0, 0 };
-		XMFLOAT2 mouse_position_prev_{ 0, 0 };
-		XMFLOAT2 mouse_delta_{ 0, 0 };
-		XMFLOAT2 mouse_scroll_{ 0, 0 };
-		uint32_t mouse_flags_{ 0 };
-		uint32_t mouse_flags_prev_{ 0 };
+		std::array<bool, SDL_SCANCODE_COUNT> m_current_keys{};
+		std::array<bool, SDL_SCANCODE_COUNT> m_previous_keys{};
+		XMFLOAT2 m_mouse_position{ 0, 0 };
+		XMFLOAT2 m_mouse_position_prev{ 0, 0 };
+		XMFLOAT2 m_mouse_delta{ 0, 0 };
+		XMFLOAT2 m_mouse_scroll{ 0, 0 };
+		uint32_t m_mouse_flags{ 0 };
+		uint32_t m_mouse_flags_prev{ 0 };
 	public:
 		void update(SDL_Window* window);
 		void handle_extra_events(const SDL_Event& event);
@@ -29,7 +29,7 @@ namespace qhenki
 		bool is_mouse_button_just_pressed(uint32_t button) const;
 		bool is_mouse_button_just_released(uint32_t button) const;
 
-		void reset_mouse_scroll() { mouse_scroll_ = { 0, 0 }; }
+		void reset_mouse_scroll() { m_mouse_scroll = { 0, 0 }; }
 
 		const XMFLOAT2& get_mouse_delta() const;
 		const XMFLOAT2& get_mouse_scroll() const;

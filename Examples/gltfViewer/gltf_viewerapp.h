@@ -11,40 +11,43 @@
 
 class gltfViewerApp : public qhenki::Application
 {
-	qhenki::gfx::PipelineLayout m_pipeline_layout_{};
-	qhenki::gfx::GraphicsPipeline m_pipeline_{};
-	qhenki::gfx::Shader m_vertex_shader_{};
-	qhenki::gfx::Shader m_pixel_shader_{};
+	qhenki::gfx::PipelineLayout m_pipeline_layout{};
+	qhenki::gfx::GraphicsPipeline m_pipeline{};
+	qhenki::gfx::Shader m_vertex_shader{};
+	qhenki::gfx::Shader m_pixel_shader{};
 
 	// One Command Pool per frame, per thread. Pool allocates lists
 	// Command pools for main thread
-	std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools_{};
-	std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools_thread_{};
+	std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools{};
+	std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools_thread{};
 
-	std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors_{};
-	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers_{};
+	std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
+	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};
 
 	qhenki::gfx::Buffer m_model_buffer{};
 
-	qhenki::gfx::Descriptor m_sampler_descriptor_{};
-	qhenki::gfx::Sampler m_sampler_{};
+	qhenki::gfx::Descriptor m_sampler_descriptor{};
+	qhenki::gfx::Sampler m_sampler{};
 
-	qhenki::gfx::Texture m_depth_buffer_{};
-	qhenki::gfx::Descriptor m_depth_buffer_descriptor_{};
+	qhenki::gfx::Texture m_depth_buffer{};
+	qhenki::gfx::Descriptor m_depth_buffer_descriptor{};
 
-	qhenki::gfx::DescriptorHeap m_CPU_heap_{};
-	qhenki::gfx::DescriptorHeap m_GPU_heap_{};
+	qhenki::gfx::DescriptorHeap m_CPU_heap{};
+	qhenki::gfx::DescriptorHeap m_GPU_heap{};
 
-	qhenki::gfx::DescriptorHeap m_dsv_heap_{};
+	std::vector<qhenki::gfx::Descriptor> m_model_texture_descriptors{};
 
-	qhenki::gfx::DescriptorHeap m_sampler_heap_{};
+	qhenki::gfx::DescriptorHeap m_dsv_heap{};
 
-	qhenki::PerspectiveCamera m_camera_{};
-	qhenki::ArcBallController m_camera_controller_{};
+	qhenki::gfx::DescriptorHeap m_sampler_heap{};
+	std::vector<qhenki::gfx::Descriptor> m_sampler_descriptors{};
 
-	std::mutex m_model_mutex_;
-	GLTFModel m_model_{};
-	tsl::robin_map<std::string, int> attribute_to_slot
+	qhenki::PerspectiveCamera m_camera{};
+	qhenki::ArcBallController m_camera_controller{};
+
+	std::mutex m_model_mutex;
+	GLTFModel m_model{};
+	tsl::robin_map<std::string, int> m_attribute_to_slot
 	{
 		{"POSITION", 0},
 		{"NORMAL", 1},

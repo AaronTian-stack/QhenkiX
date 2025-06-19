@@ -172,7 +172,7 @@ void D3D11Context::create()
     }
 #endif
 
-	shader_compiler = mkU<D3D11ShaderCompiler>();
+	m_shader_compiler = mkU<D3D11ShaderCompiler>();
 }
 
 bool D3D11Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
@@ -200,7 +200,7 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 {
 	if (compiler == nullptr)
 	{
-		compiler = shader_compiler.get();
+		compiler = m_shader_compiler.get();
 	}
 
 	CompilerOutput output = {};
@@ -231,15 +231,15 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 	const auto d3d11_pixel_shader = to_internal(pixel_shader);
 	assert(d3d11_pipeline);
 
-	d3d11_pipeline->vertex_shader_ = vertex_shader.internal_state.get();
-	d3d11_pipeline->pixel_shader_ = pixel_shader.internal_state.get();
+	d3d11_pipeline->vertex_shader = vertex_shader.internal_state.get();
+	d3d11_pipeline->pixel_shader = pixel_shader.internal_state.get();
 
-	const auto true_vs = std::get_if<D3D11VertexShader>(&d3d11_vertex_shader->m_shader_);
+	const auto true_vs = std::get_if<D3D11VertexShader>(&d3d11_vertex_shader->m_shader);
 	assert(true_vs);
 
 	ID3D11InputLayout* input_layout_ = m_layout_assembler_.create_input_layout_reflection(m_device_.Get(),
 		true_vs->vertex_shader_blob.Get(), desc.increment_slot);
-	d3d11_pipeline->input_layout_ = input_layout_;
+	d3d11_pipeline->input_layout = input_layout_;
 
 	bool succeeded = input_layout_ != nullptr;
 
@@ -258,7 +258,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		.MultisampleEnable = FALSE, // Multisample enable not included (TODO: add later?)
 		.AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
 	};
-	if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, d3d11_pipeline->rasterizer_state_.ReleaseAndGetAddressOf())))
+	if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, d3d11_pipeline->rasterizer_state.ReleaseAndGetAddressOf())))
 	{
 		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Rasterizer State");
 		succeeded = false;
@@ -288,7 +288,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 				.RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
 			};
 		}
-		if (FAILED(m_device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state_)))
+		if (FAILED(m_device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state)))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Blend State\n");
 			succeeded = false;
@@ -322,7 +322,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 			},
 		};
 
-		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, d3d11_pipeline->depth_stencil_state_.ReleaseAndGetAddressOf())))
+		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, d3d11_pipeline->depth_stencil_state.ReleaseAndGetAddressOf())))
 		{
 			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Depth Stencil State\n");
 			succeeded = false;

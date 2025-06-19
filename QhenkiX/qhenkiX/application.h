@@ -31,23 +31,23 @@ namespace qhenki
 
 	private:
 		std::thread::id m_main_thread_id{};
-		gfx::API m_graphics_api_ = gfx::API::D3D11;
+		gfx::API m_graphics_api = gfx::API::D3D11;
 	protected:
 		// Audio
-		InputManager m_input_manager_{}; // Input
+		InputManager m_input_manager{}; // Input
 		// Files 
 		// Preferences
 
-		bool m_QUIT_ = false; // Set to true when the application should quit
-		UINT m_frame_index_ = 0;
+		bool m_QUIT = false; // Set to true when the application should quit
+		UINT m_frame_index = 0;
 		DisplayWindow m_window_;
-		uPtr<gfx::Context> m_context_ = nullptr;
-		gfx::Swapchain m_swapchain_{};
-		gfx::Queue m_graphics_queue_{}; // A graphics queue is given to the application by default
-		gfx::DescriptorHeap m_rtv_heap_{}; // Default RTV heap that also contains swapchain descriptors
+		uPtr<gfx::Context> m_context = nullptr;
+		gfx::Swapchain m_swapchain{};
+		gfx::Queue m_graphics_queue{}; // A graphics queue is given to the application by default
+		gfx::DescriptorHeap m_rtv_heap{}; // Default RTV heap that also contains swapchain descriptors
 
-		gfx::Fence m_fence_frame_ready_{};
-		std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val_{ 0, 0 };
+		gfx::Fence m_fence_frame_ready{};
+		std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val{ 0, 0 };
 
 		virtual void init_display_window();
 
@@ -58,14 +58,14 @@ namespace qhenki
 		virtual void destroy() {}
 
 	public:
-		UINT get_frame_index() const { return m_frame_index_; }
-		void increment_frame_index() { m_frame_index_ = (m_frame_index_ + 1) % m_frames_in_flight; }
+		UINT get_frame_index() const { return m_frame_index; }
+		void increment_frame_index() { m_frame_index = (m_frame_index + 1) % m_frames_in_flight; }
 
 		bool is_main_thread() const { return std::this_thread::get_id() == m_main_thread_id; }
 
 		// Call this from the main thread
 		void run(gfx::API api);
-		[[nodiscard]] gfx::API get_graphics_api() const { return m_graphics_api_; }
+		gfx::API get_graphics_api() const { return m_graphics_api; }
 		virtual ~Application() = 0;
 	};
 }

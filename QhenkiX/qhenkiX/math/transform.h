@@ -5,8 +5,8 @@ namespace qhenki
 {
 	struct TransformSIMD
 	{
-		XMMATRIX basis_;
-		XMVECTOR translation_;
+		XMMATRIX basis;
+		XMVECTOR translation;
 	};
 
 	class Transform
@@ -20,8 +20,8 @@ namespace qhenki
 		Transform affine_invert() const;
 
 	public:
-		Basis basis_;
-		XMFLOAT3 translation_;
+		Basis basis;
+		XMFLOAT3 translation;
 
 		XMMATRIX to_matrix_simd() const;
 		XMFLOAT4X4 to_matrix() const;
@@ -62,8 +62,8 @@ namespace qhenki
 		Transform operator*(const Transform& rhs) const;
 		Transform& operator*=(const Transform& rhs);
 
-		Transform() : basis_(Basis::identity()), translation_(0.f, 0.f, 0.f) {}
-		Transform(const XMFLOAT3& translation) : basis_(Basis::identity()), translation_(translation) {}
-		Transform(const Basis& basis, const XMFLOAT3& translation) : basis_(basis), translation_(translation) {}
+		Transform() : basis(Basis::identity()), translation(0.f, 0.f, 0.f) {}
+		Transform(const XMFLOAT3& translation) : basis(Basis::identity()), translation(translation) {}
+		Transform(const Basis& basis, const XMFLOAT3& translation) : basis(basis), translation(translation) {}
 	};
 }

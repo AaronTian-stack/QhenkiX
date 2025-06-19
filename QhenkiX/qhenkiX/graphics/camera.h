@@ -10,17 +10,17 @@ namespace qhenki
 {
 	struct CameraMatrices
 	{
-		XMFLOAT4X4 view_projection_{};
-		XMFLOAT4X4 inverse_view_projection_{};
+		XMFLOAT4X4 view_projection{};
+		XMFLOAT4X4 inverse_view_projection{};
 	};
 
 	class Camera
 	{
 	protected:
-		CameraMatrices matrices_{};
+		CameraMatrices m_matrices{};
 
 	public:
-		Transform transform_{};
+		Transform transform{};
 
 		Camera() {}
 		Camera(const float vw, const float vh) : viewport_width(vw), viewport_height(vh) {}
@@ -32,7 +32,7 @@ namespace qhenki
 		float viewport_width = 0;
 		float viewport_height = 0;
 		
-		const CameraMatrices& matrices = matrices_;
+		const CameraMatrices& matrices = m_matrices;
 
 		/**
 		 * Updates view, projection, view_projection, inverse_view_projection

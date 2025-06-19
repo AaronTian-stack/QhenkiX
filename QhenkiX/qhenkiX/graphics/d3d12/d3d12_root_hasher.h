@@ -16,8 +16,8 @@ namespace qhenki::gfx
 {
 	class D3D12RootHasher
 	{
-		std::mutex m_root_mutex_;
-		tsl::robin_map<size_t, ComPtr<ID3D12RootSignature>> m_root_map_;
+		std::mutex m_root_mutex;
+		tsl::robin_map<size_t, ComPtr<ID3D12RootSignature>> m_root_map;
 
 		uint64_t fnv1a_hash(const void* data, size_t size);
 

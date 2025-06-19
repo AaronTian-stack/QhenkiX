@@ -19,36 +19,36 @@ namespace qhenki::gfx
 {
 	class D3D12Context : public Context
 	{
-		D3D12_FEATURE_DATA_D3D12_OPTIONS12 m_options12_ = {}; // Enhanced barriers
-		D3D12_FEATURE_DATA_SHADER_MODEL m_shader_model_ = {};
+		D3D12_FEATURE_DATA_D3D12_OPTIONS12 m_options12 = {}; // Enhanced barriers
+		D3D12_FEATURE_DATA_SHADER_MODEL m_shader_model = {};
 
-		D3D12_FEATURE_DATA_D3D12_OPTIONS m_options_ = {};
+		D3D12_FEATURE_DATA_D3D12_OPTIONS m_options = {};
 
-		ComPtr<IDXGIFactory6> m_dxgi_factory_ = nullptr;
+		ComPtr<IDXGIFactory6> m_dxgi_factory = nullptr;
 #ifdef _DEBUG
-		ComPtr<ID3D12Debug3> m_debug_;
-		ComPtr<IDXGIDebug1> m_dxgi_debug_;
+		ComPtr<ID3D12Debug3> m_debug;
+		ComPtr<IDXGIDebug1> m_dxgi_debug;
 #endif
-		ComPtr<ID3D12Device> m_device_;
-		ComPtr<D3D12MA::Allocator> m_allocator_;
+		ComPtr<ID3D12Device> m_device;
+		ComPtr<D3D12MA::Allocator> m_allocator;
 
-		ComPtr<IDXGISwapChain3> m_swapchain_;
-		std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers_; // 2 is upper limit
-		std::array<Descriptor, 2> m_swapchain_descriptors_{}; // 2 is upper limit
+		ComPtr<IDXGISwapChain3> m_swapchain;
+		std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers; // 2 is upper limit
+		std::array<Descriptor, 2> m_swapchain_descriptors{}; // 2 is upper limit
 
 		D3D12DescriptorHeap m_imgui_heap{}; // ImGUI only
-		std::array<Descriptor, 2> m_imgui_descriptors_{}; // ImGUI only
+		std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
 
-		Queue* m_swapchain_queue_ = nullptr;
+		Queue* m_swapchain_queue = nullptr;
 
-		std::mutex m_pipeline_desc_mutex_;
-		boost::object_pool<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_pipeline_desc_pool_;
+		std::mutex m_pipeline_desc_mutex;
+		boost::object_pool<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_pipeline_desc_pool;
 
-		D3D11ShaderCompiler m_d3d11_shader_compiler_; // Needed for SM < 6.0
+		D3D11ShaderCompiler m_d3d11_shader_compiler; // Needed for SM < 6.0
 
-		D3D12RootHasher m_root_reflection_;
+		D3D12RootHasher m_root_reflection;
 
-		Fence m_fence_wait_all_{}; // For stalling queues
+		Fence m_fence_wait_all{}; // For stalling queues
 
 		std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc, bool increment_slot) const;
 		void root_signature_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc);
@@ -105,7 +105,7 @@ namespace qhenki::gfx
 		void unmap_buffer(const Buffer& buffer) override;
 
 		void bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count,
-		                         const Buffer* const* buffers, const unsigned* const strides, const unsigned* const offsets) override;
+		                         const Buffer* const* buffers, const unsigned* strides, const unsigned* offsets) override;
 
 		void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format,
 		                       unsigned offset) override;

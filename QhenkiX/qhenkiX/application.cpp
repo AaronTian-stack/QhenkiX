@@ -17,7 +17,7 @@ using namespace qhenki;
 void Application::init_display_window()
 {
 	std::string title = "QhenkiX Application";
-	switch (m_graphics_api_)
+	switch (m_graphics_api)
 	{
 		case gfx::API::D3D11:
 			title += " | DX11";
@@ -44,34 +44,34 @@ void Application::init_display_window()
 
 void Application::run(const gfx::API api)
 {
-	m_graphics_api_ = api;
+	m_graphics_api = api;
 	m_main_thread_id = std::this_thread::get_id();
 	init_display_window();
 	switch (api)
 	{
 	case gfx::API::D3D11:
-		m_context_ = mkU<gfx::D3D11Context>();
+		m_context = mkU<gfx::D3D11Context>();
 		break;
 	case gfx::API::D3D12:
-		m_context_ = mkU<gfx::D3D12Context>();
+		m_context = mkU<gfx::D3D12Context>();
 		break;
 	case gfx::API::Vulkan:
 	default:
 		throw std::runtime_error("API not implemented");
 	}
-	m_context_->create();
+	m_context->create();
 
-	THROW_IF_FALSE(m_context_->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue_));
+	THROW_IF_FALSE(m_context->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue));
 
 	const gfx::SwapchainDesc swapchain_desc =
 	{
-		.width = m_window_.m_display_info_.width,
-		.height = m_window_.m_display_info_.height,
+		.width = m_window_.m_display_info.width,
+		.height = m_window_.m_display_info.height,
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 		.buffer_count = m_frames_in_flight,
 	};
-	THROW_IF_FALSE(m_context_->create_swapchain(m_window_, swapchain_desc, m_swapchain_, 
-			m_graphics_queue_, m_frame_index_));
+	THROW_IF_FALSE(m_context->create_swapchain(m_window_, swapchain_desc, m_swapchain, 
+			m_graphics_queue, m_frame_index));
 
 	gfx::DescriptorHeapDesc rtv_heap_desc
 	{
@@ -79,41 +79,41 @@ void Application::run(const gfx::API api)
 		.visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context_->create_descriptor_heap(rtv_heap_desc, m_rtv_heap_));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(rtv_heap_desc, m_rtv_heap));
 	
 	// Make swapchain RTVs (stored internally)
-	THROW_IF_FALSE(m_context_->create_swapchain_descriptors(m_swapchain_, m_rtv_heap_));
+	THROW_IF_FALSE(m_context->create_swapchain_descriptors(m_swapchain, m_rtv_heap));
 
 	// Create fences
-	THROW_IF_FALSE(m_context_->create_fence(&m_fence_frame_ready_, m_fence_frame_ready_val_[get_frame_index()]));
+	THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[get_frame_index()]));
 
 	create();
 	// Starts the main loop
-    while (!m_QUIT_)
+    while (!m_QUIT)
     {
-		m_input_manager_.reset_mouse_scroll();
+		m_input_manager.reset_mouse_scroll();
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
             if (event.type == SDL_EVENT_QUIT)
             {
-				m_QUIT_ = true;
+				m_QUIT = true;
             }
 			if (event.type == SDL_EVENT_WINDOW_RESIZED)
 			{
-				m_window_.m_display_info_.width = event.window.data1;
-				m_window_.m_display_info_.height = event.window.data2;
-				m_context_->resize_swapchain(m_swapchain_, event.window.data1, event.window.data2, m_rtv_heap_, m_frame_index_);
+				m_window_.m_display_info.width = event.window.data1;
+				m_window_.m_display_info.height = event.window.data2;
+				m_context->resize_swapchain(m_swapchain, event.window.data1, event.window.data2, m_rtv_heap, m_frame_index);
 				resize(event.window.data1, event.window.data2);
 			}
-			m_input_manager_.handle_extra_events(event);
+			m_input_manager.handle_extra_events(event);
 			if (ImGui::GetCurrentContext())
 				ImGui_ImplSDL3_ProcessEvent(&event);
         }
-		m_input_manager_.update(m_window_.get_window()); // After all SDL events
+		m_input_manager.update(m_window_.get_window()); // After all SDL events
         render();
     }
-	m_context_->wait_idle(m_graphics_queue_);
+	m_context->wait_idle(m_graphics_queue);
 	destroy();
 }
 

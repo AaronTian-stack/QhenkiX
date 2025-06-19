@@ -50,40 +50,38 @@ std::size_t hash_input_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layou
 
 void D3D11LayoutAssembler::add_input(const D3D11_INPUT_ELEMENT_DESC& input)
 {
-    m_layout_desc_.push_back(input);
+    m_layout_desc.push_back(input);
 }
 
 ID3D11InputLayout* D3D11LayoutAssembler::find_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layout)
 {
 	auto hash = hash_input_layout(layout);
-	if (m_layout_map_.contains(hash)) return m_layout_map_[hash].layout.Get();
+	if (m_layout_map.contains(hash)) return m_layout_map[hash].layout.Get();
 
 	return nullptr;
 }
 
 D3D11Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
 {
-	std::lock_guard lock(m_layout_mutex_);
-	if (m_layout_logical_map_.contains(layout)) return m_layout_logical_map_[layout];
+	std::lock_guard lock(m_layout_mutex);
+	if (m_layout_logical_map.contains(layout)) return m_layout_logical_map[layout];
 	return nullptr;
 }
 
 #define find_layout(layout_d) auto hash = hash_input_layout(layout_d); \
-	if (m_layout_map_.contains(hash)) return m_layout_map_[hash].layout.Get(); \
+	if (m_layout_map.contains(hash)) return m_layout_map[hash].layout.Get(); \
 
 
-std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layout_manual(
-	ID3D11Device* const device,
-	ID3DBlob* const vertex_shader_blob)
+std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layout_manual(ID3D11Device* const device, ID3DBlob* const vertex_shader_blob)
 {
-	std::lock_guard lock(m_layout_mutex_);
+	std::lock_guard lock(m_layout_mutex);
     // hash the input layout
-	find_layout(m_layout_desc_)
+	find_layout(m_layout_desc)
 
     ComPtr<ID3D11InputLayout> layout;
     if (FAILED(device->CreateInputLayout(
-        m_layout_desc_.data(),
-        static_cast<UINT>(m_layout_desc_.size()),
+        m_layout_desc.data(),
+        static_cast<UINT>(m_layout_desc.size()),
         vertex_shader_blob->GetBufferPointer(),
         vertex_shader_blob->GetBufferSize(),
         &layout)))
@@ -92,8 +90,8 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
         return {};
     }
 
-    m_layout_map_[hash] = { layout, m_layout_desc_ };
-	m_layout_logical_map_[layout.Get()] = &m_layout_map_[hash];
+    m_layout_map[hash] = { layout, m_layout_desc };
+	m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
 
     return layout;
 }
@@ -200,7 +198,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
     }
 
 	// hash and check if layout already exists
-	std::lock_guard lock(m_layout_mutex_);
+	std::lock_guard lock(m_layout_mutex);
 	find_layout(input_layout_desc)
 
     ComPtr<ID3D11InputLayout> layout;
@@ -215,16 +213,16 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
 		return nullptr;
     }
 
-    m_layout_map_[hash] = { layout, std::move(input_layout_desc) };
-	m_layout_logical_map_[layout.Get()] = &m_layout_map_[hash];
+    m_layout_map[hash] = { layout, std::move(input_layout_desc) };
+	m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
 
 	return layout.Get();
 }
 
 void D3D11LayoutAssembler::clear_maps()
 {
-	std::lock_guard lock(m_layout_mutex_);
-	m_layout_map_.clear();
-	m_layout_logical_map_.clear();
-	m_layout_desc_.clear();
+	std::lock_guard lock(m_layout_mutex);
+	m_layout_map.clear();
+	m_layout_logical_map.clear();
+	m_layout_desc.clear();
 }

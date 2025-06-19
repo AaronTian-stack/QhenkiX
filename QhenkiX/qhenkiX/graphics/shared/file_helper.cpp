@@ -30,7 +30,7 @@ std::optional<std::vector<uint8_t>> FileHelper::read_file(const std::wstring& pa
     return buffer;
 }
 
-bool FileHelper::write_file(const std::wstring& path, const void* data, size_t size)
+bool FileHelper::write_file(const std::wstring& path, const void* data, const size_t size)
 {
 	std::ofstream file(path, std::ios::binary);
     if (!file)

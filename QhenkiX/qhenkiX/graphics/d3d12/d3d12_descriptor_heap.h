@@ -11,18 +11,18 @@ namespace qhenki::gfx
 {
 	class D3D12DescriptorHeap
 	{
-		D3D12_DESCRIPTOR_HEAP_DESC m_desc_{};
-		UINT m_descriptor_size_ = 0;
-		ComPtr<ID3D12DescriptorHeap> m_heap_;
+		D3D12_DESCRIPTOR_HEAP_DESC m_desc{};
+		UINT m_descriptor_size = 0;
+		ComPtr<ID3D12DescriptorHeap> m_heap;
 
-		std::mutex m_mutex_;
+		std::mutex m_mutex;
 
-		size_t m_pointer_ = 0;
-		std::vector<UINT64> m_free_list_;
+		size_t m_pointer = 0;
+		std::vector<UINT64> m_free_list;
 
 	public:
-		const D3D12_DESCRIPTOR_HEAP_DESC& desc = m_desc_;
-		const UINT& descriptor_size = m_descriptor_size_;
+		const D3D12_DESCRIPTOR_HEAP_DESC& desc = m_desc;
+		const UINT& descriptor_size = m_descriptor_size;
 		bool create(ID3D12Device* device, const D3D12_DESCRIPTOR_HEAP_DESC& desc);
 
 		// Thread safe
@@ -42,7 +42,7 @@ namespace qhenki::gfx
 		bool get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes, size_t num_descriptor_offset) const;
 		const ComPtr<ID3D12DescriptorHeap>& Get() const
 		{
-			return m_heap_;
+			return m_heap;
 		}
 	};
 }

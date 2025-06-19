@@ -20,10 +20,10 @@ namespace qhenki::gfx
 
 	class D3D12ShaderCompiler : public ShaderCompiler
 	{
-		D3D11ShaderCompiler m_d3d11_shader_compiler_;
+		D3D11ShaderCompiler m_d3d11_shader_compiler;
 
-		ComPtr<IDxcUtils> m_library_;
-		ComPtr<IDxcCompiler3> m_compiler_; // Not thread safe
+		ComPtr<IDxcUtils> m_library;
+		ComPtr<IDxcCompiler3> m_compiler; // Not thread safe
 
 		static DXGI_FORMAT mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type);
 

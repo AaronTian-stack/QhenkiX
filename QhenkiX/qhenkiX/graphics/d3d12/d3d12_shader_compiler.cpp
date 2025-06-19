@@ -114,15 +114,16 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
 	case D3D_REGISTER_COMPONENT_FLOAT64:
 			throw std::runtime_error("D3D12ShaderCompiler: 64 bit component type not supported");
 	}
+	return DXGI_FORMAT_UNKNOWN;
 }
 
 D3D12ShaderCompiler::D3D12ShaderCompiler()
 {
-	if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library_.ReleaseAndGetAddressOf()))))
+	if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
 	{
 		throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcLibrary");
 	}
-	if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_compiler_.ReleaseAndGetAddressOf()))))
+	if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_compiler.ReleaseAndGetAddressOf()))))
 	{
 		throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcCompiler");
 	}
@@ -133,7 +134,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	// DXC does not support < SM 6.0, use FXC
 	if (input.min_shader_model < ShaderModel::SM_6_0)
 	{
-		return m_d3d11_shader_compiler_.compile(input, output);
+		return m_d3d11_shader_compiler.compile(input, output);
 	}
 
 	DxcBuffer source_buffer;
@@ -151,7 +152,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	// Create default file include handler
 	// TODO: custom include handlers
 	ComPtr<IDxcIncludeHandler> include_handler;
-	if (FAILED(m_library_->CreateDefaultIncludeHandler(&include_handler)))
+	if (FAILED(m_library->CreateDefaultIncludeHandler(&include_handler)))
 	{
 		output.error_message = "D3D12ShaderCompiler: Failed to create include handler";
 		return false;
@@ -193,7 +194,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
 	// Compile DXIL blob
 	ComPtr<IDxcResult> result;
-	if FAILED(m_compiler_->Compile(
+	if FAILED(m_compiler->Compile(
 		&source_buffer,
 		args_ptrs.data(),
 		static_cast<UINT32>(args_ptrs.size()),

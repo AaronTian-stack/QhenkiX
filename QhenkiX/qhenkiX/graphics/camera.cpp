@@ -10,7 +10,7 @@ void Camera::unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, flo
 
     XMVECTOR ndc = XMVectorSet(ndc_x, ndc_y, ndc_z, 1.0f);
 
-    XMMATRIX inv_view_proj = XMLoadFloat4x4(&matrices_.inverse_view_projection_);
+    XMMATRIX inv_view_proj = XMLoadFloat4x4(&m_matrices.inverse_view_projection);
     XMVECTOR world = XMVector4Transform(ndc, inv_view_proj);
 
     float w = XMVectorGetW(world);

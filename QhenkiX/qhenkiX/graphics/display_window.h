@@ -29,11 +29,11 @@ namespace qhenki
 	 */
 	class DisplayWindow
 	{
-		SDL_Window* m_window_ = nullptr;
-		SDL_DisplayMode m_current_monitor_ = {};
-		DisplayInfo m_display_info_ = {};
+		SDL_Window* m_window = nullptr;
+		SDL_DisplayMode m_current_monitor = {};
+		DisplayInfo m_display_info = {};
 
-		HWND m_hwnd_ = nullptr; // TODO: support other platforms besides windows
+		HWND m_hwnd = nullptr; // TODO: support other platforms besides windows
 
 		void create_window_internal(const DisplayInfo& info, int monitor_index);
 
@@ -43,13 +43,13 @@ namespace qhenki
 		SDL_DisplayMode get_current_monitor() const;
 		static std::vector<SDL_DisplayMode> get_monitors();
 
-		[[nodiscard]] XMUINT2 get_display_size() const;
+		XMUINT2 get_display_size() const;
 
-		[[nodiscard]] const DisplayInfo& get_display_info() const;
+		const DisplayInfo& get_display_info() const;
 
-		[[nodiscard]] SDL_Window* get_window() const;
+		SDL_Window* get_window() const;
 
-		[[nodiscard]] HWND get_window_handle() const;
+		HWND get_window_handle() const;
 
 		bool set_fullscreen(bool fullscreen);
 		bool set_resolution(int width, int height);

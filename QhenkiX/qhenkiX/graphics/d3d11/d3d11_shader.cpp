@@ -10,7 +10,7 @@
 using namespace qhenki::gfx;
 
 D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_type, const std::wstring& name, 
-	const CompilerOutput& output, bool& result) : m_type_(shader_type)
+	const CompilerOutput& output, bool& result) : m_type(shader_type)
 {
 	const auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
 	assert(blob);
@@ -21,38 +21,38 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 	{
 	case VERTEX_SHADER:
 	{
-		m_shader_ = D3D11VertexShader();
+		m_shader = D3D11VertexShader();
 		if (FAILED(device->CreateVertexShader(
 			blob->GetBufferPointer(),
 			blob->GetBufferSize(),
 			nullptr,
-			&std::get<D3D11VertexShader>(m_shader_).vertex_shader)))
+			&std::get<D3D11VertexShader>(m_shader).vertex_shader)))
 		{
 			result = false;
 		}
 		else
 		{
-			device_resource = std::get<D3D11VertexShader>(m_shader_).vertex_shader.Get();
+			device_resource = std::get<D3D11VertexShader>(m_shader).vertex_shader.Get();
 			// the blob needs to be saved
-			auto& tvs = std::get<D3D11VertexShader>(m_shader_);
+			auto& tvs = std::get<D3D11VertexShader>(m_shader);
 			tvs.vertex_shader_blob = ComPtr<ID3DBlob>(blob);
 		}
 		break;
 	}
 	case PIXEL_SHADER:
 	{
-		m_shader_ = ComPtr<ID3D11PixelShader>();
+		m_shader = ComPtr<ID3D11PixelShader>();
 		if (FAILED(device->CreatePixelShader(
 			blob->GetBufferPointer(),
 			blob->GetBufferSize(),
 			nullptr,
-			std::get<ComPtr<ID3D11PixelShader>>(m_shader_).ReleaseAndGetAddressOf())))
+			std::get<ComPtr<ID3D11PixelShader>>(m_shader).ReleaseAndGetAddressOf())))
 		{
 			result = false;
 		}
 		else
 		{
-			device_resource = std::get<ComPtr<ID3D11PixelShader>>(m_shader_).Get();
+			device_resource = std::get<ComPtr<ID3D11PixelShader>>(m_shader).Get();
 		}
 		break;
 	}

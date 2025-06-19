@@ -25,7 +25,7 @@ namespace qhenki::gfx
 	class Context
 	{
 	protected:
-		uPtr<ShaderCompiler> shader_compiler;
+		uPtr<ShaderCompiler> m_shader_compiler;
 
 	public:
 		virtual void create() = 0; // TODO: return error string for potential dialog box

@@ -7,25 +7,25 @@ namespace qhenki
 {
 	struct Basis
 	{
-		XMFLOAT3X3 basis_;
+		XMFLOAT3X3 basis;
 
-		Basis() : basis_(
+		Basis() : basis(
 			1.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f) {
 		}
-		explicit Basis(const XMFLOAT3& x, const XMFLOAT3& y, const XMFLOAT3& z) : basis_(
+		explicit Basis(const XMFLOAT3& x, const XMFLOAT3& y, const XMFLOAT3& z) : basis(
 			x.x, y.x, z.x,
 			x.y, y.y, z.y,
 			x.z, y.z, z.z) {
 		}
-		explicit Basis(const XMFLOAT3X3& basis) : basis_(basis) {}
+		explicit Basis(const XMFLOAT3X3& basis) : basis(basis) {}
 		explicit Basis(const XMFLOAT3& axis, float angle);
 		static Basis identity();
 
-		XMFLOAT3 axis_x() const { return { basis_._11, basis_._12, basis_._13 }; }
-		XMFLOAT3 axis_y() const { return { basis_._21, basis_._22, basis_._23 }; }
-		XMFLOAT3 axis_z() const { return { basis_._31, basis_._32, basis_._33 }; }
+		XMFLOAT3 axis_x() const { return { basis._11, basis._12, basis._13 }; }
+		XMFLOAT3 axis_y() const { return { basis._21, basis._22, basis._23 }; }
+		XMFLOAT3 axis_z() const { return { basis._31, basis._32, basis._33 }; }
 
 		void orthonormalize();
 		Basis orthonormalized() const;
