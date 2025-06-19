@@ -194,6 +194,18 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
 	// Compile DXIL blob
 	ComPtr<IDxcResult> result;
+
+	auto output_error = [&result, &output]
+		{
+			// Get any errors
+			ComPtr<IDxcBlobUtf8> errors = nullptr;
+			result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
+			if (errors && errors->GetStringLength())
+			{
+				output.error_message = errors->GetStringPointer();
+			}
+		};
+
 	if FAILED(m_compiler->Compile(
 		&source_buffer,
 		args_ptrs.data(),
@@ -201,13 +213,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		include_handler.Get(),
 		IID_PPV_ARGS(&result)))
 	{
-		// Get any errors
-		ComPtr<IDxcBlobUtf8> errors = nullptr;
-		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
-		if (errors && errors->GetStringLength())
-		{
-			output.error_message = errors->GetStringPointer();
-		}
+		output_error();
 		return false;
 	}
 
@@ -216,12 +222,21 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
 	// Save the blob in output
 	const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.ReleaseAndGetAddressOf()), nullptr);
-	assert(SUCCEEDED(hr_s));
+	if (FAILED(hr_s))
+	{
+		output_error();
+		return false;
+	}
+
 	output.shader_size = d3d12_output->shader_blob->GetBufferSize();
 	output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
 
 	const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.ReleaseAndGetAddressOf()), nullptr);
-	assert(SUCCEEDED(hr_r));
+	if (FAILED(hr_r))
+	{
+		output_error();
+		return false;
+	}
 
 	const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, IID_PPV_ARGS(d3d12_output->root_signature_blob.ReleaseAndGetAddressOf()), nullptr);
 	// The shader might not have a root signature
@@ -245,18 +260,10 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 				debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
 			assert(write_result);
 		}
-	}
-
-	if (FAILED(hr_s) || FAILED(hr_r))
-	{
-		// Get any errors
-		ComPtr<IDxcBlobUtf8> errors = nullptr;
-		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
-		if (errors && errors->GetStringLength())
+		else
 		{
-			output.error_message = errors->GetStringPointer();
+			output_error();
 		}
-		return false;
 	}
 
 	return true;
