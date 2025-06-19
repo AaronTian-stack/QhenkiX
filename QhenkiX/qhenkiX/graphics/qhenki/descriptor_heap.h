@@ -1,5 +1,5 @@
 #pragma once
-#include <memory>
+#include "smartpointer.h"
 
 namespace qhenki::gfx
 {
