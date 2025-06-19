@@ -971,6 +971,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
 	if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV || heap.desc.type == DescriptorHeapDesc::Type::SAMPLER)
 	{
 		cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heap_d3d12->Get().GetAddressOf());
+		cmd_list->m_current_bound_heaps = { &heap, nullptr };
 	}
 	else
 	{
@@ -988,6 +989,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
 	{
 		ID3D12DescriptorHeap* heaps[] = { heap_d3d12->Get().Get(), sampler_heap_d3d12->Get().Get() };
 		cmd_list_d3d12->Get()->SetDescriptorHeaps(2, heaps);
+		cmd_list->m_current_bound_heaps = { &heap, &sampler_heap };
 	}
 	else
 	{
@@ -995,10 +997,11 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
 	}
 }
 
-void D3D12Context::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
+void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
 {
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	assert(gpu_descriptor.heap);
+	assert(gpu_descriptor.heap == cmd_list->m_current_bound_heaps[0] || gpu_descriptor.heap == cmd_list->m_current_bound_heaps[1]);
 
 	const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
