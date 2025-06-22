@@ -438,3 +438,5 @@ FodyWeavers.xsd
 
 # ImGui configuration files
 imgui.ini
+
+.vscode/
