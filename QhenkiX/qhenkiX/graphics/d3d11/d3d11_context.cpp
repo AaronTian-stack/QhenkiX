@@ -598,7 +598,7 @@ bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 
 bool D3D11Context::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* const staging, Texture* const texture)
 {
-	assert(!staging);
+	assert(staging);
 	const auto texture_d3d11 = to_internal(*texture);
 	ID3D11Resource* resource = get_texture_resource(*texture_d3d11);
 	if (!resource)
@@ -864,6 +864,7 @@ void D3D11Context::draw_indexed(CommandList* cmd_list, uint32_t index_count, uin
 
 void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
 {
+	std::scoped_lock lock(m_context_mutex_);
 	ImGui_ImplSDL3_InitForD3D(window.get_window());
 	ImGui_ImplDX11_Init(m_device_.Get(), m_device_context_.Get());
 }
@@ -890,6 +891,7 @@ void D3D11Context::destroy_imgui()
 
 void D3D11Context::compatibility_set_constant_buffers(const unsigned slot, const unsigned count, Buffer* const buffers, const PipelineStage stage)
 {
+	std::scoped_lock lock(m_context_mutex_);
 	std::array<ID3D11Buffer**, 15> buffer_d3d11{};
 	assert(count <= buffer_d3d11.size());
 	for (unsigned i = 0; i < count; i++)
@@ -934,10 +936,10 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 		return;
 	}
 
+	assert(descriptors);
 	for (unsigned i = 0; i < count; i++)
 	{
-		assert(descriptors[i]);
-		assert(descriptors[i]->heap);
+		assert(descriptors[i].heap);
 		const auto heap = to_internal_srv_uav(*descriptors[i].heap);
 		// The descriptor offset is used as index into vector
 		switch (flag)
@@ -954,7 +956,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 		}
 	}
 	const UINT n1 = -1;
-
+	std::scoped_lock lock(m_context_mutex_);
 	switch (flag)
 	{
 	//case ACCESS_RENDER_TARGET:
@@ -1024,6 +1026,7 @@ void D3D11Context::compatibility_set_samplers(const unsigned slot, const unsigne
 
 void D3D11Context::wait_idle(Queue& queue)
 {
+	std::scoped_lock lock(m_context_mutex_);
     m_device_context_->Flush();
 }
 

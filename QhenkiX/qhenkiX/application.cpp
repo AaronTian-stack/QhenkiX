@@ -79,7 +79,7 @@ void Application::run(const gfx::API api)
 		.visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(rtv_heap_desc, m_rtv_heap));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(rtv_heap_desc, m_rtv_heap, L"swapchain RTV heap"));
 	
 	// Make swapchain RTVs (stored internally)
 	THROW_IF_FALSE(m_context->create_swapchain_descriptors(m_swapchain, m_rtv_heap));

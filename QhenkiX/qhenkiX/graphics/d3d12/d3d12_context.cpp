@@ -751,7 +751,10 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 	}
 
 #ifdef _DEBUG
-	d3d12_pipeline->pipeline_state->SetName(debug_name);
+	if (debug_name)
+	{
+		d3d12_pipeline->pipeline_state->SetName(debug_name);
+	}
 #endif
 
 	return true;
@@ -835,7 +838,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc& desc, PipelineLayo
 			D3D12_DESCRIPTOR_RANGE range
 			{
 				.RangeType = binding.type,
-				.NumDescriptors = binding.count, // TODO: test infinite and bindless
+				.NumDescriptors = binding.count,
 				.BaseShaderRegister = binding.binding,
 				.RegisterSpace = i,
 				.OffsetInDescriptorsFromTableStart = offset,
@@ -959,9 +962,16 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 	else if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
 		heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-	d3d12_heap->create(m_device.Get(), heap_desc);
+	const bool result = d3d12_heap->create(m_device.Get(), heap_desc);
 
-	return true;
+#ifdef _DEBUG
+	if (result && debug_name)
+	{
+		d3d12_heap->Get()->SetName(debug_name);
+	}
+#endif
+
+	return result;
 }
 
 void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -1877,8 +1887,9 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
 
-	assert(count < 16);
-	std::array<D3D12_TEXTURE_BARRIER, 16> d3d12_barriers;
+	thread_local std::vector<D3D12_TEXTURE_BARRIER> d3d12_barriers; // TODO: try to avoid dynamic allocation
+	d3d12_barriers.resize(count);
+
 	for (unsigned i = 0; i < count; i++)
 	{
 		const auto& barrier = barriers[i];
