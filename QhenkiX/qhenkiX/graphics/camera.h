@@ -26,8 +26,8 @@ namespace qhenki
 		Camera(const float vw, const float vh) : viewport_width(vw), viewport_height(vh) {}
 		virtual ~Camera() {};
 
-		float near_plane = 0.001f;
-		float far_plane = 100.f;
+		float near_plane = 0.05f;
+		float far_plane = 10000.f;
 
 		float viewport_width = 0;
 		float viewport_height = 0;

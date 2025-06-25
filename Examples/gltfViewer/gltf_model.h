@@ -7,6 +7,9 @@
 #include <math/transform.h>
 #include <graphics/qhenki/buffer.h>
 
+#include "graphics/qhenki/sampler.h"
+#include "graphics/qhenki/texture.h"
+
 struct GLTFModel
 {
 	struct Accessor
@@ -30,34 +33,52 @@ struct GLTFModel
 	// animations
 	std::vector<qhenki::gfx::Buffer> buffers;
 
+	// This matches exactly with the HLSL structure layout. Just remove the anonymous structs
 	struct Material
 	{
 		struct
 		{
-			std::array<float, 4> factor;
-			int index = -1;
-			// texture coordinate set
+			XMFLOAT4 factor;
+			int index = -1; // Texture index NOT image
+			int texture_coordinate_set = 0;
 		} base_color;
 		struct
 		{
 			float metallic_factor = 0.f;
 			float roughness_factor = 0.f;
 			int index = -1;
-			// texture coordinate set
+			int texture_coordinate_set = 0;
 		} metallic_roughness;
 		struct
 		{
 			int index = -1;
-			// texture coordinate set
+			int texture_coordinate_set = 0;
 			float scale = 1.f;
 		} normal;
 		struct
 		{
 			int index = -1;
+			int texture_coordinate_set = 0;
 			float strength = 1.f;
 		} occlusion;
+		struct
+		{
+			XMFLOAT3 factor;
+			int index = -1;
+			int texture_coordinate_set = 0;
+		} emissive;
 	};
+	std::vector<qhenki::gfx::Buffer> material_buffers;
 	std::vector<Material> materials;
+
+	std::vector<qhenki::gfx::Texture> images;
+	std::vector<qhenki::gfx::Sampler> samplers;
+	struct Texture
+	{
+		int image_index = -1;
+		int sampler_index = -1;
+	};
+	std::vector<Texture> textures;
 
 	struct Primitive
 	{

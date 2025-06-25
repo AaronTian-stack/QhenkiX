@@ -24,10 +24,8 @@ class gltfViewerApp : public qhenki::Application
 	std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};
 
+	qhenki::gfx::Descriptor m_model_matrix_descriptor{};
 	qhenki::gfx::Buffer m_model_buffer{};
-
-	qhenki::gfx::Descriptor m_sampler_descriptor{};
-	qhenki::gfx::Sampler m_sampler{};
 
 	qhenki::gfx::Texture m_depth_buffer{};
 	qhenki::gfx::Descriptor m_depth_buffer_descriptor{};
@@ -35,6 +33,7 @@ class gltfViewerApp : public qhenki::Application
 	qhenki::gfx::DescriptorHeap m_CPU_heap{};
 	qhenki::gfx::DescriptorHeap m_GPU_heap{};
 
+	std::vector<qhenki::gfx::Descriptor> m_model_material_descriptors{};
 	std::vector<qhenki::gfx::Descriptor> m_model_texture_descriptors{};
 
 	qhenki::gfx::DescriptorHeap m_dsv_heap{};

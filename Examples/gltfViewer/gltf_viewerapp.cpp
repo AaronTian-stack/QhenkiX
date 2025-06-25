@@ -65,16 +65,16 @@ void gltfViewerApp::create()
 	THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_pixel_shader, pixel_shader));
 
 	// Create pipeline layout
-	qhenki::gfx::LayoutBinding b1 // Constant buffer for camera matrix
+	qhenki::gfx::LayoutBinding b1 // Constant buffers
 	{
 		.binding = 0,
-		.count = 1,
+		.count = 2,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
 	};
 	qhenki::gfx::LayoutBinding b2 // SRV for texture
 	{
-		.binding = 1, // TODO: figure out how to handle this for Vulkan
-		.count = 1,
+		.binding = 2, // TODO: figure out how to handle this for Vulkan
+		.count = 1000,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 	};
 	qhenki::gfx::LayoutBinding b3 // Sampler for texture
@@ -83,13 +83,20 @@ void gltfViewerApp::create()
 		.count = 1,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
 	};
+	qhenki::gfx::LayoutBinding b4
+	{
+		.binding = 0, // TODO: figure out how to handle this for Vulkan
+		.count = 1000,
+		.type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+	};
 	qhenki::gfx::PipelineLayoutDesc layout_desc{};
 	layout_desc.spaces[0] = { b1, b2 };
 	layout_desc.spaces[1] = { b3 }; // Samplers need their own space/table
+	layout_desc.spaces[2] = { b4 };
 	layout_desc.push_ranges.push_back(
 		qhenki::gfx::PushRange
 		{
-			.size = sizeof(XMFLOAT4X4) * 2,
+			.size = sizeof(uint32_t),
 			.binding = 0,
 		}
 	);
@@ -102,7 +109,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, m_GPU_heap));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, m_GPU_heap, L"GPU heap"));
 
 	// Create CPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_CPU
@@ -111,7 +118,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // CPU heap has no size limit
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, m_CPU_heap));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, m_CPU_heap, L"CPU heap"));
 
 	qhenki::gfx::DescriptorHeapDesc dsv_heap_desc
 	{
@@ -119,7 +126,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256,
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, m_dsv_heap));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, m_dsv_heap, L"DSV heap"));
 
 	// Create Sampler Heap
 	qhenki::gfx::DescriptorHeapDesc sampler_heap_desc
@@ -128,7 +135,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU, // Create samplers directly on GPU heap
 		.descriptor_count = 16, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, m_sampler_heap));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, m_sampler_heap, L"Sampler heap"));
 
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
@@ -140,7 +147,7 @@ void gltfViewerApp::create()
 		.increment_slot = true,
 	};
 	THROW_IF_FALSE(m_context->create_pipeline(pipeline_desc, &m_pipeline, 
-			m_vertex_shader, m_pixel_shader, &m_pipeline_layout, nullptr, L"triangle_pipeline"));
+			m_vertex_shader, m_pixel_shader, &m_pipeline_layout, nullptr, L"Triangle pipeline"));
 
 	// A graphics queue is already given to the application by the context
 
@@ -179,26 +186,17 @@ void gltfViewerApp::create()
 			&m_matrix_descriptors[i], qhenki::gfx::BufferDescriptorType::CBV));
 	}
 
-	if (m_context->is_compatibility())
+	qhenki::gfx::BufferDesc desc
 	{
-		qhenki::gfx::BufferDesc desc
-		{
-			.size = MathHelper::align_u32(sizeof(XMFLOAT4X4) * 2, CONSTANT_BUFFER_ALIGNMENT),
-			.usage = qhenki::gfx::BufferUsage::UNIFORM,
-			.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
-		};
-		THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, L"Model Buffer"));
-	}
+		.size = MathHelper::align_u32(sizeof(XMFLOAT4X4) * 2, CONSTANT_BUFFER_ALIGNMENT),
+		.usage = qhenki::gfx::BufferUsage::UNIFORM,
+		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
+	};
+	THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, L"Model Buffer"));
+	THROW_IF_FALSE(m_context->create_descriptor(m_model_buffer, m_CPU_heap,
+		&m_model_matrix_descriptor, qhenki::gfx::BufferDescriptorType::CBV));
+	
 
-	// Create sampler
-	qhenki::gfx::SamplerDesc sampler_desc
-	{
-		.min_filter = qhenki::gfx::Filter::NEAREST,
-		.mag_filter = qhenki::gfx::Filter::NEAREST,
-	}; // Default parameters
-	THROW_IF_FALSE(m_context->create_sampler(sampler_desc, &m_sampler));
-	// Create sampler descriptor
-	THROW_IF_FALSE(m_context->create_descriptor(m_sampler, m_sampler_heap, &m_sampler_descriptor));
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -223,6 +221,7 @@ struct ContextModel
 		qhenki::gfx::DescriptorHeap* heap;
 		std::vector<qhenki::gfx::Descriptor>* descriptors;
 	};
+	HeapAndList material;
 	HeapAndList texture;
 	HeapAndList sampler;
 };
@@ -248,6 +247,52 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
 
 	std::scoped_lock lock(*context_model->mutex);
 	loader.load(*filelist, context_model->model, context_data);
+
+	auto& context = *context_model->context;
+
+	// Only copy below descriptors when model lock is held so is ok.
+	// Create views
+	assert(context_model->model->materials.size() == context_model->model->material_buffers.size());
+    {
+        auto& model = *context_model->model;
+
+        auto& matDescriptors = *context_model->material.descriptors;
+        auto& matHeap = *context_model->material.heap;
+
+        auto& texDescriptors = *context_model->texture.descriptors;
+        auto& texHeap = *context_model->texture.heap;
+
+        auto& sampDescriptors = *context_model->sampler.descriptors;
+        auto& sampHeap = *context_model->sampler.heap;
+
+        // Material Descriptors
+        assert(model.materials.size() == model.material_buffers.size());
+        matDescriptors.resize(model.material_buffers.size());
+        for (size_t i = 0; i < model.material_buffers.size(); i++)
+        {
+            assert(matHeap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
+            // TODO: ensure range is contiguous if descriptors already exist
+            context.create_descriptor(model.material_buffers[i], matHeap, &matDescriptors[i], qhenki::gfx::BufferDescriptorType::CBV);
+        }
+
+        // Texture Descriptors
+		// Should be done right after materials
+        texDescriptors.resize(model.images.size());
+        for (size_t i = 0; i < model.images.size(); i++)
+        {
+            assert(texHeap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
+            // TODO: ensure range is contiguous if descriptors already exist
+            context.create_descriptor_texture_view(model.images[i], texHeap, &texDescriptors[i]);
+        }
+
+        // Sampler Descriptors
+        sampDescriptors.resize(model.samplers.size());
+        for (size_t i = 0; i < model.samplers.size(); i++)
+        {
+            // Should just be created from start of heap
+            context.create_descriptor(model.samplers[i], sampHeap, &sampDescriptors[i]);
+        }
+    }
 }
 
 void gltfViewerApp::render()
@@ -311,9 +356,14 @@ void gltfViewerApp::render()
 					.queue = &m_graphics_queue,
 					.model = &m_model,
 					.mutex = &m_model_mutex,
+					.material =
+					{
+						.heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
+						.descriptors = &m_model_material_descriptors,
+					},
 					.texture
 					{
-						.heap = &m_CPU_heap,
+						.heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
 						.descriptors = &m_model_texture_descriptors,
 					},
 					.sampler
@@ -334,10 +384,9 @@ void gltfViewerApp::render()
 	m_camera.viewport_width = static_cast<float>(dim.x);
 	m_camera.viewport_height = static_cast<float>(dim.y);
 
-	ImGuiIO& io = ImGui::GetIO();
-	if (!io.WantCaptureMouse)
+	if (ImGuiIO& io = ImGui::GetIO(); !io.WantCaptureMouse)
 	{
-		constexpr auto speed = 0.01f;
+		auto speed = 0.01f;
 		const auto delta = m_input_manager.get_mouse_delta();
 		bool left = m_input_manager.is_mouse_button_down(SDL_BUTTON_LEFT);
 		bool right = m_input_manager.is_mouse_button_down(SDL_BUTTON_RIGHT);
@@ -348,12 +397,26 @@ void gltfViewerApp::render()
 		}
 		if (right)
 		{
+			if (bool shift = m_input_manager.is_key_down(SDL_SCANCODE_LSHIFT) || m_input_manager.is_key_down(SDL_SCANCODE_RSHIFT))
+			{
+				speed *= 100.f;
+			}
 			m_camera_controller.translate(-delta.x * speed, delta.y * speed);
 		}
-		if (m_input_manager.get_mouse_scroll().y != 0)
+		bool middle = m_input_manager.is_mouse_button_down(SDL_BUTTON_MIDDLE);
+		bool vertical_scrolling = m_input_manager.get_mouse_scroll().y != 0;
+		if (vertical_scrolling != 0 ^ middle)
 		{
-			auto desired_distance = m_camera_controller.get_target_distance() +
-				m_input_manager.get_mouse_scroll().y * 0.2f;
+			float amount = 0.f;
+			if (vertical_scrolling)
+			{
+				amount = m_input_manager.get_mouse_scroll().y * 0.2f;
+			}
+			if (middle)
+			{
+				amount = -delta.y;
+			}
+			auto desired_distance = m_camera_controller.get_target_distance() + amount;
 			m_camera_controller.set_target_distance(desired_distance);
 		}
 	}
@@ -429,13 +492,8 @@ void gltfViewerApp::render()
 	// Bind resources
 	if (m_context->is_compatibility())
 	{
-		//m_context_->compatibility_set_constant_buffers(1, 1, , qhenki::gfx::PipelineStage::VERTEX);
-
 		std::array mbs = { &m_matrix_buffers[get_frame_index()] };
-		m_context->compatibility_set_constant_buffers(0, 1,
-		                                               mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
-		std::array samplers = { &m_sampler };
-		m_context->compatibility_set_samplers(0, 1, samplers.data(), qhenki::gfx::PipelineStage::PIXEL);
+		m_context->compatibility_set_constant_buffers(0, 1, *mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
 	}
 	else
 	{
@@ -447,7 +505,10 @@ void gltfViewerApp::render()
 
 		// Copy matrix descriptors to GPU heap
 		THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[get_frame_index()], descriptor));
-		THROW_IF_FALSE(m_context->get_descriptor(1, m_GPU_heap, &descriptor)); // 1
+
+		// Sampler
+		THROW_IF_FALSE(m_context->get_descriptor(0, m_sampler_heap, &descriptor));
+		m_context->set_descriptor_table(&cmd_list, 2, descriptor);
 	}
 
 	{ // Render
@@ -455,7 +516,29 @@ void gltfViewerApp::render()
 		std::unique_lock lock(m_model_mutex, std::defer_lock);
 		if (lock.try_lock() && m_model.root_node >= 0) // If not still loading (because it is async function)
 		{
-			// Copy texture descriptors to start of GPU heap
+			// Bindless bind textures, only need to do before all draws
+			if (!m_context->is_compatibility()) // NOT compatibility
+			{
+				// Copy texture descriptors
+				qhenki::gfx::Descriptor descriptor;
+				THROW_IF_FALSE(m_context->get_descriptor(2, m_GPU_heap, &descriptor)); // Make sure this matches in shader
+				// Copy matrix and texture descriptors to GPU heap
+				// TODO: check that CPU texture descriptors are contiguous, otherwise singular copy will not work
+				THROW_IF_FALSE(m_context->copy_descriptors(m_model_texture_descriptors.size(), m_model_texture_descriptors[0], descriptor));
+
+				// Put the materials right after the texture descriptors
+				THROW_IF_FALSE(m_context->get_descriptor(2 + m_model_texture_descriptors.size(), m_GPU_heap, &descriptor));
+				// TODO: again this assumes CPU material descriptors are contiguous
+				THROW_IF_FALSE(m_context->copy_descriptors(m_model_material_descriptors.size(), m_model_material_descriptors[0], descriptor));
+				m_context->set_descriptor_table(&cmd_list, 3, descriptor);
+			}
+			// Compatibility will bind per draw call because we cannot bind all textures at once
+			else
+			{
+				// Sampler
+				assert(m_model.samplers.size() <= 8);
+				m_context->compatibility_set_samplers(0, m_model.samplers.size(), m_model.samplers.data(), qhenki::gfx::PipelineStage::PIXEL);
+			}
 
 			for (int i = 0; i < m_model.nodes.size(); i++)
 			{
@@ -541,19 +624,69 @@ void gltfViewerApp::render()
 
 					m_context->bind_index_buffer(&cmd_list, index_buffer, index_type, index_accessor.offset + buffer_view.offset);
 
+					auto p = m_context->map_buffer(m_model_buffer);
+					memcpy(p, &global_4x4, sizeof(XMFLOAT4X4));
+					memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4), &global_4x4_inverse, sizeof(XMFLOAT4X4));
+					m_context->unmap_buffer(m_model_buffer);
+
 					if (m_context->is_compatibility())
 					{
-						auto p = m_context->map_buffer(m_model_buffer);
-						memcpy(p, &global_4x4, sizeof(XMFLOAT4X4));
-						memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4), &global_4x4_inverse, sizeof(XMFLOAT4X4));
-						m_context->unmap_buffer(m_model_buffer);
-						std::array model_buffers = { &m_model_buffer };
-						m_context->compatibility_set_constant_buffers(1, 1, model_buffers.data(), qhenki::gfx::PipelineStage::VERTEX);
+						m_context->compatibility_set_constant_buffers(1, 1, &m_model_buffer, qhenki::gfx::PipelineStage::VERTEX);
+
+						// Bind based off current material
+						const auto& material = m_model.materials[prim.material_index];
+						auto set_texture_if_valid = [&](int slot, int index)
+						{
+							if (index >= 0 && index < static_cast<int>(m_model_texture_descriptors.size())) 
+							{
+								m_context->compatibility_set_textures(slot, 1, &m_model_texture_descriptors[index],
+									qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE, qhenki::gfx::PipelineStage::PIXEL);
+							}
+						};
+						// 5 textures
+						auto ret_t_index = [&](int index)
+						{
+							if (index < 0)
+							{
+								return -1;
+							}
+							return m_model.textures[index].image_index;
+						};
+						auto start_slot = 3;
+						set_texture_if_valid(start_slot++, ret_t_index(material.base_color.index));
+						set_texture_if_valid(start_slot++, ret_t_index(material.metallic_roughness.index));
+						set_texture_if_valid(start_slot++, ret_t_index(material.normal.index));
+						set_texture_if_valid(start_slot++, ret_t_index(material.occlusion.index));
+						set_texture_if_valid(start_slot++, ret_t_index(material.emissive.index));
+
+						// Sampler
+						auto sampler = [&](int slot, int index)
+						{
+							if (index < 0)
+							{
+								return;
+							}
+							m_context->compatibility_set_samplers(slot, 1, &m_model.samplers[m_model.textures[index].sampler_index], qhenki::gfx::PipelineStage::PIXEL);
+						};
+						start_slot = 0;
+						sampler(start_slot++, material.base_color.index);
+						sampler(start_slot++, material.metallic_roughness.index);
+						sampler(start_slot++, material.normal.index);
+						sampler(start_slot++, material.occlusion.index);
+						sampler(start_slot++, material.emissive.index);
+
+						// We will also bind the material itself here
+						m_context->compatibility_set_constant_buffers(2, 1, &m_model.material_buffers[prim.material_index], qhenki::gfx::PipelineStage::PIXEL);
 					}
 					else
 					{
-						m_context->set_pipeline_constant(&cmd_list, 0, 0, sizeof(XMFLOAT4X4), &global_4x4);
-						m_context->set_pipeline_constant(&cmd_list, 0, sizeof(XMFLOAT4X4), sizeof(XMFLOAT4X4), &global_4x4_inverse);
+						uint32_t mat_index = prim.material_index;
+						m_context->set_pipeline_constant(&cmd_list, 0, 0, sizeof(int), &mat_index);
+
+						// Model matrix
+						qhenki::gfx::Descriptor descriptor;
+						THROW_IF_FALSE(m_context->get_descriptor(1, m_GPU_heap, &descriptor));
+						THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_matrix_descriptor, descriptor));
 					}
 
 					// Draw
