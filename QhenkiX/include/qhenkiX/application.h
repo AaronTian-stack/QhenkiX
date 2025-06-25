@@ -1,12 +1,13 @@
 #pragma once
 
-#include "graphics/display_window.h"
 #include <smartpointer.h>
-#include "graphics/qhenki/context.h"
-#include "graphics/qhenki/descriptor_heap.h"
 #include <thread>
 
+#include "display_window.h"
+
 #include "input/input_manager.h"
+
+#include "RHI/context.h"
 
 namespace qhenki
 {

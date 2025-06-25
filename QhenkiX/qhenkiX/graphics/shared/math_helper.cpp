@@ -1,2 +1,0 @@
-﻿#include "math_helper.h"
-

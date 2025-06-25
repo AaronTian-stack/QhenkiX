@@ -6,12 +6,11 @@
 #define NOMINMAX
 #include <dxgiformat.h>
 #include <wrl/client.h>
-#include "graphics/qhenki/shader.h"
-#include <graphics/qhenki/enums.h>
 
-#include "D3D12MemAlloc.h"
-#include "graphics/qhenki/barrier.h"
-#include "graphics/qhenki/sampler.h"
+#include "qhenkiX/RHI/barrier.h"
+#include "qhenkiX/RHI/enums.h"
+#include "qhenkiX/RHI/sampler.h"
+#include "qhenkiX/RHI/shader.h"
 
 using Microsoft::WRL::ComPtr;
 

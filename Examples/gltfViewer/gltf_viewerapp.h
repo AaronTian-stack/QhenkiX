@@ -1,13 +1,16 @@
 #pragma once
 
-#include <application.h>
-
-#include "graphics/arcball_controller.h"
-#include "graphics/perspective_camera.h"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 
 #include "gltf_loader.h"
 #include <tsl/robin_map.h>
 #include <mutex>
+
+#include "qhenkiX/application.h"
+#include "qhenkiX/arcball_controller.h"
+#include "qhenkiX/perspective_camera.h"
 
 class gltfViewerApp : public qhenki::Application
 {

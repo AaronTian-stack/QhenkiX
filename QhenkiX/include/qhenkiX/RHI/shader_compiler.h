@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "graphics/qhenki/shader.h"
+#include "qhenkiX/RHI/shader.h"
 
 struct CompilerInput
 {

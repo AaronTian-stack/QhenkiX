@@ -8,7 +8,8 @@
 #include <boost/pool/object_pool.hpp>
 
 #include "d3d11_layout_assembler.h"
-#include "graphics/qhenki/context.h"
+
+#include "qhenkiX/RHI/context.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;

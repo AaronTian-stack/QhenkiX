@@ -1,7 +1,7 @@
 #include "exampleapp.h"
 #include <wrl/client.h>
 
-#include "graphics/shared/math_helper.h"
+#include "qhenkiX/helper/math_helper.h"
 
 void ExampleApp::create()
 {

@@ -1,9 +1,11 @@
-﻿#include "file_helper.h"
+﻿#include "qhenkiX/helper/file_helper.h"
 
 #include <fstream>
 #include <iostream>
 #include <vector>
 #include <locale>
+
+#define NOMINMAX
 #include <windows.h>
 
 using namespace qhenki::util;

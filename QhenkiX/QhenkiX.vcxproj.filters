@@ -39,12 +39,6 @@
     <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\util\viewport\viewport.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -63,49 +57,49 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\shared\file_helper.cpp">
+    <ClCompile Include="qhenkiX\graphics\helper\file_helper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp">
+    <ClCompile Include="qhenkiX\graphics\helper\d3d_helper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\graphics\shared\math_helper.cpp">
+    <ClCompile Include="qhenkiX\graphics\helper\math_helper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\graphics\perspective_camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui.cpp">
+    <ClCompile Include="include\imgui\imgui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_demo.cpp">
+    <ClCompile Include="include\imgui\imgui_demo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_draw.cpp">
+    <ClCompile Include="include\imgui\imgui_draw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_dx11.cpp">
+    <ClCompile Include="include\imgui\imgui_impl_dx11.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_dx12.cpp">
+    <ClCompile Include="include\imgui\imgui_impl_dx12.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_win32.cpp">
+    <ClCompile Include="include\imgui\imgui_impl_win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_tables.cpp">
+    <ClCompile Include="include\imgui\imgui_tables.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_widgets.cpp">
+    <ClCompile Include="include\imgui\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_sdl3.cpp">
+    <ClCompile Include="include\imgui\imgui_impl_sdl3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\math\basis.cpp">
@@ -122,10 +116,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="qhenkiX\application.h">
+    <ClInclude Include="include\qhenkiX\application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\display_window.h">
+    <ClInclude Include="include\qhenkiX\display_window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader.h">
@@ -137,43 +131,31 @@
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\camera.h">
+    <ClInclude Include="include\qhenkiX\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\orthographic_camera.h">
+    <ClInclude Include="include\qhenkiX\orthographic_camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\2d\spritebatch.h">
+    <ClInclude Include="include\qhenkiX\2d\spritebatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\util\viewport\viewport.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qhenkiX\util\scaling.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qhenkiX\util\viewport\scaling_viewport.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\buffer.h">
+    <ClInclude Include="include\qhenkiX\RHI\buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\smartpointer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\context.h">
+    <ClInclude Include="include\qhenkiX\RHI\context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\swapchain.h">
+    <ClInclude Include="include\qhenkiX\RHI\swapchain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\shader.h">
+    <ClInclude Include="include\qhenkiX\RHI\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\pipeline.h">
+    <ClInclude Include="include\qhenkiX\RHI\pipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h">
@@ -182,10 +164,10 @@
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h">
+    <ClInclude Include="include\qhenkiX\RHI\command_list.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\render_target.h">
+    <ClInclude Include="include\qhenkiX\RHI\render_target.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_context.h">
@@ -263,25 +245,25 @@
     <ClInclude Include="include\boost\config\workaround.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\queue.h">
+    <ClInclude Include="include\qhenkiX\RHI\queue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h">
+    <ClInclude Include="include\qhenkiX\RHI\command_pool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\shared\d3d_helper.h">
+    <ClInclude Include="include\qhenkiX\helper\d3d_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\shader_compiler.h">
+    <ClInclude Include="include\qhenkiX\RHI\shader_compiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\shared\file_helper.h">
+    <ClInclude Include="include\qhenkiX\helper\file_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.h">
@@ -290,91 +272,91 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h">
+    <ClInclude Include="include\qhenkiX\RHI\descriptor_table.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h">
+    <ClInclude Include="include\qhenkiX\RHI\descriptor_heap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\enums.h">
+    <ClInclude Include="include\qhenkiX\RHI\enums.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\barrier.h">
+    <ClInclude Include="include\qhenkiX\RHI\barrier.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h">
+    <ClInclude Include="include\qhenkiX\RHI\subresource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\sync.h">
+    <ClInclude Include="include\qhenkiX\RHI\sync.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\submission.h">
+    <ClInclude Include="include\qhenkiX\RHI\submission.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_fence.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\texture.h">
+    <ClInclude Include="include\qhenkiX\RHI\texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\shared\math_helper.h">
+    <ClInclude Include="include\qhenkiX\helper\math_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\qhenki\sampler.h">
+    <ClInclude Include="include\qhenkiX\RHI\sampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\perspective_camera.h">
+    <ClInclude Include="include\qhenkiX\perspective_camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imconfig.h">
+    <ClInclude Include="include\imgui\imconfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imgui.h">
+    <ClInclude Include="include\imgui\imgui.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imgui_impl_dx11.h">
+    <ClInclude Include="include\imgui\imgui_impl_dx11.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imgui_impl_dx12.h">
+    <ClInclude Include="include\imgui\imgui_impl_dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\imgui\imgui_impl_vulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imgui_impl_win32.h">
+    <ClInclude Include="include\imgui\imgui_impl_win32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imgui_internal.h">
+    <ClInclude Include="include\imgui\imgui_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imstb_rectpack.h">
+    <ClInclude Include="include\imgui\imstb_rectpack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imstb_textedit.h">
+    <ClInclude Include="include\imgui\imstb_textedit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imstb_truetype.h">
+    <ClInclude Include="include\imgui\imstb_truetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\D3D12MemAlloc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imgui_impl_sdl3.h">
+    <ClInclude Include="include\imgui\imgui_impl_sdl3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\math\basis.h">
+    <ClInclude Include="include\qhenkiX\math\basis.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\math\transform.h">
+    <ClInclude Include="include\qhenkiX\math\transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\input\input_manager.h">
+    <ClInclude Include="include\qhenkiX\input\input_manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qhenkiX\graphics\arcball_controller.h">
+    <ClInclude Include="include\qhenkiX\arcball_controller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_heap.h">
@@ -382,6 +364,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="imgui\LICENSE.txt" />
+    <Text Include="include\imgui\LICENSE.txt" />
   </ItemGroup>
 </Project>

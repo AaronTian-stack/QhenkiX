@@ -120,7 +120,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\qhenkiX;$(SolutionDir)QhenkiX\QhenkiX\include;$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\include;$(SolutionDir)QhenkiX\QhenkiX\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -138,7 +138,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\qhenkiX;$(SolutionDir)QhenkiX\QhenkiX\include;$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\include;$(SolutionDir)QhenkiX\QhenkiX\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)QhenkiX\QhenkiX\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>

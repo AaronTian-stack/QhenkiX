@@ -3,7 +3,7 @@
 
 #include "shader.h"
 #include "swapchain.h"
-#include <graphics/display_window.h>
+#include <qhenkiX/display_window.h>
 
 #include "barrier.h"
 #include "buffer.h"

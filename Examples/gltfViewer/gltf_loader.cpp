@@ -12,7 +12,7 @@
 
 #include <tiny_gltf.h>
 
-#include "graphics/shared/math_helper.h"
+#include "qhenkiX/helper/math_helper.h"
 
 void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
 {

@@ -1,8 +1,8 @@
 #include "d3d12_context.h"
 
-#include "imgui.h"
-#include "imgui_impl_sdl3.h"
-#include "imgui_impl_dx12.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_sdl3.h"
+#include "imgui/imgui_impl_dx12.h"
 
 #include <DirectXTex.h>
 
@@ -11,15 +11,15 @@
 
 #include "d3d12_pipeline.h"
 #include "d3d12_shader_compiler.h"
-#include "graphics/d3d11/d3d11_shader.h"
-#include <application.h>
+#include "../d3d11/d3d11_shader.h"
+#include "qhenkiX/application.h"
 
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_fence.h"
 #include "d3d12_texture.h"
 
-#include "graphics/shared/d3d_helper.h"
-#include "graphics/shared/math_helper.h"
+#include "qhenkiX/helper/d3d_helper.h"
+#include "qhenkiX/helper/math_helper.h"
 
 using namespace qhenki::gfx;
 

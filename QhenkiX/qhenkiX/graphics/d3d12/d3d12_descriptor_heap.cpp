@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "graphics/qhenki/descriptor_table.h"
+#include "qhenkiX/RHI/descriptor_table.h"
 
 using namespace qhenki::gfx;
 

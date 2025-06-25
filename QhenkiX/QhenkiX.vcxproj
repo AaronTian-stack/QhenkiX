@@ -127,7 +127,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui;$(ProjectDir)DirectXTex\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -155,7 +155,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SDL3-3.2.4\include;$(ProjectDir)qhenkiX;$(ProjectDir)imgui;$(ProjectDir)DirectXTex\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -181,15 +181,15 @@
     <ClCompile Include="qhenkiX\graphics\arcball_controller.cpp" />
     <ClCompile Include="qhenkiX\input\input_manager.cpp" />
     <ClCompile Include="qhenkiX\math\basis.cpp" />
-    <ClCompile Include="imgui\imgui.cpp" />
-    <ClCompile Include="imgui\imgui_demo.cpp" />
-    <ClCompile Include="imgui\imgui_draw.cpp" />
-    <ClCompile Include="imgui\imgui_impl_dx11.cpp" />
-    <ClCompile Include="imgui\imgui_impl_dx12.cpp" />
-    <ClCompile Include="imgui\imgui_impl_sdl3.cpp" />
-    <ClCompile Include="imgui\imgui_impl_win32.cpp" />
-    <ClCompile Include="imgui\imgui_tables.cpp" />
-    <ClCompile Include="imgui\imgui_widgets.cpp" />
+    <ClCompile Include="include\imgui\imgui.cpp" />
+    <ClCompile Include="include\imgui\imgui_demo.cpp" />
+    <ClCompile Include="include\imgui\imgui_draw.cpp" />
+    <ClCompile Include="include\imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="include\imgui\imgui_impl_dx12.cpp" />
+    <ClCompile Include="include\imgui\imgui_impl_sdl3.cpp" />
+    <ClCompile Include="include\imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="include\imgui\imgui_tables.cpp" />
+    <ClCompile Include="include\imgui\imgui_widgets.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_pipeline.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_swapchain.cpp" />
@@ -197,9 +197,9 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.cpp" />
     <ClCompile Include="qhenkiX\graphics\perspective_camera.cpp" />
-    <ClCompile Include="qhenkiX\graphics\shared\d3d_helper.cpp" />
-    <ClCompile Include="qhenkiX\graphics\shared\file_helper.cpp" />
-    <ClCompile Include="qhenkiX\graphics\shared\math_helper.cpp" />
+    <ClCompile Include="qhenkiX\graphics\helper\d3d_helper.cpp" />
+    <ClCompile Include="qhenkiX\graphics\helper\file_helper.cpp" />
+    <ClCompile Include="qhenkiX\graphics\helper\math_helper.cpp" />
     <ClCompile Include="qhenkiX\math\transform.cpp" />
     <ClCompile Include="src\D3D12MemAlloc.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
@@ -211,15 +211,13 @@
     <ClCompile Include="qhenkiX\graphics\d3d11\d3d11_shader.cpp" />
     <ClCompile Include="qhenkiX\graphics\orthographic_camera.cpp" />
     <ClCompile Include="qhenkiX\graphics\2d\spritebatch.cpp" />
-    <ClCompile Include="qhenkiX\util\viewport\viewport.cpp" />
-    <ClCompile Include="qhenkiX\util\viewport\scaling_viewport.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="qhenkiX\graphics\arcball_controller.h" />
+    <ClInclude Include="include\qhenkiX\arcball_controller.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_heap.h" />
-    <ClInclude Include="qhenkiX\input\input_manager.h" />
-    <ClInclude Include="qhenkiX\math\basis.h" />
-    <ClInclude Include="imgui\imgui_impl_sdl3.h" />
+    <ClInclude Include="include\qhenkiX\input\input_manager.h" />
+    <ClInclude Include="include\qhenkiX\math\basis.h" />
+    <ClInclude Include="include\imgui\imgui_impl_sdl3.h" />
     <ClInclude Include="include\boost\assert.hpp" />
     <ClInclude Include="include\boost\config.hpp" />
     <ClInclude Include="include\boost\config\abi_prefix.hpp" />
@@ -243,17 +241,17 @@
     <ClInclude Include="include\boost\integer_fwd.hpp" />
     <ClInclude Include="include\boost\limits.hpp" />
     <ClInclude Include="include\boost\version.hpp" />
-    <ClInclude Include="imgui\imconfig.h" />
-    <ClInclude Include="imgui\imgui.h" />
-    <ClInclude Include="imgui\imgui_impl_dx11.h" />
-    <ClInclude Include="imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="include\imgui\imconfig.h" />
+    <ClInclude Include="include\imgui\imgui.h" />
+    <ClInclude Include="include\imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="include\imgui\imgui_impl_dx12.h" />
     <ClInclude Include="include\D3D12MemAlloc.h" />
     <ClInclude Include="include\imgui\imgui_impl_vulkan.h" />
-    <ClInclude Include="imgui\imgui_impl_win32.h" />
-    <ClInclude Include="imgui\imgui_internal.h" />
-    <ClInclude Include="imgui\imstb_rectpack.h" />
-    <ClInclude Include="imgui\imstb_textedit.h" />
-    <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="include\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="include\imgui\imgui_internal.h" />
+    <ClInclude Include="include\imgui\imstb_rectpack.h" />
+    <ClInclude Include="include\imgui\imstb_textedit.h" />
+    <ClInclude Include="include\imgui\imstb_truetype.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_pipeline.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader_compiler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_swapchain.h" />
@@ -264,46 +262,42 @@
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_pipeline.h" />
     <ClInclude Include="qhenkiX\graphics\d3d12\d3d12_texture.h" />
-    <ClInclude Include="qhenkiX\graphics\perspective_camera.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\barrier.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_heap.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\descriptor_table.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\enums.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\sampler.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\sync.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\submission.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\subresource.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\texture.h" />
-    <ClInclude Include="qhenkiX\graphics\shared\d3d_helper.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\command_list.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\command_pool.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\context.h" />
+    <ClInclude Include="include\qhenkiX\perspective_camera.h" />
+    <ClInclude Include="include\qhenkiX\RHI\barrier.h" />
+    <ClInclude Include="include\qhenkiX\RHI\descriptor_heap.h" />
+    <ClInclude Include="include\qhenkiX\RHI\descriptor_table.h" />
+    <ClInclude Include="include\qhenkiX\RHI\enums.h" />
+    <ClInclude Include="include\qhenkiX\RHI\sampler.h" />
+    <ClInclude Include="include\qhenkiX\RHI\sync.h" />
+    <ClInclude Include="include\qhenkiX\RHI\submission.h" />
+    <ClInclude Include="include\qhenkiX\RHI\subresource.h" />
+    <ClInclude Include="include\qhenkiX\RHI\texture.h" />
+    <ClInclude Include="include\qhenkiX\helper\d3d_helper.h" />
+    <ClInclude Include="include\qhenkiX\RHI\command_list.h" />
+    <ClInclude Include="include\qhenkiX\RHI\command_pool.h" />
+    <ClInclude Include="include\qhenkiX\RHI\context.h" />
     <ClInclude Include="include\smartpointer.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\pipeline.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\queue.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\render_target.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\shader.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\swapchain.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\buffer.h" />
-    <ClInclude Include="qhenkiX\graphics\shared\file_helper.h" />
-    <ClInclude Include="qhenkiX\graphics\shared\math_helper.h" />
-    <ClInclude Include="qhenkiX\math\transform.h" />
-    <ClInclude Include="qhenkiX\util\viewport\fit_viewport.h" />
-    <ClInclude Include="qhenkiX\application.h" />
-    <ClInclude Include="qhenkiX\graphics\camera.h" />
-    <ClInclude Include="qhenkiX\graphics\display_window.h" />
+    <ClInclude Include="include\qhenkiX\RHI\pipeline.h" />
+    <ClInclude Include="include\qhenkiX\RHI\queue.h" />
+    <ClInclude Include="include\qhenkiX\RHI\render_target.h" />
+    <ClInclude Include="include\qhenkiX\RHI\shader.h" />
+    <ClInclude Include="include\qhenkiX\RHI\swapchain.h" />
+    <ClInclude Include="include\qhenkiX\RHI\buffer.h" />
+    <ClInclude Include="include\qhenkiX\helper\file_helper.h" />
+    <ClInclude Include="include\qhenkiX\helper\math_helper.h" />
+    <ClInclude Include="include\qhenkiX\math\transform.h" />
+    <ClInclude Include="include\qhenkiX\application.h" />
+    <ClInclude Include="include\qhenkiX\camera.h" />
+    <ClInclude Include="include\qhenkiX\display_window.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_context.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_layout_assembler.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_shader.h" />
-    <ClInclude Include="qhenkiX\graphics\orthographic_camera.h" />
-    <ClInclude Include="qhenkiX\graphics\2d\spritebatch.h" />
-    <ClInclude Include="qhenkiX\util\viewport\viewport.h" />
-    <ClInclude Include="qhenkiX\util\scaling.h" />
-    <ClInclude Include="qhenkiX\util\viewport\scaling_viewport.h" />
-    <ClInclude Include="qhenkiX\graphics\qhenki\shader_compiler.h" />
+    <ClInclude Include="include\qhenkiX\orthographic_camera.h" />
+    <ClInclude Include="include\qhenkiX\2d\spritebatch.h" />
+    <ClInclude Include="include\qhenkiX\RHI\shader_compiler.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="imgui\LICENSE.txt" />
+    <Text Include="include\imgui\LICENSE.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

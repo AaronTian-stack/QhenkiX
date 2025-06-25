@@ -1,8 +1,8 @@
 #include "d3d11_context.h"
 
-#include "imgui.h"
-#include "imgui_impl_sdl3.h"
-#include "imgui_impl_dx11.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_sdl3.h"
+#include "imgui/imgui_impl_dx11.h"
 
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
@@ -13,7 +13,7 @@
 #include "d3d11_pipeline.h"
 #include "d3d11_shader_compiler.h"
 #include "d3d11_heap.h"
-#include "graphics/shared/d3d_helper.h"
+#include "qhenkiX/helper/d3d_helper.h"
 
 using namespace qhenki::gfx;
 

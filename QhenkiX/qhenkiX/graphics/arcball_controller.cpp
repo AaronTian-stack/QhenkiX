@@ -2,7 +2,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include "arcball_controller.h"
+#include "qhenkiX/arcball_controller.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;

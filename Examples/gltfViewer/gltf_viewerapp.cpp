@@ -2,8 +2,8 @@
 
 #include <wrl/client.h>
 
-#include "imgui.h"
-#include "graphics/shared/math_helper.h"
+#include <imgui/imgui.h>
+#include <qhenkiX/helper/math_helper.h>
 
 #include <SDL3/SDL_dialog.h>
 

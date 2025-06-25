@@ -9,9 +9,9 @@
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_pipeline.h"
 #include "d3d12_root_hasher.h"
-#include "graphics/d3d11/d3d11_shader_compiler.h"
-#include "graphics/qhenki/context.h"
-#include "graphics/qhenki/descriptor_table.h"
+#include "../d3d11/d3d11_shader_compiler.h"
+#include "qhenkiX/RHI/context.h"
+#include "qhenkiX/RHI/descriptor_table.h"
 
 using Microsoft::WRL::ComPtr;
 

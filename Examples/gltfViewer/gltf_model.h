@@ -4,11 +4,11 @@
 #include <vector>
 #include <array>
 
-#include <math/transform.h>
-#include <graphics/qhenki/buffer.h>
+#include <qhenkiX/math/transform.h>
 
-#include "graphics/qhenki/sampler.h"
-#include "graphics/qhenki/texture.h"
+#include <qhenkiX/RHI/buffer.h>
+#include <qhenkiX/RHI/sampler.h>
+#include <qhenkiX/RHI/texture.h>
 
 struct GLTFModel
 {

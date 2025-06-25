@@ -1,6 +1,8 @@
-﻿#include "d3d_helper.h"
+﻿#include "qhenkiX/helper/d3d_helper.h"
 
 #include <stdexcept>
+
+#include "qhenkiX/RHI/shader.h"
 
 using namespace qhenki::gfx;
 

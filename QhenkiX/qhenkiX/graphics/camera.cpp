@@ -1,4 +1,4 @@
-#include "camera.h"
+#include "qhenkiX/camera.h"
 
 using namespace qhenki;
 

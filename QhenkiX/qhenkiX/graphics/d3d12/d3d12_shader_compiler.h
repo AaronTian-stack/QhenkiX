@@ -4,8 +4,8 @@
 #include <dxcapi.h>
 #include <dxgiformat.h>
 
-#include "graphics/d3d11/d3d11_shader_compiler.h"
-#include "graphics/qhenki/shader_compiler.h"
+#include "qhenkiX/RHI/shader_compiler.h"
+#include "../d3d11/d3d11_shader_compiler.h"
 
 using Microsoft::WRL::ComPtr;
 

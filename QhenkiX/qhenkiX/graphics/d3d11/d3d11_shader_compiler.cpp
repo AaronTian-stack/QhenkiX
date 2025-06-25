@@ -5,8 +5,8 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 
-#include "graphics/shared/d3d_helper.h"
-#include <graphics/shared/file_helper.h>
+#include "qhenkiX/helper/d3d_helper.h"
+#include <qhenkiX/helper/file_helper.h>
 
 using Microsoft::WRL::ComPtr;
 using namespace qhenki::gfx;
