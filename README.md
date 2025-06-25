@@ -35,7 +35,7 @@ See the [examples](https://github.com/AaronTian-stack/QhenkiX/tree/main/Examples
     ```
 2. Open `QhenkiX.vcxproj` or add the project to your already existing desired Visual Studio solution.
 3. Build QhenkiX in the desired mode (Debug/Release) to produce a static library (`.lib`). Link this to your project.
-4. Add `QhenkiX/include`, `QhenkiX/qhenkiX`, `QhenkiX/SDL3-3.2.4/include`, and `QhenkiX\imgui` as include paths. 
+4. Add `QhenkiX/include` as a include path. 
 5. Follow the steps in the [Linking Section](#linking).
 6. Extend the [Application](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/application.h) class and start writing your graphics code. See the [examples](Examples/README.md).
 
