@@ -340,7 +340,7 @@ bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 	return true;
 }
 
-bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
+bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap, wchar_t const* debug_name)
 {
 	switch (desc.type)
 	{

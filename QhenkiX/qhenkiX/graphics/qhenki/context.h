@@ -61,7 +61,7 @@ namespace qhenki::gfx
 
 		virtual bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) = 0;
 
-		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) = 0;
+		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap, wchar_t const* debug_name = nullptr) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) = 0;
 
@@ -71,7 +71,7 @@ namespace qhenki::gfx
 		virtual bool free_descriptor(Descriptor* descriptor) = 0;
 
 		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name = nullptr) = 0;
-		virtual bool create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type) = 0;
+		virtual bool create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor, BufferDescriptorType type) = 0;
 
 		virtual void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) = 0;
 

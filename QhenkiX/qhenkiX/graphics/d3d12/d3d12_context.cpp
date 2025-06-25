@@ -916,7 +916,7 @@ bool D3D12Context::set_pipeline_constant(CommandList* cmd_list, UINT param, UINT
 	return true;
 }
 
-bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap)
+bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap, wchar_t const* debug_name)
 {
 	// Check that you are not trying to make GPU heap of RTVs, this is not valid
 	if (desc.visibility == DescriptorHeapDesc::Visibility::GPU && desc.type == DescriptorHeapDesc::Type::RTV)
@@ -1163,11 +1163,11 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	return true;
 }
 
-bool D3D12Context::create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type)
+bool D3D12Context::create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor, BufferDescriptorType type)
 {
 	const auto buffer_d3d12 = to_internal(buffer);
-	const auto heap_d3d12 = to_internal(cpu_heap);
-	if (cpu_heap.desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
+	const auto heap_d3d12 = to_internal(heap);
+	if (heap.desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
 	{
 		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 		return false;
@@ -1180,7 +1180,7 @@ bool D3D12Context::create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_h
 			return false;
 		}
 	}
-	descriptor->heap = &cpu_heap;
+	descriptor->heap = &heap;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
 	if (!heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0))

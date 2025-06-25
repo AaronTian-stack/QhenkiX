@@ -59,7 +59,7 @@ namespace qhenki::gfx
 
 		bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) override { return !is_compatibility(); }
 
-		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap) override;
+		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap, wchar_t const* debug_name) override;
 		// Heaps only store views in D3D11
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override {}
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) override {}
@@ -70,7 +70,7 @@ namespace qhenki::gfx
 		bool free_descriptor(Descriptor* descriptor) override { return true; }
 
 		bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name = nullptr) override;
-		bool create_descriptor(const Buffer& buffer, DescriptorHeap& cpu_heap, Descriptor* descriptor, BufferDescriptorType type) override { return true; }
+		bool create_descriptor(const Buffer& buffer, DescriptorHeap& heap, Descriptor* descriptor, BufferDescriptorType type) override { return true; }
 
 		void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) override;
 
