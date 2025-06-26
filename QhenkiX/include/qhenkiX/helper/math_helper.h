@@ -4,10 +4,10 @@
 
 #define CONSTANT_BUFFER_ALIGNMENT 256
 
-class MathHelper
-{
-public:
+#define BIT(x) (1 << (x))
 
+struct MathHelper
+{
 	static bool is_power_of_two(uint32_t value)
 	{
 		return (value & (value - 1)) == 0;
