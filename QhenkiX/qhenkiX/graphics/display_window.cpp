@@ -83,11 +83,6 @@ void DisplayWindow::set_resizable(bool resizable)
 	m_display_info.resizable = resizable;
 }
 
-void DisplayWindow::wait()
-{
-	//SDL_Delay(static_cast<int>(1.f / display_info.refresh_rate));
-}
-
 DisplayWindow::~DisplayWindow()
 {
 	SDL_DestroyWindow(m_window);
@@ -117,7 +112,7 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 	SDL_SetBooleanProperty(properties_id, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, info.undecorated);
 	SDL_SetBooleanProperty(properties_id, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, info.resizable);
 
-	SDL_SetStringProperty(properties_id, SDL_PROP_WINDOW_CREATE_TITLE_STRING, info.title.c_str());
+	SDL_SetStringProperty(properties_id, SDL_PROP_WINDOW_CREATE_TITLE_STRING, info.title);
 
 	m_window = SDL_CreateWindowWithProperties(properties_id);
 

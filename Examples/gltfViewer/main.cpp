@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 	const auto api = api_index == 0 ? qhenki::gfx::API::D3D12 : qhenki::gfx::API::D3D11;
 
 	gltfViewerApp app;
-	app.run(api);
+	app.run(api, true);
 
 	return 0;
 }

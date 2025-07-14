@@ -34,7 +34,7 @@ void ImGUIExampleApp::create()
 	THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_pixel_shader, pixel_shader));
 
 	qhenki::gfx::PipelineLayoutDesc layout_desc{};
-	THROW_IF_FALSE(m_context->create_pipeline_layout(layout_desc, &m_pipeline_layout));
+	THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
 	// Create GPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_GPU
@@ -43,7 +43,7 @@ void ImGUIExampleApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, m_GPU_heap));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap));
 
 	// Create CPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_CPU
@@ -52,7 +52,7 @@ void ImGUIExampleApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // CPU heap has no size limit
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, m_CPU_heap));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap));
 
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
@@ -62,7 +62,7 @@ void ImGUIExampleApp::create()
 		.increment_slot = false,
 	};
 	THROW_IF_FALSE(m_context->create_pipeline(pipeline_desc, &m_pipeline, 
-			m_vertex_shader, m_pixel_shader, &m_pipeline_layout, nullptr, L"triangle_pipeline"));
+				m_vertex_shader, m_pixel_shader, &m_pipeline_layout, L"triangle_pipeline"));
 
 	// A graphics queue is already given to the application by the context
 
@@ -173,7 +173,7 @@ void ImGUIExampleApp::render()
 
 	// Clear back buffer / Start render pass
 	std::array clear_values = { 0.f, 0.f, 0.f, 1.f };
-	m_context->start_render_pass(&cmd_list, m_swapchain, clear_values.data(), nullptr, get_frame_index());
+	m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), nullptr, get_frame_index());
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport
@@ -204,7 +204,7 @@ void ImGUIExampleApp::render()
 	const unsigned int offset = 0;
 	constexpr auto stride = static_cast<UINT>(sizeof(Vertex));
 	const auto buffers = &m_vertex_buffer;
-	m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, &stride, &offset);
+	m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, TODO, &stride, &offset);
 	m_context->bind_index_buffer(&cmd_list, m_index_buffer, qhenki::gfx::IndexType::UINT32, 0);
 
 	m_context->draw_indexed(&cmd_list, 3, 0, 0);
@@ -245,7 +245,7 @@ void ImGUIExampleApp::render()
 
 	// You MUST call Present at the end of the render loop
 	// TODO: change for Vulkan
-	m_context->present(m_swapchain, 0, nullptr, get_frame_index());
+	m_context->present(&m_swapchain, 0, nullptr, get_frame_index());
 
 	increment_frame_index();
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#define NOMINMAX
 #include <d3d11.h>
 #include <d3dcommon.h>
 #include <variant>
@@ -25,8 +24,8 @@ namespace qhenki::gfx
 		std::variant<ComPtr<ID3D11PixelShader>, D3D11VertexShader> m_shader;
 
 	public:
-		D3D11Shader(ID3D11Device* const device, const ShaderType shader_type, const std::wstring& name,
-			const CompilerOutput& output, bool& result);
+		D3D11Shader(ID3D11Device* device, ShaderType shader_type, const std::wstring& name,
+			const CompilerOutput& output, bool* result);
 
 		friend class D3D11Context;
 		friend struct D3D11GraphicsPipeline;

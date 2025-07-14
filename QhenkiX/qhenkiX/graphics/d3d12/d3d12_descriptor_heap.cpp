@@ -58,11 +58,11 @@ unsigned D3D12DescriptorHeap::descriptor_count_to_bytes(unsigned count) const
 	return count * m_descriptor_size;
 }
 
-bool D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes, size_t num_descriptor_offset) const
+void D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes,
+                                             size_t num_descriptor_offset) const
 {
 	*handle = m_heap->GetCPUDescriptorHandleForHeapStart();
 	handle->ptr += offset_bytes + num_descriptor_offset * m_descriptor_size;
-	return true;
 }
 
 bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes, size_t num_descriptor_offset) const

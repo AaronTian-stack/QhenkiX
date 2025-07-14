@@ -10,21 +10,21 @@ cbuffer CameraBuffer : register(b0)
     float3 position;
 };
 
-cbuffer ModelBuffer : register(b1)
-{
-    float4x4 model;
-    float4x4 inverseModel;
-};
-
+// Per draw attributes
 #ifdef VULKAN
 [[vk::push_constant]]
 #endif
-#ifndef DX11
-cbuffer MaterialIndex : register(b0, space5) // TODO: space5 is hardcoded in implementation, need to change
+cbuffer ModelBuffer 
+#ifdef DX11
+    : register(b1)
+#else
+    : register(b0, space5)
+#endif
 {
+    float4x4 model;
+    float4x4 inverseModel;
     int material_index;
 };
-#endif
 
 struct Material
 {
@@ -39,7 +39,7 @@ struct Material
         int mr_txcs;
     // metallic_roughness;
 
-		int index;
+		int normal_index;
 		int texture_coordinate_set;
 		float scale;
 	// normal;
@@ -55,11 +55,16 @@ struct Material
 	// emissive;
 };
 
-#ifdef DX11
-cbuffer MaterialBuffer : register(b2)  
-{  
-    Material material;  
+#ifndef DX11
+struct Texture
+{
+    int image_index;
+    int sampler_index;
 };
+StructuredBuffer<Texture> textures : register(t1);
+#endif
+StructuredBuffer<Material> materials : register(t2);
+#ifdef DX11
 // Make sure these match in the app
 Texture2D base_color_tex : register(t3);
 Texture2D metallic_roughness_tex : register(t4);
@@ -67,8 +72,7 @@ Texture2D normal_tex : register(t5);
 Texture2D occlusion_tex : register(t6);
 Texture2D emissive_tex : register(t7);
 #else
-Texture2D<float4> g_textures[] : register(t2);
-ConstantBuffer<Material> materials[] : register(b0, space2);
+Texture2D<float4> g_textures[] : register(t3);
 #endif
 
 #ifdef DX11
@@ -134,13 +138,11 @@ void set_values(PSInput input,
     out float AO,
     out float3 emissive)
 {
-#ifdef DX12
     Material material = materials[material_index];
-#endif
     albedo = material.albedo_factor;
-    normal = float3(0.0, 0.0, 0.0); // Normal does not have default REMOVE THIS
-    metallic_roughness = float4(1.0, 0.0, 0.0, 1.0);
-    AO = 0.0;
+    normal = normalize(input.normal);
+    metallic_roughness = float4(1.0, material.roughness_factor, material.metallic_factor, 1.0); // roughness G, metal B
+    AO = material.occlusion_strength;
     emissive = material.emissive_factor;
 
     if (material.albedo_index != -1)
@@ -148,7 +150,30 @@ void set_values(PSInput input,
     #ifdef DX11
         albedo *= base_color_tex.Sample(base_color_samp, input.uv);
     #else
-        albedo *= g_textures[material.albedo_index].Sample(samps[0], input.uv);
+        Texture t = textures[material.albedo_index];
+        albedo *= g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv);
+    #endif
+    }
+    if (material.normal_index != -1)
+    {
+        // TBN transform
+    }
+    if (material.mr_index != -1)
+    {
+    #ifdef DX11
+        metallic_roughness *= metallic_roughness_tex.Sample(metallic_roughness_samp, input.uv);
+    #else
+        Texture t = textures[material.mr_index];
+        metallic_roughness *= g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv);
+    #endif
+    }
+    if (material.occlusion_index != -1)
+    {
+    #ifdef DX11
+        AO = occlusion_tex.Sample(occlusion_samp, input.uv).r * material.occlusion_strength;
+    #else
+        Texture t = textures[material.occlusion_index];
+        AO = g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv).r * material.occlusion_strength;
     #endif
     }
     if (material.emissive_index != -1)
@@ -156,10 +181,10 @@ void set_values(PSInput input,
     #ifdef DX11  
         emissive *= emissive_tex.Sample(emissive_samp, input.uv).rgb;
     #else
-        emissive *= g_textures[material.emissive_index].Sample(samps[0], input.uv).rgb;
+        Texture t = textures[material.emissive_index];
+        emissive *= g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv).rgb;
     #endif
     }
-    // TODO: normal needs TBN transform
 };
 
 PSOutput ps_main(PSInput input)

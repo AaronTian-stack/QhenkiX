@@ -1,8 +1,6 @@
 #pragma once
 
-#ifndef NOMINMAX
 #define NOMINMAX
-#endif
 
 #include "gltf_loader.h"
 #include <tsl/robin_map.h>
@@ -27,8 +25,8 @@ class gltfViewerApp : public qhenki::Application
 	std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
 	std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};
 
-	qhenki::gfx::Descriptor m_model_matrix_descriptor{};
-	qhenki::gfx::Buffer m_model_buffer{};
+	qhenki::gfx::Descriptor m_model_descriptor{}; // Model matrix descriptor (compatibility only)
+	qhenki::gfx::Buffer m_model_buffer{}; // Model matrix (compatibility only)
 
 	qhenki::gfx::Texture m_depth_buffer{};
 	qhenki::gfx::Descriptor m_depth_buffer_descriptor{};
@@ -36,8 +34,10 @@ class gltfViewerApp : public qhenki::Application
 	qhenki::gfx::DescriptorHeap m_CPU_heap{};
 	qhenki::gfx::DescriptorHeap m_GPU_heap{};
 
-	std::vector<qhenki::gfx::Descriptor> m_model_material_descriptors{};
+	qhenki::gfx::Descriptor m_model_material_descriptor{};
 	std::vector<qhenki::gfx::Descriptor> m_model_texture_descriptors{};
+
+	qhenki::gfx::Descriptor m_model_gltfTexture_descriptor{};
 
 	qhenki::gfx::DescriptorHeap m_dsv_heap{};
 
@@ -48,7 +48,8 @@ class gltfViewerApp : public qhenki::Application
 	qhenki::ArcBallController m_camera_controller{};
 
 	std::mutex m_model_mutex;
-	GLTFModel m_model{};
+	std::atomic_int m_model_index_to_load_into = 0;
+	std::array<GLTFModel, m_frames_in_flight> m_models{};
 	tsl::robin_map<std::string, int> m_attribute_to_slot
 	{
 		{"POSITION", 0},

@@ -6,6 +6,8 @@
 
 #include "qhenkiX/helper/d3d_helper.h"
 #include "qhenkiX/helper/file_helper.h"
+#include <filesystem>
+#include <utf8.h>
 
 using namespace qhenki::gfx;
 using namespace qhenki::util;
@@ -104,7 +106,6 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
 			return DXGI_FORMAT_R16G16_FLOAT;
 		case 0x7:
 			throw std::runtime_error("D3D12ShaderCompiler: 3 component float16 mask");
-			break;
 		case 0xF:
 			return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		}
@@ -138,15 +139,16 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	}
 
 	DxcBuffer source_buffer;
-	const auto data = FileHelper::read_file(input.path);
-	if (!data.has_value())
+	void* data;
+	size_t size;
+	const auto succeed = FileHelper::read_file(input.path.c_str(), &data, &size);
+	if (!succeed)
 	{
 		output.error_message = "D3D12ShaderCompiler: Failed to read/open file :: " + std::string(input.path.begin(), input.path.end());
 		return false;
 	}
-	const auto& data_value = data.value();
-	source_buffer.Ptr = data_value.data();
-	source_buffer.Size = data_value.size();
+	source_buffer.Ptr = data;
+	source_buffer.Size = size;
 	source_buffer.Encoding = DXC_CP_ACP;
 
 	// Create default file include handler
@@ -158,8 +160,14 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	std::vector<std::wstring> args;
-	args.reserve(input.defines.size() * 2 + 10);
+	static thread_local std::vector<std::wstring> args; // TODO: stack allocator and share with args_ptrs
+	args.clear();
+	args.reserve((input.defines.size() + input.includes.size()) * 2 + 10);
+
+	if (input.optimization == CompilerInput::Optimization::O0) args.emplace_back(L"-O0");
+	if (input.optimization == CompilerInput::Optimization::O1) args.emplace_back(L"-O1");
+	if (input.optimization == CompilerInput::Optimization::O2) args.emplace_back(L"-O2");
+	// O3 is default
 
 	args.emplace_back(L"-E");
 	args.push_back(input.entry_point);
@@ -168,12 +176,19 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		args.emplace_back(L"-D");
 		args.push_back(define);
 	}
+	for (const auto& include : input.includes)
+	{
+		args.emplace_back(L"-I");
+		std::wstring wstr;
+		utf8::utf8to16(include.begin(), include.end(), std::back_inserter(wstr));
+		args.push_back(wstr);
+	}
 
 	// Set target profile
 	args.emplace_back(L"-T");
 	args.emplace_back(D3DHelper::get_shader_model_wchar(input.shader_type, input.min_shader_model));
 
-	args.emplace_back(L"-Qstrip_reflect");
+	// TODO: option for stripping reflection data
 	args.emplace_back(L"-Qstrip_debug");
 
 	if (input.flags & CompilerInput::DEBUG)
@@ -185,7 +200,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	args.emplace_back(DXC_ARG_WARNINGS_ARE_ERRORS); //-WX
 
 	// c_str() version of all args
-	std::vector<const wchar_t*> args_ptrs;
+	static thread_local std::vector<const wchar_t*> args_ptrs;
+	args_ptrs.clear();
 	args_ptrs.reserve(args.size());
 	for (const auto& arg : args)
 	{
@@ -196,15 +212,15 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	ComPtr<IDxcResult> result;
 
 	auto output_error = [&result, &output]
+	{
+		// Get any errors
+		ComPtr<IDxcBlobUtf8> errors = nullptr;
+		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
+		if (errors && errors->GetStringLength())
 		{
-			// Get any errors
-			ComPtr<IDxcBlobUtf8> errors = nullptr;
-			result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
-			if (errors && errors->GetStringLength())
-			{
-				output.error_message = errors->GetStringPointer();
-			}
-		};
+			output.error_message = errors->GetStringPointer();
+		}
+	};
 
 	if FAILED(m_compiler->Compile(
 		&source_buffer,
@@ -216,6 +232,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		output_error();
 		return false;
 	}
+
+	free(data); // Not needed anymore
 
 	output.internal_state = mkS<D3D12ShaderOutput>();
 	const auto d3d12_output = static_cast<D3D12ShaderOutput*>(output.internal_state.get());
@@ -231,6 +249,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	output.shader_size = d3d12_output->shader_blob->GetBufferSize();
 	output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
 
+	// Reflection data is part of shader blob
 	const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.ReleaseAndGetAddressOf()), nullptr);
 	if (FAILED(hr_r))
 	{
@@ -245,8 +264,12 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		d3d12_output->root_signature_blob.Reset();
 	}
 
-	if (input.flags & CompilerInput::DEBUG)
+	if (!input.pdb_path.empty())
 	{
+		if (!std::filesystem::is_directory(input.pdb_path))
+		{
+			output.error_message = "D3D12ShaderCompiler: PDB path is not a valid directory :: " + std::string(input.pdb_path.begin(), input.pdb_path.end());
+		}
 		ComPtr<IDxcBlobUtf16> debug_info_path;
 		ComPtr<IDxcBlob> debug_info_blob;
 		const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(
@@ -255,10 +278,16 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		// Write debug info to file
 		if (SUCCEEDED(hr_d))
 		{
-			const auto path = debug_info_path->GetStringPointer();
-			auto write_result = FileHelper::write_file(path, 
-				debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
-			assert(write_result);
+			const auto name = debug_info_path->GetStringPointer();
+
+			// TODO: build in stack
+            std::wstring path = input.pdb_path;
+            if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
+            path += L'\\';
+            std::wstring pdb_file = path + name;
+
+            auto write_result = FileHelper::write_file(pdb_file.c_str(), debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
+            assert(write_result);
 		}
 		else
 		{

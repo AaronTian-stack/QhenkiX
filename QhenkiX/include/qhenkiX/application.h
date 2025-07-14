@@ -65,7 +65,7 @@ namespace qhenki
 		bool is_main_thread() const { return std::this_thread::get_id() == m_main_thread_id; }
 
 		// Call this from the main thread
-		void run(gfx::API api);
+		void run(gfx::API api, bool enable_debug_layer);
 		gfx::API get_graphics_api() const { return m_graphics_api; }
 		virtual ~Application() = 0;
 	};

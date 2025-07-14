@@ -97,7 +97,7 @@ ID3D11Resource* get_texture_resource(D3D11Texture& tex)
 	return nullptr;
 }
 
-void D3D11Context::create()
+void D3D11Context::create(const bool enable_debug_layer)
 {
     // Create factory
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory_))))
@@ -105,10 +105,11 @@ void D3D11Context::create()
 		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create DXGI Factory\n");
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
     }
-#ifdef _DEBUG
-    constexpr char factoryName[] = "DXGI Factory";
-    m_dxgi_factory_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
-#endif
+	if (enable_debug_layer)
+	{
+	    constexpr char factoryName[] = "DXGI Factory";
+	    m_dxgi_factory_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
+	}
 
 	// Pick discrete GPU
     ComPtr<IDXGIAdapter1> adapter;
@@ -142,10 +143,10 @@ void D3D11Context::create()
 	constexpr D3D_FEATURE_LEVEL device_feature_level = D3D_FEATURE_LEVEL_11_0;
 
 	UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-#ifdef _DEBUG
-	creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-
+	if (enable_debug_layer)
+	{
+		creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+	}
     // Create device
     if (FAILED(D3D11CreateDevice(
         adapter.Get(),
@@ -162,38 +163,35 @@ void D3D11Context::create()
         throw std::runtime_error("D3D11: Failed to create D3D11 Device");
     }
 	
-#ifdef _DEBUG
-    constexpr char deviceName[] = "d3d11_device";
-    m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
-    if (FAILED(m_device_.As(&m_debug_)))
-    {
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
-        throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
-    }
-#endif
+	if (enable_debug_layer)
+	{
+	    constexpr char deviceName[] = "d3d11_device";
+	    m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
+	    if (FAILED(m_device_.As(&m_debug_)))
+	    {
+			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
+	        throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
+	    }
+	}
 
 	m_shader_compiler = mkU<D3D11ShaderCompiler>();
 }
 
-bool D3D11Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain& swapchain,
-                                    Queue& direct_queue, unsigned& frame_index)
+bool D3D11Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc, Swapchain* const swapchain,
+                                    Queue* const direct_queue, unsigned* const frame_index)
 {
-	swapchain.desc = swapchain_desc;
-	swapchain.internal_state = mkS<D3D11Swapchain>();
-	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain.internal_state.get());
-	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), frame_index);
+	assert(swapchain);
+	swapchain->desc = swapchain_desc;
+	swapchain->internal_state = mkS<D3D11Swapchain>();
+	const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain->internal_state.get());
+	return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), *frame_index);
 }
 
-bool D3D11Context::resize_swapchain(Swapchain& swapchain, int width, int height, DescriptorHeap& rtv_heap, unsigned& frame_index)
+bool D3D11Context::resize_swapchain(Swapchain* const swapchain, int width, int height, DescriptorHeap* const rtv_heap, unsigned& frame_index)
 {
 	m_device_context_->Flush();
-	const auto swap_d3d11 = to_internal(swapchain);
+	const auto swap_d3d11 = to_internal(*swapchain);
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
-}
-
-bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap& rtv_heap)
-{
-	return true; // D3D11 does not have descriptors
 }
 
 bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input)
@@ -215,20 +213,20 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 	shader->shader_model = input.min_shader_model;
 	bool result = true;
 	// Calls CreateXShader(). Thread safe since it only uses the device
-	shader->internal_state = mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.path, output, result);
+	shader->internal_state = mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.path, output, &result);
 
     return result;
 }
 
 bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline* pipeline,
                                    const Shader& vertex_shader, const Shader& pixel_shader,
-                                   PipelineLayout* in_layout, PipelineLayout* out_layout, wchar_t const* debug_name)
+                                   PipelineLayout* in_layout, wchar_t const* debug_name)
 {
 	// D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
 	pipeline->internal_state = mkS<D3D11GraphicsPipeline>();
 	const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline->internal_state.get());
 	const auto d3d11_vertex_shader = to_internal(vertex_shader);
-	const auto d3d11_pixel_shader = to_internal(pixel_shader);
+
 	assert(d3d11_pipeline);
 
 	d3d11_pipeline->vertex_shader = vertex_shader.internal_state.get();
@@ -340,18 +338,18 @@ bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 	return true;
 }
 
-bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap& heap, wchar_t const* debug_name)
+bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* const heap, wchar_t const* debug_name)
 {
 	switch (desc.type)
 	{
 	case DescriptorHeapDesc::Type::CBV_SRV_UAV:
-			heap.internal_state = mkS<D3D11_SRV_UAV_Heap>();
-			break;
+		heap->internal_state = mkS<D3D11_SRV_UAV_Heap>();
+		break;
 	case DescriptorHeapDesc::Type::RTV:
-		heap.internal_state = mkS<D3D11_RTV_Heap>();
+		heap->internal_state = mkS<D3D11_RTV_Heap>();
 		break;
 	case DescriptorHeapDesc::Type::DSV:
-		heap.internal_state = mkS<D3D11_DSV_Heap>();
+		heap->internal_state = mkS<D3D11_DSV_Heap>();
 		break;
 	case DescriptorHeapDesc::Type::SAMPLER:
 		// D3D11 samplers don't need views
@@ -367,12 +365,23 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name)
 {
-	buffer->desc = desc;
-	buffer->internal_state = mkS<ComPtr<ID3D11Buffer>>();
-	const auto buffer_d3d11 = to_internal(*buffer);
+	if (desc.usage & BufferUsage::CONSTANT)
+	{
+		if (desc.size > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
+		{
+			OutputDebugString(L"Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
+			return false;
+		}
+		if (desc.size % 16 != 0)
+		{
+			OutputDebugString(L"Qhenki D3D11 ERROR: Constant buffer size is not aligned to 16 bytes\n");
+			return false;
+		}
+	}
 
 	D3D11_BUFFER_DESC buffer_info{};
 	buffer_info.ByteWidth = desc.size;
+	buffer_info.StructureByteStride = desc.stride;
     if (desc.usage & BufferUsage::VERTEX)
     {
 		buffer_info.BindFlags |= D3D11_BIND_VERTEX_BUFFER;
@@ -381,14 +390,19 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
 		buffer_info.BindFlags |= D3D11_BIND_INDEX_BUFFER;
     }
-    if (desc.usage & BufferUsage::UNIFORM)
+    if (desc.usage & BufferUsage::CONSTANT)
     {
 		buffer_info.BindFlags |= D3D11_BIND_CONSTANT_BUFFER;
     }
-    if (desc.usage & BufferUsage::STORAGE)
+    if (desc.usage & BufferUsage::SHADER)
     {
-		buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+		buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
     }
+	if (desc.usage & BufferUsage::UAV)
+	{
+		buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+	}
     if (desc.usage & BufferUsage::INDIRECT)
     {
 		buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
@@ -404,8 +418,6 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		buffer_info.Usage = D3D11_USAGE_DEFAULT;
 		buffer_info.CPUAccessFlags = 0;
 	}
-	// misc flags
-	//TODO bufferInfo.StructureByteStride = 0;
 
 	D3D11_SUBRESOURCE_DATA resource_data;
 	resource_data.pSysMem = data;
@@ -414,25 +426,65 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	// TODO: get rid of this feature to make it consistent with D3D12?
 	const auto resource_data_ptr = data && buffer_info.CPUAccessFlags == D3D11_CPU_ACCESS_WRITE ? &resource_data : nullptr;
 
+	ComPtr<ID3D11Buffer> d3d11_buffer;
+
 	if (FAILED(m_device_->CreateBuffer(
 		&buffer_info,
 		resource_data_ptr,
-		&*buffer_d3d11)))
+		d3d11_buffer.ReleaseAndGetAddressOf())))
 	{
 		return false;
 	}
 
-#ifdef _DEBUG
-    if (debug_name)
-    {
-		constexpr size_t max_length = 256;
-        char debug_name_w[max_length] = {};
-		size_t converted_chars = 0;
-		wcstombs_s(&converted_chars, debug_name_w, debug_name, max_length - 1);
-        set_debug_name(buffer_d3d11->Get(), debug_name_w);
-    }
-#endif
+	if (is_debug_layer_enabled())
+	{
+		if (debug_name)
+		{
+			constexpr size_t max_length = 256;
+			char debug_name_w[max_length] = {};
+			size_t converted_chars = 0;
+			wcstombs_s(&converted_chars, debug_name_w, debug_name, max_length - 1);
+			set_debug_name(d3d11_buffer.Get(), debug_name_w);
+		}
+	}
 
+	buffer->desc = desc;
+	buffer->internal_state = mkS<ComPtr<ID3D11Buffer>>(d3d11_buffer);
+
+	return true;
+}
+
+bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
+{
+	assert(descriptor);
+	const auto buffer_d3d11 = to_internal(buffer);
+	const auto heap_d3d11 = to_internal_srv_uav(*heap);
+
+	descriptor->heap = heap;
+	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+	{
+		descriptor->offset = heap_d3d11->shader_resource_views.size();
+		heap_d3d11->shader_resource_views.push_back({});
+	}
+
+	auto& view = heap_d3d11->shader_resource_views[descriptor->offset];
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC desc
+	{
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
+		.Buffer =
+		{
+			.FirstElement = 0,
+			.NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
+		},
+	};
+	if (FAILED(m_device_->CreateShaderResourceView(buffer_d3d11->Get(), &desc,
+		view.ReleaseAndGetAddressOf())))
+	{
+		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
+		return false;
+	}
 	return true;
 }
 
@@ -545,13 +597,13 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 	return true;
 }
 
-bool D3D11Context::create_descriptor_texture_view(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D11Context::create_descriptor_shader_view(const Texture& texture, DescriptorHeap* const heap, Descriptor* const descriptor)
 {
 	assert(descriptor);
 	const auto texture_d3d11 = to_internal(texture);
-	const auto heap_d3d11 = to_internal_srv_uav(heap);
+	const auto heap_d3d11 = to_internal_srv_uav(*heap);
 
-	descriptor->heap = &heap;
+	descriptor->heap = heap;
 	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
 		descriptor->offset = heap_d3d11->shader_resource_views.size();
@@ -573,13 +625,13 @@ bool D3D11Context::create_descriptor_texture_view(const Texture& texture, Descri
 	return true;
 }
 
-bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor)
+bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap* const heap, Descriptor* const descriptor)
 {
 	assert(descriptor);
 	const auto texture_d3d11 = to_internal(texture);
-	const auto heap_d3d11 = to_internal_dsv(heap);
+	const auto heap_d3d11 = to_internal_dsv(*heap);
 
-	descriptor->heap = &heap;
+	descriptor->heap = heap;
 	descriptor->offset = heap_d3d11->size();
 
 	heap_d3d11->push_back({});
@@ -710,18 +762,18 @@ void D3D11Context::unmap_buffer(const Buffer& buffer)
 	m_device_context_->Unmap(buffer_d3d11->Get(), 0);
 }
 
-void D3D11Context::bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count, 
-	const Buffer* const* buffers, const unsigned* const strides, const unsigned* const offsets)
+void D3D11Context::bind_vertex_buffers(CommandList* cmd_list, unsigned start_slot, unsigned buffer_count,
+                                       const Buffer* const* buffers, const unsigned* sizes, const unsigned* const strides, const unsigned* const offsets)
 {
 	assert(buffer_count <= D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
-	std::array<ID3D11Buffer**, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
+	std::array<ID3D11Buffer*, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
 	for (unsigned int i = 0; i < buffer_count; i++)
 	{
 		auto buffer = to_internal(*buffers[i]);
-		buffer_d3d11[i] = buffer->GetAddressOf();
+		buffer_d3d11[i] = buffer->Get();
 	}
 	std::scoped_lock lock(m_context_mutex_);
-	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11[0], strides, offsets);
+	m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11.data(), strides, offsets);
 }
 
 void D3D11Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format,
@@ -743,7 +795,7 @@ bool D3D11Context::create_command_pool(CommandPool* command_pool, const Queue& q
 }
 
 bool D3D11Context::create_command_list(CommandList* cmd_list,
-                                       const CommandPool& command_pool)
+                                       const CommandPool& command_pool, wchar_t const* debug_name)
 {
 	return true; // D3D11 does not have command lists
 }
@@ -789,10 +841,10 @@ ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context_
 	return ds;
 }
 
-void D3D11Context::start_render_pass(CommandList* cmd_list, Swapchain& swapchain,
+void D3D11Context::start_render_pass(CommandList* cmd_list, Swapchain* const swapchain,
                                      const float* clear_color_values, const RenderTarget* const depth_stencil, UINT frame_index)
 {
-	const auto swap_d3d11 = to_internal(swapchain);
+	const auto swap_d3d11 = to_internal(*swapchain);
 	const auto rtv = swap_d3d11->sc_render_target.Get();
 	std::scoped_lock lock(m_context_mutex_);
 	m_device_context_->ClearRenderTargetView(rtv, clear_color_values);
@@ -813,7 +865,7 @@ void D3D11Context::start_render_pass(CommandList* cmd_list, unsigned rt_count,
 		assert(heap);
 		// Descriptor is used as index
 		const auto& rtv = heap->at(rts[i]->descriptor.offset);
-		if (rts[i]->clear_type == RenderTarget::ClearType::Color)
+		if (rts[i]->clear_type & RenderTarget::ClearType::Color)
 		{
 			m_device_context_->ClearRenderTargetView(rtv.Get(), rts[i]->clear_params.clear_color_value.data());
 		}
@@ -889,66 +941,97 @@ void D3D11Context::destroy_imgui()
 	ImGui::DestroyContext();
 }
 
-void D3D11Context::compatibility_set_constant_buffers(const unsigned slot, const unsigned count, Buffer* const buffers, const PipelineStage stage)
+void D3D11Context::compatibility_set_constant_buffers(const unsigned slot, const unsigned count, Buffer* const* buffers, const PipelineStage stage)
 {
 	std::scoped_lock lock(m_context_mutex_);
-	std::array<ID3D11Buffer**, 15> buffer_d3d11{};
+	std::array<ID3D11Buffer*, 15> buffer_d3d11{};
 	assert(count <= buffer_d3d11.size());
 	for (unsigned i = 0; i < count; i++)
 	{
-		buffer_d3d11[i] = to_internal(buffers[i])->GetAddressOf();
+		buffer_d3d11[i] = to_internal(*buffers[i])->Get();
 	}
 	switch (stage)
 	{
 	case PipelineStage::VERTEX:
-		m_device_context_->VSSetConstantBuffers(slot, count, buffer_d3d11[0]);
+		m_device_context_->VSSetConstantBuffers(slot, count, buffer_d3d11.data());
 		break;
 	case PipelineStage::PIXEL:
-		m_device_context_->PSSetConstantBuffers(slot, count, buffer_d3d11[0]);
+		m_device_context_->PSSetConstantBuffers(slot, count, buffer_d3d11.data());
 		break;
 	case PipelineStage::COMPUTE:
-		m_device_context_->CSSetConstantBuffers(slot, count, buffer_d3d11[0]);
+		m_device_context_->CSSetConstantBuffers(slot, count, buffer_d3d11.data());
 		break;
-	default:
-		throw std::runtime_error("D3D11: Invalid pipeline stage");
 	}
 }
 
-void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigned count, Descriptor* const descriptors, const AccessFlags flag, const PipelineStage stage)
+void D3D11Context::compatibility_set_shader_buffers(unsigned slot, unsigned count, Descriptor* const* descriptors, PipelineStage stage)
+{
+	std::scoped_lock lock(m_context_mutex_);
+	std::array<ID3D11ShaderResourceView*, 15> srv{};
+	assert(count <= srv.size());
+	assert(*descriptors);
+	for (unsigned i = 0; i < count; i++)
+	{
+		assert(descriptors[i]->heap);
+		const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
+		srv[i] = heap->shader_resource_views[descriptors[i]->offset].Get();
+	}
+	switch (stage)
+	{
+		case PipelineStage::VERTEX:
+			m_device_context_->VSSetShaderResources(slot, count, srv.data());
+			break;
+		case PipelineStage::PIXEL:
+			m_device_context_->PSSetShaderResources(slot, count, srv.data());
+			break;
+		case PipelineStage::COMPUTE:
+			m_device_context_->CSSetShaderResources(slot, count, srv.data());
+			break;
+	}
+}
+
+void D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
+{
+	assert(false);
+	std::scoped_lock lock(m_context_mutex_);
+	//m_device_context_->CSSetUnorderedAccessViews(slot, count, buffer_d3d11[0], nullptr);
+}
+
+void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigned count, Descriptor* const* descriptors, const AccessFlags flag, const PipelineStage stage)
 {
 	// Read or write (as UAV not RT) access
 
     union ResourceViews {
-           std::array<ID3D11UnorderedAccessView**, 15> unordered_access_views;
-           std::array<ID3D11ShaderResourceView**, 15> shader_resource_views;
+           std::array<ID3D11UnorderedAccessView*, 15> unordered_access_views;
+           std::array<ID3D11ShaderResourceView*, 15> shader_resource_views;
        } resource_views;
 
 	switch (flag)
 	{
 	case ACCESS_STORAGE_ACCESS:
-		resource_views.unordered_access_views = std::array<ID3D11UnorderedAccessView**, 15>{};
+		resource_views.unordered_access_views = std::array<ID3D11UnorderedAccessView*, 15>{};
 		break;
 	case ACCESS_SHADER_RESOURCE:
-		resource_views.shader_resource_views = std::array<ID3D11ShaderResourceView**, 15>{};
+		resource_views.shader_resource_views = std::array<ID3D11ShaderResourceView*, 15>{};
 		break;
 	default:
 		OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
 		return;
 	}
 
-	assert(descriptors);
+	assert(*descriptors);
 	for (unsigned i = 0; i < count; i++)
 	{
-		assert(descriptors[i].heap);
-		const auto heap = to_internal_srv_uav(*descriptors[i].heap);
+		assert(descriptors[i]->heap);
+		const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
 		// The descriptor offset is used as index into vector
 		switch (flag)
 		{
 		case ACCESS_STORAGE_ACCESS:
-			resource_views.unordered_access_views[i] = heap->unordered_access_views[descriptors[i].offset].GetAddressOf();
+			resource_views.unordered_access_views[i] = heap->unordered_access_views[descriptors[i]->offset].Get();
 			break;
 		case ACCESS_SHADER_RESOURCE:
-			resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i].offset].GetAddressOf();
+			resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i]->offset].Get();
 			break;
 		default:
 			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
@@ -967,14 +1050,14 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 			// D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
 		case PipelineStage::VERTEX:
 			m_device_context_->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr,
-				slot, count, resource_views.unordered_access_views[0], &n1);
+				slot, count, resource_views.unordered_access_views.data(), &n1);
 			break;
 		case PipelineStage::PIXEL:
 			m_device_context_->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr,
-				slot, count, resource_views.unordered_access_views[0], &n1);
+				slot, count, resource_views.unordered_access_views.data(), &n1);
 			break;
 		case PipelineStage::COMPUTE:
-			m_device_context_->CSSetUnorderedAccessViews(slot, count, resource_views.unordered_access_views[0], nullptr);
+			m_device_context_->CSSetUnorderedAccessViews(slot, count, resource_views.unordered_access_views.data(), nullptr);
 			break;
 		default:
 			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid pipeline stage for storage access\n");
@@ -984,13 +1067,13 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 		switch (stage)
 		{
 		case PipelineStage::VERTEX:
-			m_device_context_->VSSetShaderResources(slot, count, resource_views.shader_resource_views[0]);
+			m_device_context_->VSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
 			break;
 		case PipelineStage::PIXEL:
-			m_device_context_->PSSetShaderResources(slot, count, resource_views.shader_resource_views[0]);
+			m_device_context_->PSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
 			break;
 		case PipelineStage::COMPUTE:
-			m_device_context_->CSSetShaderResources(slot, count, resource_views.shader_resource_views[0]);
+			m_device_context_->CSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
 			break;
 		}
 		break;
@@ -1000,39 +1083,40 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 	}
 }
 
-void D3D11Context::compatibility_set_samplers(const unsigned slot, const unsigned count, Sampler* const samplers, const PipelineStage stage)
+void D3D11Context::compatibility_set_samplers(const unsigned slot, const unsigned count, Sampler* const* samplers, const PipelineStage stage)
 {
-	std::array<ID3D11SamplerState**, 15> sampler_d3d11{};
+	std::array<ID3D11SamplerState*, 15> sampler_d3d11{};
 	assert(count <= sampler_d3d11.size());
 	for (unsigned i = 0; i < count; i++)
 	{
-		sampler_d3d11[i] = to_internal(samplers[i])->GetAddressOf();
+		sampler_d3d11[i] = samplers[i] ? to_internal(*samplers[i])->Get() : nullptr;
 	}
 	switch (stage)
 	{
 	case PipelineStage::VERTEX:
-		m_device_context_->VSSetSamplers(slot, count, sampler_d3d11[0]);
+		m_device_context_->VSSetSamplers(slot, count, sampler_d3d11.data());
 		break;
 	case PipelineStage::PIXEL:
-		m_device_context_->PSSetSamplers(slot, count, sampler_d3d11[0]);
+		m_device_context_->PSSetSamplers(slot, count, sampler_d3d11.data());
 		break;
 	case PipelineStage::COMPUTE:
-		m_device_context_->CSSetSamplers(slot, count, sampler_d3d11[0]);
+		m_device_context_->CSSetSamplers(slot, count, sampler_d3d11.data());
 		break;
 	default:
 		throw std::runtime_error("D3D11: Invalid pipeline stage");
 	}
 }
 
-void D3D11Context::wait_idle(Queue& queue)
+void D3D11Context::wait_idle(Queue* const queue)
 {
 	std::scoped_lock lock(m_context_mutex_);
     m_device_context_->Flush();
 }
 
-bool D3D11Context::present(Swapchain& swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index)
+bool D3D11Context::present(Swapchain* const swapchain, const UINT fence_count, Fence* wait_fences, const UINT swapchain_index)
 {
-	const auto swap_d3d11 = to_internal(swapchain);
+	assert(swapchain);
+	const auto swap_d3d11 = to_internal(*swapchain);
 	const auto result = swap_d3d11->swapchain->Present(1, 0);
     return result == S_OK;
 }

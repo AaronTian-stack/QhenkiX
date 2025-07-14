@@ -7,13 +7,15 @@ using namespace qhenki;
 
 void InputManager::update(SDL_Window* window)
 {
-	std::ranges::copy(m_current_keys, m_previous_keys.begin());
+	memcpy(m_previous_keys.data(), m_current_keys.data(), sizeof(m_current_keys));
+
 	m_mouse_flags_prev = m_mouse_flags;
 	const auto state = SDL_GetKeyboardState(nullptr);
 	for (int i = 0; i < SDL_SCANCODE_COUNT; ++i)
 	{
 		m_current_keys[i] = state[i];
 	}
+
 	m_mouse_position_prev = m_mouse_position;
 	m_mouse_flags = SDL_GetMouseState(&m_mouse_position.x, &m_mouse_position.y); // cached state
 

@@ -5,13 +5,6 @@
 #include <string>
 #include <vector>
 #include <DirectXMath.h>
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 
 using namespace DirectX;
@@ -26,7 +19,7 @@ namespace qhenki
 		bool fullscreen;
 		bool undecorated;
 		bool resizable;
-		std::string title;
+		const char* title;
 	};
 
 	/**
@@ -64,8 +57,6 @@ namespace qhenki
 		void set_decoration(bool undecorated);
 
 		void set_resizable(bool resizable);
-
-		void wait();
 
 		~DisplayWindow();
 

@@ -68,10 +68,10 @@ struct GLTFModel
 			int texture_coordinate_set = 0;
 		} emissive;
 	};
-	std::vector<qhenki::gfx::Buffer> material_buffers;
+	qhenki::gfx::Buffer material_buffer;
 	std::vector<Material> materials;
 
-	std::vector<qhenki::gfx::Texture> images;
+	std::vector<qhenki::gfx::Texture> images; // NOT a glTF texture, but an image
 	std::vector<qhenki::gfx::Sampler> samplers;
 	struct Texture
 	{
@@ -79,6 +79,7 @@ struct GLTFModel
 		int sampler_index = -1;
 	};
 	std::vector<Texture> textures;
+	qhenki::gfx::Buffer texture_buffer; // glTF texture
 
 	struct Primitive
 	{
@@ -104,7 +105,7 @@ struct GLTFModel
 		std::string name;
 		// skin
 		int parent_index = -1;
-		int mesh_index;
+		int mesh_index = -1;
 		// light
 		qhenki::Transform local_transform;
 		struct
@@ -122,4 +123,3 @@ struct GLTFModel
 	// cameras
 	int root_node = -1;
 };
-

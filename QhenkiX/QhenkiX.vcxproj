@@ -125,7 +125,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)NOMINMAX</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -153,7 +153,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)NOMINMAX</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -178,6 +178,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="qhenkiX\utility\include_handlers.cpp" />
     <ClCompile Include="qhenkiX\graphics\arcball_controller.cpp" />
     <ClCompile Include="qhenkiX\input\input_manager.cpp" />
     <ClCompile Include="qhenkiX\math\basis.cpp" />
@@ -197,10 +198,11 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_shader_compiler.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_descriptor_heap.cpp" />
     <ClCompile Include="qhenkiX\graphics\perspective_camera.cpp" />
-    <ClCompile Include="qhenkiX\graphics\helper\d3d_helper.cpp" />
-    <ClCompile Include="qhenkiX\graphics\helper\file_helper.cpp" />
-    <ClCompile Include="qhenkiX\graphics\helper\math_helper.cpp" />
+    <ClCompile Include="qhenkiX\helper\d3d_helper.cpp" />
+    <ClCompile Include="qhenkiX\helper\file_helper.cpp" />
+    <ClCompile Include="qhenkiX\helper\math_helper.cpp" />
     <ClCompile Include="qhenkiX\math\transform.cpp" />
+    <ClCompile Include="qhenkiX\utility\stack_allocator.cpp" />
     <ClCompile Include="src\D3D12MemAlloc.cpp" />
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_context.cpp" />
     <ClCompile Include="qhenkiX\application.cpp" />
@@ -214,6 +216,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\qhenkiX\arcball_controller.h" />
+    <ClInclude Include="include\qhenkiX\helper\general_helper.h" />
+    <ClInclude Include="include\qhenkiX\utility\include_handlers.h" />
+    <ClInclude Include="include\qhenkiX\utility\stack_allocator.h" />
     <ClInclude Include="qhenkiX\graphics\d3d11\d3d11_heap.h" />
     <ClInclude Include="include\qhenkiX\input\input_manager.h" />
     <ClInclude Include="include\qhenkiX\math\basis.h" />

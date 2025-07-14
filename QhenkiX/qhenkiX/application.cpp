@@ -18,18 +18,19 @@ using namespace qhenki;
  */
 void Application::init_display_window()
 {
-	std::string title = "QhenkiX Application";
-	switch (m_graphics_api)
-	{
-		case gfx::API::D3D11:
-			title += " | DX11";
+    char title[256] = "QhenkiX Application";
+    switch (m_graphics_api)
+    {
+	    case gfx::API::D3D11:
+		    std::snprintf(title, sizeof(title), "%s | DX11", "QhenkiX Application");
+		    break;
+	    case gfx::API::D3D12:
+		    std::snprintf(title, sizeof(title), "%s | DX12", "QhenkiX Application");
+		    break;
+	    default:
+			std::snprintf(title, sizeof(title), "%s | undefined", "QhenkiX Application");
 			break;
-		case gfx::API::D3D12:
-			title += " | DX12";
-			break;
-		default:
-			break;
-	}
+    }
 
 	DisplayInfo info
 	{
@@ -44,7 +45,7 @@ void Application::init_display_window()
 	m_window_.create_window(info, 0);
 }
 
-void Application::run(const gfx::API api)
+void Application::run(const gfx::API api, const bool enable_debug_layer)
 {
 	m_graphics_api = api;
 	m_main_thread_id = std::this_thread::get_id();
@@ -61,7 +62,7 @@ void Application::run(const gfx::API api)
 	default:
 		throw std::runtime_error("API not implemented");
 	}
-	m_context->create();
+	m_context->create(enable_debug_layer);
 
 	THROW_IF_FALSE(m_context->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue));
 
@@ -72,8 +73,8 @@ void Application::run(const gfx::API api)
 		.format = DXGI_FORMAT_R8G8B8A8_UNORM,
 		.buffer_count = m_frames_in_flight,
 	};
-	THROW_IF_FALSE(m_context->create_swapchain(m_window_, swapchain_desc, m_swapchain, 
-			m_graphics_queue, m_frame_index));
+	THROW_IF_FALSE(m_context->create_swapchain(m_window_, swapchain_desc, &m_swapchain,
+					&m_graphics_queue, &m_frame_index));
 
 	gfx::DescriptorHeapDesc rtv_heap_desc
 	{
@@ -81,10 +82,10 @@ void Application::run(const gfx::API api)
 		.visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(rtv_heap_desc, m_rtv_heap, L"swapchain RTV heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(rtv_heap_desc, &m_rtv_heap, L"swapchain RTV heap"));
 	
 	// Make swapchain RTVs (stored internally)
-	THROW_IF_FALSE(m_context->create_swapchain_descriptors(m_swapchain, m_rtv_heap));
+	THROW_IF_FALSE(m_context->create_swapchain_descriptors(m_swapchain, &m_rtv_heap));
 
 	// Create fences
 	THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[get_frame_index()]));
@@ -105,7 +106,7 @@ void Application::run(const gfx::API api)
 			{
 				m_window_.m_display_info.width = event.window.data1;
 				m_window_.m_display_info.height = event.window.data2;
-				m_context->resize_swapchain(m_swapchain, event.window.data1, event.window.data2, m_rtv_heap, m_frame_index);
+				m_context->resize_swapchain(&m_swapchain, event.window.data1, event.window.data2, &m_rtv_heap, m_frame_index);
 				resize(event.window.data1, event.window.data2);
 			}
 			m_input_manager.handle_extra_events(event);
@@ -115,7 +116,7 @@ void Application::run(const gfx::API api)
 		m_input_manager.update(m_window_.get_window()); // After all SDL events
         render();
     }
-	m_context->wait_idle(m_graphics_queue);
+	m_context->wait_idle(&m_graphics_queue);
 	destroy();
 }
 

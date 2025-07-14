@@ -10,12 +10,12 @@
 using namespace qhenki::gfx;
 
 D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_type, const std::wstring& name, 
-	const CompilerOutput& output, bool& result) : m_type(shader_type)
+	const CompilerOutput& output, bool* result) : m_type(shader_type)
 {
 	const auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
 	assert(blob);
 
-	result = true;
+	*result = true;
 	ID3D11DeviceChild* device_resource = nullptr;
 	switch (shader_type)
 	{
@@ -28,7 +28,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 			nullptr,
 			&std::get<D3D11VertexShader>(m_shader).vertex_shader)))
 		{
-			result = false;
+			*result = false;
 		}
 		else
 		{
@@ -48,7 +48,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 			nullptr,
 			std::get<ComPtr<ID3D11PixelShader>>(m_shader).ReleaseAndGetAddressOf())))
 		{
-			result = false;
+			*result = false;
 		}
 		else
 		{
@@ -60,8 +60,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 		throw std::runtime_error("D3D11: Shader type not implemented");
 	}
 
-#ifdef _DEBUG
-	if (device_resource)
+	if (device_resource && !name.empty())
 	{
 		constexpr size_t max_length = 256;
 		char debug_name_str[max_length] = {};
@@ -69,5 +68,5 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 		wcstombs_s(&converted_chars, debug_name_str, name.c_str(), max_length - 1);
 		D3D11Context::set_debug_name(device_resource, debug_name_str);
 	}
-#endif
+
 }

@@ -7,6 +7,8 @@
 
 #include <SDL3/SDL_dialog.h>
 
+#include "qhenkiX/helper/general_helper.h"
+
 void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& node)
 {
 	if (node.parent_index > 0)
@@ -19,16 +21,16 @@ void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& n
 		// TODO: stop store load every time
 		node.global_transform.transform = model.nodes[node.parent_index].global_transform.transform * node.local_transform;
 	}
-	// Base case local = global
-	node.global_transform.transform = node.local_transform;
+	else
+	{
+		node.global_transform.transform = node.local_transform;
+	}
 }
 
 void gltfViewerApp::create()
 {
 	auto shader_model = m_context->is_compatibility() ? 
 		qhenki::gfx::ShaderModel::SM_5_0 : qhenki::gfx::ShaderModel::SM_6_6;
-
-	auto compiler_flags = CompilerInput::NONE;
 
 	std::vector<std::wstring> defines;
 	defines.reserve(1);
@@ -44,63 +46,62 @@ void gltfViewerApp::create()
 	// Create shaders at runtime
 	CompilerInput vertex_shader =
 	{
-		.flags = compiler_flags,
-		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
 		.path = L"base-shaders/BaseShader.hlsl",
 		.entry_point = L"vs_main",
-		.min_shader_model = shader_model,
 		.defines = defines,
+		.min_shader_model = shader_model,
+		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
+		//.flags = CompilerInput::DEBUG,
 	};
 	THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_vertex_shader, vertex_shader));
 
 	CompilerInput pixel_shader =
 	{
-		.flags = compiler_flags,
-		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
 		.path = L"base-shaders/BaseShader.hlsl",
 		.entry_point = L"ps_main",
-		.min_shader_model = shader_model,
 		.defines = defines,
+		.min_shader_model = shader_model,
+		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
+		//.flags = CompilerInput::DEBUG,
 	};
 	THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_pixel_shader, pixel_shader));
 
 	// Create pipeline layout
-	qhenki::gfx::LayoutBinding b1 // Constant buffers
+	qhenki::gfx::LayoutBinding camera // Constant buffers
 	{
 		.binding = 0,
-		.count = 2,
+		.count = 1,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
 	};
-	qhenki::gfx::LayoutBinding b2 // SRV for texture
+	qhenki::gfx::LayoutBinding material
+	{
+		.binding = 1,
+		.count = 1,
+		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+	};
+	qhenki::gfx::LayoutBinding textures // SRV for texture
 	{
 		.binding = 2, // TODO: figure out how to handle this for Vulkan
 		.count = 1000,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 	};
-	qhenki::gfx::LayoutBinding b3 // Sampler for texture
+	qhenki::gfx::LayoutBinding samplers // Sampler for texture
 	{
 		.binding = 0,
 		.count = 1,
 		.type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
 	};
-	qhenki::gfx::LayoutBinding b4
-	{
-		.binding = 0, // TODO: figure out how to handle this for Vulkan
-		.count = 1000,
-		.type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-	};
 	qhenki::gfx::PipelineLayoutDesc layout_desc{};
-	layout_desc.spaces[0] = { b1, b2 };
-	layout_desc.spaces[1] = { b3 }; // Samplers need their own space/table
-	layout_desc.spaces[2] = { b4 };
+	layout_desc.spaces[0] = { camera, material, textures };
+	layout_desc.spaces[1] = { samplers }; // Samplers need their own space/table
 	layout_desc.push_ranges.push_back(
 		qhenki::gfx::PushRange
 		{
-			.size = sizeof(uint32_t),
+			.size = sizeof(XMFLOAT4X4) * 2 + sizeof(int),
 			.binding = 0,
 		}
 	);
-	THROW_IF_FALSE(m_context->create_pipeline_layout(layout_desc, &m_pipeline_layout));
+	THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
 	// Create GPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_GPU
@@ -109,7 +110,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, m_GPU_heap, L"GPU heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap, L"GPU heap"));
 
 	// Create CPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_CPU
@@ -118,7 +119,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // CPU heap has no size limit
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, m_CPU_heap, L"CPU heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, L"CPU heap"));
 
 	qhenki::gfx::DescriptorHeapDesc dsv_heap_desc
 	{
@@ -126,7 +127,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256,
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, m_dsv_heap, L"DSV heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, &m_dsv_heap, L"DSV heap"));
 
 	// Create Sampler Heap
 	qhenki::gfx::DescriptorHeapDesc sampler_heap_desc
@@ -135,7 +136,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU, // Create samplers directly on GPU heap
 		.descriptor_count = 16, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, m_sampler_heap, L"Sampler heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap, L"Sampler heap"));
 
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
@@ -147,7 +148,7 @@ void gltfViewerApp::create()
 		.increment_slot = true,
 	};
 	THROW_IF_FALSE(m_context->create_pipeline(pipeline_desc, &m_pipeline, 
-			m_vertex_shader, m_pixel_shader, &m_pipeline_layout, nullptr, L"Triangle pipeline"));
+				m_vertex_shader, m_pixel_shader, &m_pipeline_layout, L"Triangle pipeline"));
 
 	// A graphics queue is already given to the application by the context
 
@@ -169,33 +170,34 @@ void gltfViewerApp::create()
 		.initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
 	};
 	THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, L"Depth Buffer Texture"));
-	THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, m_dsv_heap, &m_depth_buffer_descriptor));
+	THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
 	// Make 2 matrix constant buffers for double buffering
 	qhenki::gfx::BufferDesc matrix_desc
 	{
 		.size = MathHelper::align_u32(sizeof(qhenki::CameraMatrices), CONSTANT_BUFFER_ALIGNMENT),
-		.usage = qhenki::gfx::BufferUsage::UNIFORM,
+		.usage = qhenki::gfx::BufferUsage::CONSTANT,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
 	// TODO: persistent mapping flag
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
 		THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], L"Matrix Buffer"));
-		THROW_IF_FALSE(m_context->create_descriptor(m_matrix_buffers[i], m_CPU_heap, 
-			&m_matrix_descriptors[i], qhenki::gfx::BufferDescriptorType::CBV));
+		THROW_IF_FALSE(m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap,
+					&m_matrix_descriptors[i]));
 	}
 
-	qhenki::gfx::BufferDesc desc
+	if (m_context->is_compatibility())
 	{
-		.size = MathHelper::align_u32(sizeof(XMFLOAT4X4) * 2, CONSTANT_BUFFER_ALIGNMENT),
-		.usage = qhenki::gfx::BufferUsage::UNIFORM,
-		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
-	};
-	THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, L"Model Buffer"));
-	THROW_IF_FALSE(m_context->create_descriptor(m_model_buffer, m_CPU_heap,
-		&m_model_matrix_descriptor, qhenki::gfx::BufferDescriptorType::CBV));
-	
+		qhenki::gfx::BufferDesc desc
+		{
+			.size = MathHelper::align_u32(sizeof(XMFLOAT4X4) * 2 + sizeof(int), CONSTANT_BUFFER_ALIGNMENT),
+			.usage = qhenki::gfx::BufferUsage::CONSTANT,
+			.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
+		};
+		THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, L"Model Buffer"));
+		THROW_IF_FALSE(m_context->create_descriptor_constant_view(m_model_buffer, &m_CPU_heap, &m_model_descriptor));
+	}
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -213,17 +215,25 @@ struct ContextModel
 	qhenki::gfx::Context* context;
 	qhenki::gfx::CommandPool* pool;
 	qhenki::gfx::Queue* queue;
-	GLTFModel* model;
+	size_t model_count;
+	GLTFModel* models;
 	std::mutex* mutex;
+	std::atomic_int* model_index_to_load_into;
 
 	struct HeapAndList
 	{
-		qhenki::gfx::DescriptorHeap* heap;
-		std::vector<qhenki::gfx::Descriptor>* descriptors;
+		qhenki::gfx::DescriptorHeap* heap; // Heap to use to create descriptors
+		std::vector<qhenki::gfx::Descriptor>* descriptors; // (in/out) Descriptors to initialize
 	};
-	HeapAndList material;
+	struct HeapAndDescriptor
+	{
+		qhenki::gfx::DescriptorHeap* heap; // Heap to use to create descriptor
+		qhenki::gfx::Descriptor* descriptor; // (in/out) Descriptor to initialize
+	};
 	HeapAndList texture;
 	HeapAndList sampler;
+	HeapAndDescriptor gltfTexture;
+	HeapAndDescriptor material;
 };
 
 static void SDLCALL callback(void* userdata, const char* const* filelist, int filter)
@@ -245,18 +255,25 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
 		.queue = context_model->queue,
 	};
 
-	std::scoped_lock lock(*context_model->mutex);
-	loader.load(*filelist, context_model->model, context_data);
-
 	auto& context = *context_model->context;
+
+	std::scoped_lock lock(*context_model->mutex);
+
+	const auto result = loader.load(*filelist, &context_model->models[*context_model->model_index_to_load_into], context_data);
+	if (result)
+	{
+		printf("glTF model loaded: %s\n", *filelist);
+	}
+	else
+	{
+		printf("FAILED to load glTF model: %s\n", *filelist);
+	}
 
 	// Only copy below descriptors when model lock is held so is ok.
 	// Create views
-	assert(context_model->model->materials.size() == context_model->model->material_buffers.size());
     {
-        auto& model = *context_model->model;
+        auto& model = context_model->models[*context_model->model_index_to_load_into];
 
-        auto& matDescriptors = *context_model->material.descriptors;
         auto& matHeap = *context_model->material.heap;
 
         auto& texDescriptors = *context_model->texture.descriptors;
@@ -265,34 +282,38 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
         auto& sampDescriptors = *context_model->sampler.descriptors;
         auto& sampHeap = *context_model->sampler.heap;
 
-        // Material Descriptors
-        assert(model.materials.size() == model.material_buffers.size());
-        matDescriptors.resize(model.material_buffers.size());
-        for (size_t i = 0; i < model.material_buffers.size(); i++)
-        {
-            assert(matHeap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
-            // TODO: ensure range is contiguous if descriptors already exist
-            context.create_descriptor(model.material_buffers[i], matHeap, &matDescriptors[i], qhenki::gfx::BufferDescriptorType::CBV);
-        }
+		// glTF Texture Descriptor
+		assert(matHeap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
+		context.create_descriptor_shader_view(model.texture_buffer, &matHeap, context_model->gltfTexture.descriptor);
+
+        // Material buffer Descriptor
+        assert(matHeap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
+        context.create_descriptor_shader_view(model.material_buffer, &matHeap, context_model->material.descriptor);
 
         // Texture Descriptors
-		// Should be done right after materials
-        texDescriptors.resize(model.images.size());
+		if (model.images.size() > texDescriptors.size())
+		{
+			texDescriptors.resize(model.images.size());
+		}
         for (size_t i = 0; i < model.images.size(); i++)
         {
             assert(texHeap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
             // TODO: ensure range is contiguous if descriptors already exist
-            context.create_descriptor_texture_view(model.images[i], texHeap, &texDescriptors[i]);
+            context.create_descriptor_shader_view(model.images[i], &texHeap, &texDescriptors[i]);
         }
 
         // Sampler Descriptors
-        sampDescriptors.resize(model.samplers.size());
+		if (model.samplers.size() > sampDescriptors.size())
+		{
+			sampDescriptors.resize(model.samplers.size());
+		}
         for (size_t i = 0; i < model.samplers.size(); i++)
         {
             // Should just be created from start of heap
-            context.create_descriptor(model.samplers[i], sampHeap, &sampDescriptors[i]);
+            context.create_descriptor(model.samplers[i], &sampHeap, &sampDescriptors[i]);
         }
     }
+	*context_model->model_index_to_load_into = (*context_model->model_index_to_load_into + 1) % context_model->model_count; // Toggle model index
 }
 
 void gltfViewerApp::render()
@@ -349,18 +370,23 @@ void gltfViewerApp::render()
 				{
 					{ "glTF files (*.gltf;*glb)",  "gltf;glb" },
 				};
-				static ContextModel cm
+
+				/*
+				 * The render thread will attempt to use model at m_model_index.
+				 * This will not cause issues unless model at m_model_index is being used in frame in flight,
+				 * which is impossible because you would have had to call this function twice in the same frame.
+				 */
+
+				thread_local ContextModel cm;
+				cm =
 				{
 					.context = m_context.get(),
 					.pool = &m_cmd_pools_thread[get_frame_index()], // Needs its own command pool for async loading
 					.queue = &m_graphics_queue,
-					.model = &m_model,
+					.model_count = m_models.size(),
+					.models = m_models.data(),
 					.mutex = &m_model_mutex,
-					.material =
-					{
-						.heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
-						.descriptors = &m_model_material_descriptors,
-					},
+					.model_index_to_load_into = &m_model_index_to_load_into,
 					.texture
 					{
 						.heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
@@ -370,6 +396,16 @@ void gltfViewerApp::render()
 					{
 						.heap = &m_sampler_heap,
 						.descriptors = &m_sampler_descriptors,
+					},
+					.gltfTexture =
+					{
+						.heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
+						.descriptor = &m_model_gltfTexture_descriptor,
+					},
+					.material =
+					{
+						.heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
+						.descriptor = &m_model_material_descriptor,
 					},
 				};
 				SDL_ShowOpenFileDialog(callback, &cm, m_window_.get_window(), filters, SDL_arraysize(filters), nullptr, false);
@@ -397,7 +433,7 @@ void gltfViewerApp::render()
 		}
 		if (right)
 		{
-			if (bool shift = m_input_manager.is_key_down(SDL_SCANCODE_LSHIFT) || m_input_manager.is_key_down(SDL_SCANCODE_RSHIFT))
+			if (m_input_manager.is_key_down(SDL_SCANCODE_LSHIFT) || m_input_manager.is_key_down(SDL_SCANCODE_RSHIFT))
 			{
 				speed *= 100.f;
 			}
@@ -405,7 +441,7 @@ void gltfViewerApp::render()
 		}
 		bool middle = m_input_manager.is_mouse_button_down(SDL_BUTTON_MIDDLE);
 		bool vertical_scrolling = m_input_manager.get_mouse_scroll().y != 0;
-		if (vertical_scrolling != 0 ^ middle)
+		if ((vertical_scrolling != 0) ^ middle)
 		{
 			float amount = 0.f;
 			if (vertical_scrolling)
@@ -434,7 +470,7 @@ void gltfViewerApp::render()
 
 	// Create a command list in the open state
 	qhenki::gfx::CommandList cmd_list;
-	THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[get_frame_index()]));
+	THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[get_frame_index()], L"main command list"));
 
 	// Resource transition
 	qhenki::gfx::ImageBarrier barrier_render =
@@ -461,7 +497,7 @@ void gltfViewerApp::render()
 		.clear_type = qhenki::gfx::RenderTarget::Depth,
 		.descriptor = m_depth_buffer_descriptor,
 	};
-	m_context->start_render_pass(&cmd_list, m_swapchain, clear_values.data(), &depth, get_frame_index());
+	m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), &depth, get_frame_index());
 
 	// Set viewport
 	const D3D12_VIEWPORT viewport
@@ -492,13 +528,12 @@ void gltfViewerApp::render()
 	// Bind resources
 	if (m_context->is_compatibility())
 	{
-		std::array mbs = { &m_matrix_buffers[get_frame_index()] };
-		m_context->compatibility_set_constant_buffers(0, 1, *mbs.data(), qhenki::gfx::PipelineStage::VERTEX);
+		m_context->compatibility_set_constant_buffers(0, 1, qhenki::util::ptr_array(m_matrix_buffers[get_frame_index()]).data(), qhenki::gfx::PipelineStage::VERTEX);
 	}
 	else
 	{
 		qhenki::gfx::Descriptor descriptor; // Location of start of GPU heap
-		THROW_IF_FALSE(m_context->get_descriptor(0, m_GPU_heap, &descriptor));
+		THROW_IF_FALSE(m_context->get_descriptor(0, &m_GPU_heap, &descriptor));
 
 		// Parameter 1 is table, set to start at beginning of GPU heap
 		m_context->set_descriptor_table(&cmd_list, 1, descriptor);
@@ -507,42 +542,50 @@ void gltfViewerApp::render()
 		THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[get_frame_index()], descriptor));
 
 		// Sampler
-		THROW_IF_FALSE(m_context->get_descriptor(0, m_sampler_heap, &descriptor));
+		THROW_IF_FALSE(m_context->get_descriptor(0, &m_sampler_heap, &descriptor));
 		m_context->set_descriptor_table(&cmd_list, 2, descriptor);
 	}
 
 	{ // Render
 		// Draw glTF model
 		std::unique_lock lock(m_model_mutex, std::defer_lock);
+		const auto model_to_render = m_model_index_to_load_into > 0 ? m_model_index_to_load_into - 1 : m_models.size() - 1;
+		auto& m_model = m_models[model_to_render];
 		if (lock.try_lock() && m_model.root_node >= 0) // If not still loading (because it is async function)
 		{
 			// Bindless bind textures, only need to do before all draws
 			if (!m_context->is_compatibility()) // NOT compatibility
 			{
-				// Copy texture descriptors
 				qhenki::gfx::Descriptor descriptor;
-				THROW_IF_FALSE(m_context->get_descriptor(2, m_GPU_heap, &descriptor)); // Make sure this matches in shader
-				// Copy matrix and texture descriptors to GPU heap
-				// TODO: check that CPU texture descriptors are contiguous, otherwise singular copy will not work
-				THROW_IF_FALSE(m_context->copy_descriptors(m_model_texture_descriptors.size(), m_model_texture_descriptors[0], descriptor));
 
-				// Put the materials right after the texture descriptors
-				THROW_IF_FALSE(m_context->get_descriptor(2 + m_model_texture_descriptors.size(), m_GPU_heap, &descriptor));
-				// TODO: again this assumes CPU material descriptors are contiguous
-				THROW_IF_FALSE(m_context->copy_descriptors(m_model_material_descriptors.size(), m_model_material_descriptors[0], descriptor));
-				m_context->set_descriptor_table(&cmd_list, 3, descriptor);
+				// Make sure these match in the shader
+				int start = 1;
+
+				// Copy texture descriptor
+				THROW_IF_FALSE(m_context->get_descriptor(start++, &m_GPU_heap, &descriptor));
+				THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_gltfTexture_descriptor, descriptor));
+
+				// Copy material descriptor
+				THROW_IF_FALSE(m_context->get_descriptor(start++, &m_GPU_heap, &descriptor));
+				THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_material_descriptor, descriptor));
+
+				// Copy texture descriptors
+				THROW_IF_FALSE(m_context->get_descriptor(start++, &m_GPU_heap, &descriptor));
+				// TODO: check that CPU texture descriptors are contiguous, otherwise singular copy will not work
+				// Use the textures size, not descriptors because descriptors may be larger than texture count due to left over from old model
+				THROW_IF_FALSE(m_context->copy_descriptors(m_model.textures.size(), m_model_texture_descriptors[0], descriptor));
 			}
 			// Compatibility will bind per draw call because we cannot bind all textures at once
-			else
-			{
-				// Sampler
-				assert(m_model.samplers.size() <= 8);
-				m_context->compatibility_set_samplers(0, m_model.samplers.size(), m_model.samplers.data(), qhenki::gfx::PipelineStage::PIXEL);
-			}
 
 			for (int i = 0; i < m_model.nodes.size(); i++)
 			{
 				auto& current_node = m_model.nodes[i];
+
+				// Skip nodes without valid meshes
+				if (current_node.mesh_index < 0 || current_node.mesh_index >= m_model.meshes.size())
+				{
+					continue;
+				}
 
 				// Recalculate node global transform if needed (recursive)
 				update_global_transform(m_model, current_node);
@@ -576,9 +619,9 @@ void gltfViewerApp::render()
 							
 							auto buffer = &m_model.buffers[buffer_view.buffer_index];
 
-							assert(buffer_view.stride <= std::numeric_limits<unsigned>::max());
-							assert(accessor.offset <= std::numeric_limits<unsigned>::max());
-							unsigned stride = buffer_view.stride;
+							assert(buffer_view.stride <= std::numeric_limits<UINT>::max());
+							assert(accessor.offset <= std::numeric_limits<UINT>::max());
+							UINT stride = buffer_view.stride;
 							if (stride == 0)
 							{
 								// Tightly packed, infer stride from size of type times number of components
@@ -590,9 +633,9 @@ void gltfViewerApp::render()
 										case TINYGLTF_PARAMETER_TYPE_FLOAT:
 											return sizeof(float);
 										case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT:
-											return sizeof(short);
+											return sizeof(uint16_t);
 										case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT:
-											return sizeof(unsigned);
+											return sizeof(uint32_t);
 									}
 								};
 								auto calc_type_count = [](int type)
@@ -611,27 +654,35 @@ void gltfViewerApp::render()
 								stride = calc_component_size(accessor.component_type) * calc_type_count(accessor.type);
 							}
 
-							unsigned offset = accessor.offset + buffer_view.offset;
+							UINT offset = accessor.offset + buffer_view.offset;
 
-							m_context->bind_vertex_buffers(&cmd_list, slot, 1, &buffer, &stride, &offset);
+							const UINT length = buffer_view.length;
+
+							m_context->bind_vertex_buffers(&cmd_list, slot, 1, &buffer, &length, &stride, &offset);
 						}
 					}
 					const auto& index_accessor = m_model.accessors[prim.indices];
 					const auto& buffer_view = m_model.buffer_views[index_accessor.buffer_view];
+					
 					const auto& index_buffer = m_model.buffers[buffer_view.buffer_index];
+					
 					auto index_type = index_accessor.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT 
 						? qhenki::gfx::IndexType::UINT16 : qhenki::gfx::IndexType::UINT32;
 
-					m_context->bind_index_buffer(&cmd_list, index_buffer, index_type, index_accessor.offset + buffer_view.offset);
+					UINT index_offset = index_accessor.offset + buffer_view.offset;
 
-					auto p = m_context->map_buffer(m_model_buffer);
-					memcpy(p, &global_4x4, sizeof(XMFLOAT4X4));
-					memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4), &global_4x4_inverse, sizeof(XMFLOAT4X4));
-					m_context->unmap_buffer(m_model_buffer);
+					m_context->bind_index_buffer(&cmd_list, index_buffer, index_type, index_offset);
 
 					if (m_context->is_compatibility())
 					{
-						m_context->compatibility_set_constant_buffers(1, 1, &m_model_buffer, qhenki::gfx::PipelineStage::VERTEX);
+						const auto p = m_context->map_buffer(m_model_buffer);
+						memcpy(p, &global_4x4, sizeof(XMFLOAT4X4));
+						memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4), &global_4x4_inverse, sizeof(XMFLOAT4X4));
+						memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4) * 2, &prim.material_index, sizeof(int));
+						m_context->unmap_buffer(m_model_buffer);
+
+						m_context->compatibility_set_constant_buffers(1, 1, qhenki::util::ptr_array(m_model_buffer).data(), qhenki::gfx::PipelineStage::VERTEX);
+						m_context->compatibility_set_constant_buffers(1, 1, qhenki::util::ptr_array(m_model_buffer).data(), qhenki::gfx::PipelineStage::PIXEL);
 
 						// Bind based off current material
 						const auto& material = m_model.materials[prim.material_index];
@@ -639,8 +690,8 @@ void gltfViewerApp::render()
 						{
 							if (index >= 0 && index < static_cast<int>(m_model_texture_descriptors.size())) 
 							{
-								m_context->compatibility_set_textures(slot, 1, &m_model_texture_descriptors[index],
-									qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE, qhenki::gfx::PipelineStage::PIXEL);
+								m_context->compatibility_set_textures(slot, 1, qhenki::util::ptr_array(m_model_texture_descriptors[index]).data(),
+								                                      qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE, qhenki::gfx::PipelineStage::PIXEL);
 							}
 						};
 						// 5 textures
@@ -664,9 +715,21 @@ void gltfViewerApp::render()
 						{
 							if (index < 0)
 							{
+								// Bind dummy sampler to silence validation warning
+								// TODO: pass null instead after refactor
+								m_context->compatibility_set_samplers(slot, 1, qhenki::util::ptr_array(m_model.samplers[0]).data(), qhenki::gfx::PipelineStage::PIXEL);
 								return;
 							}
-							m_context->compatibility_set_samplers(slot, 1, &m_model.samplers[m_model.textures[index].sampler_index], qhenki::gfx::PipelineStage::PIXEL);
+							const auto sampler_index = m_model.textures[index].sampler_index;
+							if (sampler_index < 0)
+							{
+								qhenki::gfx::Sampler* nul = nullptr;
+								m_context->compatibility_set_samplers(slot, 1, &nul, qhenki::gfx::PipelineStage::PIXEL);
+							}
+							else
+							{
+								m_context->compatibility_set_samplers(slot, 1, qhenki::util::ptr_array(m_model.samplers[sampler_index]).data(), qhenki::gfx::PipelineStage::PIXEL);
+							}
 						};
 						start_slot = 0;
 						sampler(start_slot++, material.base_color.index);
@@ -676,24 +739,20 @@ void gltfViewerApp::render()
 						sampler(start_slot++, material.emissive.index);
 
 						// We will also bind the material itself here
-						m_context->compatibility_set_constant_buffers(2, 1, &m_model.material_buffers[prim.material_index], qhenki::gfx::PipelineStage::PIXEL);
+						m_context->compatibility_set_shader_buffers(2, 1, qhenki::util::ptr_array(m_model_material_descriptor).data(), qhenki::gfx::PipelineStage::PIXEL);
 					}
 					else
 					{
-						uint32_t mat_index = prim.material_index;
-						m_context->set_pipeline_constant(&cmd_list, 0, 0, sizeof(int), &mat_index);
-
-						// Model matrix
-						qhenki::gfx::Descriptor descriptor;
-						THROW_IF_FALSE(m_context->get_descriptor(1, m_GPU_heap, &descriptor));
-						THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_matrix_descriptor, descriptor));
+						m_context->set_pipeline_constant(&cmd_list, 0, 0, sizeof(XMFLOAT4X4), &global_4x4);
+						m_context->set_pipeline_constant(&cmd_list, 0, sizeof(XMFLOAT4X4), sizeof(XMFLOAT4X4), &global_4x4_inverse);
+						int material_index = prim.material_index;
+						m_context->set_pipeline_constant(&cmd_list, 0, sizeof(XMFLOAT4X4) * 2, sizeof(int), &material_index);
 					}
 
 					// Draw
 					m_context->draw_indexed(&cmd_list, index_accessor.count, 0, 0);
 				}
 			}
-			lock.unlock();
 		}
 	}
 
@@ -720,6 +779,8 @@ void gltfViewerApp::render()
 
 	// Submit command list
 	auto current_fence_value = m_fence_frame_ready_val[get_frame_index()];
+	// To delete the model at m_model_index need to wait for this fence value
+	//m_model_last_used_fence_value[m_model_index] = current_fence_value;
 	qhenki::gfx::SubmitInfo info
 	{
 		.command_list_count = 1,
@@ -732,7 +793,7 @@ void gltfViewerApp::render()
 
 	// You MUST call Present at the end of the render loop
 	// TODO: change for Vulkan
-	m_context->present(m_swapchain, 0, nullptr, get_frame_index());
+	m_context->present(&m_swapchain, 0, nullptr, get_frame_index());
 
 	increment_frame_index();
 
@@ -754,7 +815,7 @@ void gltfViewerApp::render()
 
 void gltfViewerApp::resize(int width, int height)
 {
-	m_context->wait_idle(m_graphics_queue);
+	m_context->wait_idle(&m_graphics_queue);
 	// Recreate the depth buffer
 	qhenki::gfx::TextureDesc depth_desc
 	{
@@ -766,7 +827,7 @@ void gltfViewerApp::resize(int width, int height)
 	};
 	THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, L"Depth Buffer Texture"));
 	// This will recreate the descriptor in place since it already has an offset.
-	THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, m_dsv_heap, &m_depth_buffer_descriptor));
+	THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 }
 
 void gltfViewerApp::destroy()

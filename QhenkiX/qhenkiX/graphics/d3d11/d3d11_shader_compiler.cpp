@@ -7,6 +7,7 @@
 
 #include "qhenkiX/helper/d3d_helper.h"
 #include <qhenkiX/helper/file_helper.h>
+#include <qhenkiX/utility/include_handlers.h>
 
 using Microsoft::WRL::ComPtr;
 using namespace qhenki::gfx;
@@ -17,12 +18,24 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	ComPtr<ID3DBlob> error_blob = nullptr;
 	UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 
-	// | D3DCOMPILE_SKIP_OPTIMIZATION;
-
 	if (input.flags & CompilerInput::DEBUG)
 	{
 		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_DEBUG_NAME_FOR_SOURCE;
 	}
+
+	if (input.optimization == CompilerInput::Optimization::O0)
+	{
+		flags |= D3DCOMPILE_OPTIMIZATION_LEVEL0;
+	}
+	else if (input.optimization == CompilerInput::Optimization::O1)
+	{
+		flags |= D3DCOMPILE_OPTIMIZATION_LEVEL1;
+	}
+	else if (input.optimization == CompilerInput::Optimization::O2)
+	{
+		flags |= D3DCOMPILE_OPTIMIZATION_LEVEL2;
+	}
+	// O3 default
 
 	if (input.min_shader_model > ShaderModel::SM_5_0)
 	{
@@ -30,6 +43,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
+	assert(input.entry_point.size() < 256);
 	constexpr size_t max_length = 256;
 	char s_name[max_length] = {};
 	size_t converted_chars = 0;
@@ -40,18 +54,19 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	std::vector<D3D_SHADER_MACRO> macros;
+	thread_local std::vector<D3D_SHADER_MACRO> macros; // TODO: replace with stack allocator and share with below temp alloc.
+	macros.clear();
 	macros.reserve(input.defines.size() + 1);
 
-	// need to keep in scope for substrings until shader is compiled
-	std::vector<std::string> defines;
+	// Need to keep in scope for substrings until shader is compiled
+	thread_local std::vector<std::string> defines;
+	defines.clear();
 	defines.reserve(input.defines.size() * 2);
-	
-	// convert the define into D3D_SHADER_MACRO
+
     for (const auto& define : input.defines)
     {
-        // convert the defines into D3D_SHADER_MACRO
-        // split the string at the first '='
+        // Convert the defines into D3D_SHADER_MACRO
+        // Split the string at the first '='
         std::string define_str(define.begin(), define.end());
         size_t pos = define_str.find('=');
         if (pos != std::string::npos)
@@ -72,7 +87,8 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     macros.push_back({ .Name= nullptr, .Definition= nullptr});
 
 	const auto target = D3DHelper::get_shader_model_char(input.shader_type, input.min_shader_model);
-	assert(target);
+
+	MultiIncludeHandler handler(&input.includes);
 
 	ComPtr<ID3DBlob> shader_blob = nullptr;
 	// TODO: d3dcompiler_47.dll should be linked with the application
@@ -80,9 +96,9 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	const HRESULT hr = D3DCompileFromFile(
 		input.path.c_str(),
 		macros.data(),
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		&handler,
 		s_name,
-		target,
+		target.c_str(),
 		flags,
 		0,
 		&shader_blob,
@@ -122,9 +138,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		// Convert ID3DBlob to wstring
 		const ShaderDebugName* pDebugNameData = reinterpret_cast<const ShaderDebugName*>(debug_info_path->GetBufferPointer());
 		const char* pName = reinterpret_cast<const char*>(pDebugNameData + 1);
-		// Convert the UTF-8 name to a wide string
-		std::wstring wstr(pName, pName + pDebugNameData->NameLength);
-		auto result = FileHelper::write_file(wstr,
+		const auto result = FileHelper::write_file(pName,
 			debug_info_blob->GetBufferPointer(), 
 			debug_info_blob->GetBufferSize());
 		assert(result);

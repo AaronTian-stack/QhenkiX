@@ -3,9 +3,9 @@
 // >= SM 5.1 required for spaces
 // SM 6.6 is needed for Mesh shaders
 
-#define NOMINMAX
 #include <dxgiformat.h>
 #include <wrl/client.h>
+#include <string>
 
 #include "qhenkiX/RHI/barrier.h"
 #include "qhenkiX/RHI/enums.h"
@@ -16,11 +16,10 @@ using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-	class D3DHelper
+	struct D3DHelper
 	{
-	public:
-		static const wchar_t* get_shader_model_wchar(ShaderType type, ShaderModel model);
-		static const char* get_shader_model_char(ShaderType type, ShaderModel model);
+		static std::wstring get_shader_model_wchar(ShaderType type, ShaderModel model);
+		static std::string get_shader_model_char(ShaderType type, ShaderModel model);
 		static DXGI_FORMAT get_dxgi_format(IndexType format);
 		static D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(PrimitiveTopology topology);
 

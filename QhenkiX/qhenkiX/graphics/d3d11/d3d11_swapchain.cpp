@@ -62,9 +62,7 @@ bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
 		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Render Target View\n");
 		return false;
     }
-#ifdef _DEBUG
 	D3D11Context::set_debug_name(sc_render_target.Get(), "Swapchain Render Target");
-#endif
     // Don't need to keep the back buffer reference only needed it to create RTV
     // D3D11 auto swaps the back buffer, uses the same pointer
     return true;

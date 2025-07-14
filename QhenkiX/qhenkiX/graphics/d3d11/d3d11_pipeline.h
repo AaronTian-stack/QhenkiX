@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#define NOMINMAX
 #include "d3d11_layout_assembler.h"
 
 namespace qhenki::gfx
