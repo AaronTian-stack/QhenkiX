@@ -4,11 +4,11 @@
 
 ---
 
-QhenkiX is my personal library designed to abstract graphics operations across multiple graphics APIs, currently supporting Direct3D 12 and Direct3D 11, with future plans to support [Vulkan](https://github.com/AaronTian-stack/qhenki-renderer). Written in C++20, it aims to serve as a graphics layer for a planned game project while providing a way to experiment with graphics techniques and different graphics APIs.
+QhenkiX is my personal C++20 library for 3D software creation. It consists mainly of a render hardware interface (RHI) that abstracts graphics operations across multiple graphics APIs. Currently Direct3D 12 and Direct3D 11 are supported, with future plans to support [Vulkan](https://github.com/AaronTian-stack/qhenki-renderer). It aims to serve as a base for a game project while providing a way for me to experiment with graphics techniques and different graphics APIs.
 
 ## Features
 
-You can find the most recent interface in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h) and the related structures in the folder [qhenki](https://github.com/AaronTian-stack/QhenkiX/tree/main/QhenkiX/qhenkiX/graphics/qhenki). API specific implementations are in their respective folders.
+You can find the most recent interface (`context.h`) and related structures in the [RHI folder](https://github.com/AaronTian-stack/QhenkiX/tree/main/QhenkiX/include/qhenkiX/RHI). API specific implementations live [here](https://github.com/AaronTian-stack/QhenkiX/tree/main/QhenkiX/qhenkiX/graphics).
 
 As a very brief summary, here are some notable current features and design choices:
 
@@ -37,7 +37,7 @@ See the [examples](https://github.com/AaronTian-stack/QhenkiX/tree/main/Examples
 3. Build QhenkiX in the desired mode (Debug/Release) to produce a static library (`.lib`). Link this to your project.
 4. Add `QhenkiX/include` as a include path. 
 5. Follow the steps in the [Linking Section](#linking).
-6. Extend the [Application](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/application.h) class and start writing your graphics code. See the [examples](Examples/README.md).
+6. Extend the [Application](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/include/qhenkiX/application.h) class and start writing your graphics code. See the [examples](Examples/README.md).
 
 ## Linking
 
@@ -61,6 +61,8 @@ This project relies on the following dependencies:
 - [SDL3](https://github.com/libsdl-org/SDL) - (zlib License)
 - [DirectXTex](https://github.com/microsoft/DirectXTex) - (MIT License)
 - [Dear ImGui](https://github.com/ocornut/imgui) - (MIT License)
+- [utf8](https://github.com/nemtrif/utfcpp) - (Boost Software License 1.0)
+- [magic_enum](https://github.com/Neargye/magic_enum) - (MIT License)
 
 ## Documentation
 
