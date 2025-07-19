@@ -1699,7 +1699,10 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
 		return false;
 	}
 
-	d3d12_cmd_list->Get()->SetName(debug_name);
+	if (debug_name)
+	{
+		d3d12_cmd_list->Get()->SetName(debug_name);
+	}
 	
 	return true;
 }
@@ -1900,7 +1903,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
 	const auto command_list = cmd_list_d3d12->Get();
 
-	static thread_local std::vector<D3D12_TEXTURE_BARRIER> d3d12_barriers; // TODO: replace with stack allocator
+	thread_local std::vector<D3D12_TEXTURE_BARRIER> d3d12_barriers; // TODO: replace with stack allocator
 	d3d12_barriers.resize(count);
 
 	for (unsigned i = 0; i < count; i++)
