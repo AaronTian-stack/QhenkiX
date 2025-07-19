@@ -18,7 +18,7 @@ namespace qhenki::gfx
 		DXGI_FORMAT format; // TODO: replace type
 		//uint16_t sample_count = 1;
 		TextureDimension dimension;
-		Layout initial_layout;
+		Layout initial_layout = Layout::COMMON;
 		bool is_render_target = false;
 	};
 

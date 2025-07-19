@@ -45,7 +45,7 @@ namespace qhenki::gfx
 		uint64_t size = 0;
 		uint64_t stride = 0;
 		BufferUsage usage; // Only used in D3D11 / Vulkan
-		BufferVisibility visibility;
+		BufferVisibility visibility = GPU;
 	};
 
 	struct Buffer

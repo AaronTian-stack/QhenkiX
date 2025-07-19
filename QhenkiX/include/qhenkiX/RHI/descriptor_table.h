@@ -17,7 +17,7 @@ namespace qhenki::gfx
 
 	struct Descriptor
 	{
-		DescriptorHeap* heap;
+		DescriptorHeap* heap = nullptr;
 		size_t offset = CREATE_NEW_DESCRIPTOR; // Offset into heap in bytes, or offset in descriptors for compatibility mode.
 	};
 

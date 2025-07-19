@@ -146,14 +146,14 @@ namespace qhenki::gfx
 		void* resource = nullptr;
 		bool discard = false;
         // Sync Flags
-		SyncStage src_stage;
-		SyncStage dst_stage;
+		SyncStage src_stage = SYNC_NONE;
+		SyncStage dst_stage = SYNC_NONE;
         // Access Flags
-		AccessFlags src_access;
-        AccessFlags dst_access;
+		AccessFlags src_access = ACCESS_COMMON;
+        AccessFlags dst_access = ACCESS_COMMON;
         // Layout
-		Layout src_layout;
-		Layout dst_layout;
+		Layout src_layout = Layout::COMMON;
+		Layout dst_layout = Layout::COMMON;
 		// Subresource range
 		ImageSubresourceRange subresource_range;
 	};
