@@ -1,0 +1,37 @@
+name: Build QhenkiX and Examples
+
+on:
+  push:
+    branches:
+      - staging-main
+      - main
+  pull_request:
+    branches:
+      - staging-main
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Build QhenkiX Framework
+      run: msbuild QhenkiX/QhenkiX.vcxproj /p:Configuration=Release /p:Platform=x64
+
+    - name: Build SXC
+      run: msbuild SXC/SXC.vcxproj /p:Configuration=Release /p:Platform=x64
+
+    - name: Build SimpleExample
+      run: msbuild Examples/SimpleExample/SimpleExample.vcxproj /p:Configuration=Release /p:Platform=x64
+
+    - name: Build ImGuiExample
+      run: msbuild Examples/ImGuiExample/ImGuiExample.vcxproj /p:Configuration=Release /p:Platform=x64
+
+    - name: Build gltfViewer
+      run: msbuild Examples/gltfViewer/gltfViewer.vcxproj /p:Configuration=Release /p:Platform=x64
