@@ -52,7 +52,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\lib\x64\SDL3.dll" />
     <CopyFileToFolders Include="..\..\QhenkiX\dxc_2024_07_31\bin\x64\dxcompiler.dll" />
     <CopyFileToFolders Include="..\..\QhenkiX\dxc_2024_07_31\bin\x64\dxil.dll" />
   </ItemGroup>
