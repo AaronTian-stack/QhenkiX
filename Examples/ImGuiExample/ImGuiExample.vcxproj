@@ -121,7 +121,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(RepoRoot)QhenkiX\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(RepoRoot)QhenkiX\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -139,7 +139,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(RepoRoot)QhenkiX\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(RepoRoot)QhenkiX\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -159,11 +159,6 @@
     <ClInclude Include="imgui_exampleapp.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="$(SolutionDir)QhenkiX\QhenkiX\QhenkiX.vcxproj">
-      <Project>{05714020-9225-4a2d-a003-8dd2e7380747}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <CopyFileToFolders Include="$(SolutionDir)QhenkiX\QhenkiX\SDL3-3.2.4\lib\x64\SDL3.dll">
       <DeploymentContent>true</DeploymentContent>
       <FileType>Document</FileType>
@@ -180,6 +175,11 @@
       <FileType>Document</FileType>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\QhenkiX\QhenkiX.vcxproj">
+      <Project>{05714020-9225-4a2d-a003-8dd2e7380747}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
