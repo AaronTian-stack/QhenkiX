@@ -15,21 +15,21 @@ void ImGUIExampleApp::create()
 	// Create shaders at runtime
 	CompilerInput vertex_shader =
 	{
-		.flags = compiler_flags,
-		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
 		.path = L"base-shaders/BaseShader.hlsl",
 		.entry_point = L"vs_main",
 		.min_shader_model = shader_model,
+		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
+		.flags = compiler_flags,
 	};
 	THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_vertex_shader, vertex_shader));
 
 	CompilerInput pixel_shader =
 	{
-		.flags = compiler_flags,
-		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
 		.path = L"base-shaders/BaseShader.hlsl",
 		.entry_point = L"ps_main",
 		.min_shader_model = shader_model,
+		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
+		.flags = compiler_flags,
 	};
 	THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_pixel_shader, pixel_shader));
 
@@ -203,8 +203,9 @@ void ImGUIExampleApp::render()
 
 	const unsigned int offset = 0;
 	constexpr auto stride = static_cast<UINT>(sizeof(Vertex));
+	const auto size = static_cast<UINT>(3 * sizeof(Vertex)); // 3 vertices in triangle
 	const auto buffers = &m_vertex_buffer;
-	m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, TODO, &stride, &offset);
+	m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, &size, &stride, &offset);
 	m_context->bind_index_buffer(&cmd_list, m_index_buffer, qhenki::gfx::IndexType::UINT32, 0);
 
 	m_context->draw_indexed(&cmd_list, 3, 0, 0);
