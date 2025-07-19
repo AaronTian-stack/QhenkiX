@@ -88,9 +88,11 @@ void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* con
 std::vector<qhenki::gfx::Buffer> GLTFLoader::process_buffers(const tinygltf::Model& tiny_model, GLTFModel* const model, qhenki::gfx::Context& context,
     qhenki::gfx::CommandList* const cmd_list)
 {
-    model->buffers.resize(tiny_model.buffers.size());
+    model->buffers.clear();
+    model->buffers.reserve(tiny_model.buffers.size());
     // For now just create GPU buffers for everything. Would want to check if inverse bind matrix, which would be CPU only.
-    std::vector<qhenki::gfx::Buffer> staging_buffers(tiny_model.buffers.size());
+    std::vector<qhenki::gfx::Buffer> staging_buffers;
+    staging_buffers.reserve(tiny_model.buffers.size());
     for (int i = 0; i < tiny_model.buffers.size(); ++i)
     {
         auto& tiny_buffer = tiny_model.buffers[i];
@@ -101,7 +103,9 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_buffers(const tinygltf::Mod
             .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
         };
         // CPU staging
-        context.create_buffer(desc, tiny_buffer.data.data(), &staging_buffers[i]);
+        qhenki::gfx::Buffer staging_buffer;
+        context.create_buffer(desc, tiny_buffer.data.data(), &staging_buffer);
+        staging_buffers.push_back(staging_buffer);
         // GPU
         desc = qhenki::gfx::BufferDesc
         {
@@ -109,7 +113,9 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_buffers(const tinygltf::Mod
             .usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
             .visibility = qhenki::gfx::BufferVisibility::GPU
         };
-        context.create_buffer(desc, nullptr, &model->buffers[i]);
+        qhenki::gfx::Buffer gpu_buffer;
+        context.create_buffer(desc, nullptr, &gpu_buffer);
+        model->buffers.push_back(gpu_buffer);
 		// Copy from staging to GPU buffer
         context.copy_buffer(cmd_list, staging_buffers[i], 0, &model->buffers[i], 0, desc.size);
     }
@@ -322,15 +328,15 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_textures(const tinygltf::Mo
 {
     std::vector<qhenki::gfx::Buffer> staging_buffers(1 + tiny_model.images.size());
 
-	model->textures.resize(tiny_model.textures.size());
+	model->textures.clear();
+    model->textures.reserve(tiny_model.textures.size());
     for (int i = 0; i < tiny_model.textures.size(); i++)
     {
         const auto& tiny_texture = tiny_model.textures[i];
-        model->textures[i] =
-        {
+        model->textures.emplace_back(GLTFModel::Texture{
             .image_index = tiny_texture.source,
             .sampler_index = tiny_texture.sampler,
-        };
+        });
 	}
     qhenki::gfx::BufferDesc desc
     {
@@ -345,7 +351,8 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_textures(const tinygltf::Mo
 	context.create_buffer(desc, nullptr, &model->texture_buffer);
 	context.copy_buffer(cmd_list, staging_buffers[0], 0, &model->texture_buffer, 0, desc.size);
 
-    model->images.resize(tiny_model.images.size());
+    model->images.clear();
+    model->images.reserve(tiny_model.images.size());
 
     // Important: this step is dependent on accessor views having finished being loaded.
     for (int i = 0; i < tiny_model.images.size(); i++)
@@ -353,7 +360,8 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_textures(const tinygltf::Mo
         const auto& tiny_image = tiny_model.images[i];
 		assert(tiny_image.component == 4); // Assume RGBA
 		assert(tiny_image.bits == 8); // Assume 8 bits per channel
-        model->images[i].desc =
+        model->images.emplace_back();
+        model->images.back().desc =
         {
             .width = static_cast<uint64_t>(tiny_image.width),
             .height = static_cast<uint32_t>(tiny_image.height),
@@ -363,9 +371,9 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_textures(const tinygltf::Mo
 			.dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
             .initial_layout = qhenki::gfx::Layout::COPY_DEST,
         };
-        context.create_texture(model->images[i].desc, &model->images[i]);
+        context.create_texture(model->images.back().desc, &model->images.back());
         // No custom image loading just use the default stb_image implementation
-        context.copy_to_texture(cmd_list, tiny_image.image.data(), &staging_buffers[1+i], &model->images[i]);
+        context.copy_to_texture(cmd_list, tiny_image.image.data(), &staging_buffers[1+i], &model->images.back());
     }
 
     std::vector<qhenki::gfx::ImageBarrier> barriers(tiny_model.images.size());
