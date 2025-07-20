@@ -11,9 +11,10 @@ on:
       - main
 
 jobs:
-  build:
+  build-qhenkix:
+    name: QhenkiX
     runs-on: windows-latest
-
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -21,17 +22,59 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Build QhenkiX Framework
+    - name: Build QhenkiX
       run: msbuild QhenkiX/QhenkiX.vcxproj /p:Configuration=Release /p:Platform=x64
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: qhenkix-windows
+        path: |
+          QhenkiX/x64/Release/
+          QhenkiX/include/
+        retention-days: 1
+
+  build-tools:
+    name: SXC Tool
+    runs-on: windows-latest
+    needs: build-qhenkix
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Download Library Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: qhenkix-windows
+        path: QhenkiX/
 
     - name: Build SXC
       run: msbuild SXC/SXC.vcxproj /p:Configuration=Release /p:Platform=x64
 
-    - name: Build SimpleExample
-      run: msbuild Examples/SimpleExample/SimpleExample.vcxproj /p:Configuration=Release /p:Platform=x64
+  build-examples:
+    name: ${{ matrix.example }} Example
+    runs-on: windows-latest
+    needs: build-qhenkix
+    strategy:
+      matrix:
+        example: [SimpleExample, ImGuiExample, gltfViewer]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - name: Build ImGuiExample
-      run: msbuild Examples/ImGuiExample/ImGuiExample.vcxproj /p:Configuration=Release /p:Platform=x64
+    - name: Set up MSBuild
+      uses: microsoft/setup-msbuild@v2
 
-    - name: Build gltfViewer
-      run: msbuild Examples/gltfViewer/gltfViewer.vcxproj /p:Configuration=Release /p:Platform=x64
+    - name: Download Library Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: qhenkix-windows
+        path: QhenkiX/
+
+    - name: Build ${{ matrix.example }}
+      run: msbuild Examples/${{ matrix.example }}/${{ matrix.example }}.vcxproj /p:Configuration=Release /p:Platform=x64
