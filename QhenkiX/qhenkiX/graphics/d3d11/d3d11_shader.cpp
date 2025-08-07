@@ -9,7 +9,7 @@
 
 using namespace qhenki::gfx;
 
-D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_type, const std::wstring& name, 
+D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_type, const char* name, 
 	const CompilerOutput& output, bool* result) : m_type(shader_type)
 {
 	const auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
@@ -60,13 +60,9 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device, const ShaderType shader_typ
 		throw std::runtime_error("D3D11: Shader type not implemented");
 	}
 
-	if (device_resource && !name.empty())
+	if (device_resource)
 	{
-		constexpr size_t max_length = 256;
-		char debug_name_str[max_length] = {};
-		size_t converted_chars = 0;
-		wcstombs_s(&converted_chars, debug_name_str, name.c_str(), max_length - 1);
-		D3D11Context::set_debug_name(device_resource, debug_name_str);
+		D3D11Context::set_debug_name(device_resource, name);
 	}
 
 }

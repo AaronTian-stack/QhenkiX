@@ -7,7 +7,8 @@
 #include "qhenkiX/helper/d3d_helper.h"
 #include "qhenkiX/helper/file_helper.h"
 #include <filesystem>
-#include <utf8.h>
+
+#include "qhenkiX/helper/string_helper.h"
 
 using namespace qhenki::gfx;
 using namespace qhenki::util;
@@ -128,23 +129,39 @@ D3D12ShaderCompiler::D3D12ShaderCompiler()
 	{
 		throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcCompiler");
 	}
+	std::array<char, 512> path;
+	if (HMODULE hDXCompiler = GetModuleHandleA("dxcompiler.dll"))
+	{
+		GetModuleFileNameA(hDXCompiler, path.data(), path.size());
+		OutputDebugStringA("QhenkiX dxcompiler DLL path: ");
+		OutputDebugStringA(path.data());
+		OutputDebugStringA("\n");
+	}
+	if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
+	{
+		GetModuleFileNameA(hD3DCompiler, path.data(), path.size());
+		OutputDebugStringA("QhenkiX d3dcompiler_47 DLL path: ");
+		OutputDebugStringA(path.data());
+		OutputDebugStringA("\n");
+	}
 }
 
 bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
 	// DXC does not support < SM 6.0, use FXC
-	if (input.min_shader_model < ShaderModel::SM_6_0)
+	if (input.shader_model < ShaderModel::SM_6_0)
 	{
-		return m_d3d11_shader_compiler.compile(input, output);
+		return D3D11ShaderCompiler::compile(input, output);
 	}
 
 	DxcBuffer source_buffer;
 	void* data;
 	size_t size;
-	const auto succeed = FileHelper::read_file(input.path.c_str(), &data, &size);
+	const auto& input_path = input.get_path();
+	const auto succeed = FileHelper::read_file(input_path.data(), &data, &size);
 	if (!succeed)
 	{
-		output.error_message = "D3D12ShaderCompiler: Failed to read/open file :: " + std::string(input.path.begin(), input.path.end());
+		output.error_message = "D3D12ShaderCompiler: Failed to read/open file :: " + std::string(input_path.begin(), input_path.end());
 		return false;
 	}
 	source_buffer.Ptr = data;
@@ -160,9 +177,9 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 		return false;
 	}
 
-	static thread_local std::vector<std::wstring> args; // TODO: stack allocator and share with args_ptrs
+	thread_local std::vector<const wchar_t*> args; // TODO: stack allocator and share with args_ptrs
 	args.clear();
-	args.reserve((input.defines.size() + input.includes.size()) * 2 + 10);
+	args.reserve((input.get_defines().size() + input.includes.size()) * 2 + 10);
 
 	if (input.optimization == CompilerInput::Optimization::O0) args.emplace_back(L"-O0");
 	if (input.optimization == CompilerInput::Optimization::O1) args.emplace_back(L"-O1");
@@ -170,23 +187,51 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	// O3 is default
 
 	args.emplace_back(L"-E");
-	args.push_back(input.entry_point);
-	for (const auto& define : input.defines)
+	std::wstring w_entry_point;
+	utf8::utf8to16(input.entry_point.begin(), input.entry_point.end(), std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
+	args.push_back(w_entry_point.c_str());
+
+	// Allocate a large buffer of wchar_t. If it overflows, start making wstring (possible heap allocation)
+	std::array<wchar_t, 1024> w_buffer;
+	ptrdiff_t w_buffer_p = 0;
+	std::vector<std::wstring> wstring_backup;
+
+	auto widen_and_push = [&](const std::string& str, const wchar_t* flag)
 	{
-		args.emplace_back(L"-D");
-		args.push_back(define);
+		assert(str.size() < LLONG_MAX);
+		args.emplace_back(flag);
+		// Try to widen the string using w_buffer
+		if (w_buffer_p + str.size() + 1 < w_buffer.size())
+		{
+			utf8::utf8to16(str.begin(), str.end(), w_buffer.begin() + w_buffer_p);
+			w_buffer[w_buffer_p + str.size()] = L'\0'; // Null-terminate the string
+			args.push_back(w_buffer.data() + w_buffer_p);
+			w_buffer_p += 1 + str.size(); // Move pointer forward
+		}
+		else
+		{
+			wstring_backup.emplace_back();
+			auto& wstr = wstring_backup.back();
+			wstr.reserve(str.size());
+			utf8::utf8to16(str.begin(), str.end(), std::back_inserter(wstr));
+			wstr.push_back(L'\0'); // Null-terminate the string
+			args.push_back(wstr.c_str());
+		}
+	};
+
+	for (const auto& define : input.get_defines())
+	{
+		widen_and_push(define, L"-D");
 	}
 	for (const auto& include : input.includes)
 	{
-		args.emplace_back(L"-I");
-		std::wstring wstr;
-		utf8::utf8to16(include.begin(), include.end(), std::back_inserter(wstr));
-		args.push_back(wstr);
+		widen_and_push(include, L"-I");
 	}
 
 	// Set target profile
 	args.emplace_back(L"-T");
-	args.emplace_back(D3DHelper::get_shader_model_wchar(input.shader_type, input.min_shader_model));
+	const auto sm = D3DHelper::get_shader_model_wchar(input.shader_type, input.shader_model);
+	args.emplace_back(sm.c_str());
 
 	// TODO: option for stripping reflection data
 	args.emplace_back(L"-Qstrip_debug");
@@ -199,15 +244,6 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	args.emplace_back(DXC_ARG_ENABLE_STRICTNESS); // Strict mode
 	args.emplace_back(DXC_ARG_WARNINGS_ARE_ERRORS); //-WX
 
-	// c_str() version of all args
-	static thread_local std::vector<const wchar_t*> args_ptrs;
-	args_ptrs.clear();
-	args_ptrs.reserve(args.size());
-	for (const auto& arg : args)
-	{
-		args_ptrs.push_back(arg.c_str());
-	}
-
 	// Compile DXIL blob
 	ComPtr<IDxcResult> result;
 
@@ -215,8 +251,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	{
 		// Get any errors
 		ComPtr<IDxcBlobUtf8> errors = nullptr;
-		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
-		if (errors && errors->GetStringLength())
+		if (const auto o_r = result->GetOutput(DXC_OUT_ERRORS, 
+			IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr); SUCCEEDED(o_r) && errors->GetStringLength())
 		{
 			output.error_message = errors->GetStringPointer();
 		}
@@ -224,8 +260,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
 	if FAILED(m_compiler->Compile(
 		&source_buffer,
-		args_ptrs.data(),
-		static_cast<UINT32>(args_ptrs.size()),
+		args.data(),
+		static_cast<UINT32>(args.size()),
 		include_handler.Get(),
 		IID_PPV_ARGS(&result)))
 	{
@@ -239,8 +275,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	const auto d3d12_output = static_cast<D3D12ShaderOutput*>(output.internal_state.get());
 
 	// Save the blob in output
-	const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(d3d12_output->shader_blob.ReleaseAndGetAddressOf()), nullptr);
-	if (FAILED(hr_s))
+	if (const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, 
+		IID_PPV_ARGS(d3d12_output->shader_blob.ReleaseAndGetAddressOf()), nullptr); FAILED(hr_s))
 	{
 		output_error();
 		return false;
@@ -250,44 +286,76 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
 
 	// Reflection data is part of shader blob
-	const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(d3d12_output->reflection_blob.ReleaseAndGetAddressOf()), nullptr);
-	if (FAILED(hr_r))
+	if (const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION, 
+		IID_PPV_ARGS(d3d12_output->reflection_blob.ReleaseAndGetAddressOf()), nullptr); FAILED(hr_r))
 	{
 		output_error();
 		return false;
 	}
 
-	const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, IID_PPV_ARGS(d3d12_output->root_signature_blob.ReleaseAndGetAddressOf()), nullptr);
 	// The shader might not have a root signature
-	if (FAILED(hr_rs))
+	if (const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE, 
+		IID_PPV_ARGS(d3d12_output->root_signature_blob.ReleaseAndGetAddressOf()), nullptr); FAILED(hr_rs))
 	{
 		d3d12_output->root_signature_blob.Reset();
 	}
 
-	if (!input.pdb_path.empty())
+	// Assumed to be null-terminated!
+	const auto& pdb_path = input.pdb_path;
+	if (!pdb_path.empty())
 	{
-		if (!std::filesystem::is_directory(input.pdb_path))
+		if (!std::filesystem::is_directory(pdb_path))
 		{
-			output.error_message = "D3D12ShaderCompiler: PDB path is not a valid directory :: " + std::string(input.pdb_path.begin(), input.pdb_path.end());
+				output.error_message = "D3D12ShaderCompiler: PDB path is not a valid directory :: " + std::string(pdb_path.begin(), pdb_path.end());
 		}
 		ComPtr<IDxcBlobUtf16> debug_info_path;
 		ComPtr<IDxcBlob> debug_info_blob;
 		const auto hr_d = result->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(
 			debug_info_blob.ReleaseAndGetAddressOf()),
 			debug_info_path.ReleaseAndGetAddressOf());
-		// Write debug info to file
+		// Write PDB
 		if (SUCCEEDED(hr_d))
 		{
 			const auto name = debug_info_path->GetStringPointer();
 
-			// TODO: build in stack
-            std::wstring path = input.pdb_path;
-            if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
-            path += L'\\';
-            std::wstring pdb_file = path + name;
+			std::wstring_view pdb_file;
+			std::wstring path;
 
-            auto write_result = FileHelper::write_file(pdb_file.c_str(), debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
-            assert(write_result);
+			constexpr auto buffer_count = 1024;
+			std::array<wchar_t, buffer_count> path_buffer;
+			const auto char_count = debug_info_path->GetBufferSize() / sizeof(wchar_t);
+			assert(false); // TODO: expand pdb_path
+
+			// Try using stack buffer first
+			bool failed = true;
+			if (1 + input.pdb_path.size() + char_count < sizeof(buffer_count))
+			{
+				if (swprintf(path_buffer.data(), buffer_count, L"%s\\%s", pdb_path.data(), name) >= 0)
+				{
+					pdb_file = std::wstring_view(path_buffer.data(), wcslen(path_buffer.data()));
+					failed = false;
+				}
+			}
+			// wstring fallback (may allocate heap)
+			if (failed)
+			{
+				path.reserve(pdb_path.size() + char_count);
+
+				path.assign(pdb_path.begin(), pdb_path.end());
+
+				if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
+				{
+					path += L'\\';
+				}
+				path.append(name, char_count);
+				pdb_file = path;
+			}
+
+			if (const auto write_result = FileHelper::write_file(
+				pdb_file.data(), debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize()); !write_result)
+            {
+				output.error_message = "D3D12ShaderCompiler: Failed to write PDB file :: " + std::string(pdb_file.begin(), pdb_file.end());
+            }
 		}
 		else
 		{

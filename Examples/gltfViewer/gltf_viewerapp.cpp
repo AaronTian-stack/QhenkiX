@@ -32,24 +32,23 @@ void gltfViewerApp::create()
 	auto shader_model = m_context->is_compatibility() ? 
 		qhenki::gfx::ShaderModel::SM_5_0 : qhenki::gfx::ShaderModel::SM_6_6;
 
-	std::vector<std::wstring> defines;
+	std::vector<std::string> defines;
 	defines.reserve(1);
 	if (m_context->is_compatibility())
 	{
-		defines.push_back(L"DX11");
+		defines.push_back("DX11");
 	}
 	else
 	{
-		defines.push_back(L"DX12");
+		defines.push_back("DX12");
 	}
 
 	// Create shaders at runtime
 	CompilerInput vertex_shader =
 	{
-		.path = L"base-shaders/BaseShader.hlsl",
-		.entry_point = L"vs_main",
-		.defines = defines,
-		.min_shader_model = shader_model,
+		.path_and_defines = Owning { .path= "base-shaders/BaseShader.hlsl", .defines = defines,},
+		.entry_point = "vs_main",
+		.shader_model = shader_model,
 		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
 		//.flags = CompilerInput::DEBUG,
 	};
@@ -57,10 +56,9 @@ void gltfViewerApp::create()
 
 	CompilerInput pixel_shader =
 	{
-		.path = L"base-shaders/BaseShader.hlsl",
-		.entry_point = L"ps_main",
-		.defines = defines,
-		.min_shader_model = shader_model,
+		.path_and_defines = Owning {.path = "base-shaders/BaseShader.hlsl", .defines = defines},
+		.entry_point = "ps_main",
+		.shader_model = shader_model,
 		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
 		//.flags = CompilerInput::DEBUG,
 	};
@@ -110,7 +108,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
 		.descriptor_count = 256, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap, L"GPU heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap, "GPU heap"));
 
 	// Create CPU heap
 	qhenki::gfx::DescriptorHeapDesc heap_desc_CPU
@@ -119,7 +117,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256, // CPU heap has no size limit
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, L"CPU heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, "CPU heap"));
 
 	qhenki::gfx::DescriptorHeapDesc dsv_heap_desc
 	{
@@ -127,7 +125,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
 		.descriptor_count = 256,
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, &m_dsv_heap, L"DSV heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, &m_dsv_heap, "DSV heap"));
 
 	// Create Sampler Heap
 	qhenki::gfx::DescriptorHeapDesc sampler_heap_desc
@@ -136,7 +134,7 @@ void gltfViewerApp::create()
 		.visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU, // Create samplers directly on GPU heap
 		.descriptor_count = 16, // TODO: expose max count to context
 	};
-	THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap, L"Sampler heap"));
+	THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap, "Sampler heap"));
 
 	// Create pipeline
 	qhenki::gfx::GraphicsPipelineDesc pipeline_desc =
@@ -148,7 +146,7 @@ void gltfViewerApp::create()
 		.increment_slot = true,
 	};
 	THROW_IF_FALSE(m_context->create_pipeline(pipeline_desc, &m_pipeline, 
-				m_vertex_shader, m_pixel_shader, &m_pipeline_layout, L"Triangle pipeline"));
+						m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "Triangle pipeline"));
 
 	// A graphics queue is already given to the application by the context
 
@@ -169,20 +167,20 @@ void gltfViewerApp::create()
 		.dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
 		.initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
 	};
-	THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, L"Depth Buffer Texture"));
+	THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
 	THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
 	// Make 2 matrix constant buffers for double buffering
 	qhenki::gfx::BufferDesc matrix_desc
 	{
-		.size = MathHelper::align_u32(sizeof(qhenki::CameraMatrices), CONSTANT_BUFFER_ALIGNMENT),
+		.size = qhenki::util::align_u32(sizeof(qhenki::CameraMatrices), qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
 		.usage = qhenki::gfx::BufferUsage::CONSTANT,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
 	// TODO: persistent mapping flag
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], L"Matrix Buffer"));
+		THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], "Matrix Buffer"));
 		THROW_IF_FALSE(m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap,
 					&m_matrix_descriptors[i]));
 	}
@@ -191,11 +189,11 @@ void gltfViewerApp::create()
 	{
 		qhenki::gfx::BufferDesc desc
 		{
-			.size = MathHelper::align_u32(sizeof(XMFLOAT4X4) * 2 + sizeof(int), CONSTANT_BUFFER_ALIGNMENT),
+			.size = qhenki::util::align_u32(sizeof(XMFLOAT4X4) * 2 + sizeof(int), qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
 			.usage = qhenki::gfx::BufferUsage::CONSTANT,
 			.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 		};
-		THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, L"Model Buffer"));
+		THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, "Model Buffer"));
 		THROW_IF_FALSE(m_context->create_descriptor_constant_view(m_model_buffer, &m_CPU_heap, &m_model_descriptor));
 	}
 
@@ -470,7 +468,7 @@ void gltfViewerApp::render()
 
 	// Create a command list in the open state
 	qhenki::gfx::CommandList cmd_list;
-	THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[get_frame_index()], L"main command list"));
+	THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[get_frame_index()], "main command list"));
 
 	// Resource transition
 	qhenki::gfx::ImageBarrier barrier_render =
@@ -825,7 +823,7 @@ void gltfViewerApp::resize(int width, int height)
 		.dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
 		.initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
 	};
-	THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, L"Depth Buffer Texture"));
+	THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
 	// This will recreate the descriptor in place since it already has an offset.
 	THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 }

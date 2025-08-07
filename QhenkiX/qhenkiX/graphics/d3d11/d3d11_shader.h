@@ -24,7 +24,7 @@ namespace qhenki::gfx
 		std::variant<ComPtr<ID3D11PixelShader>, D3D11VertexShader> m_shader;
 
 	public:
-		D3D11Shader(ID3D11Device* device, ShaderType shader_type, const std::wstring& name,
+		D3D11Shader(ID3D11Device* device, ShaderType shader_type, const char* name,
 			const CompilerOutput& output, bool* result);
 
 		friend class D3D11Context;

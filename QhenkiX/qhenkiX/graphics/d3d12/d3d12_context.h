@@ -70,12 +70,11 @@ namespace qhenki::gfx
 		bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
 		bool present(Swapchain* swapchain, UINT fence_count, Fence* wait_fences, UINT swapchain_index) override;
 
-		uPtr<ShaderCompiler> create_shader_compiler() override;
 		bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) override;
 
 		bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline* pipeline,
 		                     const Shader& vertex_shader, const Shader& pixel_shader,
-		                     PipelineLayout* in_layout, wchar_t const* debug_name) override;
+		                     PipelineLayout* in_layout, const char* debug_name) override;
 
 		bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) override;
 
@@ -84,7 +83,7 @@ namespace qhenki::gfx
 
 		bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) override;
 
-		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, wchar_t const* debug_name = nullptr) override;
+		bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name = nullptr) override;
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
 		void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) override;
 
@@ -93,13 +92,13 @@ namespace qhenki::gfx
 		bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* heap, Descriptor* descriptor) override;
 		bool free_descriptor(Descriptor* descriptor) override;
 
-		bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name) override;
+		bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name) override;
 		bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
 		bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
 
 		void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) override;
 
-		bool create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name) override;
+		bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name) override;
 		bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 		bool create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 
@@ -119,7 +118,7 @@ namespace qhenki::gfx
 
 		bool create_queue(QueueType type, Queue* queue) override;
 		bool create_command_pool(CommandPool* command_pool, const Queue& queue) override;
-		bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, wchar_t const* debug_name = nullptr) override;
+		bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name = nullptr) override;
 
 		bool close_command_list(CommandList* cmd_list) override;
 

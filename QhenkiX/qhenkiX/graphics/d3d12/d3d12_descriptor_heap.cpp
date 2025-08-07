@@ -12,7 +12,7 @@ bool D3D12DescriptorHeap::create(ID3D12Device* device, const D3D12_DESCRIPTOR_HE
 
 	if (FAILED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_heap))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create descriptor heap\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create descriptor heap\n");
 		return false;
 	}
 
@@ -33,7 +33,7 @@ bool D3D12DescriptorHeap::allocate(UINT64* alloc_offset)
 	}
 	if (m_pointer >= m_desc.NumDescriptors)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor, out of memory in heap\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to allocate descriptor, out of memory in heap\n");
 		return false;
 	}
 	// New descriptor
@@ -45,7 +45,7 @@ void D3D12DescriptorHeap::deallocate(UINT64* alloc_offset)
 {
 	if (*alloc_offset == CREATE_NEW_DESCRIPTOR)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Attempted to deallocate a descriptor that was never allocated\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Attempted to deallocate a descriptor that was never allocated\n");
 		return;
 	}
 	std::scoped_lock lock(m_mutex);
@@ -73,6 +73,6 @@ bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle
 		handle->ptr += offset_bytes + num_descriptor_offset * m_descriptor_size;
 		return true;
 	}
-	OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get GPU start for non shader visible heap\n");
+	OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU start for non shader visible heap\n");
 	return false;
 }

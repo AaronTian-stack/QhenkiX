@@ -69,9 +69,6 @@
     <ClCompile Include="qhenkiX\graphics\d3d12\d3d12_root_hasher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="qhenkiX\helper\math_helper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="qhenkiX\graphics\perspective_camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -115,9 +112,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qhenkiX\utility\include_handlers.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="qhenkiX\utility\stack_allocator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -371,10 +365,10 @@
     <ClInclude Include="include\qhenkiX\utility\include_handlers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\qhenkiX\utility\stack_allocator.h">
+    <ClInclude Include="include\qhenkiX\helper\general_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\qhenkiX\helper\general_helper.h">
+    <ClInclude Include="include\qhenkiX\helper\string_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

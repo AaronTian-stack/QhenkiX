@@ -86,7 +86,7 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
         vertex_shader_blob->GetBufferSize(),
         &layout)))
     {
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Input Layout manual\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout manual\n");
         return {};
     }
 
@@ -155,13 +155,13 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         }
         else
         {
-            std::wstring mask_str;
-			mask_str.reserve(4);
-			for (int j = 0; j < 4; j++)
-			{
-				mask_str.push_back((paramDesc.Mask & (1 << j)) ? L'1' : L'0');
-			}
-			OutputDebugString((L"D3D11: Invalid mask " + mask_str + L"\n").c_str());
+			std::array<char, 256> error_msg;
+			const auto r = snprintf(error_msg.data(), error_msg.size() * sizeof(char), "D3D11: Unsupported input format for %s[%d] with mask %d\n",
+				paramDesc.SemanticName, paramDesc.SemanticIndex, paramDesc.Mask);
+            if (r >= 0)
+            {
+                OutputDebugStringA(error_msg.data());
+            }
         }
 
         if (increment_slot) slot++;
@@ -183,7 +183,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         IID_ID3D11ShaderReflection, 
         &pVertexShaderReflection)))
     {
-		OutputDebugString(L"Qhenki D3D11 ERROR: Input layout reflection failed\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Input layout reflection failed\n");
 		return nullptr;
     }
 
@@ -209,7 +209,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
         vertex_shader_blob->GetBufferSize(), 
         &layout)))
     {
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Input Layout reflection\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout reflection\n");
 		return nullptr;
     }
 
