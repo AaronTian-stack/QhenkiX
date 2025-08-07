@@ -3,12 +3,13 @@ name: Build QhenkiX and Examples
 on:
   push:
     branches:
-      - staging-main
+      - 'release/**'
       - main
   pull_request:
     branches:
-      - staging-main
+      - 'release/**'
       - main
+  merge_group:
 
 jobs:
   build-qhenkix:
@@ -35,7 +36,7 @@ jobs:
         retention-days: 1
 
   build-tools:
-    name: SXC Tool
+    name: SXC
     runs-on: windows-latest
     needs: build-qhenkix
     
