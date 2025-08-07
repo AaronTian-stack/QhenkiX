@@ -1,4 +1,4 @@
-name: Build QhenkiX and Examples
+name: QhenkiX
 
 on:
   push:
@@ -57,7 +57,7 @@ jobs:
       run: msbuild SXC/SXC.vcxproj /p:Configuration=Release /p:Platform=x64
 
   build-examples:
-    name: ${{ matrix.example }} Example
+    name: ${{ matrix.example }}
     runs-on: windows-latest
     needs: build-qhenkix
     strategy:
