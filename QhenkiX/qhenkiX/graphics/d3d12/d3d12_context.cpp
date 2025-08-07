@@ -20,6 +20,7 @@
 
 #include "qhenkiX/helper/d3d_helper.h"
 #include "qhenkiX/helper/math_helper.h"
+#include "qhenkiX/helper/string_helper.h"
 
 using namespace qhenki::gfx;
 
@@ -108,7 +109,7 @@ void D3D12Context::create(const bool enable_debug_layer)
 	// Create the DXGI factory
 	if (FAILED(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(m_dxgi_factory.ReleaseAndGetAddressOf()))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create DXGI factory\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DXGI factory\n");
 		throw std::runtime_error("D3D12: Failed to create DXGI factory");
 	}
 	if (enable_debug_layer)
@@ -125,7 +126,7 @@ void D3D12Context::create(const bool enable_debug_layer)
 		reinterpret_cast<void**>(adapter.GetAddressOf())
 	)))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
 		if (FAILED(m_dxgi_factory->EnumAdapters1(0, &adapter)))
 		{
 			throw std::runtime_error("D3D12: Failed to find a adapter");
@@ -136,27 +137,27 @@ void D3D12Context::create(const bool enable_debug_layer)
 	HRESULT hr = adapter->GetDesc1(&desc);
 	if (FAILED(hr))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get adapter description");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get adapter description");
 	}
 	else
 	{
-		OutputDebugString((L"D3D12: Selected adapter: " + std::wstring(desc.Description) + L"\n").c_str());
+		OutputDebugStringW((L"D3D12: Selected adapter: " + std::wstring(desc.Description) + L"\n").c_str());
 	}
 
 	if (FAILED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(m_device.ReleaseAndGetAddressOf()))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create device");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create device");
 		throw std::runtime_error("D3D12: Failed to create device");
 	}
 
 	if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &m_options12, sizeof(m_options12))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to query D3D12 options 12\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 12\n");
 	}
 
 	if (!m_options12.EnhancedBarriersSupported)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Enhanced barriers are not supported\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Enhanced barriers are not supported\n");
 		throw std::runtime_error("D3D12: Enhanced barriers are not supported");
 	}
 
@@ -193,7 +194,7 @@ void D3D12Context::create(const bool enable_debug_layer)
 
 	if (FAILED(CreateAllocator(&allocatorDesc, &m_allocator)))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create memory allocator");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create memory allocator");
 		throw std::runtime_error("D3D12: Failed to create memory allocator");
 	}
 
@@ -206,7 +207,7 @@ void D3D12Context::create(const bool enable_debug_layer)
 
 	if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &m_options, sizeof(m_options))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to query feature data\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query feature data\n");
 	}
 
 	create_fence(&m_fence_wait_all, 0);
@@ -255,12 +256,12 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window, const Swapchain
 		swapchain1.ReleaseAndGetAddressOf()
 	)))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create Swapchain");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create Swapchain");
 		return false;
 	}
 	if (FAILED(swapchain1.As(&this->m_swapchain)))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get IDXGISwapChain3 from IDXGISwapChain1");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get IDXGISwapChain3 from IDXGISwapChain1");
 		return false;
 	}
 	*frame_index = this->m_swapchain->GetCurrentBackBufferIndex();
@@ -269,7 +270,7 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window, const Swapchain
 	{
 		if (FAILED(m_swapchain->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers[i].ReleaseAndGetAddressOf()))))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
 			return false;
 		}
 	}
@@ -305,7 +306,7 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain, int width, int h
 		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
 	)))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to resize swap chain buffers\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to resize swap chain buffers\n");
 		return false;
 	}
 
@@ -314,7 +315,7 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain, int width, int h
 	{
 		if (FAILED(m_swapchain->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers[i].GetAddressOf()))))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
 			return false;
 		}
 	}
@@ -341,12 +342,12 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
 	const auto d3d12_heap = to_internal(*rtv_heap);
 	if (d3d12_heap->desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: RTV heap must not be shader visible\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: RTV heap must not be shader visible\n");
 		return false;
 	}
 	if (d3d12_heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_RTV)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: RTV heap must be of type RTV\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: RTV heap must be of type RTV\n");
 		return false;
 	}
 
@@ -360,7 +361,7 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
 		}
 		else
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for swapchain RTV\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to allocate descriptor for swapchain RTV\n");
 			return false;
 		}
 		D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
@@ -383,11 +384,6 @@ bool D3D12Context::present(Swapchain* const swapchain, const UINT fence_count, F
 	return result == S_OK;
 }
 
-std::unique_ptr<ShaderCompiler> D3D12Context::create_shader_compiler()
-{
-	return mkU<D3D12ShaderCompiler>();
-}
-
 bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input)
 {
 	assert(shader); // Assert that shader pointer is not null
@@ -405,7 +401,7 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 	*shader =
 	{
 		.type = input.shader_type,
-		.shader_model = input.min_shader_model,
+		.shader_model = input.shader_model,
 		.internal_state = output.internal_state, // IDxcBlob
 	};
 
@@ -466,7 +462,7 @@ UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESC
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
     if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options))))
     {
-        OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get D3D12 options\n");
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get D3D12 options\n");
         return 0;
     }
     switch (type)
@@ -485,7 +481,7 @@ UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESC
 
 bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline* const pipeline,
                                    const Shader& vertex_shader, const Shader& pixel_shader,
-                                   PipelineLayout* in_layout, wchar_t const* debug_name)
+                                   PipelineLayout* in_layout, const char* debug_name)
 {
 	assert(pipeline);
 	pipeline->internal_state = mkS<D3D12Pipeline>();
@@ -517,7 +513,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 			IID_ID3D12ShaderReflection,
 			&shader_reflection); FAILED(hr))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
 			return false;
 		}
 		const auto hr_d = shader_reflection->GetDesc(&shader_desc);
@@ -556,7 +552,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		if (const auto hr = d3d12_shader_compiler->m_library->CreateReflection(&vs_reflection_dxc_buffer, 
 			IID_PPV_ARGS(&shader_reflection)); FAILED(hr))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
 			return false;
 		}
 		// Input reflection (VS)
@@ -707,7 +703,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 
 	if (desc.num_render_targets < 1)
 	{
-		OutputDebugString(L"Qhenki D3D12 WARNING: Pipeline creation deferred due to lack of targets\n");
+		OutputDebugStringA("Qhenki D3D12 WARNING: Pipeline creation deferred due to lack of targets\n");
 		d3d12_pipeline->deferred = true;
 	}
 	else
@@ -720,7 +716,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		if (const auto hr = m_device->CreateGraphicsPipelineState(pso_desc, 
 			IID_PPV_ARGS(&d3d12_pipeline->pipeline_state)); FAILED(hr))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create Graphics Pipeline State\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create Graphics Pipeline State\n");
 			return false;
 		}
 		d3d12_pipeline->input_layout_desc.clear();
@@ -731,7 +727,11 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 
 	if (debug_name)
 	{
-		d3d12_pipeline->pipeline_state->SetName(debug_name);
+		util::Utf8To16Scoped debug_name_utf8(debug_name);
+		if (FAILED(d3d12_pipeline->pipeline_state->SetName(debug_name_utf8.c_str())))
+		{
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to set pipeline debug name\n");
+		}
 	}
 
 	return true;
@@ -746,7 +746,7 @@ bool D3D12Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 		// Set current render target info and create the pipeline
 		assert(false);
 		// Issue a warning that the pipeline was deferred
-		OutputDebugString(L"Qhenki D3D12 WARNING: Deferred pipeline compilation\n");
+		OutputDebugStringA("Qhenki D3D12 WARNING: Deferred pipeline compilation\n");
 		assert(d3d12_pipeline->input_layout_desc.empty());
 	}
 
@@ -851,7 +851,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
 		&root_sig_blob, &error_blob);
 	if (FAILED(hr))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to serialize root signature\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to serialize root signature\n");
 		// Output error blob
 		if (error_blob)
 		{
@@ -867,7 +867,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
 	if(FAILED(m_device->CreateRootSignature(0, root_sig_data, root_sig_data_size,
 		IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create root signature\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create root signature\n");
 		return false;
 	}
 
@@ -889,11 +889,11 @@ bool D3D12Context::set_pipeline_constant(CommandList* cmd_list, UINT param, UINT
 #ifdef _DEBUG
 	if (offset % 4 != 0)
 	{
-		OutputDebugString(L"Qhenki D3D12 WARNING: Offset is best as multiple of 4 bytes\n");
+		OutputDebugStringA("Qhenki D3D12 WARNING: Offset is best as multiple of 4 bytes\n");
 	}
 	if (size % 4 != 0)
 	{
-		OutputDebugString(L"Qhenki D3D12 WARNING: Size is best as multiple of 4 bytes\n");
+		OutputDebugStringA("Qhenki D3D12 WARNING: Size is best as multiple of 4 bytes\n");
 	}
 #endif
 	const auto cmd_list_d3d12 = to_internal(*cmd_list);
@@ -901,13 +901,13 @@ bool D3D12Context::set_pipeline_constant(CommandList* cmd_list, UINT param, UINT
 	return true;
 }
 
-bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* const heap, wchar_t const* debug_name)
+bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* const heap, const char* debug_name)
 {
 	assert(heap);
 	// Check that you are not trying to make GPU heap of RTVs, this is not valid
 	if (desc.visibility == DescriptorHeapDesc::Visibility::GPU && desc.type == DescriptorHeapDesc::Type::RTV)
 	{
-		OutputDebugString(L"Qhenki D3D12: Cannot create GPU visible RTV heap\n");
+		OutputDebugStringA("Qhenki D3D12: Cannot create GPU visible RTV heap\n");
 		return false;
 	}
 
@@ -932,7 +932,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 		heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 		break;
 	default:
-		OutputDebugString(L"Qhenki D3D12: Invalid descriptor heap type\n");
+		OutputDebugStringA("Qhenki D3D12: Invalid descriptor heap type\n");
 		return false;
 	}
 
@@ -949,7 +949,11 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 
 	if (result && debug_name)
 	{
-		d3d12_heap->Get()->SetName(debug_name);
+		const util::Utf8To16Scoped debug_name_utf8(debug_name);
+		if (FAILED(d3d12_heap->Get()->SetName(debug_name_utf8.c_str())))
+		{
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to set descriptor heap debug name\n");
+		}
 	}
 
 	return result;
@@ -967,7 +971,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
 	}
 	else
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 	}
 }
 
@@ -985,7 +989,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
 	}
 	else
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 	}
 }
 
@@ -999,7 +1003,7 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
 	if (!heap_d3d12->get_GPU_descriptor(&gpu_handle, gpu_descriptor.offset, 0))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to get GPU descriptor handle\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU descriptor handle\n");
 		return;
 	}
 
@@ -1015,13 +1019,13 @@ bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const
 
 	if (src_heap_d3d12->desc.Type != dst_heap_d3d12->desc.Type)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Source and destination descriptor heaps must be of the same type\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Source and destination descriptor heaps must be of the same type\n");
 		return false;
 	}
 
 	if (src_heap_d3d12->desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Source heap cannot be shader visible\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Source heap cannot be shader visible\n");
 		return false;
 	}
 
@@ -1057,14 +1061,14 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
 	const auto heap_d3d12 = to_internal(*descriptor->heap);
 	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Cannot free a new descriptor\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Cannot free a new descriptor\n");
 		return false;
 	}
 	heap_d3d12->deallocate(&descriptor->offset);
 	return true;
 }
 
-bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name)
+bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
 	buffer->desc = desc;
 	buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>();
@@ -1118,7 +1122,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		buffer_d3d12->ReleaseAndGetAddressOf(),
 		IID_NULL, NULL)))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create buffer\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create buffer\n");
 		return false;
 	}
 	const auto resource = buffer_d3d12->Get()->GetResource();
@@ -1132,7 +1136,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 			void* mapped_ptr;
 			if (FAILED(resource->Map(0, &range, &mapped_ptr)))
 			{
-				OutputDebugString(L"Qhenki D3D12 ERROR: Failed to map buffer\n");
+				OutputDebugStringA("Qhenki D3D12 ERROR: Failed to map buffer\n");
 				return false;
 			}
 			memcpy(mapped_ptr, data, desc.size);
@@ -1140,11 +1144,15 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		}
 		else
 		{
-			OutputDebugString(L"Qhenki D3D12 WARNING: Tried to initialize non CPU visible buffer with data\n");
+			OutputDebugStringA("Qhenki D3D12 WARNING: Tried to initialize non CPU visible buffer with data\n");
 		}
 	}
 
-	buffer_d3d12->Get()->SetName(debug_name);
+	if (is_debug_layer_enabled())
+	{
+		util::Utf8To16Scoped debug_name_utf8(debug_name);
+		buffer_d3d12->Get()->SetName(debug_name_utf8.c_str());
+	}
 
 	// Need to also create the associated view
 	// This is determined by the buffer usage, some views will need a heap to be created (CBV, SRV, UAV)
@@ -1160,7 +1168,7 @@ bool get_cpu_descriptor(const Buffer& buffer, DescriptorHeap* const heap, Descri
 	const auto heap_d3d12 = to_internal(*heap);
 	if (heap->desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 		return false;
 	}
 	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
@@ -1189,7 +1197,7 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer, Descrip
 
 	if (buffer.desc.size % 16 != 0)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Buffer size is not a multiple of 16 bytes, cannot create constant buffer view\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Buffer size is not a multiple of 16 bytes, cannot create constant buffer view\n");
 		return false;
 	}
 
@@ -1215,7 +1223,7 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
 
 	if (buffer.desc.stride == 0)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Buffer stride is zero, cannot create shader resource view\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Buffer stride is zero, cannot create shader resource view\n");
 		return false;
 	}
 
@@ -1252,11 +1260,11 @@ void D3D12Context::copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 
 }
 
 bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
-                                  wchar_t const* debug_name)
+                                  const char* debug_name)
 {
 	if (desc.height > 1 && desc.dimension == TextureDimension::TEXTURE_1D)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Tried to initialize 1D texture with height > 1\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Tried to initialize 1D texture with height > 1\n");
 		return false;
 	}
 
@@ -1326,11 +1334,12 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 		texture_d3d12->allocation.ReleaseAndGetAddressOf(),
 		IID_NULL, NULL)))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create texture\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create texture\n");
 		return false;
 	}
 
-	texture_d3d12->allocation.Get()->SetName(debug_name);
+	util::Utf8To16Scoped debug_name_utf8(debug_name);
+	texture_d3d12->allocation.Get()->SetName(debug_name_utf8.c_str());
 
 	return true;
 }
@@ -1341,18 +1350,18 @@ bool allocate_arb_texture_descriptor(DescriptorHeap* const heap, D3D12Descriptor
 	assert(cpu_handle);
 	if (heap->desc.type != expected_type)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type for ");
-		OutputDebugString(message);
-		OutputDebugString(L"\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type for ");
+		OutputDebugStringW(message);
+		OutputDebugStringA("\n");
 		return false;
 	}
 	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
 		if (!heap_d3d12->allocate(&descriptor->offset))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
-			OutputDebugString(message);
-			OutputDebugString(L"\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
+			OutputDebugStringW(message);
+			OutputDebugStringA("\n");
 			return false;
 		}
 	}
@@ -1401,7 +1410,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list, const void* data, Buff
 {
 	if (staging->internal_state)
 	{
-		OutputDebugString(L"Qhenki D3D12 WARNING: copy_to_texture staging buffer already allocated, overwriting it\n");
+		OutputDebugStringA("Qhenki D3D12 WARNING: copy_to_texture staging buffer already allocated, overwriting it\n");
 	}
 	const uint32_t num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
 	const auto texture_allocation = to_internal(*texture);
@@ -1422,7 +1431,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list, const void* data, Buff
 	};
 	if (!create_buffer(staging_desc, nullptr, staging, nullptr))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create staging buffer for texture copy\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create staging buffer for texture copy\n");
 		return false;
 	}
 
@@ -1504,14 +1513,14 @@ bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap* con
 	const auto heap_d3d12 = to_internal(*heap);
 	if (heap->desc.type != DescriptorHeapDesc::Type::SAMPLER)
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
 		return false;
 	}
 	if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
 	{
 		if (!heap_d3d12->allocate(&descriptor->offset))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to allocate descriptor for sampler\n");
 			return false;
 		}
 	}
@@ -1551,12 +1560,12 @@ void* D3D12Context::map_buffer(const Buffer& buffer)
 		if (FAILED(result))
 		{
 			__debugbreak();
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to map buffer\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to map buffer\n");
 			return nullptr;
 		}
 		return mapped_ptr;
 	}
-	OutputDebugString(L"Qhenki D3D12 ERROR: Buffer is not CPU visible\n");
+	OutputDebugStringA("Qhenki D3D12 ERROR: Buffer is not CPU visible\n");
 
 	return nullptr;
 }
@@ -1573,7 +1582,7 @@ void D3D12Context::unmap_buffer(const Buffer& buffer)
 	}
 	else
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Buffer is not CPU visible\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Buffer is not CPU visible\n");
 	}
 }
 
@@ -1641,7 +1650,7 @@ bool D3D12Context::create_queue(const QueueType type, Queue* queue)
 	const auto queue_d3d12 = to_internal(*queue);
 	if (FAILED(m_device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(queue_d3d12->ReleaseAndGetAddressOf()))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create command queue\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command queue\n");
 		return false;
 	}
 	return true;
@@ -1670,13 +1679,13 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const Queue& q
 
 	if (FAILED(m_device->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator->ReleaseAndGetAddressOf()))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create command allocator\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command allocator\n");
 		return false;
 	}
 	return true;
 }
 
-bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, wchar_t const* debug_name)
+bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
 {
 	const auto command_allocator = to_internal(command_pool);
 	// create the appropriate command list type
@@ -1701,7 +1710,11 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
 
 	if (debug_name)
 	{
-		d3d12_cmd_list->Get()->SetName(debug_name);
+		const util::Utf8To16Scoped debug_name_utf8(debug_name);
+		if (FAILED(d3d12_cmd_list->Get()->SetName(debug_name_utf8.c_str())))
+		{
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to set command list debug name\n");
+		}
 	}
 	
 	return true;
@@ -1713,7 +1726,7 @@ bool D3D12Context::close_command_list(CommandList* cmd_list)
 	assert(cmd_list_d3d12);
 	if (FAILED(cmd_list_d3d12->Get()->Close()))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to close command list\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to close command list\n");
 		return false;
 	}
 	return true;
@@ -1724,7 +1737,7 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
 	const auto command_allocator = to_internal(*command_pool);
 	if (FAILED(command_allocator->Get()->Reset()))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to reset command allocator\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reset command allocator\n");
 		return false;
 	}
 	return true;
@@ -1836,7 +1849,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* qu
 		const auto result = queue_d3d12->Get()->Signal(fence->fence.Get(), submit_info.signal_values[i]);
 		if (FAILED(result))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to signal fence\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to signal fence\n");
 		}
 	}
 }
@@ -1847,7 +1860,7 @@ bool D3D12Context::create_fence(Fence* fence, uint64_t initial_value)
 	const auto fence_d3d12 = to_internal(*fence);
 	if (FAILED(m_device->CreateFence(initial_value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence_d3d12->fence.ReleaseAndGetAddressOf()))))
 	{
-		OutputDebugString(L"Qhenki D3D12 ERROR: Failed to create fence\n");
+		OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create fence\n");
 		return false;
 	}
 	// Give each fence a handle event as well
@@ -1870,7 +1883,7 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
 		const auto d3d12_fence = to_internal(info.fences[i]);
 		if (FAILED(d3d12_fence->fence->SetEventOnCompletion(info.values[i], d3d12_fence->event)))
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Failed to set event on fence\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Failed to set event on fence\n");
 			return false;
 		}
 		wait_handles[i] = d3d12_fence->event;
@@ -1912,7 +1925,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 
 		if (!barrier.resource)
 		{
-			OutputDebugString(L"Qhenki D3D12 ERROR: Barrier resource is null. Barrier was not issued\n");
+			OutputDebugStringA("Qhenki D3D12 ERROR: Barrier resource is null. Barrier was not issued\n");
 			return;
 		}
 
@@ -2000,7 +2013,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
 	init_info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle)
 	{
 		// TODO
-			OutputDebugString(L"WARNING: ImGui descriptors not freed\n");
+			OutputDebugStringA("WARNING: ImGui descriptors not freed\n");
 	};
 	ImGui_ImplSDL3_InitForD3D(window.get_window());
 	ImGui_ImplDX12_Init(&init_info);

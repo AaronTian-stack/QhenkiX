@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <fstream>
-#include <vector>
 #include <locale>
 
 #include <windows.h>
@@ -17,17 +16,18 @@ static bool read_file_impl(const CharT* path, void** data, size_t* size)
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file)
     {
+		constexpr auto buffer_count = 512;
         if constexpr (std::is_same_v<CharT, wchar_t>) 
         {
-            wchar_t debug_msg[512]{};
-            swprintf(debug_msg, sizeof(debug_msg) / sizeof(wchar_t),
+            wchar_t debug_msg[buffer_count]{};
+            swprintf(debug_msg, buffer_count,
                 L"FileHelper:: Failed to open file: %ls\n", path);
             OutputDebugStringW(debug_msg);
         }
         else 
         {
-            char debug_msg[512]{};
-            snprintf(debug_msg, sizeof(debug_msg),
+            char debug_msg[buffer_count]{};
+            snprintf(debug_msg, buffer_count,
                 "FileHelper:: Failed to open file: %s\n", path);
             OutputDebugStringA(debug_msg);
         }
@@ -37,7 +37,7 @@ static bool read_file_impl(const CharT* path, void** data, size_t* size)
     std::streamsize stream_size = file.tellg();
     if (stream_size < 0)
     {
-        OutputDebugString(L"FileHelper:: Failed to read stream");
+        OutputDebugStringA("FileHelper:: Failed to read stream");
         return false;
     }
 	*size = static_cast<size_t>(stream_size);
@@ -47,17 +47,18 @@ static bool read_file_impl(const CharT* path, void** data, size_t* size)
 
     if (!file.read(reinterpret_cast<char*>(*data), stream_size)) 
     {
+        constexpr auto buffer_count = 512;
         if constexpr (std::is_same_v<CharT, wchar_t>) 
         {
-            wchar_t debug_msg[512]{};
-            swprintf(debug_msg, sizeof(debug_msg) / sizeof(wchar_t),
+            wchar_t debug_msg[buffer_count]{};
+            swprintf(debug_msg, buffer_count,
                 L"FileHelper:: Failed to read file: %ls\n", path);
             OutputDebugStringW(debug_msg);
         }
         else
         {
-            char debug_msg[512]{};
-            snprintf(debug_msg, sizeof(debug_msg),
+            char debug_msg[buffer_count]{};
+            snprintf(debug_msg, buffer_count,
                 "FileHelper:: Failed to read file: %s\n", path);
             OutputDebugStringA(debug_msg);
         }
@@ -72,40 +73,42 @@ static bool read_file_impl(const CharT* path, void** data, size_t* size)
 template <typename CharT>
 static bool write_file_impl(const CharT* path, const void* data, size_t size) 
 {
-    std::basic_ofstream<CharT> file(path, std::ios::binary);
-    if (!file) 
+    std::ofstream file(path, std::ios::binary);
+    if (!file)
     {
+        constexpr auto buffer_count = 512;
         if constexpr (std::is_same_v<CharT, wchar_t>) 
         {
-            wchar_t debug_msg[512]{};
-            swprintf(debug_msg, sizeof(debug_msg) / sizeof(wchar_t),
+            wchar_t debug_msg[buffer_count]{};
+            swprintf(debug_msg, buffer_count,
                 L"FileHelper:: Failed to open file: %ls\n", path);
             OutputDebugStringW(debug_msg);
         }
         else 
         {
-            char debug_msg[512]{};
-            snprintf(debug_msg, sizeof(debug_msg),
+            char debug_msg[buffer_count]{};
+            snprintf(debug_msg, buffer_count,
                 "FileHelper:: Failed to open file: %s\n", path);
             OutputDebugStringA(debug_msg);
         }
         return false;
     }
 
-    file.write(reinterpret_cast<const CharT*>(data), size / sizeof(CharT));
-    if (!file) 
+    file.write(reinterpret_cast<const char*>(data), size);
+    if (!file.good()) 
     {
+		constexpr auto buffer_count = 512;
         if constexpr (std::is_same_v<CharT, wchar_t>) 
         {
-            wchar_t debug_msg[512]{};
-            swprintf(debug_msg, sizeof(debug_msg) / sizeof(wchar_t),
+            wchar_t debug_msg[buffer_count]{};
+            swprintf(debug_msg, buffer_count,
                 L"FileHelper:: Failed to write file: %ls\n", path);
             OutputDebugStringW(debug_msg);
         }
         else
         {
-            char debug_msg[512]{};
-            snprintf(debug_msg, sizeof(debug_msg),
+            char debug_msg[buffer_count]{};
+            snprintf(debug_msg, buffer_count,
                 "FileHelper:: Failed to write file: %s\n", path);
             OutputDebugStringA(debug_msg);
         }
@@ -120,7 +123,7 @@ bool FileHelper::read_file(const wchar_t* path, void** data, size_t* size)
     return read_file_impl(path, data, size);
 }
 
-bool FileHelper::write_file(const wchar_t* path, const void* data, size_t size)
+bool FileHelper::write_file(const wchar_t* path, const void* data, const size_t size)
 {
     return write_file_impl(path, data, size);
 }
@@ -130,7 +133,7 @@ bool FileHelper::read_file(const char* path, void** data, size_t* size)
     return read_file_impl(path, data, size);
 }
 
-bool FileHelper::write_file(const char* path, const void* data, size_t size)
+bool FileHelper::write_file(const char* path, const void* data, const size_t size)
 {
     return write_file_impl(path, data, size);
 }

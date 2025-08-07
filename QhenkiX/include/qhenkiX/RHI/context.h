@@ -40,11 +40,9 @@ namespace qhenki::gfx
 		virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) = 0;
 		virtual bool present(Swapchain* swapchain, UINT fence_count, Fence* wait_fences, UINT swapchain_index) = 0;
 
-		virtual uPtr<ShaderCompiler> create_shader_compiler() = 0;
-
         virtual bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) = 0;
 		virtual bool create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline* pipeline, const Shader& vertex_shader, const Shader& pixel_shader,
-		                             PipelineLayout* in_layout, wchar_t const* debug_name = nullptr) = 0;
+		                             PipelineLayout* in_layout, const char* debug_name = nullptr) = 0;
 		virtual bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) = 0;
 
 		virtual bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) = 0;
@@ -52,7 +50,7 @@ namespace qhenki::gfx
 
 		virtual bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) = 0;
 
-		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name = nullptr) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
 		virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap, const DescriptorHeap& sampler_heap) = 0;
 
@@ -61,13 +59,13 @@ namespace qhenki::gfx
 		virtual bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 		virtual bool free_descriptor(Descriptor* descriptor) = 0;
 
-		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name = nullptr) = 0;
 		virtual bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 		virtual bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 
 		virtual void copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) = 0;
 
-		virtual bool create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name = nullptr) = 0;
 		// TODO: add description
 		virtual bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 		// virtual bool create_descriptor_render_target(const Texture& texture, DescriptorHeap& heap, Descriptor* descriptor) = 0;
@@ -98,7 +96,7 @@ namespace qhenki::gfx
 		virtual bool create_queue(QueueType type, Queue* queue) = 0;
 		virtual bool create_command_pool(CommandPool* command_pool, const Queue& queue) = 0;
 		// Begins in OPEN state
-		virtual bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, wchar_t const* debug_name = nullptr) = 0;
+		virtual bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name = nullptr) = 0;
 
 		virtual bool close_command_list(CommandList* cmd_list) = 0;
 

@@ -15,9 +15,9 @@ void ImGUIExampleApp::create()
 	// Create shaders at runtime
 	CompilerInput vertex_shader =
 	{
-		.path = L"base-shaders/BaseShader.hlsl",
-		.entry_point = L"vs_main",
-		.min_shader_model = shader_model,
+		.path_and_defines = Owning {.path = "base-shaders/BaseShader.hlsl"},
+		.entry_point = "vs_main",
+		.shader_model = shader_model,
 		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
 		.flags = compiler_flags,
 	};
@@ -25,9 +25,9 @@ void ImGUIExampleApp::create()
 
 	CompilerInput pixel_shader =
 	{
-		.path = L"base-shaders/BaseShader.hlsl",
-		.entry_point = L"ps_main",
-		.min_shader_model = shader_model,
+		.path_and_defines = Owning {.path = "base-shaders/BaseShader.hlsl"},
+		.entry_point = "ps_main",
+		.shader_model = shader_model,
 		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
 		.flags = compiler_flags,
 	};
@@ -62,7 +62,7 @@ void ImGUIExampleApp::create()
 		.increment_slot = false,
 	};
 	THROW_IF_FALSE(m_context->create_pipeline(pipeline_desc, &m_pipeline, 
-				m_vertex_shader, m_pixel_shader, &m_pipeline_layout, L"triangle_pipeline"));
+						m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "triangle_pipeline"));
 
 	// A graphics queue is already given to the application by the context
 
@@ -88,10 +88,10 @@ void ImGUIExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FALSE(m_context->create_buffer(desc, vertices.data(), &vertex_CPU, L"Interleaved Position/Color Buffer CPU"));
+	THROW_IF_FALSE(m_context->create_buffer(desc, vertices.data(), &vertex_CPU, "Interleaved Position/Color Buffer CPU"));
 
 	desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, L"Interleaved Position/Color Buffer GPU"));
+	THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, "Interleaved Position/Color Buffer GPU"));
 
 	constexpr auto indices = std::array{ 0u, 1u, 2u };
 	qhenki::gfx::BufferDesc index_desc
@@ -100,10 +100,10 @@ void ImGUIExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::INDEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, L"Index Buffer CPU"));
+	THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, "Index Buffer CPU"));
 
 	index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, L"Index Buffer GPU"));
+	THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
 
 	// Schedule copies to GPU buffers / texture
 	THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[get_frame_index()]));

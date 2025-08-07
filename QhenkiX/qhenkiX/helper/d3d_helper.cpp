@@ -1,9 +1,7 @@
 ﻿#include "qhenkiX/helper/d3d_helper.h"
 
 #include <stdexcept>
-#include <fstream>
 #include "qhenkiX/RHI/shader.h"
-#include <filesystem>
 #include <magic_enum/magic_enum.hpp>
 
 using namespace qhenki::gfx;
@@ -13,7 +11,7 @@ std::wstring D3DHelper::get_shader_model_wchar(const ShaderType type, const Shad
     auto sm = magic_enum::enum_name(model);
     assert(sm.size() == 6);
 
-    std::wstring smc(sm.begin(), sm.end()); // copy from wstring_view
+    std::wstring smc(sm.begin(), sm.end());
     smc[1] = 's';
 
     switch (type)
@@ -31,7 +29,7 @@ std::string D3DHelper::get_shader_model_char(const ShaderType type, const Shader
     auto sm = magic_enum::enum_name(model);
     assert(sm.size() == 6);
 
-	std::string smc = std::string(sm); // Should not cause heap allocation (6 chars)
+	auto smc = std::string(sm); // Should not cause heap allocation (6 chars)
     smc[1] = 's';
 
     switch (type)
@@ -67,8 +65,6 @@ D3D12_PRIMITIVE_TOPOLOGY D3DHelper::get_primitive_topology(const PrimitiveTopolo
 		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	case PrimitiveTopology::TRIANGLE_STRIP:
 		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
-	default:
-		throw std::runtime_error("D3DHelper: Invalid primitive topology");
 	}
 	return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 }

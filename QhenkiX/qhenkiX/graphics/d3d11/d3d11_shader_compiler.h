@@ -27,6 +27,7 @@ namespace qhenki::gfx
     class D3D11ShaderCompiler : public ShaderCompiler
     {
     public:
+        void get_shader_dll_path(char* buffer, size_t buffer_length) override;
         bool compile(const CompilerInput& input, CompilerOutput& output) override;
     };
 }

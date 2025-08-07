@@ -97,12 +97,20 @@ ID3D11Resource* get_texture_resource(D3D11Texture& tex)
 	return nullptr;
 }
 
+void D3D11Context::set_debug_name(ID3D11DeviceChild* device_resource, const char* debug_name)
+{
+	if (device_resource && debug_name)
+	{
+		device_resource->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(strlen(debug_name)), debug_name);
+	}
+}
+
 void D3D11Context::create(const bool enable_debug_layer)
 {
     // Create factory
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory_))))
     {
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create DXGI Factory\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create DXGI Factory\n");
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
     }
 	if (enable_debug_layer)
@@ -120,10 +128,10 @@ void D3D11Context::create(const bool enable_debug_layer)
         reinterpret_cast<void**>(adapter.GetAddressOf())
     )))
     {
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
         if (FAILED(m_dxgi_factory_->EnumAdapters1(0, &adapter)))
         {
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to find a adapter\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Failed to find a adapter\n");
 			throw std::runtime_error("D3D11: Failed to find a adapter");
         }
     }
@@ -132,12 +140,14 @@ void D3D11Context::create(const bool enable_debug_layer)
     HRESULT hr = adapter->GetDesc1(&desc);
 	if (FAILED(hr))
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get adapter description\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get adapter description\n");
 	}
 	else
 	{
-        std::wstring adapterDescription = desc.Description;
-        OutputDebugStringW((L"D3D11: Selected adapter: " + adapterDescription + L"\n").c_str());
+		wchar_t adapter_description[128];
+		swprintf(adapter_description, 128, L"Adapter: %s, Vendor ID: 0x%04X, Device ID: 0x%04X\n",
+			desc.Description, desc.VendorId, desc.DeviceId);
+		OutputDebugStringW(adapter_description);
 	}
 
 	constexpr D3D_FEATURE_LEVEL device_feature_level = D3D_FEATURE_LEVEL_11_0;
@@ -169,7 +179,7 @@ void D3D11Context::create(const bool enable_debug_layer)
 	    m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
 	    if (FAILED(m_device_.As(&m_debug_)))
 	    {
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
 	        throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
 	    }
 	}
@@ -210,17 +220,17 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 	}
 
 	shader->type = input.shader_type;
-	shader->shader_model = input.min_shader_model;
+	shader->shader_model = input.shader_model;
 	bool result = true;
 	// Calls CreateXShader(). Thread safe since it only uses the device
-	shader->internal_state = mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.path, output, &result);
+	shader->internal_state = mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.get_path().data(), output, &result);
 
     return result;
 }
 
 bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPipeline* pipeline,
                                    const Shader& vertex_shader, const Shader& pixel_shader,
-                                   PipelineLayout* in_layout, wchar_t const* debug_name)
+                                   PipelineLayout* in_layout, const char* debug_name)
 {
 	// D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
 	pipeline->internal_state = mkS<D3D11GraphicsPipeline>();
@@ -258,7 +268,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 	};
 	if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc, d3d11_pipeline->rasterizer_state.ReleaseAndGetAddressOf())))
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Rasterizer State");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Rasterizer State");
 		succeeded = false;
 	}
 
@@ -288,7 +298,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 		}
 		if (FAILED(m_device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state)))
 		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Blend State\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Blend State\n");
 			succeeded = false;
 		}
 	}
@@ -322,7 +332,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc, GraphicsPip
 
 		if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc, d3d11_pipeline->depth_stencil_state.ReleaseAndGetAddressOf())))
 		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create Depth Stencil State\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Depth Stencil State\n");
 			succeeded = false;
 		}
 	}
@@ -338,7 +348,7 @@ bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 	return true;
 }
 
-bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* const heap, wchar_t const* debug_name)
+bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* const heap, const char* debug_name)
 {
 	switch (desc.type)
 	{
@@ -355,7 +365,7 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 		// D3D11 samplers don't need views
 		break;
 	default:
-		OutputDebugString(L"Qhenki D3D11 ERROR: Unsupported descriptor heap type\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Unsupported descriptor heap type\n");
 		return false;
 	}
 
@@ -363,18 +373,18 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc, Descri
 	return true;
 }
 
-bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, wchar_t const* debug_name)
+bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
 	if (desc.usage & BufferUsage::CONSTANT)
 	{
 		if (desc.size > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
 		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
 			return false;
 		}
 		if (desc.size % 16 != 0)
 		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Constant buffer size is not aligned to 16 bytes\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Constant buffer size is not aligned to 16 bytes\n");
 			return false;
 		}
 	}
@@ -440,11 +450,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 	{
 		if (debug_name)
 		{
-			constexpr size_t max_length = 256;
-			char debug_name_w[max_length] = {};
-			size_t converted_chars = 0;
-			wcstombs_s(&converted_chars, debug_name_w, debug_name, max_length - 1);
-			set_debug_name(d3d11_buffer.Get(), debug_name_w);
+			set_debug_name(d3d11_buffer.Get(), debug_name);
 		}
 	}
 
@@ -482,7 +488,7 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
 	if (FAILED(m_device_->CreateShaderResourceView(buffer_d3d11->Get(), &desc,
 		view.ReleaseAndGetAddressOf())))
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
 		return false;
 	}
 	return true;
@@ -511,7 +517,7 @@ void D3D11Context::copy_buffer(CommandList* cmd_list, const Buffer& src, UINT64 
 		&box);
 }
 
-bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wchar_t const* debug_name)
+bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
 {
 	texture->desc = desc;
 	texture->internal_state = mkS<D3D11Texture>();
@@ -542,7 +548,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 		if (FAILED(m_device_->CreateTexture1D(&texture_desc, nullptr, 
 			std::get<ComPtr<ID3D11Texture1D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
 		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 1D texture\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 1D texture\n");
 			return false;
 		}
 	}
@@ -566,7 +572,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 		if (FAILED(m_device_->CreateTexture2D(&texture_desc, nullptr,
 			std::get<ComPtr<ID3D11Texture2D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
 		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 2D texture\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 2D texture\n");
 			return false;
 		}
 	}
@@ -589,7 +595,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, wch
 		if (FAILED(m_device_->CreateTexture3D(&texture_desc, nullptr,
 			std::get<ComPtr<ID3D11Texture3D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
 		{
-			OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create 3D texture\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 3D texture\n");
 			return false;
 		}
 	}
@@ -619,7 +625,7 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture, Descrip
 	if (FAILED(m_device_->CreateShaderResourceView(resource, nullptr, 
 		view.ReleaseAndGetAddressOf())))
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture SRV\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture SRV\n");
 		return false;
 	}
 	return true;
@@ -641,7 +647,7 @@ bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture, Descr
 	if (FAILED(m_device_->CreateDepthStencilView(resource, nullptr, 
 		heap_d3d11->back().ReleaseAndGetAddressOf())))
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create texture DSV\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture DSV\n");
 		return false;
 	}
 
@@ -655,7 +661,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list, const void* data, Buff
 	ID3D11Resource* resource = get_texture_resource(*texture_d3d11);
 	if (!resource)
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: copy_to_texture Failed to get texture resource\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: copy_to_texture Failed to get texture resource\n");
 		return false;
 	}
 
@@ -664,7 +670,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list, const void* data, Buff
 
 	std::scoped_lock lock(m_context_mutex_);
 
-	const auto num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
+	const UINT32 num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
 	size_t data_offset = 0;
 	for (UINT32 subresource = 0; subresource < num_subresources; subresource++)
 	{
@@ -730,7 +736,7 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
 
 	if (FAILED(result))
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to create sampler state\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create sampler state\n");
 		return false;
 	}
 
@@ -749,7 +755,7 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
 		0, 
 		&mapped_resource)))
 	{
-		OutputDebugString(L"Qhenki D3D11 ERROR: Failed to map buffer\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to map buffer\n");
 		return nullptr;
 	}
 	return mapped_resource.pData;
@@ -795,7 +801,7 @@ bool D3D11Context::create_command_pool(CommandPool* command_pool, const Queue& q
 }
 
 bool D3D11Context::create_command_list(CommandList* cmd_list,
-                                       const CommandPool& command_pool, wchar_t const* debug_name)
+                                       const CommandPool& command_pool, const char* debug_name)
 {
 	return true; // D3D11 does not have command lists
 }
@@ -1015,7 +1021,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 		resource_views.shader_resource_views = std::array<ID3D11ShaderResourceView*, 15>{};
 		break;
 	default:
-		OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
 		return;
 	}
 
@@ -1034,7 +1040,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 			resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i]->offset].Get();
 			break;
 		default:
-			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
 			return;
 		}
 	}
@@ -1060,7 +1066,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 			m_device_context_->CSSetUnorderedAccessViews(slot, count, resource_views.unordered_access_views.data(), nullptr);
 			break;
 		default:
-			OutputDebugString(L"Qhenki D3D11 ERROR: Invalid pipeline stage for storage access\n");
+			OutputDebugStringA("Qhenki D3D11 ERROR: Invalid pipeline stage for storage access\n");
 		}
 		break;
 	case ACCESS_SHADER_RESOURCE:
@@ -1078,7 +1084,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot, const unsigne
 		}
 		break;
 	default:
-		OutputDebugString(L"Qhenki D3D11 ERROR: Invalid access flag for texture\n");
+		OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
 		break;
 	}
 }
@@ -1121,11 +1127,6 @@ bool D3D11Context::present(Swapchain* const swapchain, const UINT fence_count, F
     return result == S_OK;
 }
 
-std::unique_ptr<ShaderCompiler> D3D11Context::create_shader_compiler()
-{
-	return std::make_unique<D3D11ShaderCompiler>();
-}
-
 D3D11Context::~D3D11Context()
 {
     m_device_context_->ClearState();
@@ -1133,9 +1134,10 @@ D3D11Context::~D3D11Context()
     m_device_context_.Reset();
     m_dxgi_factory_.Reset();
 	m_layout_assembler_.clear_maps();
-#if _DEBUG
-    m_debug_->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
-    m_debug_.Reset();
-#endif
+	if (D3D11Context::is_debug_layer_enabled())
+	{
+		m_debug_->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+		m_debug_.Reset();
+	}
     m_device_.Reset();
 }

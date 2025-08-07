@@ -432,13 +432,11 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
 
     if (!warn.empty()) 
     {
-        std::wstring wWarn = L"Warning: " + std::wstring(warn.begin(), warn.end()) + L"\n";
-        OutputDebugString(wWarn.c_str());
+        OutputDebugStringA(warn.c_str());
     }
     if (!err.empty()) 
     {
-		std::wstring wErr = L"Error: " + std::wstring(err.begin(), err.end()) + L"\n";
-		OutputDebugString(wErr.c_str());
+		OutputDebugStringA(err.c_str());
         return false;
     }
 
@@ -449,7 +447,7 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
 	std::scoped_lock lock(loading);
 
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(data.context->create_command_list(&cmd_list, *data.pool, L"copy buffers and transition images"));
+    THROW_IF_FALSE(data.context->create_command_list(&cmd_list, *data.pool, "copy buffers and transition images"));
 
     process_nodes(tiny_model, model);
     process_accessor_views(tiny_model, model);

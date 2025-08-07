@@ -18,10 +18,8 @@ namespace qhenki::gfx
 		ComPtr<IDxcBlob> root_signature_blob;
 	};
 
-	class D3D12ShaderCompiler : public ShaderCompiler
+	class D3D12ShaderCompiler : public D3D11ShaderCompiler
 	{
-		D3D11ShaderCompiler m_d3d11_shader_compiler;
-
 		ComPtr<IDxcUtils> m_library;
 		ComPtr<IDxcCompiler3> m_compiler; // Not thread safe
 

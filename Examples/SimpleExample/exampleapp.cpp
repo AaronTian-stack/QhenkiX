@@ -11,24 +11,23 @@ void ExampleApp::create()
 
 	auto compiler_flags = CompilerInput::NONE;
 
-	std::vector<std::wstring> defines;
+	std::vector<std::string> defines;
 	defines.reserve(1);
 	if (m_context->is_compatibility())
 	{
-		defines.push_back(L"DX11");
+		defines.push_back("DX11");
 	}
 	else
 	{
-		defines.push_back(L"DX12");
+		defines.push_back("DX12");
 	}
 
 	// Create shaders at runtime
 	CompilerInput vertex_shader =
 	{
-		.path = L"base-shaders/BaseShader.hlsl",
-		.entry_point = L"vs_main",
-		.defines = defines,
-		.min_shader_model = shader_model,
+		.path_and_defines = Owning {.path = "base-shaders/BaseShader.hlsl", .defines = defines},
+		.entry_point = "vs_main",
+		.shader_model = shader_model,
 		.shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
 		.flags = compiler_flags,
 	};
@@ -36,10 +35,9 @@ void ExampleApp::create()
 
 	CompilerInput pixel_shader =
 	{
-		.path = L"base-shaders/BaseShader.hlsl",
-		.entry_point = L"ps_main",
-		.defines = defines,
-		.min_shader_model = shader_model,
+		.path_and_defines = Owning {.path = "base-shaders/BaseShader.hlsl", .defines = defines},
+		.entry_point = "ps_main",
+		.shader_model = shader_model,
 		.shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
 		.flags = compiler_flags,
 	};
@@ -104,7 +102,7 @@ void ExampleApp::create()
 		.increment_slot = false,
 	};
 	THROW_IF_FALSE(m_context->create_pipeline(pipeline_desc, &m_pipeline, 
-				m_vertex_shader, m_pixel_shader, &m_pipeline_layout, L"triangle_pipeline"));
+						m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "triangle_pipeline"));
 
 	// A graphics queue is already given to the application by the context
 
@@ -130,10 +128,10 @@ void ExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::VERTEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FALSE(m_context->create_buffer(desc, vertices.data(), &vertex_CPU, L"Interleaved Position/Color Buffer CPU"));
+	THROW_IF_FALSE(m_context->create_buffer(desc, vertices.data(), &vertex_CPU, "Interleaved Position/Color Buffer CPU"));
 
 	desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, L"Interleaved Position/Color Buffer GPU"));
+	THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, "Interleaved Position/Color Buffer GPU"));
 
 	constexpr auto indices = std::array{ 0u, 1u, 2u };
 	qhenki::gfx::BufferDesc index_desc
@@ -142,22 +140,22 @@ void ExampleApp::create()
 		.usage = qhenki::gfx::BufferUsage::INDEX,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
-	THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, L"Index Buffer CPU"));
+	THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, "Index Buffer CPU"));
 
 	index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-	THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, L"Index Buffer GPU"));
+	THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
 
 	// Make 2 matrix constant buffers for double buffering
 	qhenki::gfx::BufferDesc matrix_desc
 	{
-		.size = MathHelper::align_u32(sizeof(CameraMatrices), CONSTANT_BUFFER_ALIGNMENT),
+		.size = qhenki::util::align_u32(sizeof(CameraMatrices), qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
 		.usage = qhenki::gfx::BufferUsage::CONSTANT,
 		.visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 	};
 	// TODO: persistent mapping flag
 	for (int i = 0; i < m_frames_in_flight; i++)
 	{
-		THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], L"Matrix Buffer"));
+		THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], "Matrix Buffer"));
 		THROW_IF_FALSE(m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap,
 					&m_matrix_descriptors[i]));
 	}
@@ -172,7 +170,7 @@ void ExampleApp::create()
 		.dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
 		.initial_layout = qhenki::gfx::Layout::COPY_DEST,
 	};
-	THROW_IF_FALSE(m_context->create_texture(texture_desc, &m_texture, L"Checkerboard Texture"));
+	THROW_IF_FALSE(m_context->create_texture(texture_desc, &m_texture, "Checkerboard Texture"));
 
 	// Create CPU descriptor for texture
 	THROW_IF_FALSE(m_context->create_descriptor_shader_view(m_texture, &m_CPU_heap, &m_texture_descriptor));
