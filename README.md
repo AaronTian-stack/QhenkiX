@@ -8,7 +8,7 @@ QhenkiX is my personal C++20 library for 3D software creation. It consists mainl
 
 ## Features
 
-You can find the most recent interface (`context.h`) and related structures in the [RHI folder](https://github.com/AaronTian-stack/QhenkiX/tree/main/QhenkiX/include/qhenkiX/RHI). API specific implementations live [here](https://github.com/AaronTian-stack/QhenkiX/tree/main/QhenkiX/qhenkiX/graphics).
+You can find the most recent interface (`context.h`) and related structures in the [RHI folder](QhenkiX/include/qhenkiX/RHI). API specific implementations live [here](QhenkiX/qhenkiX/graphics).
 
 As a very brief summary, here are some notable current features and design choices:
 
@@ -18,42 +18,78 @@ As a very brief summary, here are some notable current features and design choic
 - Support for runtime shader compliation
     - Automatic selection between FXC and DXC depending on desired Shader Model
     - Reflection for automatic input assembly parameters
+- [SXC standalone shader compiler](SXC)
+    - Command-line tool for batch compilation of shaders with configuration files
+    - Support for shader permutations with different defines and optimization levels
+    - Parallel compilation pipeline with dependency tracking for incremental builds
 - Separate resource binding models for "modern" and "compatibility" graphics backends
     - Modern interface resembles D3D12 binding model which allows for flexible and performant binding patterns such as bindless descriptors
     - Compatibility interface allows for simple binding of resources to slots with minimal additional code
+- Some math utilities
 - ImGui integration
 
-See the [examples](https://github.com/AaronTian-stack/QhenkiX/tree/main/Examples) for use cases of the library.
+See the [examples](Examples) for use cases of the library.
 
 ## Installation / Build
 
-### Windows 10+
+### Windows 10+ (CMake)
 
 1. Clone the repository. 
     ```bash
     git clone https://github.com/AaronTian-stack/QhenkiX.git
     ```
-2. Open `QhenkiX.vcxproj` or add the project to your already existing desired Visual Studio solution.
-3. Build QhenkiX in the desired mode (Debug/Release) to produce a static library (`.lib`). Link this to your project.
-4. Add `QhenkiX/include` as a include path. 
-5. Follow the steps in the [Linking Section](#linking).
-6. Extend the [Application](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/include/qhenkiX/application.h) class and start writing your graphics code. See the [examples](Examples/README.md).
+2. Generate build files using CMake. Example:
+    ```bash
+    cd QhenkiX
+    mkdir build
+    cd build
+    cmake ..
+    ```
+3. Build the project:
+    ```bash
+    cmake --build . --config Release
+    ```
+   Or open the generated Visual Studio solution (`QhenkiX-Workspace.sln`) and build from there.
+
+4. To use QhenkiX in your own project, you have several options:
+   - **Using CMake**: Add QhenkiX as a subdirectory in your CMakeLists.txt:
+     ```cmake
+     add_subdirectory(path/to/QhenkiX/QhenkiX)
+     target_link_libraries(your_target PRIVATE QhenkiX)
+     ```
+   - **Using Visual Studio**: Add the QhenkiX project as a reference to your solution and link against the generated static library.
+
+5. Extend the [Application](QhenkiX/include/qhenkiX/application.h) class and start writing your graphics code. See the [examples](Examples/README.md).
 
 ## Linking
 
-QhenkiX is built as a static library (`.lib`). If you are creating a project using QhenkiX in Visual Studio, you can simply add QhenkiX as a reference (right click Project -> Add -> Reference) if they are in the same solution. 
+QhenkiX is built as a static library (`.lib`). 
 
-QhenkiX requires the below `.dll`s to run. They are included with the library and can be added as existing files or copied to your project executable location.
+### Using CMake
+When using CMake, simply link against the QhenkiX target:
+```cmake
+target_link_libraries(your_target PRIVATE QhenkiX)
+```
+
+### Using Visual Studio
+If you are creating a project using QhenkiX in Visual Studio, you can add QhenkiX as a reference (right click Project -> Add -> Reference) if they are in the same solution.
+
+### Required DLLs
+QhenkiX requires the below `.dll`s to run. When using CMake, the examples automatically copy the required DLLs to the output directory.
 
  **Required DLLs**:
-- [`dxcompiler.dll`](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/dxc_2024_07_31/bin/x64/dxcompiler.dll) - compile SM 5.1+ shaders programmatically
-- [`dxil.dll`](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/dxc_2024_07_31/bin/x64/dxil.dll) - validate/sign shaders generated with DXC
-- [`SDL3.dll`](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/SDL3-3.2.4/lib/x64/SDL3.dll) - windowing and input
+- [`dxcompiler.dll`](QhenkiX/blob/main/QhenkiX/dxc_2024_07_31/bin/x64/dxcompiler.dll) - compile SM 5.1+ shaders programmatically
+- [`dxil.dll`](QhenkiX/blob/main/QhenkiX/dxc_2024_07_31/bin/x64/dxil.dll) - validate/sign shaders generated with DXC
+- [`SDL3.dll`](QhenkiX/blob/main/QhenkiX/SDL3-3.2.4/lib/x64/SDL3.dll) - windowing and input
 
 ## Dependencies
 
-This project relies on the following dependencies:
+This project relies on the following dependencies and build tools:
 
+**Build Requirements:**
+- CMake 3.18 or higher
+
+**Third-party Libraries:**
 - [Boost](https://github.com/boostorg/boost) - (Boost Software License 1.0)
 - [D3D12MemAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) - (MIT License)
 - [robin-map](https://github.com/Tessil/robin-map) - (MIT License)
@@ -70,7 +106,6 @@ This project is mostly made for my own use and will be frequently subject to lar
 
 ## Notes
 
-- The DirectX debug layer is only enabled when the project is built in Debug mode.
 - FXC depends on `d3dcompiler_47.dll` which is not included with this library. This is included with the Windows SDK and that specific version is used by `D3DCompileFromFile`. I will eventually bundle a specific version of the DLL with the library.
 - It should be possible to run the D3D11 backend on Windows 7 or 8, I just need to refactor (bundling D3D12 headers with the library directly) and maybe add a special compile macro.
 

@@ -1,28 +1,46 @@
 # QhenkiX Examples
 
-This folder contains a collection of example projects demonstrating the usage of the QhenkiX library. Each example is organized as a separate Visual Studio project which has QhenkiX as a local reference, so if you are linking against a already compiled version you will need to change the project settings. The include paths also assume that you have the source code (I will eventually bundle separate headers with the library).
+This folder contains a collection of example projects demonstrating the usage of the QhenkiX library. Each example is built using CMake and automatically links against the QhenkiX library. 
 
-## SimpleExample
+## Building the Examples
 
-Demonstrates basic usage of the QhenkiX library. Extends the `Application` class and implements a rendering loop of a textured and animated triangle with vertex colors. [DirectXMath](https://github.com/microsoft/DirectXMath) is used as the linear algebra library.
+The examples are included in the main CMake workspace. To build them:
 
-Operations demonstrated:
+1. From the repository root, generate the build files:
+   ```bash
+   mkdir build
+   cd build
+   cmake ..
+   ```
 
-- Window and context creation
-- Queue and descriptor heap creation
-- Swapchain resizing
-- Command list recording
-- Resource creation (vertex/index/constant buffers, texture uploads)
-- Resource binding
-- Descriptor management (creation, copying)
-- Dynamic shader compilation
-- Shader compile macros to support multiple backends
-- Rendering pipeline setup
-- Fine grained barrier synchronization (uses enhanced barriers in D3D12 backend)
-- Double frame buffering with fences
+2. Build all examples:
+   ```bash
+   cmake --build . --config Release
+   ```
 
-![simple example](../Media/simpleexample.gif)
+3. Or open the generated Visual Studio solution (`QhenkiX-Workspace.sln`) and build the specific examples you want.
 
-## ImGuiExample
+The built executables will be located in `build/Examples/[ExampleName]/` with all required DLLs automatically copied to the output directory.
 
-"HelloTriangle" application (SimpleExample without textures or animation) with ImGui integration. See ImGui functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)
+## Running the Examples
+
+### Visual Studio
+When debugging in Visual Studio, the working directory is automatically set to the correct location (the source directory containing the `base-shaders` folder).
+
+### Other IDEs or Command Line
+If you're not using Visual Studio, you need to ensure the working directory is set correctly when running the examples. The examples expect to find their files with the project folder as the base directory (e.g. `Examples/SimpleExample`).
+
+When running from the command line, navigate to the example's source directory before executing the binary. Or in your IDE, set the working directory to the example's source directory.
+
+If you get an error that a file was not found it means the working directory is not set correctly.
+
+## Examples
+
+### [SimpleExample](SimpleExample/)
+Demonstrates basic usage of the QhenkiX library with a textured and animated triangle.
+
+### [ImGuiExample](ImGuiExample/)
+"HelloTriangle" application with ImGui integration.
+
+### [gltfViewer](gltfViewer/)
+Example showcasing glTF 3D model loading and rendering.
