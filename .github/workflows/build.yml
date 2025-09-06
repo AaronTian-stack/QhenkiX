@@ -23,7 +23,7 @@ jobs:
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
-        cmake-version: '3.18'
+        cmake-version: '3.29'
 
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
