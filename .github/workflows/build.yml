@@ -4,11 +4,7 @@ on:
   push:
     branches:
       - 'release/**'
-    - name: Configure CMake
-      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
-
-    - name: Build SXC
-      run: cmake --build build --config Release --target SXC - main
+      - main
   pull_request:
     branches:
       - 'release/**'
