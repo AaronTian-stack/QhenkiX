@@ -275,7 +275,7 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
                 sampler_desc.mag_filter = qhenki::gfx::Filter::LINEAR;
                 break;
             default: // TODO: mip maps
-                OutputDebugString(L"WARNING: Using default mag filter\n");
+                OutputDebugStringA("WARNING: Using default mag filter\n");
                 sampler_desc.mag_filter = qhenki::gfx::Filter::LINEAR;
                 break;
         }
@@ -288,7 +288,7 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
                 sampler_desc.min_filter = qhenki::gfx::Filter::LINEAR;
                 break;
             default: // TODO: mip maps
-                OutputDebugString(L"WARNING: Using default min filter\n");
+                OutputDebugStringA("WARNING: Using default min filter\n");
                 sampler_desc.min_filter = qhenki::gfx::Filter::LINEAR;
                 break;
         }
@@ -301,7 +301,7 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
                 sampler_desc.address_mode_u = qhenki::gfx::AddressMode::CLAMP;
                 break;
             default:
-                OutputDebugString(L"WARNING: Using default wrap U filter\n");
+                OutputDebugStringA("WARNING: Using default wrap U filter\n");
                 sampler_desc.address_mode_u = qhenki::gfx::AddressMode::WRAP;
                 break;
         }
@@ -314,7 +314,7 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
                 sampler_desc.address_mode_v = qhenki::gfx::AddressMode::CLAMP;
                 break;
             default:
-                OutputDebugString(L"WARNING: Using default wrap V filter\n");
+                OutputDebugStringA("WARNING: Using default wrap V filter\n");
                 sampler_desc.address_mode_v = qhenki::gfx::AddressMode::WRAP;
                 break;
         }
