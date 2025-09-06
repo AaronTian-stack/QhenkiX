@@ -123,6 +123,14 @@ if(WIN32)
     endif()
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
 
+    add_library(DirectXTex STATIC IMPORTED)
+    set_target_properties(DirectXTex PROPERTIES
+        IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
+        IMPORTED_LOCATION_DEBUG   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Debug/DirectXTex.lib"
+        IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
+        IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
+    )
+
     target_link_libraries(${PROJECT_NAME} PUBLIC
         d3d11
         d3d12
@@ -132,14 +140,6 @@ if(WIN32)
         winmm
         dxguid
         DirectXTex
-    )
-
-    add_library(DirectXTex STATIC IMPORTED)
-    set_target_properties(DirectXTex PROPERTIES
-        IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
-        IMPORTED_LOCATION_DEBUG   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Debug/DirectXTex.lib"
-        IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
-        IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
     )
 
     target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/SDL3-3.2.4/include")
