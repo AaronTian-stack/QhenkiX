@@ -20,22 +20,30 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.18'
+
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Build QhenkiX
-      run: msbuild QhenkiX/QhenkiX.vcxproj /p:Configuration=Release /p:Platform=x64
+    - name: Configure CMake
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
-    - name: Upload Artifacts
+    - name: Build QhenkiX
+      run: cmake --build build --config Release --target QhenkiX
+
+    - name: Upload QhenkiX Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: qhenkix-windows
+        name: qhenkix-library-windows
         path: |
-          QhenkiX/x64/Release/
+          build/QhenkiX/Release/
           QhenkiX/include/
         retention-days: 1
 
-  build-tools:
+  build-sxc:
     name: SXC
     runs-on: windows-latest
     needs: build-qhenkix
@@ -44,17 +52,32 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.18'
+
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Download Library Artifacts
+    - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
-        name: qhenkix-windows
+        name: qhenkix-library-windows
         path: QhenkiX/
 
+    - name: Configure CMake
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
+
     - name: Build SXC
-      run: msbuild SXC/SXC.vcxproj /p:Configuration=Release /p:Platform=x64
+      run: cmake --build build --config Release --target SXC
+
+    - name: Upload SXC Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sxc-windows
+        path: build/SXC/Release/
+        retention-days: 1
 
   build-examples:
     name: ${{ matrix.example }}
@@ -68,14 +91,29 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.18'
+
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Download Library Artifacts
+    - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
-        name: qhenkix-windows
+        name: qhenkix-library-windows
         path: QhenkiX/
 
+    - name: Configure CMake
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
+
     - name: Build ${{ matrix.example }}
-      run: msbuild Examples/${{ matrix.example }}/${{ matrix.example }}.vcxproj /p:Configuration=Release /p:Platform=x64
+      run: cmake --build build --config Release --target ${{ matrix.example }}
+
+    - name: Upload ${{ matrix.example }} Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.example }}-build-windows
+        path: build/Examples/${{ matrix.example }}/Release/
+        retention-days: 1
