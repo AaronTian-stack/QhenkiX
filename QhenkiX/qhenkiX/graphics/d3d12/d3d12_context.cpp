@@ -1148,7 +1148,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 		}
 	}
 
-	if (is_debug_layer_enabled())
+	if (is_debug_layer_enabled() && debug_name)
 	{
 		util::Utf8To16Scoped debug_name_utf8(debug_name);
 		buffer_d3d12->Get()->SetName(debug_name_utf8.c_str());
@@ -1338,8 +1338,11 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture,
 		return false;
 	}
 
-	util::Utf8To16Scoped debug_name_utf8(debug_name);
-	texture_d3d12->allocation.Get()->SetName(debug_name_utf8.c_str());
+	if (debug_name)
+	{
+		util::Utf8To16Scoped debug_name_utf8(debug_name);
+		texture_d3d12->allocation.Get()->SetName(debug_name_utf8.c_str());
+	}
 
 	return true;
 }
@@ -1366,7 +1369,6 @@ bool allocate_arb_texture_descriptor(DescriptorHeap* const heap, D3D12Descriptor
 		}
 	}
 	descriptor->heap = heap;
-	;
 	heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset, 0);
 	return true;
 }
