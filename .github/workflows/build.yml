@@ -32,7 +32,7 @@ jobs:
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
     - name: Build QhenkiX
-      run: cmake --build build --config Release --target QhenkiX
+      run: cmake --build build --config Release --target QhenkiX --parallel
 
     - name: Upload QhenkiX Artifacts
       uses: actions/upload-artifact@v4
@@ -70,7 +70,7 @@ jobs:
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
     - name: Build SXC
-      run: cmake --build build --config Release --target SXC
+      run: cmake --build build --config Release --target SXC --parallel
 
     - name: Upload SXC Artifacts
       uses: actions/upload-artifact@v4
@@ -109,7 +109,7 @@ jobs:
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
     - name: Build ${{ matrix.example }}
-      run: cmake --build build --config Release --target ${{ matrix.example }}
+      run: cmake --build build --config Release --target ${{ matrix.example }} --parallel
 
     - name: Upload ${{ matrix.example }} Artifacts
       uses: actions/upload-artifact@v4
