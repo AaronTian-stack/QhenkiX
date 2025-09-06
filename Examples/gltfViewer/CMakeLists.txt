@@ -23,6 +23,11 @@ target_include_directories(gltfViewer PRIVATE
 
 target_link_libraries(gltfViewer PRIVATE QhenkiX)
 
+# Set working directory for Visual Studio debugging
+set_target_properties(gltfViewer PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 add_custom_command(TARGET gltfViewer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${REPO_ROOT}/QhenkiX/SDL3-3.2.4/lib/x64/SDL3.dll"
