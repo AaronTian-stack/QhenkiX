@@ -12,16 +12,16 @@ set(SXC_HEADERS
 
 add_executable(SXC ${SXC_SOURCES} ${SXC_HEADERS})
 
-# Require C++20
 target_compile_features(SXC PRIVATE cxx_std_20)
+
+if(MSVC)
+    target_compile_options(SXC PRIVATE /MP)
+endif()
 
 target_include_directories(SXC PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/argparse"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/oneapi"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/tbb"
-    "$ENV{RepoRoot}QhenkiX/include"
-    "$ENV{RepoRoot}QhenkiX/qhenkiX"
+    "${REPO_ROOT}/QhenkiX/include"
+    "${REPO_ROOT}/QhenkiX/qhenkiX"
 )
 
 target_link_libraries(SXC PRIVATE QhenkiX)
