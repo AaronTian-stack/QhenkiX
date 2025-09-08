@@ -167,3 +167,13 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
 	return true;
 }
+
+bool D3D11ShaderCompiler::get_dll_path(char* buffer1, unsigned long buffer_length)
+{
+	assert(buffer1);
+	if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
+	{
+		return GetModuleFileNameA(hD3DCompiler, buffer1, buffer_length);
+	}
+	return false;
+}

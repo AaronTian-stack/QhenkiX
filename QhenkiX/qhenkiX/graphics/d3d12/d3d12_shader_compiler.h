@@ -28,6 +28,7 @@ namespace qhenki::gfx
 	public:
 		D3D12ShaderCompiler();
 		bool compile(const CompilerInput& input, CompilerOutput& output) override;
+		static bool get_dll_path(char* buffer1, char* buffer2, unsigned long buffer_length);
 		~D3D12ShaderCompiler() override;
 
 		friend class D3D12Context;

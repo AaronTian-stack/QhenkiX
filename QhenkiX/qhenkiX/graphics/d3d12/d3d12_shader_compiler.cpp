@@ -129,21 +129,6 @@ D3D12ShaderCompiler::D3D12ShaderCompiler()
 	{
 		throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcCompiler");
 	}
-	std::array<char, 512> path;
-	if (HMODULE hDXCompiler = GetModuleHandleA("dxcompiler.dll"))
-	{
-		GetModuleFileNameA(hDXCompiler, path.data(), path.size());
-		OutputDebugStringA("QhenkiX dxcompiler DLL path: ");
-		OutputDebugStringA(path.data());
-		OutputDebugStringA("\n");
-	}
-	if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
-	{
-		GetModuleFileNameA(hD3DCompiler, path.data(), path.size());
-		OutputDebugStringA("QhenkiX d3dcompiler_47 DLL path: ");
-		OutputDebugStringA(path.data());
-		OutputDebugStringA("\n");
-	}
 }
 
 bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
@@ -364,6 +349,19 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	}
 
 	return true;
+}
+
+bool D3D12ShaderCompiler::get_dll_path(char* buffer1, char* buffer2, unsigned long buffer_length)
+{
+	assert(buffer1);
+	assert(buffer2);
+	const auto d3d11_result = D3D11ShaderCompiler::get_dll_path(buffer2, buffer_length);
+	if (HMODULE hDXCompiler = GetModuleHandleA("dxcompiler.dll"))
+	{
+		const auto d3d12_result = GetModuleFileNameA(hDXCompiler, buffer1, buffer_length);
+		return d3d11_result && d3d12_result;
+	}
+	return false;
 }
 
 D3D12ShaderCompiler::~D3D12ShaderCompiler()
