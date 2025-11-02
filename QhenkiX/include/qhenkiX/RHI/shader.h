@@ -9,6 +9,7 @@ namespace qhenki::gfx
 		VERTEX_SHADER,
 		PIXEL_SHADER,
 		COMPUTE_SHADER,
+		LIBRARY_SHADER,
 	};
 	enum class ShaderModel
 	{

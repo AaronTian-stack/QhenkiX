@@ -171,10 +171,15 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	if (input.optimization == CompilerInput::Optimization::O2) args.emplace_back(L"-O2");
 	// O3 is default
 
-	args.emplace_back(L"-E");
+	// DXIL libraries don't require an entry point
 	std::wstring w_entry_point;
-	utf8::utf8to16(input.entry_point.begin(), input.entry_point.end(), std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
-	args.push_back(w_entry_point.c_str());
+	const bool is_library = (input.shader_type == LIBRARY_SHADER);
+	if (!is_library)
+	{
+		args.emplace_back(L"-E");
+		utf8::utf8to16(input.entry_point.begin(), input.entry_point.end(), std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
+		args.push_back(w_entry_point.c_str());
+	}
 
 	// Allocate a large buffer of wchar_t. If it overflows, start making wstring (possible heap allocation)
 	std::array<wchar_t, 1024> w_buffer;
@@ -218,13 +223,11 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 	const auto sm = D3DHelper::get_shader_model_wchar(input.shader_type, input.shader_model);
 	args.emplace_back(sm.c_str());
 
-	// TODO: option for stripping reflection data
-	args.emplace_back(L"-Qstrip_debug");
-
 	if (input.flags & CompilerInput::DEBUG)
 	{
-		args.emplace_back(DXC_ARG_DEBUG); // Debug info
+		args.emplace_back(DXC_ARG_DEBUG); // Generate debug info (/Zi)
 	}
+	args.emplace_back(L"-Qstrip_debug");
 
 	args.emplace_back(DXC_ARG_ENABLE_STRICTNESS); // Strict mode
 	args.emplace_back(DXC_ARG_WARNINGS_ARE_ERRORS); //-WX
