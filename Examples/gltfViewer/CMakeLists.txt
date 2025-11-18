@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.18)
 project(gltfViewer LANGUAGES CXX)
 
+file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.hlsl")
+set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
+source_group("base-shaders" FILES ${SHADER_FILES})
+
 add_executable(gltfViewer
     main.cpp
     gltf_loader.cpp
@@ -8,6 +12,7 @@ add_executable(gltfViewer
     gltf_model.h
     gltf_viewerapp.cpp
     gltf_viewerapp.h
+    ${SHADER_FILES}
 )
 
 target_compile_features(gltfViewer PRIVATE cxx_std_20)
