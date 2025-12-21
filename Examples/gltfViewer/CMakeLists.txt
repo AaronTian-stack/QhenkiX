@@ -35,7 +35,7 @@ set_target_properties(gltfViewer PROPERTIES
 
 add_custom_command(TARGET gltfViewer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${REPO_ROOT}/QhenkiX/SDL3-3.2.4/lib/x64/SDL3.dll"
+    "${REPO_ROOT}/QhenkiX/external/SDL3-${SDL3_VERSION}/lib/x64/SDL3.dll"
     $<TARGET_FILE_DIR:gltfViewer>
     COMMENT "Copying SDL3.dll to output directory"
 )
