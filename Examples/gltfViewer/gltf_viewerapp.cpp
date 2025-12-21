@@ -145,7 +145,7 @@ void gltfViewerApp::create()
     // A graphics queue is already given to the application by the context
 
     // Allocate Command Pool(s)/Allocator(s) from queue
-    for (UINT i = 0; i < m_frames_in_flight; i++)
+    for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
         THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], m_graphics_queue));
         THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools_thread[i], m_graphics_queue));
@@ -613,9 +613,9 @@ void gltfViewerApp::render()
 
                             auto buffer = &m_model.buffers[buffer_view.buffer_index];
 
-                            assert(buffer_view.stride <= std::numeric_limits<UINT>::max());
-                            assert(accessor.offset <= std::numeric_limits<UINT>::max());
-                            UINT stride = buffer_view.stride;
+                            assert(buffer_view.stride <= std::numeric_limits<unsigned>::max());
+                            assert(accessor.offset <= std::numeric_limits<unsigned>::max());
+                            unsigned stride = buffer_view.stride;
                             if (stride == 0)
                             {
                                 // Tightly packed, infer stride from size of type times number of components
@@ -648,9 +648,10 @@ void gltfViewerApp::render()
                                 stride = calc_component_size(accessor.component_type) * calc_type_count(accessor.type);
                             }
 
-                            UINT offset = accessor.offset + buffer_view.offset;
+                            unsigned offset = accessor.offset + buffer_view.offset;
 
-                            const UINT length = buffer_view.length;
+                            // TODO: assert overflow
+                            const unsigned length = buffer_view.length;
 
                             m_context->bind_vertex_buffers(&cmd_list, slot, 1, &buffer, &length, &stride, &offset);
                         }
@@ -664,7 +665,7 @@ void gltfViewerApp::render()
                                         ? qhenki::gfx::IndexType::UINT16
                                         : qhenki::gfx::IndexType::UINT32;
 
-                    UINT index_offset = index_accessor.offset + buffer_view.offset;
+                    unsigned index_offset = index_accessor.offset + buffer_view.offset;
 
                     m_context->bind_index_buffer(&cmd_list, index_buffer, index_type, index_offset);
 

@@ -28,7 +28,7 @@ enum class API
 class Application
 {
 public:
-    static constexpr UINT m_frames_in_flight = 2;
+    static constexpr unsigned m_frames_in_flight = 2;
 
 private:
     std::thread::id m_main_thread_id{};
@@ -41,7 +41,7 @@ protected:
     // Preferences
 
     bool m_QUIT = false; // Set to true when the application should quit
-    UINT m_frame_index = 0;
+    unsigned m_frame_index = 0;
     DisplayWindow m_window_;
     uPtr<gfx::Context> m_context = nullptr;
     gfx::Swapchain m_swapchain{};
@@ -68,7 +68,7 @@ protected:
     }
 
 public:
-    UINT get_frame_index() const
+    unsigned get_frame_index() const
     {
         return m_frame_index;
     }

@@ -77,7 +77,7 @@ public:
     bool resize_swapchain(
         Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) override;
     bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
-    bool present(Swapchain* swapchain, UINT fence_count, Fence* wait_fences, UINT swapchain_index) override;
+    bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
 
     bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) override;
 
@@ -93,7 +93,8 @@ public:
     bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) override;
     void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override;
 
-    bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) override;
+    bool set_pipeline_constant(
+        CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
 
     bool create_descriptor_heap(const DescriptorHeapDesc& desc,
                                 DescriptorHeap* heap,
@@ -114,10 +115,10 @@ public:
 
     void copy_buffer(CommandList* cmd_list,
                      const Buffer& src,
-                     UINT64 src_offset,
+                     uint64_t src_offset,
                      Buffer* dst,
-                     UINT64 dst_offset,
-                     UINT64 bytes) override;
+                     uint64_t dst_offset,
+                     uint64_t bytes) override;
 
     bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name) override;
     bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
@@ -155,7 +156,7 @@ public:
                            Swapchain* swapchain,
                            const float* clear_color_values,
                            const RenderTarget* depth_stencil,
-                           UINT frame_index) override;
+                           unsigned frame_index) override;
 
     void start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,

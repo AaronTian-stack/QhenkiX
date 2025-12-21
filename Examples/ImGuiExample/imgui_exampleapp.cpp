@@ -184,8 +184,8 @@ void ImGUIExampleApp::render()
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_pipeline));
 
     const unsigned int offset = 0;
-    constexpr auto stride = static_cast<UINT>(sizeof(Vertex));
-    const auto size = static_cast<UINT>(3 * sizeof(Vertex)); // 3 vertices in triangle
+    constexpr auto stride = static_cast<unsigned>(sizeof(Vertex));
+    const auto size = static_cast<unsigned>(3 * sizeof(Vertex)); // 3 vertices in triangle
     const auto buffers = &m_vertex_buffer;
     m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, &size, &stride, &offset);
     m_context->bind_index_buffer(&cmd_list, m_index_buffer, qhenki::gfx::IndexType::UINT32, 0);

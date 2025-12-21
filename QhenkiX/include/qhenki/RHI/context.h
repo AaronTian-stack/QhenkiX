@@ -42,7 +42,7 @@ public:
     virtual bool resize_swapchain(
         Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) = 0;
     virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) = 0;
-    virtual bool present(Swapchain* swapchain, UINT fence_count, Fence* wait_fences, UINT swapchain_index) = 0;
+    virtual bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) = 0;
 
     virtual bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) = 0;
     virtual bool create_pipeline(const GraphicsPipelineDesc& desc,
@@ -56,7 +56,8 @@ public:
     virtual bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) = 0;
     virtual void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) = 0;
 
-    virtual bool set_pipeline_constant(CommandList* cmd_list, UINT param, UINT32 offset, UINT size, void* data) = 0;
+    virtual bool set_pipeline_constant(
+        CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) = 0;
 
     virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc,
                                         DescriptorHeap* heap,
@@ -80,8 +81,12 @@ public:
                                                  Descriptor* descriptor) = 0;
     virtual bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 
-    virtual void copy_buffer(
-        CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes) = 0;
+    virtual void copy_buffer(CommandList* cmd_list,
+                             const Buffer& src,
+                             uint64_t src_offset,
+                             Buffer* dst,
+                             uint64_t dst_offset,
+                             uint64_t bytes) = 0;
 
     virtual bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name = nullptr) = 0;
     // TODO: add description
@@ -137,7 +142,7 @@ public:
                                    Swapchain* swapchain,
                                    const float* clear_color_values,
                                    const RenderTarget* depth_stencil,
-                                   UINT frame_index) = 0;
+                                   unsigned frame_index) = 0;
     virtual void start_render_pass(CommandList* cmd_list,
                                    unsigned int rt_count,
                                    const RenderTarget* const* rts,

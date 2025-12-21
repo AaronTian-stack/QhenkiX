@@ -493,7 +493,7 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
 }
 
 void D3D11Context::copy_buffer(
-    CommandList* cmd_list, const Buffer& src, UINT64 src_offset, Buffer* dst, UINT64 dst_offset, UINT64 bytes)
+    CommandList* cmd_list, const Buffer& src, uint64_t src_offset, Buffer* dst, uint64_t dst_offset, uint64_t bytes)
 {
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
@@ -855,7 +855,7 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
-                                     UINT frame_index)
+                                     unsigned frame_index)
 {
     const auto swap_d3d11 = to_internal(*swapchain);
     const auto rtv = swap_d3d11->sc_render_target.Get();
@@ -1157,9 +1157,9 @@ void D3D11Context::wait_idle(Queue* const queue)
 }
 
 bool D3D11Context::present(Swapchain* const swapchain,
-                           const UINT fence_count,
+                           unsigned fence_count,
                            Fence* wait_fences,
-                           const UINT swapchain_index)
+                           unsigned swapchain_index)
 {
     assert(swapchain);
     const auto swap_d3d11 = to_internal(*swapchain);
