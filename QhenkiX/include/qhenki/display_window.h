@@ -4,7 +4,6 @@
 #include <DirectXMath.h>
 #include <SDL3/SDL.h>
 #include <windows.h>
-#include <string>
 #include <vector>
 
 using namespace DirectX;

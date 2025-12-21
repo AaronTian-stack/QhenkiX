@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include <wrl/client.h>
 #include <mutex>
 #include <vector>

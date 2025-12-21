@@ -113,7 +113,7 @@ PSInput vs_main(VSInput input)
     
     float4 modelPosition = mul(float4(input.position, 1.0), model);
     
-    float4 worldPosition = mul(modelPosition, viewProj);;
+    float4 worldPosition = mul(modelPosition, viewProj);
     
     output.sv_position = worldPosition;
     output.position = modelPosition.xyz;

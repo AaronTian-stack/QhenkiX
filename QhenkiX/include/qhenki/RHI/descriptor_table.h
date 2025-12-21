@@ -1,4 +1,5 @@
 #pragma once
+
 #include "descriptor_heap.h"
 
 namespace qhenki::gfx

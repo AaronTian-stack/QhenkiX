@@ -1,12 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl/client.h>
 
 #include <mutex>
 
-#undef min
-#undef max
 #include <tsl/robin_map.h>
 
 using Microsoft::WRL::ComPtr;

@@ -1,4 +1,5 @@
-﻿#pragma once
+#pragma once
+
 #include <cstdint>
 
 #include "command_list.h"

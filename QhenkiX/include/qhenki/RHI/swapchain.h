@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include <dxgiformat.h>
 #include <smartpointer.h>
 

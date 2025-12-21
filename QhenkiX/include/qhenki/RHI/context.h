@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdexcept>
 
 #include <qhenki/display_window.h>

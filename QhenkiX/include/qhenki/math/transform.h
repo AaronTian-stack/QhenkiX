@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include "basis.h"
 
 namespace qhenki

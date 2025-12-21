@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include <qhenki/helper/math_helper.h>
 #include "subresource.h"
 

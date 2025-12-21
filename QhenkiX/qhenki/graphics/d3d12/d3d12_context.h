@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include <d3d12shader.h>
 #include <dxgi1_6.h>
 #include <dxgidebug.h>

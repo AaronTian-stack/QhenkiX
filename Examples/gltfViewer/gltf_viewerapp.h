@@ -1,7 +1,5 @@
 #pragma once
 
-#define NOMINMAX
-
 #include <tsl/robin_map.h>
 #include <mutex>
 #include "gltf_loader.h"

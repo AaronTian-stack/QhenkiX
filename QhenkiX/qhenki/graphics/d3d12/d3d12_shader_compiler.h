@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include <d3dcommon.h>
 #include <dxcapi.h>
 #include <dxgiformat.h>

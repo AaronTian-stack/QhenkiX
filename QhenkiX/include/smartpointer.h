@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 
 #define uPtr std::unique_ptr
