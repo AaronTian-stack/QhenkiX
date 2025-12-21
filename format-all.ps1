@@ -10,6 +10,9 @@ $files = @(
     }),
     @(Get-ChildItem -Path "Examples" -Include "*.cpp", "*.h" -Recurse | Where-Object { 
         $_.FullName -notlike "*\include\*" -and $_.FullName -notlike "*\build\*" 
+    }),
+    @(Get-ChildItem -Path "SXC" -Include "*.cpp", "*.h" -Recurse | Where-Object { 
+        $_.FullName -notlike "*\include\*" -and $_.FullName -notlike "*\build\*" -and $_.FullName -notlike "*\lib\*" -and $_.FullName -notlike "*\redist\*" -and $_.FullName -notlike "*\x64\*"
     })
 ) | Where-Object { $_ -ne $null }
 
