@@ -8,7 +8,7 @@ A more advanced example demonstrating loading and rendering of glTF 3D models.
 - Scene management
 - Material and texture handling
 
-![gltf example](../../Media/gltfexample.png)
+![gltf example](../../Media/gltf_example.png)
 
 ## Dependencies
 

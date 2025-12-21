@@ -2,7 +2,8 @@
 
 using namespace qhenki;
 
-void Camera::unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height)
+void Camera::unproject(
+    XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height)
 {
     float ndc_x = (screen.x - viewport_x) / viewport_width * 2.0f - 1.0f;
     float ndc_y = 1.0f - ((screen.y - viewport_y) / viewport_height) * 2.0f;
@@ -14,8 +15,8 @@ void Camera::unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, flo
     XMVECTOR world = XMVector4Transform(ndc, inv_view_proj);
 
     float w = XMVectorGetW(world);
-    if (w != 0.0f) 
-	{
+    if (w != 0.0f)
+    {
         world = XMVectorScale(world, 1.0f / w);
     }
 
@@ -24,5 +25,5 @@ void Camera::unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, flo
 
 void Camera::project(XMFLOAT3& world, float viewport_x, float viewport_y, float viewport_width, float viewport_height)
 {
-	assert(false);
+    assert(false);
 }

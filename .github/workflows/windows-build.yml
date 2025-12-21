@@ -1,21 +1,14 @@
-name: QhenkiX
+name: "Windows Build"
 
 on:
-  push:
-    branches:
-      - 'release/**'
-      - main
-  pull_request:
-    branches:
-      - 'release/**'
-      - main
-  merge_group:
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
   build-qhenkix:
     name: QhenkiX
     runs-on: windows-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

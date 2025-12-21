@@ -2,8 +2,6 @@
 
 class SpriteBatch
 {
-	
 public:
-	SpriteBatch();
+    SpriteBatch();
 };
-
