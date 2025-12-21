@@ -15,12 +15,22 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Install clang-format and PowerShell
+      - name: Install clang-format 21 and PowerShell
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format powershell
+          sudo apt-get install -y wget gnupg powershell
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+          sudo apt-get install -y clang-format-21 clang-21 lldb-21 lld-21 clangd-21
+          echo "/usr/lib/llvm-21/bin" >> $GITHUB_PATH
+          export PATH="/usr/lib/llvm-21/bin:$PATH"
+          sudo ln -sf /usr/lib/llvm-21/bin/clang-format-21 /usr/local/bin/clang-format
           pwsh --version
+          command -v clang-format
           clang-format --version
+          command -v clang-format-21
+          clang-format-21 --version
 
       - name: Run clang-format and check diff
         run: |

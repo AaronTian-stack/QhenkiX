@@ -1,8 +1,14 @@
-$clangFormatPath = Get-Command clang-format -ErrorAction SilentlyContinue
+$clangFormatPath = Get-Command clang-format-21 -ErrorAction SilentlyContinue
+if (-not $clangFormatPath) {
+    $clangFormatPath = Get-Command clang-format -ErrorAction SilentlyContinue
+}
+
 if (-not $clangFormatPath) {
     Write-Host "Error: clang-format not found in PATH" -ForegroundColor Red
     exit 1
 }
+
+& $clangFormatPath --version
 
 $externalPattern = '[\\/]external[\\/]'
 $buildPattern = '[\\/]build[\\/]'
