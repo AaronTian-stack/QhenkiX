@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.18)
 project(QhenkiX LANGUAGES CXX)
 
-set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenkiX")
+if(NOT SDL3_VERSION)
+    set(SDL3_VERSION "3.2.28")
+endif()
 
-file(GLOB IMGUI_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/include/imgui/*.cpp")
+set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
+
+set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
+file(GLOB IMGUI_SOURCES "${IMGUI_DIR}/*.cpp")
 set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/application.cpp"
     "${QHENKIX_DIR}/graphics/arcball_controller.cpp"
@@ -35,7 +40,7 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/utility/include_handlers.cpp"
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/D3D12MemAlloc.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
@@ -55,7 +60,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
 )
 
-set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenkiX")
+set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
 
 set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/application.h"
@@ -103,9 +108,9 @@ set(QHENKIX_PUBLIC_HEADERS
 
 add_library(${PROJECT_NAME} STATIC ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS} ${IMGUI_SOURCES})
 
-# Create the source groups for source tree with root at CMAKE_CURRENT_SOURCE_DIR
 set(ALL_FILES ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ALL_FILES})
+source_group("external/ImGui" FILES ${IMGUI_SOURCES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${QHENKIX_PUBLIC_HEADERS}")
 
@@ -113,7 +118,16 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${IMGUI_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/utf8"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc"
 )
+
+add_library(DirectXTex STATIC IMPORTED)
+target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
+target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3-${SDL3_VERSION}/include")
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
@@ -122,12 +136,11 @@ if(WIN32)
     endif()
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
 
-    add_library(DirectXTex STATIC IMPORTED)
     set_target_properties(DirectXTex PROPERTIES
-        IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
-        IMPORTED_LOCATION_DEBUG   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Debug/DirectXTex.lib"
-        IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
-        IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/DirectXTex/lib/x64/Release/DirectXTex.lib"
+        IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib"
+        IMPORTED_LOCATION_DEBUG   "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Debug/DirectXTex.lib"
+        IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib"
+        IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib"
     )
 
     target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -138,9 +151,6 @@ if(WIN32)
         dxcompiler
         winmm
         dxguid
-        DirectXTex
     )
-
-    target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/SDL3-3.2.4/include")
-    target_link_libraries(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/SDL3-3.2.4/lib/x64/SDL3.lib")
+    target_link_libraries(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3-${SDL3_VERSION}/lib/x64/SDL3.lib")
 endif()

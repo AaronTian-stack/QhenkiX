@@ -32,7 +32,7 @@ set_target_properties(ImGuiExample PROPERTIES
 
 add_custom_command(TARGET ImGuiExample POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${REPO_ROOT}/QhenkiX/SDL3-3.2.4/lib/x64/SDL3.dll"
+    "${REPO_ROOT}/QhenkiX/external/SDL3-${SDL3_VERSION}/lib/x64/SDL3.dll"
     $<TARGET_FILE_DIR:ImGuiExample>
     COMMENT "Copying SDL3.dll to output directory"
 )

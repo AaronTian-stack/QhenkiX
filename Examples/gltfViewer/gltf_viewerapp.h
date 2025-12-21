@@ -6,9 +6,9 @@
 #include <tsl/robin_map.h>
 #include <mutex>
 
-#include "qhenkiX/application.h"
-#include "qhenkiX/arcball_controller.h"
-#include "qhenkiX/perspective_camera.h"
+#include "qhenki/application.h"
+#include "qhenki/arcball_controller.h"
+#include "qhenki/perspective_camera.h"
 
 class gltfViewerApp : public qhenki::Application
 {
