@@ -4,7 +4,6 @@
 #include <DirectXMath.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
-#include <boost/pool/object_pool.hpp>
 
 #include "d3d11_layout_assembler.h"
 

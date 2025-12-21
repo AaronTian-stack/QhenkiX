@@ -6,7 +6,6 @@
 #include <tbb/parallel_for_each.h>
 #include <tbb/parallel_pipeline.h>
 #include <tsl/robin_set.h>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <regex>
