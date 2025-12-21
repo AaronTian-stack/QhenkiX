@@ -1,8 +1,8 @@
 #include "exampleapp.h"
 #include <wrl/client.h>
 
-#include "qhenkiX/helper/general_helper.h"
-#include "qhenkiX/helper/math_helper.h"
+#include "qhenki/helper/general_helper.h"
+#include "qhenki/helper/math_helper.h"
 
 void ExampleApp::create()
 {

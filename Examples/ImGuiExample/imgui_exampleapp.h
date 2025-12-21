@@ -1,5 +1,5 @@
 #pragma once
-#include "qhenkiX/application.h"
+#include "qhenki/application.h"
 
 struct Vertex
 {

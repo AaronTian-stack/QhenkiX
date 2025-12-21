@@ -12,8 +12,6 @@
 
 #include <tiny_gltf.h>
 
-#include "qhenkiX/helper/math_helper.h"
-
 void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
 {
     model->root_node = tiny_model.defaultScene >= 0 ? tiny_model.scenes[tiny_model.defaultScene].nodes[0] : -1;

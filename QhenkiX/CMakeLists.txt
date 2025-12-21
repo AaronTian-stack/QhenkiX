@@ -5,7 +5,7 @@ if(NOT SDL3_VERSION)
     set(SDL3_VERSION "3.2.28")
 endif()
 
-set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenkiX")
+set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
 file(GLOB IMGUI_SOURCES "${IMGUI_DIR}/*.cpp")
@@ -60,7 +60,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
 )
 
-set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenkiX")
+set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
 
 set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/application.h"
