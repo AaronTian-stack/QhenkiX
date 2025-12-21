@@ -9,7 +9,7 @@
 
 See ImGui functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)
 
-![imgui example](../../Media/imguiexample.png)
+![imgui example](../../Media/imgui_example.png)
 
 ## Command Line Arguments
 
