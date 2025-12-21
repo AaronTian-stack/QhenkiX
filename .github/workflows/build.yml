@@ -12,9 +12,30 @@ on:
   merge_group:
 
 jobs:
+  format-check:
+    name: Format Check
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run formatter and check diff
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        .\format-all.ps1
+        $changes = git status --porcelain
+        if ($changes) {
+          Write-Host "Formatting changes detected:"
+          Write-Host $changes
+          throw "Formatting check failed. Run .\\format-all.ps1 and commit."
+        }
+
   build-qhenkix:
     name: QhenkiX
     runs-on: windows-latest
+    needs: format-check
     
     steps:
     - name: Checkout code
