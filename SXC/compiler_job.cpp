@@ -508,7 +508,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
                         // TODO: permutations of the same shader need to be written to the same file
                         // Needs to be a header with offsets
 
-                        if (!util::FileHelper::write_file(pa.path.c_str(), co.shader_data, co.shader_size))
+                        if (!util::write_file(pa.path.c_str(), co.shader_data, co.shader_size))
                         {
                             printf("Failed to write shader to file: %s\n", pa.path.string().c_str());
                             ++failed_count;

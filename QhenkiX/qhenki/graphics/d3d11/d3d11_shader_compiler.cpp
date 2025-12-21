@@ -1,4 +1,4 @@
-﻿#include "d3d11_shader_compiler.h"
+#include "d3d11_shader_compiler.h"
 
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
@@ -169,8 +169,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         const ShaderDebugName* pDebugNameData = reinterpret_cast<const ShaderDebugName*>(
             debug_info_path->GetBufferPointer());
         const char* pName = reinterpret_cast<const char*>(pDebugNameData + 1);
-        const auto result =
-            FileHelper::write_file(pName, debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
+        const auto result = write_file(pName, debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
         assert(result);
     }
 

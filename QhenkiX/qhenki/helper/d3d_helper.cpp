@@ -1,4 +1,4 @@
-﻿#include "qhenki/helper/d3d_helper.h"
+#include "qhenki/helper/d3d_helper.h"
 
 #include <magic_enum/magic_enum.hpp>
 #include <stdexcept>
