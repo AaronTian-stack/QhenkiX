@@ -1,8 +1,8 @@
 ﻿#include "qhenki/helper/d3d_helper.h"
 
+#include <magic_enum/magic_enum.hpp>
 #include <stdexcept>
 #include "qhenki/RHI/shader.h"
-#include <magic_enum/magic_enum.hpp>
 
 using namespace qhenki::gfx;
 
@@ -27,10 +27,17 @@ std::wstring D3DHelper::get_shader_model_wchar(const ShaderType type, const Shad
 
     switch (type)
     {
-        case VERTEX_SHADER: smc[0] = 'v'; break;
-        case PIXEL_SHADER:  smc[0] = 'p'; break;
-        case COMPUTE_SHADER:smc[0] = 'c'; break;
-        default: break;
+    case VERTEX_SHADER:
+        smc[0] = 'v';
+        break;
+    case PIXEL_SHADER:
+        smc[0] = 'p';
+        break;
+    case COMPUTE_SHADER:
+        smc[0] = 'c';
+        break;
+    default:
+        break;
     }
 
     return smc;
@@ -52,15 +59,22 @@ std::string D3DHelper::get_shader_model_char(const ShaderType type, const Shader
         return smc;
     }
 
-	auto smc = std::string(sm); // Should not cause heap allocation (6 chars)
+    auto smc = std::string(sm); // Should not cause heap allocation (6 chars)
     smc[1] = 's';
 
     switch (type)
     {
-        case VERTEX_SHADER: smc[0] = 'v'; break;
-        case PIXEL_SHADER:  smc[0] = 'p'; break;
-        case COMPUTE_SHADER:smc[0] = 'c'; break;
-        default: break;
+    case VERTEX_SHADER:
+        smc[0] = 'v';
+        break;
+    case PIXEL_SHADER:
+        smc[0] = 'p';
+        break;
+    case COMPUTE_SHADER:
+        smc[0] = 'c';
+        break;
+    default:
+        break;
     }
 
     return smc;
@@ -68,29 +82,29 @@ std::string D3DHelper::get_shader_model_char(const ShaderType type, const Shader
 
 DXGI_FORMAT D3DHelper::get_dxgi_format(const IndexType format)
 {
-	if (format == IndexType::UINT16)
-	{
-		return DXGI_FORMAT_R16_UINT;
-	}
-	return DXGI_FORMAT_R32_UINT;
+    if (format == IndexType::UINT16)
+    {
+        return DXGI_FORMAT_R16_UINT;
+    }
+    return DXGI_FORMAT_R32_UINT;
 }
 
 D3D12_PRIMITIVE_TOPOLOGY D3DHelper::get_primitive_topology(const PrimitiveTopology topology)
 {
-	switch (topology)
-	{
-	case PrimitiveTopology::POINT_LIST:
-		return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
-	case PrimitiveTopology::LINE_LIST:
-		return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-	case PrimitiveTopology::LINE_STRIP:
-		return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
-	case PrimitiveTopology::TRIANGLE_LIST:
-		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	case PrimitiveTopology::TRIANGLE_STRIP:
-		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
-	}
-	return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    switch (topology)
+    {
+    case PrimitiveTopology::POINT_LIST:
+        return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+    case PrimitiveTopology::LINE_LIST:
+        return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+    case PrimitiveTopology::LINE_STRIP:
+        return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+    case PrimitiveTopology::TRIANGLE_LIST:
+        return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    case PrimitiveTopology::TRIANGLE_STRIP:
+        return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+    }
+    return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 }
 
 D3D12_BARRIER_SYNC D3DHelper::sync_stage_D3D(SyncStage stage)
@@ -195,107 +209,107 @@ D3D12_BARRIER_SYNC D3DHelper::sync_stage_D3D(SyncStage stage)
 
 D3D12_BARRIER_ACCESS D3DHelper::access_flags_D3D(AccessFlags access)
 {
-	D3D12_BARRIER_ACCESS flags = {};
+    D3D12_BARRIER_ACCESS flags = {};
 
-	if (access & ACCESS_COMMON)
-	{
-		flags |= D3D12_BARRIER_ACCESS_COMMON;
-	}
-	if (access & ACCESS_VERTEX_BUFFER)
-	{
-		flags |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
-	}
-	if (access & ACCESS_UNIFORM_BUFFER)
-	{
-		flags |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
-	}
-	if (access & ACCESS_INDEX_BUFFER)
-	{
-		flags |= D3D12_BARRIER_ACCESS_INDEX_BUFFER;
-	}
-	if (access & ACCESS_RENDER_TARGET)
-	{
-		flags |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
-	}
-	if (access & ACCESS_STORAGE_ACCESS)
-	{
-		flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
-	}
-	if (access & ACCESS_DEPTH_STENCIL_WRITE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
-	}
-	if (access & ACCESS_DEPTH_STENCIL_READ)
-	{
-		flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
-	}
-	if (access & ACCESS_SHADER_RESOURCE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
-	}
-	if (access & ACCESS_STREAM_OUTPUT)
-	{
-		flags |= D3D12_BARRIER_ACCESS_STREAM_OUTPUT;
-	}
-	if (access & ACCESS_INDIRECT_ARGUMENT)
-	{
-		flags |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
-	}
-	if (access & ACCESS_COPY_DEST)
-	{
-		flags |= D3D12_BARRIER_ACCESS_COPY_DEST;
-	}
-	if (access & ACCESS_COPY_SOURCE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
-	}
-	if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ)
-	{
-		flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
-	}
-	if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
-	}
-	if (access & ACCESS_SHADING_RATE_SOURCE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
-	}
-	if (access & ACCESS_VIDEO_DECODE_READ)
-	{
-		flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ;
-	}
-	if (access & ACCESS_VIDEO_DECODE_WRITE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE;
-	}
-	if (access & ACCESS_VIDEO_PROCESS_READ)
-	{
-		flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_READ;
-	}
-	if (access & ACCESS_VIDEO_PROCESS_WRITE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_WRITE;
-	}
-	if (access & ACCESS_VIDEO_ENCODE_READ)
-	{
-		flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ;
-	}
-	if (access & ACCESS_VIDEO_ENCODE_WRITE)
-	{
-		flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE;
-	}
-	if (access & NO_ACCESS)
-	{
-		flags |= D3D12_BARRIER_ACCESS_NO_ACCESS;
-	}
+    if (access & ACCESS_COMMON)
+    {
+        flags |= D3D12_BARRIER_ACCESS_COMMON;
+    }
+    if (access & ACCESS_VERTEX_BUFFER)
+    {
+        flags |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
+    }
+    if (access & ACCESS_UNIFORM_BUFFER)
+    {
+        flags |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
+    }
+    if (access & ACCESS_INDEX_BUFFER)
+    {
+        flags |= D3D12_BARRIER_ACCESS_INDEX_BUFFER;
+    }
+    if (access & ACCESS_RENDER_TARGET)
+    {
+        flags |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
+    }
+    if (access & ACCESS_STORAGE_ACCESS)
+    {
+        flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+    }
+    if (access & ACCESS_DEPTH_STENCIL_WRITE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+    }
+    if (access & ACCESS_DEPTH_STENCIL_READ)
+    {
+        flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+    }
+    if (access & ACCESS_SHADER_RESOURCE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+    }
+    if (access & ACCESS_STREAM_OUTPUT)
+    {
+        flags |= D3D12_BARRIER_ACCESS_STREAM_OUTPUT;
+    }
+    if (access & ACCESS_INDIRECT_ARGUMENT)
+    {
+        flags |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
+    }
+    if (access & ACCESS_COPY_DEST)
+    {
+        flags |= D3D12_BARRIER_ACCESS_COPY_DEST;
+    }
+    if (access & ACCESS_COPY_SOURCE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
+    }
+    if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ)
+    {
+        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+    }
+    if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+    }
+    if (access & ACCESS_SHADING_RATE_SOURCE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
+    }
+    if (access & ACCESS_VIDEO_DECODE_READ)
+    {
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ;
+    }
+    if (access & ACCESS_VIDEO_DECODE_WRITE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE;
+    }
+    if (access & ACCESS_VIDEO_PROCESS_READ)
+    {
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_READ;
+    }
+    if (access & ACCESS_VIDEO_PROCESS_WRITE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_WRITE;
+    }
+    if (access & ACCESS_VIDEO_ENCODE_READ)
+    {
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ;
+    }
+    if (access & ACCESS_VIDEO_ENCODE_WRITE)
+    {
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE;
+    }
+    if (access & NO_ACCESS)
+    {
+        flags |= D3D12_BARRIER_ACCESS_NO_ACCESS;
+    }
 
-	return flags;
+    return flags;
 }
 
 D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
 {
-	D3D12_BARRIER_LAYOUT state = {};
+    D3D12_BARRIER_LAYOUT state = {};
     switch (layout)
     {
     case Layout::UNDEFINED:
@@ -405,95 +419,95 @@ D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
 
 D3D12_FILTER D3DHelper::filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy)
 {
-	// https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
-	// Assemble the bitmask ourselves
-	UINT filter = 0;
-	// If linear then set bit to 1 in MIN MAG MIP
-	// Why does Microsoft leave a 0 in between each bitmask bit???
-	if (max_anisotropy == 0)
-	{
-		if (mip == Filter::LINEAR)
-		{
-			filter |= D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-		}
-		if (min == Filter::LINEAR)
-		{
-			filter |= D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
-		}
-		if (mag == Filter::LINEAR)
-		{
-			filter |= D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
-		}
-		if (func != ComparisonFunc::NONE)
-		{
-			filter |= D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
-		}
-	}
-	else
-	{
-		if (func == ComparisonFunc::NONE)
-		{
-			return D3D12_FILTER_ANISOTROPIC;
-		}
-		return D3D12_FILTER_COMPARISON_ANISOTROPIC;
-	}
-	return static_cast<D3D12_FILTER>(filter);
+    // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
+    // Assemble the bitmask ourselves
+    UINT filter = 0;
+    // If linear then set bit to 1 in MIN MAG MIP
+    // Why does Microsoft leave a 0 in between each bitmask bit???
+    if (max_anisotropy == 0)
+    {
+        if (mip == Filter::LINEAR)
+        {
+            filter |= D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+        }
+        if (min == Filter::LINEAR)
+        {
+            filter |= D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+        }
+        if (mag == Filter::LINEAR)
+        {
+            filter |= D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+        }
+        if (func != ComparisonFunc::NONE)
+        {
+            filter |= D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+        }
+    }
+    else
+    {
+        if (func == ComparisonFunc::NONE)
+        {
+            return D3D12_FILTER_ANISOTROPIC;
+        }
+        return D3D12_FILTER_COMPARISON_ANISOTROPIC;
+    }
+    return static_cast<D3D12_FILTER>(filter);
 }
 
 D3D12_TEXTURE_ADDRESS_MODE D3DHelper::texture_address_mode(AddressMode mode)
 {
-	switch (mode)
-	{
-	case AddressMode::WRAP:
-		return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	case AddressMode::MIRROR:
-		return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-	case AddressMode::CLAMP:
-		return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	case AddressMode::BORDER:
-		return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	default:
-		throw std::runtime_error("D3DHelper: Invalid texture address mode");
-	}
+    switch (mode)
+    {
+    case AddressMode::WRAP:
+        return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    case AddressMode::MIRROR:
+        return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+    case AddressMode::CLAMP:
+        return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    case AddressMode::BORDER:
+        return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    default:
+        throw std::runtime_error("D3DHelper: Invalid texture address mode");
+    }
 }
 
 D3D12_COMPARISON_FUNC D3DHelper::comparison_func(ComparisonFunc func)
 {
-	switch (func)
-	{
-	case ComparisonFunc::NONE:
-		return D3D12_COMPARISON_FUNC_NONE;
-	case ComparisonFunc::NEVER:
-		return D3D12_COMPARISON_FUNC_NEVER;
-	case ComparisonFunc::LESS:
-		return D3D12_COMPARISON_FUNC_LESS;
-	case ComparisonFunc::EQUAL:
-		return D3D12_COMPARISON_FUNC_EQUAL;
-	case ComparisonFunc::LESS_OR_EQUAL:
-		return D3D12_COMPARISON_FUNC_LESS_EQUAL;
-	case ComparisonFunc::GREATER:
-		return D3D12_COMPARISON_FUNC_GREATER;
-	case ComparisonFunc::NOT_EQUAL:
-		return D3D12_COMPARISON_FUNC_NOT_EQUAL;
-	case ComparisonFunc::GREATER_OR_EQUAL:
-		return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-	case ComparisonFunc::ALWAYS:
-		return D3D12_COMPARISON_FUNC_ALWAYS;
-	default:
-		throw std::runtime_error("D3DHelper: Invalid comparison function");
-	}
+    switch (func)
+    {
+    case ComparisonFunc::NONE:
+        return D3D12_COMPARISON_FUNC_NONE;
+    case ComparisonFunc::NEVER:
+        return D3D12_COMPARISON_FUNC_NEVER;
+    case ComparisonFunc::LESS:
+        return D3D12_COMPARISON_FUNC_LESS;
+    case ComparisonFunc::EQUAL:
+        return D3D12_COMPARISON_FUNC_EQUAL;
+    case ComparisonFunc::LESS_OR_EQUAL:
+        return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    case ComparisonFunc::GREATER:
+        return D3D12_COMPARISON_FUNC_GREATER;
+    case ComparisonFunc::NOT_EQUAL:
+        return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+    case ComparisonFunc::GREATER_OR_EQUAL:
+        return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+    case ComparisonFunc::ALWAYS:
+        return D3D12_COMPARISON_FUNC_ALWAYS;
+    default:
+        throw std::runtime_error("D3DHelper: Invalid comparison function");
+    }
 }
 
 bool D3DHelper::is_depth_stencil_format(DXGI_FORMAT format)
 {
-	switch (format)
-	{
-	case DXGI_FORMAT_D16_UNORM:
-	case DXGI_FORMAT_D24_UNORM_S8_UINT:
-	case DXGI_FORMAT_D32_FLOAT:
-	case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-		return true;
-	default:
-		return false;
-	}
+    switch (format)
+    {
+    case DXGI_FORMAT_D16_UNORM:
+    case DXGI_FORMAT_D24_UNORM_S8_UINT:
+    case DXGI_FORMAT_D32_FLOAT:
+    case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+        return true;
+    default:
+        return false;
+    }
 }

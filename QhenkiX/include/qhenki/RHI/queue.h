@@ -4,15 +4,15 @@
 
 namespace qhenki::gfx
 {
-	enum QueueType
-	{
-		GRAPHICS,
-		COMPUTE,
-		COPY,
-	};
-	struct Queue
-	{
-        QueueType type;
-		sPtr<void> internal_state;
-	};
-}
+enum QueueType
+{
+    GRAPHICS,
+    COMPUTE,
+    COPY,
+};
+struct Queue
+{
+    QueueType type;
+    sPtr<void> internal_state;
+};
+} // namespace qhenki::gfx

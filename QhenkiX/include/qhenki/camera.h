@@ -8,41 +8,47 @@ using namespace DirectX;
 
 namespace qhenki
 {
-	struct CameraMatrices
-	{
-		XMFLOAT4X4 view_projection{};
-		XMFLOAT4X4 inverse_view_projection{};
-	};
+struct CameraMatrices
+{
+    XMFLOAT4X4 view_projection{};
+    XMFLOAT4X4 inverse_view_projection{};
+};
 
-	class Camera
-	{
-	protected:
-		CameraMatrices m_matrices{};
+class Camera
+{
+protected:
+    CameraMatrices m_matrices{};
 
-	public:
-		Transform transform{};
+public:
+    Transform transform{};
 
-		Camera() {}
-		Camera(const float vw, const float vh) : viewport_width(vw), viewport_height(vh) {}
-		virtual ~Camera() {};
+    Camera()
+    {
+    }
+    Camera(const float vw, const float vh)
+        : viewport_width(vw),
+          viewport_height(vh)
+    {
+    }
+    virtual ~Camera() {};
 
-		float near_plane = 0.05f;
-		float far_plane = 10000.f;
+    float near_plane = 0.05f;
+    float far_plane = 10000.f;
 
-		float viewport_width = 0;
-		float viewport_height = 0;
-		
-		const CameraMatrices& matrices = m_matrices;
+    float viewport_width = 0;
+    float viewport_height = 0;
 
-		/**
-		 * Updates view, projection, view_projection, inverse_view_projection
-		 */
-		virtual void update(bool update_frustum = false) = 0;
+    const CameraMatrices& matrices = m_matrices;
 
-		void unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
+    /**
+     * Updates view, projection, view_projection, inverse_view_projection
+     */
+    virtual void update(bool update_frustum = false) = 0;
 
-		void project(XMFLOAT3& world, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
+    void unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
 
-		//friend class Viewport;
-	};
-}
+    void project(XMFLOAT3& world, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
+
+    // friend class Viewport;
+};
+} // namespace qhenki

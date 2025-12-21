@@ -6,8 +6,8 @@
 
 using namespace qhenki::gfx;
 
-template <typename T>
-void hash_combine(std::size_t& seed, const T& v) {
+template<typename T> void hash_combine(std::size_t& seed, const T& v)
+{
     std::hash<T> hasher;
     seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
@@ -40,7 +40,7 @@ std::size_t hash_input_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layou
 {
     std::size_t seed = 0;
 
-    for (const auto& desc : layout) 
+    for (const auto& desc : layout)
     {
         hash_combine(seed, hash_input_element(desc));
     }
@@ -55,50 +55,56 @@ void D3D11LayoutAssembler::add_input(const D3D11_INPUT_ELEMENT_DESC& input)
 
 ID3D11InputLayout* D3D11LayoutAssembler::find_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layout)
 {
-	auto hash = hash_input_layout(layout);
-	if (m_layout_map.contains(hash)) return m_layout_map[hash].layout.Get();
+    auto hash = hash_input_layout(layout);
+    if (m_layout_map.contains(hash))
+        return m_layout_map[hash].layout.Get();
 
-	return nullptr;
+    return nullptr;
 }
 
 D3D11Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
 {
-	std::lock_guard lock(m_layout_mutex);
-	if (m_layout_logical_map.contains(layout)) return m_layout_logical_map[layout];
-	return nullptr;
+    std::lock_guard lock(m_layout_mutex);
+    if (m_layout_logical_map.contains(layout))
+        return m_layout_logical_map[layout];
+    return nullptr;
 }
 
-#define find_layout(layout_d) auto hash = hash_input_layout(layout_d); \
-	if (m_layout_map.contains(hash)) return m_layout_map[hash].layout.Get(); \
+#define find_layout(layout_d)                \
+    auto hash = hash_input_layout(layout_d); \
+    if (m_layout_map.contains(hash))         \
+        return m_layout_map[hash].layout.Get();
 
 
-std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layout_manual(ID3D11Device* const device, ID3DBlob* const vertex_shader_blob)
+std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layout_manual(
+    ID3D11Device* const device, ID3DBlob* const vertex_shader_blob)
 {
-	std::lock_guard lock(m_layout_mutex);
+    std::lock_guard lock(m_layout_mutex);
     // hash the input layout
-	find_layout(m_layout_desc)
+    find_layout(m_layout_desc)
 
-    ComPtr<ID3D11InputLayout> layout;
-    if (FAILED(device->CreateInputLayout(
-        m_layout_desc.data(),
-        static_cast<UINT>(m_layout_desc.size()),
-        vertex_shader_blob->GetBufferPointer(),
-        vertex_shader_blob->GetBufferSize(),
-        &layout)))
+        ComPtr<ID3D11InputLayout>
+            layout;
+    if (FAILED(device->CreateInputLayout(m_layout_desc.data(),
+                                         static_cast<UINT>(m_layout_desc.size()),
+                                         vertex_shader_blob->GetBufferPointer(),
+                                         vertex_shader_blob->GetBufferSize(),
+                                         &layout)))
     {
-		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout manual\n");
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout manual\n");
         return {};
     }
 
-    m_layout_map[hash] = { layout, m_layout_desc };
-	m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
+    m_layout_map[hash] = {layout, m_layout_desc};
+    m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
 
     return layout;
 }
 
-std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_desc(ID3D11ShaderReflection* vs_reflection, const bool increment_slot)
+std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_desc(
+    ID3D11ShaderReflection* vs_reflection, const bool increment_slot)
 {
-	assert(vs_reflection);
+    assert(vs_reflection);
 
     D3D11_SHADER_DESC shader_desc;
     vs_reflection->GetDesc(&shader_desc);
@@ -113,12 +119,11 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         vs_reflection->GetInputParameterDesc(i, &paramDesc);
 
         // Ignore system attributes
-        if (paramDesc.SystemValueType == D3D_NAME_VERTEX_ID
-            || paramDesc.SystemValueType == D3D_NAME_PRIMITIVE_ID
-            || paramDesc.SystemValueType == D3D_NAME_INSTANCE_ID) continue;
+        if (paramDesc.SystemValueType == D3D_NAME_VERTEX_ID || paramDesc.SystemValueType == D3D_NAME_PRIMITIVE_ID ||
+            paramDesc.SystemValueType == D3D_NAME_INSTANCE_ID)
+            continue;
 
-        D3D11_INPUT_ELEMENT_DESC elementDesc =
-        {
+        D3D11_INPUT_ELEMENT_DESC elementDesc = {
             .SemanticName = paramDesc.SemanticName,
             .SemanticIndex = paramDesc.SemanticIndex,
             .InputSlot = slot,
@@ -131,98 +136,116 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         // Determine DXGI format
         if (paramDesc.Mask == 1)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32_FLOAT;
+            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+                elementDesc.Format = DXGI_FORMAT_R32_UINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+                elementDesc.Format = DXGI_FORMAT_R32_SINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+                elementDesc.Format = DXGI_FORMAT_R32_FLOAT;
         }
         else if (paramDesc.Mask <= 3)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32_UINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32_SINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
         }
         else if (paramDesc.Mask <= 7)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32B32_UINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32B32_SINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
         }
         else if (paramDesc.Mask <= 15)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32B32A32_UINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32B32A32_SINT;
+            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+                elementDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
         }
         else
         {
-			std::array<char, 256> error_msg;
-			const auto r = snprintf(error_msg.data(), error_msg.size() * sizeof(char), "D3D11: Unsupported input format for %s[%d] with mask %d\n",
-				paramDesc.SemanticName, paramDesc.SemanticIndex, paramDesc.Mask);
+            std::array<char, 256> error_msg;
+            const auto r = snprintf(error_msg.data(),
+                                    error_msg.size() * sizeof(char),
+                                    "D3D11: Unsupported input format for %s[%d] with mask %d\n",
+                                    paramDesc.SemanticName,
+                                    paramDesc.SemanticIndex,
+                                    paramDesc.Mask);
             if (r >= 0)
             {
                 OutputDebugStringA(error_msg.data());
             }
         }
 
-        if (increment_slot) slot++;
+        if (increment_slot)
+            slot++;
 
         // save element desc
         input_layout_desc.push_back(elementDesc);
     }
 
-	return input_layout_desc;
+    return input_layout_desc;
 }
 
-ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(
-	ID3D11Device* const device,
-	ID3DBlob* const vertex_shader_blob, bool increment_slot)
+ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11Device* const device,
+                                                                        ID3DBlob* const vertex_shader_blob,
+                                                                        bool increment_slot)
 {
     ComPtr<ID3D11ShaderReflection> pVertexShaderReflection;
-    if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(), 
-        vertex_shader_blob->GetBufferSize(), 
-        IID_ID3D11ShaderReflection, 
-        &pVertexShaderReflection)))
+    if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(),
+                          vertex_shader_blob->GetBufferSize(),
+                          IID_ID3D11ShaderReflection,
+                          &pVertexShaderReflection)))
     {
-		OutputDebugStringA("Qhenki D3D11 ERROR: Input layout reflection failed\n");
-		return nullptr;
+        OutputDebugStringA("Qhenki D3D11 ERROR: Input layout reflection failed\n");
+        return nullptr;
     }
 
     D3D11_SHADER_DESC shader_desc;
     pVertexShaderReflection->GetDesc(&shader_desc);
 
-	std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(pVertexShaderReflection.Get(), increment_slot);
+    std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(pVertexShaderReflection.Get(),
+                                                                                       increment_slot);
 
     if (input_layout_desc.empty())
     {
-		return {};
+        return {};
     }
 
-	// hash and check if layout already exists
-	std::lock_guard lock(m_layout_mutex);
-	find_layout(input_layout_desc)
+    // hash and check if layout already exists
+    std::lock_guard lock(m_layout_mutex);
+    find_layout(input_layout_desc)
 
-    ComPtr<ID3D11InputLayout> layout;
-    if (FAILED(device->CreateInputLayout(
-        input_layout_desc.data(),
-        input_layout_desc.size(),
-        vertex_shader_blob->GetBufferPointer(), 
-        vertex_shader_blob->GetBufferSize(), 
-        &layout)))
+        ComPtr<ID3D11InputLayout>
+            layout;
+    if (FAILED(device->CreateInputLayout(input_layout_desc.data(),
+                                         input_layout_desc.size(),
+                                         vertex_shader_blob->GetBufferPointer(),
+                                         vertex_shader_blob->GetBufferSize(),
+                                         &layout)))
     {
-		OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout reflection\n");
-		return nullptr;
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout reflection\n");
+        return nullptr;
     }
 
-    m_layout_map[hash] = { layout, std::move(input_layout_desc) };
-	m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
+    m_layout_map[hash] = {layout, std::move(input_layout_desc)};
+    m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
 
-	return layout.Get();
+    return layout.Get();
 }
 
 void D3D11LayoutAssembler::clear_maps()
 {
-	std::lock_guard lock(m_layout_mutex);
-	m_layout_map.clear();
-	m_layout_logical_map.clear();
-	m_layout_desc.clear();
+    std::lock_guard lock(m_layout_mutex);
+    m_layout_map.clear();
+    m_layout_logical_map.clear();
+    m_layout_desc.clear();
 }

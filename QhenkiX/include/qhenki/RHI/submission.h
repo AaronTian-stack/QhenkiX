@@ -6,14 +6,14 @@
 
 namespace qhenki::gfx
 {
-	// vkQueueSubmit2
-	struct SubmitInfo
-	{
-		// TODO: stage mask
-		uint32_t command_list_count;
-		CommandList* command_lists;
-		uint32_t signal_fence_count;
-		Fence* signal_fences;
-		uint64_t* signal_values;
-	};
-}
+// vkQueueSubmit2
+struct SubmitInfo
+{
+    // TODO: stage mask
+    uint32_t command_list_count;
+    CommandList* command_lists;
+    uint32_t signal_fence_count;
+    Fence* signal_fences;
+    uint64_t* signal_values;
+};
+} // namespace qhenki::gfx
