@@ -47,35 +47,35 @@ static D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
 
 static ComPtr<ID3D11SamplerState>* to_internal(const Sampler& ext)
 {
-    auto d3d11_sampler = static_cast<ComPtr<ID3D11SamplerState>*>(ext.internal_state.get());
+    const auto d3d11_sampler = static_cast<ComPtr<ID3D11SamplerState>*>(ext.internal_state.get());
     assert(d3d11_sampler);
     return d3d11_sampler;
 }
 
 static D3D11Texture* to_internal(const Texture& ext)
 {
-    auto d3d11_texture = static_cast<D3D11Texture*>(ext.internal_state.get());
+    const auto d3d11_texture = static_cast<D3D11Texture*>(ext.internal_state.get());
     assert(d3d11_texture);
     return d3d11_texture;
 }
 
 static D3D11_SRV_UAV_Heap* to_internal_srv_uav(const DescriptorHeap& ext)
 {
-    auto d3d11_heap = static_cast<D3D11_SRV_UAV_Heap*>(ext.internal_state.get());
+    const auto d3d11_heap = static_cast<D3D11_SRV_UAV_Heap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
 
 static D3D11_RTV_Heap* to_internal_rtv(const DescriptorHeap& ext)
 {
-    auto d3d11_heap = static_cast<D3D11_RTV_Heap*>(ext.internal_state.get());
+    const auto d3d11_heap = static_cast<D3D11_RTV_Heap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
 
 static D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
 {
-    auto d3d11_heap = static_cast<D3D11_DSV_Heap*>(ext.internal_state.get());
+    const auto d3d11_heap = static_cast<D3D11_DSV_Heap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
@@ -154,16 +154,16 @@ void D3D11Context::create(const bool enable_debug_layer)
 
     constexpr D3D_FEATURE_LEVEL device_feature_level = D3D_FEATURE_LEVEL_11_0;
 
-    UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+    UINT creation_flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
     if (enable_debug_layer)
     {
-        creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+        creation_flags |= D3D11_CREATE_DEVICE_DEBUG;
     }
     // Create device
     if (FAILED(D3D11CreateDevice(adapter.Get(),
                                  D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_UNKNOWN,
                                  nullptr,
-                                 creationFlags,
+                                 creation_flags,
                                  &device_feature_level,
                                  1,
                                  D3D11_SDK_VERSION,
@@ -176,8 +176,8 @@ void D3D11Context::create(const bool enable_debug_layer)
 
     if (enable_debug_layer)
     {
-        constexpr char deviceName[] = "d3d11_device";
-        m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(deviceName), deviceName);
+        constexpr char device_name[] = "d3d11_device";
+        m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(device_name), device_name);
         if (FAILED(m_device_.As(&m_debug_)))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
@@ -714,7 +714,7 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
     assert(sampler);
     sampler->desc = desc;
     sampler->internal_state = mkS<ComPtr<ID3D11SamplerState>>();
-    auto sampler_d3d11 = static_cast<ComPtr<ID3D11SamplerState>*>(sampler->internal_state.get());
+    const auto sampler_d3d11 = static_cast<ComPtr<ID3D11SamplerState>*>(sampler->internal_state.get());
 
     D3D11_SAMPLER_DESC sampler_desc{
         .Filter = static_cast<D3D11_FILTER>(D3DHelper::filter(desc.min_filter,
@@ -737,7 +737,7 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
         .MaxLOD = desc.max_lod,
     };
 
-    auto result = m_device_->CreateSamplerState(&sampler_desc, sampler_d3d11->ReleaseAndGetAddressOf());
+    const auto result = m_device_->CreateSamplerState(&sampler_desc, sampler_d3d11->ReleaseAndGetAddressOf());
 
     if (FAILED(result))
     {
@@ -1065,7 +1065,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
             return;
         }
     }
-    const UINT n1 = -1;
+    const UINT n1 = -1; // Keep current offset
     std::scoped_lock lock(m_context_mutex_);
     switch (flag)
     {
