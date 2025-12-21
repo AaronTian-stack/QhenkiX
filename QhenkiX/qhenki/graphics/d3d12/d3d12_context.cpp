@@ -1459,8 +1459,10 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         // Ok because texture max width is less < UINT32
         const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
         const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
-        // Ok because upcast
-        const UINT32 mip_depth = std::max(1u, static_cast<UINT32>(texture->desc.depth_or_array_size) >> mip);
+        // For 3D textures, depth varies per mip. For arrays/cubemaps, always 1 (one 2D slice per subresource)
+        const UINT32 mip_depth = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D
+                                   ? std::max<UINT32>(1u, texture->desc.depth_or_array_size >> mip)
+                                   : 1u;
         const UINT32 bytes_per_row = mip_width * bpp; // Pitch of logical resource
 
         const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = layouts[subresource];
@@ -1481,7 +1483,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
             }
         }
 
-        data_offset += bytes_per_row * mip_height; // Assume data pointer is tightly packed no padding
+        data_offset += bytes_per_row * mip_height * mip_depth; // Assume data pointer is tightly packed no padding
     }
 
     unmap_buffer(*staging);
