@@ -20,15 +20,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Install clang-format (LLVM)
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        choco install llvm -y --no-progress
+        & clang-format --version
+
     - name: Run formatter and check diff
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
         .\format-all.ps1
-        $changes = git status --porcelain
-        if ($changes) {
-          Write-Host "Formatting changes detected:"
-          Write-Host $changes
+        $changed = git --no-pager diff --ignore-cr-at-eol --name-only
+        if ($changed) {
+          Write-Host "Formatting changes detected:" 
+          Write-Host $changed
           throw "Formatting check failed. Run .\\format-all.ps1 and commit."
         }
 
