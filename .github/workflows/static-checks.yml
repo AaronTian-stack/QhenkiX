@@ -1,0 +1,38 @@
+name: "Static Checks"
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  static-checks:
+    name: Code style and formatting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install clang-format and PowerShell
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format powershell
+          pwsh --version
+          clang-format --version
+
+      - name: Run clang-format and check diff
+        run: |
+          pwsh -Command "Set-StrictMode -Version Latest; $ErrorActionPreference='Stop'; ./format-all.ps1"
+          changed=$(git --no-pager diff --ignore-cr-at-eol --name-only)
+          if [ -n "$changed" ]; then
+            echo "Formatting changes detected:"
+            echo "$changed"
+            for f in $changed; do
+              echo "::group::Diff for $f"
+              git --no-pager diff --ignore-cr-at-eol -- "$f"
+              echo "::endgroup::"
+            done
+            exit 1
+          fi

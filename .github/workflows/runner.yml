@@ -1,0 +1,23 @@
+name: "CI Runner"
+
+on:
+  push:
+    branches:
+      - 'release/**'
+      - main
+  pull_request:
+    branches:
+      - 'release/**'
+      - main
+  merge_group:
+  workflow_dispatch:
+
+jobs:
+  static-checks:
+    uses: ./.github/workflows/static-checks.yml
+    secrets: inherit
+
+  windows-build:
+    needs: static-checks
+    uses: ./.github/workflows/windows-build.yml
+    secrets: inherit

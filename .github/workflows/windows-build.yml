@@ -1,49 +1,14 @@
-name: QhenkiX
+name: "Windows Build"
 
 on:
-  push:
-    branches:
-      - 'release/**'
-      - main
-  pull_request:
-    branches:
-      - 'release/**'
-      - main
-  merge_group:
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
-  format-check:
-    name: Format Check
-    runs-on: windows-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install clang-format (LLVM)
-      shell: pwsh
-      run: |
-        $ErrorActionPreference = 'Stop'
-        choco install llvm -y --no-progress
-        & clang-format --version
-
-    - name: Run formatter and check diff
-      shell: pwsh
-      run: |
-        $ErrorActionPreference = 'Stop'
-        .\format-all.ps1
-        $changed = git --no-pager diff --ignore-cr-at-eol --name-only
-        if ($changed) {
-          Write-Host "Formatting changes detected:" 
-          Write-Host $changed
-          throw "Formatting check failed. Run .\\format-all.ps1 and commit."
-        }
-
   build-qhenkix:
     name: QhenkiX
     runs-on: windows-latest
-    needs: format-check
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
