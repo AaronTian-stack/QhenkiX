@@ -6,7 +6,7 @@
 
 using namespace qhenki::gfx;
 
-std::wstring D3DHelper::get_shader_model_wchar(const ShaderType type, const ShaderModel model)
+std::wstring get_shader_model_wchar(const ShaderType type, const ShaderModel model)
 {
     auto sm = magic_enum::enum_name(model);
     assert(sm.size() == 6);
@@ -43,7 +43,7 @@ std::wstring D3DHelper::get_shader_model_wchar(const ShaderType type, const Shad
     return smc;
 }
 
-std::string D3DHelper::get_shader_model_char(const ShaderType type, const ShaderModel model)
+std::string get_shader_model_char(const ShaderType type, const ShaderModel model)
 {
     auto sm = magic_enum::enum_name(model);
     assert(sm.size() == 6);
@@ -80,7 +80,7 @@ std::string D3DHelper::get_shader_model_char(const ShaderType type, const Shader
     return smc;
 }
 
-DXGI_FORMAT D3DHelper::get_dxgi_format(const IndexType format)
+DXGI_FORMAT get_dxgi_format(const IndexType format)
 {
     if (format == IndexType::UINT16)
     {
@@ -89,7 +89,7 @@ DXGI_FORMAT D3DHelper::get_dxgi_format(const IndexType format)
     return DXGI_FORMAT_R32_UINT;
 }
 
-D3D12_PRIMITIVE_TOPOLOGY D3DHelper::get_primitive_topology(const PrimitiveTopology topology)
+D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(const PrimitiveTopology topology)
 {
     switch (topology)
     {
@@ -107,7 +107,7 @@ D3D12_PRIMITIVE_TOPOLOGY D3DHelper::get_primitive_topology(const PrimitiveTopolo
     return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 }
 
-D3D12_BARRIER_SYNC D3DHelper::sync_stage_D3D(SyncStage stage)
+D3D12_BARRIER_SYNC sync_stage_D3D(SyncStage stage)
 {
     D3D12_BARRIER_SYNC sync = {};
 
@@ -207,7 +207,7 @@ D3D12_BARRIER_SYNC D3DHelper::sync_stage_D3D(SyncStage stage)
     return sync;
 }
 
-D3D12_BARRIER_ACCESS D3DHelper::access_flags_D3D(AccessFlags access)
+D3D12_BARRIER_ACCESS access_flags_D3D(AccessFlags access)
 {
     D3D12_BARRIER_ACCESS flags = {};
 
@@ -307,7 +307,7 @@ D3D12_BARRIER_ACCESS D3DHelper::access_flags_D3D(AccessFlags access)
     return flags;
 }
 
-D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
+D3D12_BARRIER_LAYOUT layout_D3D(Layout layout)
 {
     D3D12_BARRIER_LAYOUT state = {};
     switch (layout)
@@ -417,7 +417,7 @@ D3D12_BARRIER_LAYOUT D3DHelper::layout_D3D(Layout layout)
     return state;
 }
 
-D3D12_FILTER D3DHelper::filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy)
+D3D12_FILTER filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy)
 {
     // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
     // Assemble the bitmask ourselves
@@ -454,7 +454,7 @@ D3D12_FILTER D3DHelper::filter(Filter min, Filter mag, Filter mip, ComparisonFun
     return static_cast<D3D12_FILTER>(filter);
 }
 
-D3D12_TEXTURE_ADDRESS_MODE D3DHelper::texture_address_mode(AddressMode mode)
+D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(AddressMode mode)
 {
     switch (mode)
     {
@@ -471,7 +471,7 @@ D3D12_TEXTURE_ADDRESS_MODE D3DHelper::texture_address_mode(AddressMode mode)
     }
 }
 
-D3D12_COMPARISON_FUNC D3DHelper::comparison_func(ComparisonFunc func)
+D3D12_COMPARISON_FUNC comparison_func(ComparisonFunc func)
 {
     switch (func)
     {
@@ -498,7 +498,7 @@ D3D12_COMPARISON_FUNC D3DHelper::comparison_func(ComparisonFunc func)
     }
 }
 
-bool D3DHelper::is_depth_stencil_format(DXGI_FORMAT format)
+bool is_depth_stencil_format(DXGI_FORMAT format)
 {
     switch (format)
     {

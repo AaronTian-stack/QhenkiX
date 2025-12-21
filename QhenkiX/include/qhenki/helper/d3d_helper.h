@@ -1,8 +1,5 @@
 #pragma once
 
-// >= SM 5.1 required for spaces
-// SM 6.6 is needed for Mesh shaders
-
 #include <dxgiformat.h>
 #include <wrl/client.h>
 #include <string>
@@ -16,22 +13,19 @@ using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-struct D3DHelper
-{
-    static std::wstring get_shader_model_wchar(ShaderType type, ShaderModel model);
-    static std::string get_shader_model_char(ShaderType type, ShaderModel model);
-    static DXGI_FORMAT get_dxgi_format(IndexType format);
-    static D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(PrimitiveTopology topology);
+std::wstring get_shader_model_wchar(ShaderType type, ShaderModel model);
+std::string get_shader_model_char(ShaderType type, ShaderModel model);
+DXGI_FORMAT get_dxgi_format(IndexType format);
+D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(PrimitiveTopology topology);
 
-    static D3D12_BARRIER_SYNC sync_stage_D3D(SyncStage stage);
-    static D3D12_BARRIER_ACCESS access_flags_D3D(AccessFlags access);
-    static D3D12_BARRIER_LAYOUT layout_D3D(Layout layout);
+D3D12_BARRIER_SYNC sync_stage(SyncStage stage);
+D3D12_BARRIER_ACCESS access_flags(AccessFlags access);
+D3D12_BARRIER_LAYOUT layout(Layout layout);
 
-    // Only returns the filter types shared with D3D11
-    static D3D12_FILTER filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy);
-    static D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(AddressMode mode);
-    static D3D12_COMPARISON_FUNC comparison_func(ComparisonFunc func);
+// Only returns the filter types shared with D3D11
+D3D12_FILTER filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy);
+D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(AddressMode mode);
+D3D12_COMPARISON_FUNC comparison_func(ComparisonFunc func);
 
-    static bool is_depth_stencil_format(DXGI_FORMAT format);
-};
+bool is_depth_stencil_format(DXGI_FORMAT format);
 } // namespace qhenki::gfx

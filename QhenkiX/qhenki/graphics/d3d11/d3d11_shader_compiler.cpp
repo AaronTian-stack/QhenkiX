@@ -94,7 +94,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     }
     macros.push_back({.Name = nullptr, .Definition = nullptr});
 
-    const auto target = D3DHelper::get_shader_model_char(input.shader_type, input.shader_model);
+    const auto target = ::get_shader_model_char(input.shader_type, input.shader_model);
 
     MultiIncludeHandler handler(input.includes);
 

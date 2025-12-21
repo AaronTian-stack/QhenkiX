@@ -226,7 +226,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
     // Set target profile
     args.emplace_back(L"-T");
-    const auto sm = D3DHelper::get_shader_model_wchar(input.shader_type, input.shader_model);
+    const auto sm = get_shader_model_wchar(input.shader_type, input.shader_model);
     args.emplace_back(sm.c_str());
 
     if (input.flags & CompilerInput::DEBUG)
