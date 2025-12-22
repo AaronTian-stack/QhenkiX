@@ -8,6 +8,9 @@ jobs:
   build-qhenkix:
     name: QhenkiX
     runs-on: windows-latest
+    strategy:
+      matrix:
+        config: [Debug, Release]
 
     steps:
     - name: Checkout code
@@ -25,14 +28,14 @@ jobs:
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
     - name: Build QhenkiX
-      run: cmake --build build --config Release --target QhenkiX --parallel
+      run: cmake --build build --config ${{ matrix.config }} --target QhenkiX --parallel
 
     - name: Upload QhenkiX Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: qhenkix-library-windows
+        name: qhenkix-library-windows-${{ matrix.config }}
         path: |
-          build/QhenkiX/Release/
+          build/QhenkiX/${{ matrix.config }}/
           QhenkiX/include/
         retention-days: 1
 
@@ -40,6 +43,9 @@ jobs:
     name: SXC
     runs-on: windows-latest
     needs: build-qhenkix
+    strategy:
+      matrix:
+        config: [Debug, Release]
     
     steps:
     - name: Checkout code
@@ -56,29 +62,30 @@ jobs:
     - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
-        name: qhenkix-library-windows
+        name: qhenkix-library-windows-${{ matrix.config }}
         path: QhenkiX/
 
     - name: Configure CMake
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
     - name: Build SXC
-      run: cmake --build build --config Release --target SXC --parallel
+      run: cmake --build build --config ${{ matrix.config }} --target SXC --parallel
 
     - name: Upload SXC Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: sxc-windows
-        path: build/SXC/Release/
+        name: sxc-windows-${{ matrix.config }}
+        path: build/SXC/${{ matrix.config }}/
         retention-days: 1
 
   build-examples:
-    name: ${{ matrix.example }}
+    name: ${{ matrix.example }} (${{ matrix.config }})
     runs-on: windows-latest
     needs: build-qhenkix
     strategy:
       matrix:
         example: [SimpleExample, ImGuiExample, gltfViewer]
+        config: [Debug, Release]
     
     steps:
     - name: Checkout code
@@ -95,18 +102,18 @@ jobs:
     - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
-        name: qhenkix-library-windows
+        name: qhenkix-library-windows-${{ matrix.config }}
         path: QhenkiX/
 
     - name: Configure CMake
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
-    - name: Build ${{ matrix.example }}
-      run: cmake --build build --config Release --target ${{ matrix.example }} --parallel
+    - name: Build ${{ matrix.example }} (${{ matrix.config }})
+      run: cmake --build build --config ${{ matrix.config }} --target ${{ matrix.example }} --parallel
 
-    - name: Upload ${{ matrix.example }} Artifacts
+    - name: Upload ${{ matrix.example }} (${{ matrix.config }}) Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.example }}-build-windows
-        path: build/Examples/${{ matrix.example }}/Release/
+        name: ${{ matrix.example }}-build-windows-${{ matrix.config }}
+        path: build/Examples/${{ matrix.example }}/${{ matrix.config }}/
         retention-days: 1
