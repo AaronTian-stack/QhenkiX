@@ -1,7 +1,5 @@
 #include "gltf_viewerapp.h"
 
-#include <wrl/client.h>
-
 #include <imgui/imgui.h>
 #include <qhenki/helper/math_helper.h>
 

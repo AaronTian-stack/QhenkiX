@@ -1,10 +1,11 @@
-#include "qhenki/helper/d3d_helper.h"
+#include "d3d_helper.h"
 
 #include <magic_enum/magic_enum.hpp>
 #include <stdexcept>
 #include "qhenki/RHI/shader.h"
 
-using namespace qhenki::gfx;
+namespace qhenki::gfx
+{
 
 std::wstring get_shader_model_wchar(const ShaderType type, const ShaderModel model)
 {
@@ -107,7 +108,7 @@ D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(const PrimitiveTopology topology
     return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 }
 
-D3D12_BARRIER_SYNC sync_stage_D3D(SyncStage stage)
+D3D12_BARRIER_SYNC sync_stage(SyncStage stage)
 {
     D3D12_BARRIER_SYNC sync = {};
 
@@ -207,7 +208,7 @@ D3D12_BARRIER_SYNC sync_stage_D3D(SyncStage stage)
     return sync;
 }
 
-D3D12_BARRIER_ACCESS access_flags_D3D(AccessFlags access)
+D3D12_BARRIER_ACCESS access_flags(AccessFlags access)
 {
     D3D12_BARRIER_ACCESS flags = {};
 
@@ -307,7 +308,7 @@ D3D12_BARRIER_ACCESS access_flags_D3D(AccessFlags access)
     return flags;
 }
 
-D3D12_BARRIER_LAYOUT layout_D3D(Layout layout)
+D3D12_BARRIER_LAYOUT layout(Layout layout)
 {
     D3D12_BARRIER_LAYOUT state = {};
     switch (layout)
@@ -511,3 +512,5 @@ bool is_depth_stencil_format(DXGI_FORMAT format)
         return false;
     }
 }
+
+} // namespace qhenki::gfx

@@ -21,6 +21,9 @@ if(MSVC)
     target_compile_options(gltfViewer PRIVATE /MP)
 endif()
 
+# TODO: remove once public headers stop including Windows/D3D types
+target_compile_definitions(gltfViewer PRIVATE NOMINMAX)
+
 target_include_directories(gltfViewer PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${REPO_ROOT}/QhenkiX/include
