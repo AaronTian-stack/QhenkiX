@@ -8,7 +8,9 @@
 #include <tsl/robin_set.h>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <regex>
+#include <sstream>
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -20,8 +22,66 @@
 #include "qhenki/utility/file_util.h"
 #include "qhenki/utility/shader_blob.h"
 
+
 using namespace qhenki::sxc;
 using namespace qhenki::util;
+
+namespace
+{
+std::string compute_defines_hash(const CompilerInputVector& inputs)
+{
+    constexpr std::hash<std::string> hasher;
+    size_t combined_hash = 0;
+
+    for (const auto& input : inputs)
+    {
+        const auto defines = input.get_defines();
+        for (const auto& define : defines)
+        {
+            // Boost hash combine
+            combined_hash ^= hasher(define) + 0x9e3779b9 + (combined_hash << 6) + (combined_hash >> 2);
+        }
+    }
+
+    // Convert to hex string
+    std::ostringstream oss;
+    oss << std::hex << combined_hash;
+    return oss.str();
+}
+
+bool write_meta_file(const fs::path& meta_path, const std::string& defines_hash)
+{
+    std::ofstream out(meta_path);
+    if (!out.is_open())
+    {
+        return false;
+    }
+    out << defines_hash;
+    return out.good();
+}
+
+bool check_meta_file(const fs::path& meta_path, const std::string& expected_hash)
+{
+    if (!fs::exists(meta_path))
+    {
+        return false;
+    }
+
+    std::ifstream in(meta_path);
+    if (!in.is_open())
+    {
+        return false;
+    }
+
+    std::string stored_hash;
+    if (!std::getline(in, stored_hash))
+    {
+        return false;
+    }
+
+    return stored_hash == expected_hash;
+}
+} // namespace
 
 qhenki::gfx::ShaderType SXCJob::to_shader_type(const char* str)
 {
@@ -45,7 +105,7 @@ qhenki::gfx::ShaderType SXCJob::to_shader_type(const char* str)
     throw std::runtime_error("Unknown shader type");
 }
 
-const char* SXCJob::shader_type_to_str(gfx::ShaderType type)
+const char* SXCJob::shader_type_to_str(const gfx::ShaderType type)
 {
     switch (type)
     {
@@ -237,6 +297,8 @@ int SXCJob::parse_config(const CLIInput& input,
     return parse_errors.empty() ? 0 : -1;
 }
 
+namespace
+{
 fs::file_time_type get_most_recent_time(const fs::path& file,
                                         tsl::robin_set<fs::path>& visited,
                                         std::span<const std::string> include_paths)
@@ -303,15 +365,26 @@ fs::file_time_type get_most_recent_time(const fs::path& file,
 
 bool needs_to_recompile_shader(const fs::path& input_path,
                                const fs::path& output_path,
-                               std::span<const std::string> include_paths)
+                               const std::span<const std::string> include_paths,
+                               const CompilerInputVector& inputs)
 {
     if (!fs::exists(output_path))
     {
         return true;
     }
 
-    // TODO: Need a hash based off defines or something. Otherwise, changes in config file do not trigger a
-    // recompilation.
+    // Check meta file for permutated shaders
+    if (inputs.size() > 1)
+    {
+        fs::path meta_path = output_path;
+        meta_path += ".meta";
+
+        const auto defines_hash = compute_defines_hash(inputs);
+        if (!check_meta_file(meta_path, defines_hash))
+        {
+            return true; // Missing or hash mismatch
+        }
+    }
 
     tsl::robin_set<fs::path> visited;
     const auto latest_input_time = get_most_recent_time(input_path, visited, include_paths);
@@ -322,6 +395,7 @@ bool needs_to_recompile_shader(const fs::path& input_path,
 
     return false;
 }
+} // namespace
 
 fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
                                           const fs::path& input_path,
@@ -376,9 +450,11 @@ fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
     return fs::path(output_dir) / filename;
 }
 
-static bool write_shader_blob(const fs::path& output_path,
-                              const tbb::concurrent_vector<CompilerOutput>& outputs,
-                              const CompilerInputVector& inputs)
+namespace
+{
+bool write_shader_blob(const fs::path& output_path,
+                       const tbb::concurrent_vector<CompilerOutput>& outputs,
+                       const CompilerInputVector& inputs)
 {
     std::ofstream out(output_path, std::ios::binary);
     if (!out.is_open())
@@ -435,8 +511,18 @@ static bool write_shader_blob(const fs::path& output_path,
         out.write(static_cast<const char*>(co.shader_data), co.shader_size);
     }
 
-    return out.good();
+    if (!out.good())
+    {
+        return false;
+    }
+
+    // Write meta file containing the defines hash
+    fs::path meta_path = output_path;
+    meta_path += ".meta";
+    const auto defines_hash = compute_defines_hash(inputs);
+    return write_meta_file(meta_path, defines_hash);
 }
+} // namespace
 
 ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<CompilerInputVector>* inputs,
                                                        const std::string& output_dir)
@@ -489,10 +575,10 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
                 .st = ci.shader_type,
                 .entry_point = ci.entry_point,
             };
-            fs::path input_path = ci.get_path();
-            fs::path output_path = SXCJob::get_resolved_output_name(info, input_path, output_dir, input->size());
+            const fs::path input_path = ci.get_path();
+            const fs::path output_path = SXCJob::get_resolved_output_name(info, input_path, output_dir, input->size());
 
-            if (needs_to_recompile_shader(input_path, output_path, ci.includes))
+            if (needs_to_recompile_shader(input_path, output_path, ci.includes, *input))
             {
                 return {.output_path = output_path, .input_vector = input};
             }
