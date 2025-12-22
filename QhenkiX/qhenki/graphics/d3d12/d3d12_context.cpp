@@ -19,7 +19,6 @@
 #include "d3d12_texture.h"
 
 #include "qhenki/helper/d3d_helper.h"
-#include "qhenki/helper/math_helper.h"
 #include "qhenki/helper/string_helper.h"
 
 using namespace qhenki::gfx;
@@ -85,6 +84,14 @@ static D3D12Texture* to_internal(const Texture& ext)
     auto text = static_cast<D3D12Texture*>(ext.internal_state.get());
     assert(text);
     return text;
+}
+
+bool set_debug_name(ID3D12Object* obj, const char* name)
+{
+    if (obj && name)
+    {
+        return SUCCEEDED(obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(name), name));
+    }
 }
 
 void D3D12Context::create(const bool enable_debug_layer)
@@ -714,14 +721,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         m_pipeline_desc_pool.destroy(pso_desc);
     }
 
-    if (debug_name)
-    {
-        util::Utf8To16Scoped debug_name_utf8(debug_name);
-        if (FAILED(d3d12_pipeline->pipeline_state->SetName(debug_name_utf8.c_str())))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to set pipeline debug name\n");
-        }
-    }
+    set_debug_name(d3d12_pipeline->pipeline_state.Get(), debug_name);
 
     return true;
 }
@@ -937,13 +937,9 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
 
     const bool result = d3d12_heap->create(m_device.Get(), heap_desc);
 
-    if (result && debug_name)
+    if (result)
     {
-        const util::Utf8To16Scoped debug_name_utf8(debug_name);
-        if (FAILED(d3d12_heap->Get()->SetName(debug_name_utf8.c_str())))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to set descriptor heap debug name\n");
-        }
+        set_debug_name(d3d12_heap->Get().Get(), debug_name);
     }
 
     return result;
@@ -1140,10 +1136,9 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         }
     }
 
-    if (is_debug_layer_enabled() && debug_name)
+    if (is_debug_layer_enabled())
     {
-        util::Utf8To16Scoped debug_name_utf8(debug_name);
-        buffer_d3d12->Get()->SetName(debug_name_utf8.c_str());
+        set_debug_name(buffer_d3d12->Get()->GetResource(), debug_name);
     }
 
     // Need to also create the associated view
@@ -1333,11 +1328,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         return false;
     }
 
-    if (debug_name)
-    {
-        util::Utf8To16Scoped debug_name_utf8(debug_name);
-        texture_d3d12->allocation.Get()->SetName(debug_name_utf8.c_str());
-    }
+    set_debug_name(texture_d3d12->allocation.Get()->GetResource(), debug_name);
 
     return true;
 }
@@ -1716,14 +1707,7 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
         return false;
     }
 
-    if (debug_name)
-    {
-        const util::Utf8To16Scoped debug_name_utf8(debug_name);
-        if (FAILED(d3d12_cmd_list->Get()->SetName(debug_name_utf8.c_str())))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to set command list debug name\n");
-        }
-    }
+    set_debug_name(d3d12_cmd_list->Get(), debug_name);
 
     return true;
 }

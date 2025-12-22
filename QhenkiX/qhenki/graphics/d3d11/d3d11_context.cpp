@@ -97,11 +97,11 @@ ID3D11Resource* get_texture_resource(D3D11Texture& tex)
     return nullptr;
 }
 
-void D3D11Context::set_debug_name(ID3D11DeviceChild* device_resource, const char* debug_name)
+void D3D11Context::set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
 {
-    if (device_resource && debug_name)
+    if (obj && debug_name)
     {
-        device_resource->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(strlen(debug_name)), debug_name);
+        obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(debug_name), debug_name);
     }
 }
 

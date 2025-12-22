@@ -39,7 +39,7 @@ public:
     template<UINT TDebugNameLength>
     static void set_debug_name(_In_ ID3D11DeviceChild* device_resource,
                                _In_z_ const char (&debug_name)[TDebugNameLength]);
-    static void set_debug_name(ID3D11DeviceChild* device_resource, const char* debug_name);
+    static void set_debug_name(ID3D11DeviceChild* obj, const char* debug_name);
 
     void create(bool enable_debug_layer) override;
     bool is_compatibility() const override
