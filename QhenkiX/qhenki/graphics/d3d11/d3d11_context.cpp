@@ -524,7 +524,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
 
     UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
-    if (D3DHelper::is_depth_stencil_format(desc.format))
+    if (is_depth_stencil_format(desc.format))
     {
         bind_flags = D3D11_BIND_DEPTH_STENCIL; // Overwrite
     }
@@ -717,21 +717,21 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
     const auto sampler_d3d11 = static_cast<ComPtr<ID3D11SamplerState>*>(sampler->internal_state.get());
 
     D3D11_SAMPLER_DESC sampler_desc{
-        .Filter = static_cast<D3D11_FILTER>(D3DHelper::filter(desc.min_filter,
-                                                              desc.mag_filter,
-                                                              desc.mip_filter,
-                                                              desc.comparison_func,
-                                                              desc.max_anisotropy)), // Shared type values D3D12
+        .Filter = static_cast<D3D11_FILTER>(filter(desc.min_filter,
+                                                   desc.mag_filter,
+                                                   desc.mip_filter,
+                                                   desc.comparison_func,
+                                                   desc.max_anisotropy)), // Shared type values D3D12
         .AddressU = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(
-            D3DHelper::texture_address_mode(desc.address_mode_u)), // Same in D3D11, D3D12
-        .AddressV = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(D3DHelper::texture_address_mode(desc.address_mode_v)),
-        .AddressW = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(D3DHelper::texture_address_mode(desc.address_mode_w)),
+            texture_address_mode(desc.address_mode_u)), // Same in D3D11, D3D12
+        .AddressV = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(texture_address_mode(desc.address_mode_v)),
+        .AddressW = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(texture_address_mode(desc.address_mode_w)),
         .MipLODBias = desc.mip_lod_bias,
         .MaxAnisotropy = desc.max_anisotropy,
         .ComparisonFunc = desc.comparison_func == ComparisonFunc::NONE
                             ? D3D11_COMPARISON_NEVER
                             : static_cast<D3D11_COMPARISON_FUNC>(
-                                  D3DHelper::comparison_func(desc.comparison_func)), // D3D11 doesn't have NONE
+                                  comparison_func(desc.comparison_func)), // D3D11 doesn't have NONE
         .BorderColor = {desc.border_color[0], desc.border_color[1], desc.border_color[2], desc.border_color[3]},
         .MinLOD = desc.min_lod,
         .MaxLOD = desc.max_lod,
@@ -791,7 +791,7 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer
 {
     const auto buffer_d3d11 = to_internal(buffer);
     std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), D3DHelper::get_dxgi_format(format), offset);
+    m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
 }
 
 bool D3D11Context::create_queue(const QueueType type, Queue* queue)

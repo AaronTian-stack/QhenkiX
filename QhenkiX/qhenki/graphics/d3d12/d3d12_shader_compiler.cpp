@@ -1,4 +1,4 @@
-﻿#include "d3d12_shader_compiler.h"
+#include "d3d12_shader_compiler.h"
 
 #include <d3dcompiler.h>
 #include <cassert>
@@ -143,7 +143,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     void* data;
     size_t size;
     const auto& input_path = input.get_path();
-    const auto succeed = FileHelper::read_file(input_path.data(), &data, &size);
+    const auto succeed = read_file(input_path.data(), &data, &size);
     if (!succeed)
     {
         output.error_message = "D3D12ShaderCompiler: Failed to read/open file :: " +
@@ -226,7 +226,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
     // Set target profile
     args.emplace_back(L"-T");
-    const auto sm = D3DHelper::get_shader_model_wchar(input.shader_type, input.shader_model);
+    const auto sm = get_shader_model_wchar(input.shader_type, input.shader_model);
     args.emplace_back(sm.c_str());
 
     if (input.flags & CompilerInput::DEBUG)
@@ -351,9 +351,8 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
                 pdb_file = path;
             }
 
-            if (const auto write_result = FileHelper::write_file(pdb_file.data(),
-                                                                 debug_info_blob->GetBufferPointer(),
-                                                                 debug_info_blob->GetBufferSize());
+            if (const auto write_result =
+                    write_file(pdb_file.data(), debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
                 !write_result)
             {
                 output.error_message = "D3D12ShaderCompiler: Failed to write PDB file :: " +

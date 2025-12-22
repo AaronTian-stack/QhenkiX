@@ -663,7 +663,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     pso_desc->SampleMask = UINT_MAX;
 
     D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    d3d12_pipeline->primitive_topology = D3DHelper::get_primitive_topology(desc.topology);
+    d3d12_pipeline->primitive_topology = get_primitive_topology(desc.topology);
 
     switch (desc.topology)
     {
@@ -1287,7 +1287,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         .Format = desc.format,
     };
     D3D12_CLEAR_VALUE* clear_ptr = nullptr;
-    if (D3DHelper::is_depth_stencil_format(desc.format))
+    if (is_depth_stencil_format(desc.format))
     {
         clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -1321,8 +1321,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
     if (FAILED(m_allocator->CreateResource3(
             &allocation_desc,
             &resource_desc,
-            D3DHelper::layout_D3D(
-                desc.initial_layout), // Common use should be as copy destination (need to transition later)
+            layout(desc.initial_layout), // Common use should be as copy destination (need to transition later)
             clear_ptr,
             0,
             nullptr, // probably not going to cast
@@ -1537,14 +1536,13 @@ bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap* con
     heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0);
     const auto& desc = sampler.desc;
     D3D12_SAMPLER_DESC sampler_desc{
-        .Filter = D3DHelper::filter(
-            desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
-        .AddressU = D3DHelper::texture_address_mode(desc.address_mode_u),
-        .AddressV = D3DHelper::texture_address_mode(desc.address_mode_v),
-        .AddressW = D3DHelper::texture_address_mode(desc.address_mode_w),
+        .Filter = filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
+        .AddressU = texture_address_mode(desc.address_mode_u),
+        .AddressV = texture_address_mode(desc.address_mode_v),
+        .AddressW = texture_address_mode(desc.address_mode_w),
         .MipLODBias = desc.mip_lod_bias,
         .MaxAnisotropy = desc.max_anisotropy,
-        .ComparisonFunc = D3DHelper::comparison_func(desc.comparison_func),
+        .ComparisonFunc = comparison_func(desc.comparison_func),
         .BorderColor = {desc.border_color[0], desc.border_color[1], desc.border_color[2], desc.border_color[3]},
         .MinLOD = desc.min_lod,
         .MaxLOD = desc.max_lod,
@@ -1631,7 +1629,7 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer
     D3D12_INDEX_BUFFER_VIEW view = {
         .BufferLocation = resource->GetGPUVirtualAddress() + offset,
         .SizeInBytes = static_cast<UINT>(buffer.desc.size - offset),
-        .Format = D3DHelper::get_dxgi_format(format),
+        .Format = get_dxgi_format(format),
     };
 
     command_list->IASetIndexBuffer(&view);
@@ -1952,12 +1950,12 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
 
         auto& d3d12_barrier = d3d12_barriers[i];
         d3d12_barrier = {
-            .SyncBefore = D3DHelper::sync_stage_D3D(barrier.src_stage),
-            .SyncAfter = D3DHelper::sync_stage_D3D(barrier.dst_stage),
-            .AccessBefore = D3DHelper::access_flags_D3D(barrier.src_access),
-            .AccessAfter = D3DHelper::access_flags_D3D(barrier.dst_access),
-            .LayoutBefore = D3DHelper::layout_D3D(barrier.src_layout),
-            .LayoutAfter = D3DHelper::layout_D3D(barrier.dst_layout),
+            .SyncBefore = sync_stage(barrier.src_stage),
+            .SyncAfter = sync_stage(barrier.dst_stage),
+            .AccessBefore = access_flags(barrier.src_access),
+            .AccessAfter = access_flags(barrier.dst_access),
+            .LayoutBefore = layout(barrier.src_layout),
+            .LayoutAfter = layout(barrier.dst_layout),
             .pResource = static_cast<ID3D12Resource*>(barrier.resource),
             .Subresources =
                 {

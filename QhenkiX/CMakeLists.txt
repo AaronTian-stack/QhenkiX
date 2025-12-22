@@ -58,6 +58,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_root_hasher.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_shader_compiler.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
+    "${QHENKIX_DIR}/helper/d3d_helper.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
@@ -72,7 +73,6 @@ set(QHENKIX_PUBLIC_HEADERS
 
     "${QHENKIX_PUBLIC_DIR}/2d/spritebatch.h"
 
-    "${QHENKIX_PUBLIC_DIR}/helper/d3d_helper.h"
     "${QHENKIX_PUBLIC_DIR}/helper/file_helper.h"
     "${QHENKIX_PUBLIC_DIR}/helper/general_helper.h"
     "${QHENKIX_PUBLIC_DIR}/helper/math_helper.h"
@@ -123,6 +123,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/utf8"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc"
+    PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 add_library(DirectXTex STATIC IMPORTED)

@@ -1,4 +1,4 @@
-﻿#include "qhenki/helper/file_helper.h"
+#include "qhenki/helper/file_helper.h"
 
 #include <cassert>
 #include <fstream>
@@ -7,8 +7,8 @@
 #include <windows.h>
 #include <filesystem>
 
-using namespace qhenki::util;
-
+namespace qhenki::util
+{
 template<typename CharT> static bool read_file_impl(const CharT* path, void** data, size_t* size)
 {
     assert(data);
@@ -108,22 +108,23 @@ template<typename CharT> static bool write_file_impl(const CharT* path, const vo
     return true;
 }
 
-bool FileHelper::read_file(const wchar_t* path, void** data, size_t* size)
+bool read_file(const wchar_t* path, void** data, size_t* size)
 {
     return read_file_impl(path, data, size);
 }
 
-bool FileHelper::write_file(const wchar_t* path, const void* data, const size_t size)
+bool write_file(const wchar_t* path, const void* data, const size_t size)
 {
     return write_file_impl(path, data, size);
 }
 
-bool FileHelper::read_file(const char* path, void** data, size_t* size)
+bool read_file(const char* path, void** data, size_t* size)
 {
     return read_file_impl(path, data, size);
 }
 
-bool FileHelper::write_file(const char* path, const void* data, const size_t size)
+bool write_file(const char* path, const void* data, const size_t size)
 {
     return write_file_impl(path, data, size);
 }
+} // namespace qhenki::util
