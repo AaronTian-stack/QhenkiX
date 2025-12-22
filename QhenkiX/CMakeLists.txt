@@ -103,6 +103,7 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/RHI/texture.h"
 
     "${QHENKIX_PUBLIC_DIR}/utility/include_handlers.h"
+    "${QHENKIX_PUBLIC_DIR}/utility/shader_blob.h"
 )
 
 add_library(${PROJECT_NAME} STATIC ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS} ${IMGUI_SOURCES})
