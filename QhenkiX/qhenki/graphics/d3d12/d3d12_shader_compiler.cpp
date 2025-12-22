@@ -2,13 +2,12 @@
 
 #include <d3dcompiler.h>
 #include <cassert>
+#include <filesystem>
 #include <stdexcept>
 
-#include <filesystem>
-#include "qhenki/helper/d3d_helper.h"
-#include "qhenki/helper/file_helper.h"
-
-#include "qhenki/helper/string_helper.h"
+#include "qhenki/utility/d3d_util.h"
+#include "qhenki/utility/file_util.h"
+#include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
 using namespace qhenki::util;

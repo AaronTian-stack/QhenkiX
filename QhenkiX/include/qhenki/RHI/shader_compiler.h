@@ -5,8 +5,8 @@
 #include <variant>
 #include <vector>
 
-#include <qhenki/helper/math_helper.h>
 #include "qhenki/RHI/shader.h"
+#include "qhenki/utility/math_util.h"
 
 struct NonOwning
 {

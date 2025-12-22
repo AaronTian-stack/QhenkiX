@@ -30,14 +30,13 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_root_hasher.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_shader_compiler.cpp"
 
-    "${QHENKIX_DIR}/helper/d3d_helper.cpp"
-    "${QHENKIX_DIR}/helper/file_helper.cpp"
-
     "${QHENKIX_DIR}/input/input_manager.cpp"
 
     "${QHENKIX_DIR}/math/basis.cpp"
     "${QHENKIX_DIR}/math/transform.cpp"
 
+    "${QHENKIX_DIR}/utility/d3d_util.cpp"
+    "${QHENKIX_DIR}/utility/file_util.cpp"
     "${QHENKIX_DIR}/utility/include_handlers.cpp"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
@@ -58,7 +57,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_root_hasher.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_shader_compiler.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
-    "${QHENKIX_DIR}/helper/d3d_helper.h"
+    "${QHENKIX_DIR}/utility/d3d_util.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
@@ -73,10 +72,10 @@ set(QHENKIX_PUBLIC_HEADERS
 
     "${QHENKIX_PUBLIC_DIR}/2d/spritebatch.h"
 
-    "${QHENKIX_PUBLIC_DIR}/helper/file_helper.h"
-    "${QHENKIX_PUBLIC_DIR}/helper/general_helper.h"
-    "${QHENKIX_PUBLIC_DIR}/helper/math_helper.h"
-    "${QHENKIX_PUBLIC_DIR}/helper/string_helper.h"
+    "${QHENKIX_PUBLIC_DIR}/utility/file_util.h"
+    "${QHENKIX_PUBLIC_DIR}/utility/general_util.h"
+    "${QHENKIX_PUBLIC_DIR}/utility/math_util.h"
+    "${QHENKIX_PUBLIC_DIR}/utility/string_util.h"
 
     "${QHENKIX_PUBLIC_DIR}/input/input_manager.h"
 

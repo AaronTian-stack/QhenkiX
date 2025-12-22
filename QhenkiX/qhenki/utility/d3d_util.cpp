@@ -1,4 +1,4 @@
-#include "d3d_helper.h"
+#include "d3d_util.h"
 
 #include <magic_enum/magic_enum.hpp>
 #include <stdexcept>

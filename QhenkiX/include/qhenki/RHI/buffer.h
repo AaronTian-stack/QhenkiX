@@ -1,7 +1,7 @@
 #pragma once
 
+#include <qhenki/utility/math_util.h>
 #include <smartpointer.h>
-#include "qhenki/helper/math_helper.h"
 
 namespace qhenki::gfx
 {

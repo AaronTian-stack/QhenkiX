@@ -1,11 +1,10 @@
 #include "gltf_viewerapp.h"
 
 #include <imgui/imgui.h>
-#include <qhenki/helper/math_helper.h>
-
 #include <SDL3/SDL_dialog.h>
 
-#include "qhenki/helper/general_helper.h"
+#include <qhenki/utility/general_util.h>
+#include <qhenki/utility/math_util.h>
 
 void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& node)
 {

@@ -13,7 +13,7 @@
 #include "d3d11_shader.h"
 #include "d3d11_shader_compiler.h"
 #include "d3d11_swapchain.h"
-#include "qhenki/helper/d3d_helper.h"
+#include "qhenki/utility/d3d_util.h"
 
 using namespace qhenki::gfx;
 

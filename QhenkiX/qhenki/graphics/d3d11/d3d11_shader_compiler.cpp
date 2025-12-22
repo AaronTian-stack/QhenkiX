@@ -6,11 +6,11 @@
 #include <array>
 #include <cassert>
 
-#include <qhenki/helper/file_helper.h>
-#include <qhenki/utility/include_handlers.h>
-#include "qhenki/helper/d3d_helper.h"
+#include "qhenki/utility/d3d_util.h"
+#include "qhenki/utility/file_util.h"
+#include "qhenki/utility/include_handlers.h"
 
-#include "qhenki/helper/string_helper.h"
+#include "qhenki/utility/string_util.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace qhenki::gfx;

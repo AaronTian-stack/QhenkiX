@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include "d3d11_context.h"
-#include "qhenki/helper/d3d_helper.h"
+#include "qhenki/utility/d3d_util.h"
 
 using namespace qhenki::gfx;
 

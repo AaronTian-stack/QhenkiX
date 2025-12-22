@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <utf8.h>
 #include <array>
@@ -6,11 +6,11 @@
 
 namespace qhenki::util
 {
-template<size_t StackCapacity = 512> class Utf8To16Scoped
+template<size_t StackCapacity = 256> class Utf8To16Scoped
 {
     union
     {
-        std::array<wchar_t, StackCapacity + 1> buffer{};
+        std::array<wchar_t, StackCapacity> buffer{};
         std::wstring heap;
     };
     const wchar_t* m_ptr = nullptr;
@@ -47,14 +47,14 @@ template<size_t StackCapacity> Utf8To16Scoped<StackCapacity>::Utf8To16Scoped(std
     if (input.size() <= StackCapacity)
     {
         utf8::utf8to16(input.begin(), input.end(), buffer.begin());
-        buffer[input.size()] = L'\0'; // Null-terminate the string
+        buffer[input.size()] = L'\0';
         m_stack_buffer = true;
     }
     else
     {
         heap.resize(input.size() + 1);
         utf8::utf8to16(input.begin(), input.end(), heap.begin());
-        heap[input.size()] = L'\0'; // Null-terminate the string
+        heap[input.size()] = L'\0';
         m_stack_buffer = false;
     }
 }

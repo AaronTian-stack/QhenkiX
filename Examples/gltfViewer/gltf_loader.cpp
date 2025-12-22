@@ -268,7 +268,6 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
             sampler_desc.mag_filter = qhenki::gfx::Filter::LINEAR;
             break;
         default: // TODO: mip maps
-            OutputDebugStringA("WARNING: Using default mag filter\n");
             sampler_desc.mag_filter = qhenki::gfx::Filter::LINEAR;
             break;
         }
@@ -281,7 +280,6 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
             sampler_desc.min_filter = qhenki::gfx::Filter::LINEAR;
             break;
         default: // TODO: mip maps
-            OutputDebugStringA("WARNING: Using default min filter\n");
             sampler_desc.min_filter = qhenki::gfx::Filter::LINEAR;
             break;
         }
@@ -294,7 +292,6 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
             sampler_desc.address_mode_u = qhenki::gfx::AddressMode::CLAMP;
             break;
         default:
-            OutputDebugStringA("WARNING: Using default wrap U filter\n");
             sampler_desc.address_mode_u = qhenki::gfx::AddressMode::WRAP;
             break;
         }
@@ -307,7 +304,6 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
             sampler_desc.address_mode_v = qhenki::gfx::AddressMode::CLAMP;
             break;
         default:
-            OutputDebugStringA("WARNING: Using default wrap V filter\n");
             sampler_desc.address_mode_v = qhenki::gfx::AddressMode::WRAP;
             break;
         }
@@ -402,7 +398,7 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
     {
         if (!loader.LoadASCIIFromFile(&tiny_model, &err, &warn, filename))
         {
-            OutputDebugStringA(err.c_str());
+            printf("%s\n", err.c_str());
             return false;
         }
     }
@@ -410,7 +406,7 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
     {
         if (!loader.LoadBinaryFromFile(&tiny_model, &err, &warn, filename))
         {
-            OutputDebugStringA(err.c_str());
+            printf("%s\n", err.c_str());
             return false;
         }
     }
@@ -421,11 +417,11 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
 
     if (!warn.empty())
     {
-        OutputDebugStringA(warn.c_str());
+        printf("%s\n", warn.c_str());
     }
     if (!err.empty())
     {
-        OutputDebugStringA(err.c_str());
+        printf("%s\n", err.c_str());
         return false;
     }
 

@@ -9,7 +9,6 @@
 #include <d3d12shader.h>
 #include <d3dcompiler.h>
 
-#include "../d3d11/d3d11_shader.h"
 #include "d3d12_pipeline.h"
 #include "d3d12_shader_compiler.h"
 #include "qhenki/application.h"
@@ -18,8 +17,8 @@
 #include "d3d12_fence.h"
 #include "d3d12_texture.h"
 
-#include "qhenki/helper/d3d_helper.h"
-#include "qhenki/helper/string_helper.h"
+#include "qhenki/utility/d3d_util.h"
+#include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
 

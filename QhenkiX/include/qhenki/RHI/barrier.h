@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <qhenki/helper/math_helper.h>
+#include <qhenki/utility/math_util.h>
 #include "subresource.h"
 
 namespace qhenki::gfx

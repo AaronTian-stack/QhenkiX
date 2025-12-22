@@ -13,7 +13,7 @@ bool read_file(const wchar_t* path, void** data, size_t* size);
 bool write_file(const wchar_t* path, const void* data, size_t size);
 
 /**
- * Read a file into memory.
+ * Reads a file into memory.
  * @param path String path to read from
  * @param data (out) Pointer to the data read from the file. Caller responsible for freeing the memory.
  * @param size (out) Size in bytes of the data read from the file.
