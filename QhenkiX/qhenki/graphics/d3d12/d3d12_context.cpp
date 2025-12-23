@@ -22,6 +22,15 @@
 
 using namespace qhenki::gfx;
 
+// Operator overloads for D3D12MA enums to work with designated initializers
+namespace D3D12MA
+{
+constexpr ALLOCATOR_FLAGS operator|(const ALLOCATOR_FLAGS a, const ALLOCATOR_FLAGS b)
+{
+    return static_cast<ALLOCATOR_FLAGS>(static_cast<int>(a) | static_cast<int>(b));
+}
+} // namespace D3D12MA
+
 static D3D12DescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
     auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(ext.internal_state.get());
@@ -194,13 +203,11 @@ void D3D12Context::create(const bool enable_debug_layer)
         }
     }
 
-    D3D12MA::ALLOCATOR_DESC allocator_desc{
+    const D3D12MA::ALLOCATOR_DESC allocator_desc{
+        .Flags = D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED,
         .pDevice = m_device.Get(),
         .pAdapter = adapter.Get(),
     };
-    // These flags are optional but recommended.
-    allocator_desc.Flags = static_cast<D3D12MA::ALLOCATOR_FLAGS>(
-        D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
 
     if (FAILED(CreateAllocator(&allocator_desc, &m_allocator)))
     {
