@@ -41,25 +41,33 @@ struct CompilerInput
         O3
     } optimization = O3;
 
-    // TODO: replace with switch statement
     std::string_view get_path() const
     {
-        return std::visit(
-            [](const auto& p) -> std::string_view
-            {
-                return p.path;
-            },
-            path_and_defines);
+        switch (path_and_defines.index())
+        {
+        case 0: // NonOwning
+            return std::get<NonOwning>(path_and_defines).path;
+        case 1: // Owning
+            return std::string_view{std::get<Owning>(path_and_defines).path};
+        default:
+            return {};
+        }
     }
 
     std::span<const std::string> get_defines() const
     {
-        return std::visit(
-            [](const auto& p) -> std::span<const std::string>
-            {
-                return p.defines;
-            },
-            path_and_defines);
+        switch (path_and_defines.index())
+        {
+        case 0: // NonOwning
+            return std::get<NonOwning>(path_and_defines).defines;
+        case 1: // Owning
+        {
+            const auto& defs = std::get<Owning>(path_and_defines).defines;
+            return std::span(defs.data(), defs.size());
+        }
+        default:
+            return {};
+        }
     }
 };
 
