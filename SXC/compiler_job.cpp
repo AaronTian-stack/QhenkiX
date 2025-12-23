@@ -159,7 +159,7 @@ bool needs_to_recompile_shader(const fs::path& input_path,
     // Check meta file for permutated shaders
     if (inputs.size() > 1)
     {
-        fs::path meta_path = output_path;
+        fs::path meta_path = output_path.parent_path() / input_path.stem();
         meta_path += ".meta";
 
         const auto defines_hash = compute_defines_hash(inputs);
@@ -244,7 +244,8 @@ bool write_shader_blob(const fs::path& output_path,
     }
 
     // Write meta file containing the defines hash
-    fs::path meta_path = output_path;
+    const fs::path input_path = inputs[0].get_path();
+    fs::path meta_path = output_path.parent_path() / input_path.stem();
     meta_path += ".meta";
     const auto defines_hash = compute_defines_hash(inputs);
     return write_meta_file(meta_path, defines_hash);
