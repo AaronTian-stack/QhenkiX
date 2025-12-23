@@ -81,6 +81,175 @@ bool check_meta_file(const fs::path& meta_path, const std::string& expected_hash
 
     return stored_hash == expected_hash;
 }
+
+fs::file_time_type get_most_recent_time(const fs::path& file,
+                                        tsl::robin_set<fs::path>& visited,
+                                        std::span<const std::string> include_paths)
+{
+    if (!fs::exists(file))
+    {
+        printf("Include file not found: %s\n", file.string().c_str());
+        return fs::file_time_type::min();
+    }
+
+    if (!visited.insert(file).second)
+    {
+        return fs::file_time_type::min(); // Already visited this file
+    }
+
+    std::ifstream in(file);
+    if (!in.is_open())
+        return fs::file_time_type::min();
+
+    fs::file_time_type latest = fs::last_write_time(file); // This can technically throw an exception
+
+    std::string line;
+    std::regex include_regex(R"(^\s*#\s*include\s*["<](.*)[">])");
+    while (std::getline(in, line))
+    {
+        std::smatch match;
+        if (std::regex_search(line, match, include_regex))
+        {
+            // Look in include paths
+            fs::path include_file = file.parent_path() / match[1].str();
+
+            // If not found relative to parent, search in include paths
+            if (!fs::exists(include_file))
+            {
+                for (const auto& include_path : include_paths)
+                {
+                    fs::path candidate = fs::path(include_path) / match[1].str();
+                    if (fs::exists(candidate))
+                    {
+                        include_file = candidate;
+                        break;
+                    }
+                }
+            }
+
+            // Detect circular includes
+            if (visited.find(include_file) != visited.end())
+            {
+                printf("Circular include detected: %s\n", include_file.string().c_str());
+            }
+            else
+            {
+                // Recursively get times of includes
+                auto inc_time = get_most_recent_time(include_file, visited, include_paths);
+                if (inc_time > latest)
+                {
+                    latest = inc_time;
+                }
+            }
+        }
+    }
+    return latest;
+}
+
+bool needs_to_recompile_shader(const fs::path& input_path,
+                               const fs::path& output_path,
+                               const std::span<const std::string> include_paths,
+                               const CompilerInputVector& inputs)
+{
+    if (!fs::exists(output_path))
+    {
+        return true;
+    }
+
+    // Check meta file for permutated shaders
+    if (inputs.size() > 1)
+    {
+        fs::path meta_path = output_path;
+        meta_path += ".meta";
+
+        const auto defines_hash = compute_defines_hash(inputs);
+        if (!check_meta_file(meta_path, defines_hash))
+        {
+            return true; // Missing or hash mismatch
+        }
+    }
+
+    tsl::robin_set<fs::path> visited;
+    const auto latest_input_time = get_most_recent_time(input_path, visited, include_paths);
+    const auto output_time = fs::last_write_time(output_path);
+
+    if (latest_input_time > output_time)
+        return true;
+
+    return false;
+}
+
+bool write_shader_blob(const fs::path& output_path,
+                       const tbb::concurrent_vector<CompilerOutput>& outputs,
+                       const CompilerInputVector& inputs)
+{
+    std::ofstream out(output_path, std::ios::binary);
+    if (!out.is_open())
+    {
+        return false;
+    }
+
+    const ShaderBlobHeader header{
+        .magic = SHADER_BLOB_MAGIC,
+        .version = SHADER_BLOB_VERSION,
+        .shader_count = outputs.size(),
+    };
+    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
+
+    uint64_t current_offset = sizeof(ShaderBlobHeader);
+
+    for (size_t i = 0; i < outputs.size(); i++)
+    {
+        current_offset += sizeof(ShaderBlobEntry);
+
+        const auto defines = inputs[i].get_defines();
+        for (const auto& def : defines)
+        {
+            current_offset += def.size() + 1; // Include null terminator
+        }
+    }
+
+    auto data_offset = current_offset;
+
+    for (size_t i = 0; i < outputs.size(); i++)
+    {
+        const auto& co = outputs[i];
+        const auto defines = inputs[i].get_defines();
+
+        ShaderBlobEntry entry{
+            .offset = data_offset,
+            .size = co.shader_size,
+            .define_count = static_cast<uint32_t>(defines.size()),
+        };
+        out.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
+
+        for (const auto& def : defines)
+        {
+            assert(def.size() + 1 <= std::numeric_limits<long long>::max());
+            out.write(def.c_str(), def.size() + 1); // Include null terminator
+        }
+
+        data_offset += co.shader_size;
+    }
+
+    for (const auto& co : outputs)
+    {
+        assert(co.shader_size <= std::numeric_limits<long long>::max());
+        out.write(static_cast<const char*>(co.shader_data), co.shader_size);
+    }
+
+    if (!out.good())
+    {
+        return false;
+    }
+
+    // Write meta file containing the defines hash
+    fs::path meta_path = output_path;
+    meta_path += ".meta";
+    const auto defines_hash = compute_defines_hash(inputs);
+    return write_meta_file(meta_path, defines_hash);
+}
+
 } // namespace
 
 qhenki::gfx::ShaderType SXCJob::to_shader_type(const char* str)
@@ -221,8 +390,9 @@ int SXCJob::parse_config(const CLIInput& input,
                     {
                         size_t comma = d.find(',', current);
                         if (comma == std::string::npos || comma > closing)
+                        {
                             comma = closing;
-
+                        }
                         // Precompute the size for the new string to minimize allocations
                         const size_t prefix_len = opening;
                         const size_t middle_len = comma - current;
@@ -238,7 +408,9 @@ int SXCJob::parse_config(const CLIInput& input,
 
                         current = comma + 1;
                         if (comma >= closing)
+                        {
                             break;
+                        }
                     }
                 };
 
@@ -297,106 +469,6 @@ int SXCJob::parse_config(const CLIInput& input,
     return parse_errors.empty() ? 0 : -1;
 }
 
-namespace
-{
-fs::file_time_type get_most_recent_time(const fs::path& file,
-                                        tsl::robin_set<fs::path>& visited,
-                                        std::span<const std::string> include_paths)
-{
-    if (!fs::exists(file))
-    {
-        printf("Include file not found: %s\n", file.string().c_str());
-        return fs::file_time_type::min();
-    }
-
-    if (!visited.insert(file).second)
-    {
-        return fs::file_time_type::min(); // Already visited this file
-    }
-
-    std::ifstream in(file);
-    if (!in.is_open())
-        return fs::file_time_type::min();
-
-    fs::file_time_type latest = fs::last_write_time(file); // This can technically throw an exception
-
-    std::string line;
-    std::regex include_regex(R"(^\s*#\s*include\s*["<](.*)[">])");
-    while (std::getline(in, line))
-    {
-        std::smatch match;
-        if (std::regex_search(line, match, include_regex))
-        {
-            // Look in include paths
-            fs::path include_file = file.parent_path() / match[1].str();
-
-            // If not found relative to parent, search in include paths
-            if (!fs::exists(include_file))
-            {
-                for (const auto& include_path : include_paths)
-                {
-                    fs::path candidate = fs::path(include_path) / match[1].str();
-                    if (fs::exists(candidate))
-                    {
-                        include_file = candidate;
-                        break;
-                    }
-                }
-            }
-
-            // Detect circular includes
-            if (visited.find(include_file) != visited.end())
-            {
-                printf("Circular include detected: %s\n", include_file.string().c_str());
-            }
-            else
-            {
-                // Recursively get times of includes
-                auto inc_time = get_most_recent_time(include_file, visited, include_paths);
-                if (inc_time > latest)
-                {
-                    latest = inc_time;
-                }
-            }
-        }
-    }
-    return latest;
-}
-
-bool needs_to_recompile_shader(const fs::path& input_path,
-                               const fs::path& output_path,
-                               const std::span<const std::string> include_paths,
-                               const CompilerInputVector& inputs)
-{
-    if (!fs::exists(output_path))
-    {
-        return true;
-    }
-
-    // Check meta file for permutated shaders
-    if (inputs.size() > 1)
-    {
-        fs::path meta_path = output_path;
-        meta_path += ".meta";
-
-        const auto defines_hash = compute_defines_hash(inputs);
-        if (!check_meta_file(meta_path, defines_hash))
-        {
-            return true; // Missing or hash mismatch
-        }
-    }
-
-    tsl::robin_set<fs::path> visited;
-    const auto latest_input_time = get_most_recent_time(input_path, visited, include_paths);
-    const auto output_time = fs::last_write_time(output_path);
-
-    if (latest_input_time > output_time)
-        return true;
-
-    return false;
-}
-} // namespace
-
 fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
                                           const fs::path& input_path,
                                           const std::string& output_dir,
@@ -449,80 +521,6 @@ fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
 
     return fs::path(output_dir) / filename;
 }
-
-namespace
-{
-bool write_shader_blob(const fs::path& output_path,
-                       const tbb::concurrent_vector<CompilerOutput>& outputs,
-                       const CompilerInputVector& inputs)
-{
-    std::ofstream out(output_path, std::ios::binary);
-    if (!out.is_open())
-    {
-        return false;
-    }
-
-    const ShaderBlobHeader header{
-        .magic = SHADER_BLOB_MAGIC,
-        .version = SHADER_BLOB_VERSION,
-        .shader_count = outputs.size(),
-    };
-    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
-
-    uint64_t current_offset = sizeof(ShaderBlobHeader);
-
-    for (size_t i = 0; i < outputs.size(); i++)
-    {
-        current_offset += sizeof(ShaderBlobEntry);
-
-        const auto defines = inputs[i].get_defines();
-        for (const auto& def : defines)
-        {
-            current_offset += def.size() + 1; // Include null terminator
-        }
-    }
-
-    auto data_offset = current_offset;
-
-    for (size_t i = 0; i < outputs.size(); i++)
-    {
-        const auto& co = outputs[i];
-        const auto defines = inputs[i].get_defines();
-
-        ShaderBlobEntry entry{
-            .offset = data_offset,
-            .size = co.shader_size,
-            .define_count = static_cast<uint32_t>(defines.size()),
-        };
-        out.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
-
-        for (const auto& def : defines)
-        {
-            assert(def.size() + 1 <= std::numeric_limits<long long>::max());
-            out.write(def.c_str(), def.size() + 1); // Include null terminator
-        }
-
-        data_offset += co.shader_size;
-    }
-
-    for (const auto& co : outputs)
-    {
-        assert(co.shader_size <= std::numeric_limits<long long>::max());
-        out.write(static_cast<const char*>(co.shader_data), co.shader_size);
-    }
-
-    if (!out.good())
-    {
-        return false;
-    }
-
-    // Write meta file containing the defines hash
-    fs::path meta_path = output_path;
-    meta_path += ".meta";
-    const auto defines_hash = compute_defines_hash(inputs);
-    return write_meta_file(meta_path, defines_hash);
-}
-} // namespace
 
 ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<CompilerInputVector>* inputs,
                                                        const std::string& output_dir)
