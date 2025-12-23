@@ -117,3 +117,22 @@ jobs:
         name: ${{ matrix.example }}-build-windows-${{ matrix.config }}
         path: build/Examples/${{ matrix.example }}/${{ matrix.config }}/
         retention-days: 1
+
+  windows-build-gate:
+    name: Windows build
+    runs-on: ubuntu-24.04
+    needs:
+      - build-qhenkix
+      - build-sxc
+      - build-examples
+    if: ${{ always() }}
+    steps:
+      - name: Fail if any upstream job failed
+        run: |
+          for result in "${{ needs.build-qhenkix.result }}" "${{ needs.build-sxc.result }}" "${{ needs.build-examples.result }}"; do
+            if [ "$result" != "success" ]; then
+              echo "Upstream job failed: $result"
+              exit 1
+            fi
+          done
+          echo "All Windows build jobs succeeded."
