@@ -55,7 +55,6 @@ class D3D12Context : public Context
     std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                             const D3D12_SHADER_DESC& shader_desc,
                                                             bool increment_slot) const;
-    void root_signature_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc);
 
     UINT GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 

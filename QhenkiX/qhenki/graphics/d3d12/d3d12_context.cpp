@@ -447,20 +447,6 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
     return input_element_desc;
 }
 
-void D3D12Context::root_signature_reflection(ID3D12ShaderReflection* shader_reflection,
-                                             const D3D12_SHADER_DESC& shader_desc)
-{
-    // TODO: finish this
-    assert(false);
-    throw std::runtime_error("D3D12: Root signature reflection not implemented");
-    // D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {};
-    // for (UINT i = 0; i < shader_desc.BoundResources; i++)
-    //{
-    //	D3D12_SHADER_INPUT_BIND_DESC bind_desc = {};
-    //	shader_reflection->GetResourceBindingDesc(i, &bind_desc);
-    // }
-}
-
 UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const
 {
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
@@ -564,9 +550,9 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         assert(rs);
         pso_desc->pRootSignature = rs;
     }
-    else // Create new root signature using reflection
+    else
     {
-        root_signature_reflection(shader_reflection.Get(), shader_desc);
+        return false;
     }
 
     auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
