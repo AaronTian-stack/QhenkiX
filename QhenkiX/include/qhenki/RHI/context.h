@@ -27,9 +27,6 @@ class Context
 {
     virtual bool is_debug_layer_enabled() const = 0;
 
-protected:
-    uPtr<ShaderCompiler> m_shader_compiler;
-
 public:
     virtual void create(bool enable_debug_layer) = 0; // TODO: return error string for potential dialog box
     virtual bool is_compatibility() const = 0;
@@ -46,7 +43,6 @@ public:
     virtual bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) = 0;
 
     virtual bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) = 0;
-    virtual bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) = 0;
     virtual bool create_pipeline(const GraphicsPipelineDesc& desc,
                                  GraphicsPipeline* pipeline,
                                  const Shader& vertex_shader,

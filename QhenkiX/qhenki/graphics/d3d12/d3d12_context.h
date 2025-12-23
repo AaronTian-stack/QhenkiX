@@ -4,9 +4,10 @@
 #include <dxgi1_6.h>
 #include <dxgidebug.h>
 #include <wrl/client.h>
-#include <boost/pool/object_pool.hpp>
 
 #include <D3D12MemAlloc.h>
+#include <dxcapi.h>
+
 #include "../d3d11/d3d11_shader_compiler.h"
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_pipeline.h"
@@ -37,6 +38,8 @@ class D3D12Context : public Context
     ComPtr<IDXGISwapChain3> m_swapchain;
     std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers; // 2 is upper limit
     std::array<Descriptor, 2> m_swapchain_descriptors{};       // 2 is upper limit
+
+    ComPtr<IDxcUtils> m_library;
 
     D3D12DescriptorHeap m_imgui_heap{};              // ImGUI only
     std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
@@ -77,7 +80,6 @@ public:
     bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
-    bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) override;
 
     bool create_pipeline(const GraphicsPipelineDesc& desc,
                          GraphicsPipeline* pipeline,

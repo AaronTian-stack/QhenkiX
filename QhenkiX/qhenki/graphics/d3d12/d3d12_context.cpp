@@ -156,6 +156,12 @@ void D3D12Context::create(const bool enable_debug_layer)
         throw std::runtime_error("D3D12: Failed to create device");
     }
 
+    if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DxcLibrary");
+        throw std::runtime_error("Qhenki D3D12 Error: Failed to create DxcLibrary");
+    }
+
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &m_options12, sizeof(m_options12))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 12\n");
@@ -188,15 +194,15 @@ void D3D12Context::create(const bool enable_debug_layer)
         }
     }
 
-    D3D12MA::ALLOCATOR_DESC allocatorDesc = {
+    D3D12MA::ALLOCATOR_DESC allocator_desc{
         .pDevice = m_device.Get(),
         .pAdapter = adapter.Get(),
     };
     // These flags are optional but recommended.
-    allocatorDesc.Flags = static_cast<D3D12MA::ALLOCATOR_FLAGS>(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED |
-                                                                D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
+    allocator_desc.Flags = static_cast<D3D12MA::ALLOCATOR_FLAGS>(
+        D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
 
-    if (FAILED(CreateAllocator(&allocatorDesc, &m_allocator)))
+    if (FAILED(CreateAllocator(&allocator_desc, &m_allocator)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create memory allocator");
         throw std::runtime_error("D3D12: Failed to create memory allocator");
@@ -206,8 +212,6 @@ void D3D12Context::create(const bool enable_debug_layer)
     {
         m_dxgi_debug->EnableLeakTrackingForThread();
     }
-
-    m_shader_compiler = mkU<D3D12ShaderCompiler>();
 
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &m_options, sizeof(m_options))))
     {
@@ -393,12 +397,8 @@ bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType
     assert(data);
     assert(shader);
 
-    const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(m_shader_compiler.get());
-    assert(d3d12_shader_compiler);
-    const auto utils = d3d12_shader_compiler->m_library.Get();
-
     ComPtr<IDxcBlobEncoding> container_blob_enc;
-    if (FAILED(utils->CreateBlob(data, static_cast<UINT32>(size), 0, container_blob_enc.ReleaseAndGetAddressOf())))
+    if (FAILED(m_library->CreateBlob(data, static_cast<UINT32>(size), 0, container_blob_enc.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DXC blob from memory\n");
         return false;
@@ -414,28 +414,6 @@ bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType
     shader->internal_state = mkS<D3D12ShaderOutput>();
     auto* out = static_cast<D3D12ShaderOutput*>(shader->internal_state.get());
     out->shader_blob = container_blob;
-
-    return true;
-}
-
-bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input)
-{
-    assert(shader); // Assert that shader pointer is not null
-    if (compiler == nullptr)
-    {
-        compiler = m_shader_compiler.get();
-    }
-    CompilerOutput output = {};
-    if (!compiler->compile(input, output))
-    {
-        OutputDebugStringA(output.error_message.c_str());
-        return false;
-    }
-
-    *shader = {
-        .type = input.shader_type,
-        .internal_state = output.internal_state, // IDxcBlob
-    };
 
     return true;
 }
@@ -526,27 +504,22 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         assert(ps12);
 
         // Build reflection from the DXIL container directly
-        const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(m_shader_compiler.get());
-        assert(d3d12_shader_compiler);
         const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
                                                static_cast<UINT32>(vs12->shader_blob->GetBufferSize()),
                                                0};
         // Prefer reflecting from the RDAT part if available to avoid scanning the container
         void* rdat_ptr = nullptr;
         UINT32 rdat_size = 0;
-        HRESULT hr = d3d12_shader_compiler->m_library->GetDxilContainerPart(&vs_container_buffer,
-                                                                            DXC_PART_REFLECTION_DATA,
-                                                                            &rdat_ptr,
-                                                                            &rdat_size);
+        auto hr =
+            m_library->GetDxilContainerPart(&vs_container_buffer, DXC_PART_REFLECTION_DATA, &rdat_ptr, &rdat_size);
         if (SUCCEEDED(hr) && rdat_ptr && rdat_size)
         {
             const DxcBuffer rdat_buffer = {rdat_ptr, rdat_size, 0};
-            hr = d3d12_shader_compiler->m_library->CreateReflection(&rdat_buffer, IID_PPV_ARGS(&shader_reflection));
+            hr = m_library->CreateReflection(&rdat_buffer, IID_PPV_ARGS(&shader_reflection));
         }
         else
         {
-            hr = d3d12_shader_compiler->m_library->CreateReflection(&vs_container_buffer,
-                                                                    IID_PPV_ARGS(&shader_reflection));
+            hr = m_library->CreateReflection(&vs_container_buffer, IID_PPV_ARGS(&shader_reflection));
         }
         if (FAILED(hr))
         {
@@ -576,14 +549,12 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     // Prefer root signature embedded in shader container if present
     if (vs12)
     {
-        const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(m_shader_compiler.get());
-        assert(d3d12_shader_compiler);
         const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
                                                static_cast<UINT32>(vs12->shader_blob->GetBufferSize()),
                                                0};
         void* rsig_ptr = nullptr;
         UINT32 rsig_size = 0;
-        if (SUCCEEDED(d3d12_shader_compiler->m_library->GetDxilContainerPart(
+        if (SUCCEEDED(m_library->GetDxilContainerPart(
                 &vs_container_buffer, DXC_PART_ROOT_SIGNATURE, &rsig_ptr, &rsig_size)) &&
             rsig_ptr && rsig_size)
         {

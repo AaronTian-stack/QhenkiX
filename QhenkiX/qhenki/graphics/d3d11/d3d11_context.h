@@ -61,8 +61,6 @@ public:
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
     // thread safe
-    bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) override;
-    // thread safe
     bool create_pipeline(const GraphicsPipelineDesc& desc,
                          GraphicsPipeline* pipeline,
                          const Shader& vertex_shader,
