@@ -209,6 +209,13 @@ bool D3D11Context::resize_swapchain(
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
+bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
+{
+    bool result = true;
+    shader->internal_state = mkS<D3D11Shader>(m_device_.Get(), type, data, size, nullptr, &result);
+    return result;
+}
+
 bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input)
 {
     if (compiler == nullptr)

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl/client.h>
@@ -13,6 +13,5 @@ struct D3D12Pipeline
     D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc = nullptr;                             // Temp for deferred compilation
     D3D12_PRIMITIVE_TOPOLOGY primitive_topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED; // Needed for command list
     ComPtr<ID3D12PipelineState> pipeline_state = nullptr;
-    bool deferred = false;
 };
 } // namespace qhenki::gfx

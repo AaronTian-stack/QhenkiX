@@ -16,7 +16,7 @@ using Microsoft::WRL::ComPtr;
 using namespace qhenki::gfx;
 using namespace qhenki::util;
 
-void D3D11ShaderCompiler::get_shader_dll_path(char* buffer, size_t buffer_length)
+void D3D11ShaderCompiler::get_shader_dll_path(char* buffer, const size_t buffer_length)
 {
     if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
     {
@@ -129,14 +129,6 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     const auto d3d_shader_output = static_cast<D3D11ShaderOutput*>(output.internal_state.get());
     d3d_shader_output->shader_blob = shader_blob;
 
-    // Get the root signature
-    // The shader might not have a root signature (e.g. D3D11 shaders)
-    D3DGetBlobPart(shader_blob->GetBufferPointer(),
-                   shader_blob->GetBufferSize(),
-                   D3D_BLOB_ROOT_SIGNATURE,
-                   0,
-                   d3d_shader_output->root_signature_blob.ReleaseAndGetAddressOf());
-
     if (input.flags & CompilerInput::DEBUG)
     {
         ComPtr<ID3DBlob> debug_info_path;
@@ -166,17 +158,19 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         }
 
         // Convert ID3DBlob to wstring
-        const ShaderDebugName* pDebugNameData = reinterpret_cast<const ShaderDebugName*>(
-            debug_info_path->GetBufferPointer());
-        const char* pName = reinterpret_cast<const char*>(pDebugNameData + 1);
-        const auto result = write_file(pName, debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
-        assert(result);
+        const auto debug_name_data = static_cast<const ShaderDebugName*>(debug_info_path->GetBufferPointer());
+        const auto name = reinterpret_cast<const char*>(debug_name_data + 1);
+        if (!write_file(name, debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize()))
+        {
+            output.error_message = "D3D11ShaderCompiler: Failed to write PDB file :: " + std::string(name);
+            return false;
+        }
     }
 
     return true;
 }
 
-bool D3D11ShaderCompiler::get_dll_path(char* buffer1, unsigned long buffer_length)
+bool D3D11ShaderCompiler::get_dll_path(char* buffer1, const unsigned long buffer_length)
 {
     assert(buffer1);
     if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))

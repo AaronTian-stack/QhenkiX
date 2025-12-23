@@ -45,6 +45,7 @@ public:
     virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) = 0;
     virtual bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) = 0;
 
+    virtual bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) = 0;
     virtual bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) = 0;
     virtual bool create_pipeline(const GraphicsPipelineDesc& desc,
                                  GraphicsPipeline* pipeline,

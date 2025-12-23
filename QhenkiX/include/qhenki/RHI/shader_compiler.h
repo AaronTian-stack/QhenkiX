@@ -77,7 +77,6 @@ struct CompilerOutput
     size_t shader_size;
     const void* shader_data;
     sPtr<void> internal_state;
-    // DXC shaders also need to be signed by dxil.dll
 };
 
 class ShaderCompiler

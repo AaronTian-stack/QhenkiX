@@ -59,6 +59,7 @@ public:
     }
     bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
 
+    bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
     // thread safe
     bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) override;
     // thread safe

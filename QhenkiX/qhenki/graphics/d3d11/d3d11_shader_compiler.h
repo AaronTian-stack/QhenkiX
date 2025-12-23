@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3dcommon.h>
 #include <wrl/client.h>
@@ -22,14 +22,16 @@ struct ShaderDebugName
 struct D3D11ShaderOutput
 {
     ComPtr<ID3DBlob> shader_blob;
-    ComPtr<ID3DBlob> root_signature_blob;
 };
 
 class D3D11ShaderCompiler : public ShaderCompiler
 {
+    static bool get_dll_path(char* buffer1, unsigned long buffer_length);
+
 public:
     static void get_shader_dll_path(char* buffer, size_t buffer_length);
     bool compile(const CompilerInput& input, CompilerOutput& output) override;
-    static bool get_dll_path(char* buffer1, unsigned long buffer_length);
+
+    friend class D3D12ShaderCompiler;
 };
 } // namespace qhenki::gfx

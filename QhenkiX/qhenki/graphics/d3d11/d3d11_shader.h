@@ -24,6 +24,12 @@ class D3D11Shader
     std::variant<ComPtr<ID3D11PixelShader>, D3D11VertexShader> m_shader;
 
 public:
+    D3D11Shader(ID3D11Device* device,
+                ShaderType shader_type,
+                const void* data,
+                size_t size,
+                const char* dbg_name,
+                bool* result);
     D3D11Shader(
         ID3D11Device* device, ShaderType shader_type, const char* name, const CompilerOutput& output, bool* result);
 

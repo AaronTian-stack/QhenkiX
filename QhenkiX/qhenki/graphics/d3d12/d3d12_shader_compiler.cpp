@@ -279,25 +279,6 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     output.shader_size = d3d12_output->shader_blob->GetBufferSize();
     output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
 
-    // Reflection data is part of shader blob
-    if (const auto hr_r = result->GetOutput(DXC_OUT_REFLECTION,
-                                            IID_PPV_ARGS(d3d12_output->reflection_blob.ReleaseAndGetAddressOf()),
-                                            nullptr);
-        FAILED(hr_r))
-    {
-        output_error();
-        return false;
-    }
-
-    // The shader might not have a root signature
-    if (const auto hr_rs = result->GetOutput(DXC_OUT_ROOT_SIGNATURE,
-                                             IID_PPV_ARGS(d3d12_output->root_signature_blob.ReleaseAndGetAddressOf()),
-                                             nullptr);
-        FAILED(hr_rs))
-    {
-        d3d12_output->root_signature_blob.Reset();
-    }
-
     // Assumed to be null-terminated!
     const auto& pdb_path = input.pdb_path;
     if (!pdb_path.empty())
