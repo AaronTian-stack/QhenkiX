@@ -225,7 +225,6 @@ bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
     }
 
     shader->type = input.shader_type;
-    shader->shader_model = input.shader_model;
     bool result = true;
     // Calls CreateXShader(). Thread safe since it only uses the device
     shader->internal_state =

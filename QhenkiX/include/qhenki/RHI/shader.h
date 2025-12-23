@@ -26,7 +26,6 @@ enum class ShaderModel
 struct Shader
 {
     ShaderType type;
-    ShaderModel shader_model; // SM shader was compiled with
     sPtr<void> internal_state;
 };
 } // namespace qhenki::gfx

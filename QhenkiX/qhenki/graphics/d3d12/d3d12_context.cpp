@@ -403,7 +403,6 @@ bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shade
 
     *shader = {
         .type = input.shader_type,
-        .shader_model = input.shader_model,
         .internal_state = output.internal_state, // IDxcBlob
     };
 
@@ -502,40 +501,11 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         pso_desc = m_pipeline_desc_pool.construct();
     }
 
-    assert(vertex_shader.shader_model == pixel_shader.shader_model);
-
-    D3D12ShaderOutput* vs12 = nullptr;
-    D3D11ShaderOutput* vs11 = nullptr;
+    const D3D12ShaderOutput* vs12;
 
     ComPtr<ID3D12ShaderReflection> shader_reflection;
     D3D12_SHADER_DESC shader_desc{};
-    if (vertex_shader.shader_model < ShaderModel::SM_6_0)
-    {
-        vs11 = static_cast<D3D11ShaderOutput*>(vertex_shader.internal_state.get());
-        const auto ps11 = static_cast<D3D11ShaderOutput*>(pixel_shader.internal_state.get());
-        assert(vs11);
-        assert(ps11);
-        if (const auto hr = D3DReflect(vs11->shader_blob->GetBufferPointer(),
-                                       vs11->shader_blob->GetBufferSize(),
-                                       IID_ID3D12ShaderReflection,
-                                       &shader_reflection);
-            FAILED(hr))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
-            return false;
-        }
-        const auto hr_d = shader_reflection->GetDesc(&shader_desc);
-        assert(SUCCEEDED(hr_d));
-        // Input reflection (VS)
-        d3d12_pipeline->input_layout_desc =
-            this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
-
-        pso_desc->VS = {.pShaderBytecode = vs11->shader_blob->GetBufferPointer(),
-                        .BytecodeLength = vs11->shader_blob->GetBufferSize()};
-        pso_desc->PS = {.pShaderBytecode = ps11->shader_blob->GetBufferPointer(),
-                        .BytecodeLength = ps11->shader_blob->GetBufferSize()};
-    }
-    else // SM >= 6.0
+    // SM >= 6.0
     {
         vs12 = static_cast<D3D12ShaderOutput*>(vertex_shader.internal_state.get());
         const auto ps12 = static_cast<D3D12ShaderOutput*>(pixel_shader.internal_state.get());
@@ -556,9 +526,13 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
             return false;
         }
-        // Input reflection (VS)
-        const auto hr_d = shader_reflection->GetDesc(&shader_desc);
-        assert(SUCCEEDED(hr_d));
+
+        if (FAILED(shader_reflection->GetDesc(&shader_desc)))
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
+            return false;
+        }
+
         d3d12_pipeline->input_layout_desc =
             this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
@@ -572,23 +546,13 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     pso_desc->InputLayout = {.pInputElementDescs = input_layout_desc.data(),
                              .NumElements = static_cast<uint32_t>(input_layout_desc.size())};
 
-    assert((vs12 == nullptr) ^ (vs11 == nullptr));
-    if ((vs12 && vs12->root_signature_blob) ||
-        (vs11 && vs11->root_signature_blob)) // Root signature is contained in the shader
+    if (vs12 && vs12->root_signature_blob) // Root signature is contained in the shader
     {
         assert(!in_layout); // Should not have both
-        void* blob_ptr;
-        size_t blob_size;
-        if (vs11)
-        {
-            blob_ptr = vs11->root_signature_blob->GetBufferPointer();
-            blob_size = vs11->root_signature_blob->GetBufferSize();
-        }
-        else
-        {
-            blob_ptr = vs12->root_signature_blob->GetBufferPointer();
-            blob_size = vs12->root_signature_blob->GetBufferSize();
-        }
+
+        const void* blob_ptr = vs12->root_signature_blob->GetBufferPointer();
+        const size_t blob_size = vs12->root_signature_blob->GetBufferSize();
+
         // Root signatures are always created using blobs (they must be serialized)
         const auto root_result = m_root_reflection.add_root_signature(m_device.Get(), blob_ptr, blob_size);
         assert(root_result);
@@ -643,7 +607,9 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             D3D12_COLOR_WRITE_ENABLE_ALL,
         };
         for (auto& i : pso_desc->BlendState.RenderTarget)
+        {
             i = default_render_target_blend_desc;
+        }
     }
 
     if (desc.depth_stencil_state.has_value())
@@ -668,7 +634,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     pso_desc->SampleMask = UINT_MAX;
 
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type;
     d3d12_pipeline->primitive_topology = get_primitive_topology(desc.topology);
 
     switch (desc.topology)
