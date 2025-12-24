@@ -32,6 +32,7 @@ target_link_libraries(SimpleExample PRIVATE QhenkiX)
 # Set working directory for Visual Studio debugging
 set_target_properties(SimpleExample PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    FOLDER "Examples"
 )
 
 add_custom_command(TARGET SimpleExample POST_BUILD

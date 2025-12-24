@@ -42,5 +42,9 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
         DEPENDS ${TARGET_NAME}_CompileShaders_DX11 ${TARGET_NAME}_CompileShaders_DX12
     )
 
+    set_target_properties(${TARGET_NAME}_CompileShaders_DX11 PROPERTIES FOLDER "Examples/Shaders")
+    set_target_properties(${TARGET_NAME}_CompileShaders_DX12 PROPERTIES FOLDER "Examples/Shaders")
+    set_target_properties(${TARGET_NAME}_CompileShaders PROPERTIES FOLDER "Examples/Shaders")
+
     add_dependencies(${TARGET_NAME} ${TARGET_NAME}_CompileShaders)
 endfunction()
