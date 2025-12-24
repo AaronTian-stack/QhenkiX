@@ -456,9 +456,14 @@ CMakeScripts/
 cmake_install.cmake
 CTestTestfile.cmake
 Makefile
-*.cmake
 !CMakeLists.txt
 install_manifest.txt
 compile_commands.json
 
 .vscode/
+
+# Compiled shaders
+*.dxil
+*.dxbc
+*.dxil_blob
+*.dxbc_blob
