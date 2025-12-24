@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3dcommon.h>
 #include <dxcapi.h>
@@ -15,8 +15,6 @@ namespace qhenki::gfx
 struct D3D12ShaderOutput
 {
     ComPtr<IDxcBlob> shader_blob;
-    ComPtr<IDxcBlob> reflection_blob;
-    ComPtr<IDxcBlob> root_signature_blob;
 };
 
 class D3D12ShaderCompiler : public D3D11ShaderCompiler
@@ -24,7 +22,7 @@ class D3D12ShaderCompiler : public D3D11ShaderCompiler
     ComPtr<IDxcUtils> m_library;
     ComPtr<IDxcCompiler3> m_compiler; // Not thread safe
 
-    static DXGI_FORMAT mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type);
+    static DXGI_FORMAT mask_to_format(uint32_t mask, D3D_REGISTER_COMPONENT_TYPE type);
 
 public:
     D3D12ShaderCompiler();

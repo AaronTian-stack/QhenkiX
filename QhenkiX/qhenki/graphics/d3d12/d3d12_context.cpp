@@ -22,6 +22,15 @@
 
 using namespace qhenki::gfx;
 
+// Operator overloads for D3D12MA enums to work with designated initializers
+namespace D3D12MA
+{
+constexpr ALLOCATOR_FLAGS operator|(const ALLOCATOR_FLAGS a, const ALLOCATOR_FLAGS b)
+{
+    return static_cast<ALLOCATOR_FLAGS>(static_cast<int>(a) | static_cast<int>(b));
+}
+} // namespace D3D12MA
+
 static D3D12DescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
     auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(ext.internal_state.get());
@@ -91,6 +100,7 @@ bool set_debug_name(ID3D12Object* obj, const char* name)
     {
         return SUCCEEDED(obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(name), name));
     }
+    return false;
 }
 
 void D3D12Context::create(const bool enable_debug_layer)
@@ -155,6 +165,12 @@ void D3D12Context::create(const bool enable_debug_layer)
         throw std::runtime_error("D3D12: Failed to create device");
     }
 
+    if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DxcLibrary");
+        throw std::runtime_error("Qhenki D3D12 Error: Failed to create DxcLibrary");
+    }
+
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &m_options12, sizeof(m_options12))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 12\n");
@@ -187,15 +203,13 @@ void D3D12Context::create(const bool enable_debug_layer)
         }
     }
 
-    D3D12MA::ALLOCATOR_DESC allocatorDesc = {
+    const D3D12MA::ALLOCATOR_DESC allocator_desc{
+        .Flags = D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED,
         .pDevice = m_device.Get(),
         .pAdapter = adapter.Get(),
     };
-    // These flags are optional but recommended.
-    allocatorDesc.Flags = static_cast<D3D12MA::ALLOCATOR_FLAGS>(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED |
-                                                                D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
 
-    if (FAILED(CreateAllocator(&allocatorDesc, &m_allocator)))
+    if (FAILED(CreateAllocator(&allocator_desc, &m_allocator)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create memory allocator");
         throw std::runtime_error("D3D12: Failed to create memory allocator");
@@ -205,8 +219,6 @@ void D3D12Context::create(const bool enable_debug_layer)
     {
         m_dxgi_debug->EnableLeakTrackingForThread();
     }
-
-    m_shader_compiler = mkU<D3D12ShaderCompiler>();
 
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &m_options, sizeof(m_options))))
     {
@@ -387,25 +399,28 @@ bool D3D12Context::present(Swapchain* const swapchain,
     return result == S_OK;
 }
 
-bool D3D12Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input)
+bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
 {
-    assert(shader); // Assert that shader pointer is not null
-    if (compiler == nullptr)
+    assert(data);
+    assert(shader);
+
+    ComPtr<IDxcBlobEncoding> container_blob_enc;
+    if (FAILED(m_library->CreateBlob(data, static_cast<UINT32>(size), 0, container_blob_enc.ReleaseAndGetAddressOf())))
     {
-        compiler = m_shader_compiler.get();
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DXC blob from memory\n");
+        return false;
     }
-    CompilerOutput output = {};
-    if (!compiler->compile(input, output))
+    ComPtr<IDxcBlob> container_blob;
+    if (FAILED(container_blob_enc.As(&container_blob)))
     {
-        OutputDebugStringA(output.error_message.c_str());
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to cast encoding blob to IDxcBlob\n");
         return false;
     }
 
-    *shader = {
-        .type = input.shader_type,
-        .shader_model = input.shader_model,
-        .internal_state = output.internal_state, // IDxcBlob
-    };
+    shader->type = type;
+    shader->internal_state = mkS<D3D12ShaderOutput>();
+    auto* out = static_cast<D3D12ShaderOutput*>(shader->internal_state.get());
+    out->shader_blob = container_blob;
 
     return true;
 }
@@ -448,20 +463,6 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
     return input_element_desc;
 }
 
-void D3D12Context::root_signature_reflection(ID3D12ShaderReflection* shader_reflection,
-                                             const D3D12_SHADER_DESC& shader_desc)
-{
-    // TODO: finish this
-    assert(false);
-    throw std::runtime_error("D3D12: Root signature reflection not implemented");
-    // D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {};
-    // for (UINT i = 0; i < shader_desc.BoundResources; i++)
-    //{
-    //	D3D12_SHADER_INPUT_BIND_DESC bind_desc = {};
-    //	shader_reflection->GetResourceBindingDesc(i, &bind_desc);
-    // }
-}
-
 UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const
 {
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
@@ -496,113 +497,86 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     const auto d3d12_pipeline = to_internal(*pipeline);
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC* pso_desc;
-    {
-        std::scoped_lock lock(m_pipeline_desc_mutex);
-        pso_desc = m_pipeline_desc_pool.construct();
-    }
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
 
-    assert(vertex_shader.shader_model == pixel_shader.shader_model);
-
-    D3D12ShaderOutput* vs12 = nullptr;
-    D3D11ShaderOutput* vs11 = nullptr;
+    const D3D12ShaderOutput* vs12;
 
     ComPtr<ID3D12ShaderReflection> shader_reflection;
     D3D12_SHADER_DESC shader_desc{};
-    if (vertex_shader.shader_model < ShaderModel::SM_6_0)
-    {
-        vs11 = static_cast<D3D11ShaderOutput*>(vertex_shader.internal_state.get());
-        const auto ps11 = static_cast<D3D11ShaderOutput*>(pixel_shader.internal_state.get());
-        assert(vs11);
-        assert(ps11);
-        if (const auto hr = D3DReflect(vs11->shader_blob->GetBufferPointer(),
-                                       vs11->shader_blob->GetBufferSize(),
-                                       IID_ID3D12ShaderReflection,
-                                       &shader_reflection);
-            FAILED(hr))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
-            return false;
-        }
-        const auto hr_d = shader_reflection->GetDesc(&shader_desc);
-        assert(SUCCEEDED(hr_d));
-        // Input reflection (VS)
-        d3d12_pipeline->input_layout_desc =
-            this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
-
-        pso_desc->VS = {.pShaderBytecode = vs11->shader_blob->GetBufferPointer(),
-                        .BytecodeLength = vs11->shader_blob->GetBufferSize()};
-        pso_desc->PS = {.pShaderBytecode = ps11->shader_blob->GetBufferPointer(),
-                        .BytecodeLength = ps11->shader_blob->GetBufferSize()};
-    }
-    else // SM >= 6.0
+    // SM >= 6.0
     {
         vs12 = static_cast<D3D12ShaderOutput*>(vertex_shader.internal_state.get());
         const auto ps12 = static_cast<D3D12ShaderOutput*>(pixel_shader.internal_state.get());
         assert(vs12);
         assert(ps12);
-        const auto& vs_reflection_buffer_12 = vs12->reflection_blob;
 
-        const DxcBuffer vs_reflection_dxc_buffer = {vs_reflection_buffer_12->GetBufferPointer(),
-                                                    vs_reflection_buffer_12->GetBufferSize(),
-                                                    0};
-        const auto d3d12_shader_compiler = static_cast<D3D12ShaderCompiler*>(m_shader_compiler.get());
-        assert(d3d12_shader_compiler);
-
-        if (const auto hr = d3d12_shader_compiler->m_library->CreateReflection(&vs_reflection_dxc_buffer,
-                                                                               IID_PPV_ARGS(&shader_reflection));
-            FAILED(hr))
+        // Build reflection from the DXIL container directly
+        const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
+                                               static_cast<UINT32>(vs12->shader_blob->GetBufferSize()),
+                                               0};
+        // Prefer reflecting from the RDAT part if available to avoid scanning the container
+        void* rdat_ptr = nullptr;
+        UINT32 rdat_size = 0;
+        auto hr =
+            m_library->GetDxilContainerPart(&vs_container_buffer, DXC_PART_REFLECTION_DATA, &rdat_ptr, &rdat_size);
+        if (SUCCEEDED(hr) && rdat_ptr && rdat_size)
+        {
+            const DxcBuffer rdat_buffer = {rdat_ptr, rdat_size, 0};
+            hr = m_library->CreateReflection(&rdat_buffer, IID_PPV_ARGS(&shader_reflection));
+        }
+        else
+        {
+            hr = m_library->CreateReflection(&vs_container_buffer, IID_PPV_ARGS(&shader_reflection));
+        }
+        if (FAILED(hr))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
             return false;
         }
-        // Input reflection (VS)
-        const auto hr_d = shader_reflection->GetDesc(&shader_desc);
-        assert(SUCCEEDED(hr_d));
+
+        if (FAILED(shader_reflection->GetDesc(&shader_desc)))
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
+            return false;
+        }
+
         d3d12_pipeline->input_layout_desc =
             this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
-        pso_desc->VS = {.pShaderBytecode = vs12->shader_blob->GetBufferPointer(),
-                        .BytecodeLength = vs12->shader_blob->GetBufferSize()};
-        pso_desc->PS = {.pShaderBytecode = ps12->shader_blob->GetBufferPointer(),
-                        .BytecodeLength = ps12->shader_blob->GetBufferSize()};
+        pso_desc.VS = {.pShaderBytecode = vs12->shader_blob->GetBufferPointer(),
+                       .BytecodeLength = vs12->shader_blob->GetBufferSize()};
+        pso_desc.PS = {.pShaderBytecode = ps12->shader_blob->GetBufferPointer(),
+                       .BytecodeLength = ps12->shader_blob->GetBufferSize()};
     }
 
     const auto& input_layout_desc = d3d12_pipeline->input_layout_desc;
-    pso_desc->InputLayout = {.pInputElementDescs = input_layout_desc.data(),
-                             .NumElements = static_cast<uint32_t>(input_layout_desc.size())};
+    pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc.data(),
+                            .NumElements = static_cast<uint32_t>(input_layout_desc.size())};
 
-    assert((vs12 == nullptr) ^ (vs11 == nullptr));
-    if ((vs12 && vs12->root_signature_blob) ||
-        (vs11 && vs11->root_signature_blob)) // Root signature is contained in the shader
+    // Prefer root signature embedded in shader container if present
+    if (vs12)
     {
-        assert(!in_layout); // Should not have both
-        void* blob_ptr;
-        size_t blob_size;
-        if (vs11)
+        const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
+                                               static_cast<UINT32>(vs12->shader_blob->GetBufferSize()),
+                                               0};
+        void* rsig_ptr = nullptr;
+        UINT32 rsig_size = 0;
+        if (SUCCEEDED(m_library->GetDxilContainerPart(
+                &vs_container_buffer, DXC_PART_ROOT_SIGNATURE, &rsig_ptr, &rsig_size)) &&
+            rsig_ptr && rsig_size)
         {
-            blob_ptr = vs11->root_signature_blob->GetBufferPointer();
-            blob_size = vs11->root_signature_blob->GetBufferSize();
+            assert(!in_layout); // Should not have both
+            const auto root_result = m_root_reflection.add_root_signature(m_device.Get(), rsig_ptr, rsig_size);
+            assert(root_result);
+            pso_desc.pRootSignature = root_result;
         }
-        else
-        {
-            blob_ptr = vs12->root_signature_blob->GetBufferPointer();
-            blob_size = vs12->root_signature_blob->GetBufferSize();
-        }
-        // Root signatures are always created using blobs (they must be serialized)
-        const auto root_result = m_root_reflection.add_root_signature(m_device.Get(), blob_ptr, blob_size);
-        assert(root_result);
-        pso_desc->pRootSignature = root_result;
     }
-    else if (in_layout) // Check if premade root signature is provided
+
+    if (!pso_desc.pRootSignature)
     {
         const auto rs = static_cast<ComPtr<ID3D12RootSignature>*>(in_layout->internal_state.get())->Get();
         assert(rs);
-        pso_desc->pRootSignature = rs;
-    }
-    else // Create new root signature using reflection
-    {
-        root_signature_reflection(shader_reflection.Get(), shader_desc);
+        pso_desc.pRootSignature = rs;
     }
 
     auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
@@ -620,16 +594,16 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                      D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF};
     };
 
-    pso_desc->RasterizerState = make_d3d12_rasterizer_desc(desc.rasterizer_state.value_or(RasterizerDesc{}));
+    pso_desc.RasterizerState = make_d3d12_rasterizer_desc(desc.rasterizer_state.value_or(RasterizerDesc{}));
 
     if (desc.blend_desc.has_value())
     {
-        pso_desc->BlendState = *desc.blend_desc;
+        pso_desc.BlendState = *desc.blend_desc;
     }
     else
     {
-        pso_desc->BlendState.AlphaToCoverageEnable = FALSE;
-        pso_desc->BlendState.IndependentBlendEnable = FALSE;
+        pso_desc.BlendState.AlphaToCoverageEnable = FALSE;
+        pso_desc.BlendState.IndependentBlendEnable = FALSE;
         constexpr D3D12_RENDER_TARGET_BLEND_DESC default_render_target_blend_desc = {
             FALSE,
             FALSE,
@@ -642,14 +616,16 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             D3D12_LOGIC_OP_NOOP,
             D3D12_COLOR_WRITE_ENABLE_ALL,
         };
-        for (auto& i : pso_desc->BlendState.RenderTarget)
+        for (auto& i : pso_desc.BlendState.RenderTarget)
+        {
             i = default_render_target_blend_desc;
+        }
     }
 
     if (desc.depth_stencil_state.has_value())
     {
         auto& depth_stencil_state = desc.depth_stencil_state.value();
-        pso_desc->DepthStencilState = {
+        pso_desc.DepthStencilState = {
             .DepthEnable = static_cast<INT>(depth_stencil_state.depth_enable),
             .DepthWriteMask = depth_stencil_state.depth_write_mask,
             .DepthFunc = depth_stencil_state.depth_func,
@@ -662,13 +638,13 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     }
     else
     {
-        pso_desc->DepthStencilState.DepthEnable = FALSE;
-        pso_desc->DepthStencilState.StencilEnable = FALSE;
+        pso_desc.DepthStencilState.DepthEnable = FALSE;
+        pso_desc.DepthStencilState.StencilEnable = FALSE;
     }
 
-    pso_desc->SampleMask = UINT_MAX;
+    pso_desc.SampleMask = UINT_MAX;
 
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type;
     d3d12_pipeline->primitive_topology = get_primitive_topology(desc.topology);
 
     switch (desc.topology)
@@ -688,37 +664,25 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         throw std::runtime_error("D3D12: Invalid primitive topology");
     }
 
-    pso_desc->PrimitiveTopologyType = topology_type;
+    pso_desc.PrimitiveTopologyType = topology_type;
 
-    pso_desc->NumRenderTargets = desc.num_render_targets;
+    pso_desc.NumRenderTargets = desc.num_render_targets;
 
     // TODO: MSAA support
-    pso_desc->SampleDesc.Count = 1;
+    pso_desc.SampleDesc.Count = 1;
 
-    if (desc.num_render_targets < 1)
+    for (int i = 0; i < desc.num_render_targets; i++)
     {
-        OutputDebugStringA("Qhenki D3D12 WARNING: Pipeline creation deferred due to lack of targets\n");
-        d3d12_pipeline->deferred = true;
+        pso_desc.RTVFormats[i] = desc.rtv_formats[i];
     }
-    else
+    pso_desc.DSVFormat = desc.dsv_format;
+    if (const auto hr = m_device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state));
+        FAILED(hr))
     {
-        for (int i = 0; i < desc.num_render_targets; i++)
-        {
-            pso_desc->RTVFormats[i] = desc.rtv_formats[i];
-        }
-        pso_desc->DSVFormat = desc.dsv_format;
-        if (const auto hr = m_device->CreateGraphicsPipelineState(pso_desc,
-                                                                  IID_PPV_ARGS(&d3d12_pipeline->pipeline_state));
-            FAILED(hr))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create Graphics Pipeline State\n");
-            return false;
-        }
-        d3d12_pipeline->input_layout_desc.clear();
-        // Free description
-        std::scoped_lock lock(m_pipeline_desc_mutex);
-        m_pipeline_desc_pool.destroy(pso_desc);
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create Graphics Pipeline State\n");
+        return false;
     }
+    d3d12_pipeline->input_layout_desc.clear();
 
     set_debug_name(d3d12_pipeline->pipeline_state.Get(), debug_name);
 
@@ -729,14 +693,6 @@ bool D3D12Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 {
     assert(cmd_list);
     const auto d3d12_pipeline = to_internal(pipeline);
-    if (d3d12_pipeline->deferred)
-    {
-        // Set current render target info and create the pipeline
-        assert(false);
-        // Issue a warning that the pipeline was deferred
-        OutputDebugStringA("Qhenki D3D12 WARNING: Deferred pipeline compilation\n");
-        assert(d3d12_pipeline->input_layout_desc.empty());
-    }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     cmd_list_d3d12->Get()->IASetPrimitiveTopology(d3d12_pipeline->primitive_topology);

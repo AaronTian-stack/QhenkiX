@@ -184,8 +184,6 @@ void D3D11Context::create(const bool enable_debug_layer)
             throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
         }
     }
-
-    m_shader_compiler = mkU<D3D11ShaderCompiler>();
 }
 
 bool D3D11Context::create_swapchain(const DisplayWindow& window,
@@ -209,28 +207,10 @@ bool D3D11Context::resize_swapchain(
     return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
 }
 
-bool D3D11Context::create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input)
+bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
 {
-    if (compiler == nullptr)
-    {
-        compiler = m_shader_compiler.get();
-    }
-
-    CompilerOutput output = {};
-    // ID3DBlob
-    if (!compiler->compile(input, output))
-    {
-        OutputDebugStringA(output.error_message.c_str());
-        return false;
-    }
-
-    shader->type = input.shader_type;
-    shader->shader_model = input.shader_model;
     bool result = true;
-    // Calls CreateXShader(). Thread safe since it only uses the device
-    shader->internal_state =
-        mkS<D3D11Shader>(m_device_.Get(), input.shader_type, input.get_path().data(), output, &result);
-
+    shader->internal_state = mkS<D3D11Shader>(m_device_.Get(), type, data, size, nullptr, &result);
     return result;
 }
 

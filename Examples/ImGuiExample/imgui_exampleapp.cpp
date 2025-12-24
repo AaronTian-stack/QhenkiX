@@ -2,31 +2,37 @@
 
 #include <imgui/imgui.h>
 
+#include <qhenki/utility/file_util.h>
+
+#include <array>
+#include <cstddef>
+#include <cstdio>
+#include <memory>
+
 void ImGUIExampleApp::create()
 {
-    auto shader_model = m_context->is_compatibility() ? qhenki::gfx::ShaderModel::SM_5_0
-                                                      : qhenki::gfx::ShaderModel::SM_6_6;
+    const bool use_dx11 = m_context->is_compatibility();
+    const char* subdir = use_dx11 ? "dx11" : "dx12";
+    const char* vs_name = use_dx11 ? "BaseShader_vs_5_0_vs_main.dxbc" : "BaseShader_vs_6_6_vs_main.dxil";
+    const char* ps_name = use_dx11 ? "BaseShader_ps_5_0_ps_main.dxbc" : "BaseShader_ps_6_6_ps_main.dxil";
 
-    auto compiler_flags = CompilerInput::NONE;
+    auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
+    {
+        std::array<char, 256> path;
+        std::snprintf(path.data(), path.size(), "compiled-shaders/%s/%s", subdir, name);
 
-    // Create shaders at runtime
-    CompilerInput vertex_shader = {
-        .path_and_defines = Owning{.path = "base-shaders/BaseShader.hlsl"},
-        .entry_point = "vs_main",
-        .shader_model = shader_model,
-        .shader_type = qhenki::gfx::ShaderType::VERTEX_SHADER,
-        .flags = compiler_flags,
+        void* raw = nullptr;
+        size_t size = 0;
+        if (!qhenki::util::read_file(path.data(), &raw, &size))
+        {
+            return false;
+        }
+        const std::unique_ptr<std::byte, void (*)(void*)> data(static_cast<std::byte*>(raw), free);
+        return m_context->create_shader(data.get(), size, type, out);
     };
-    THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_vertex_shader, vertex_shader));
 
-    CompilerInput pixel_shader = {
-        .path_and_defines = Owning{.path = "base-shaders/BaseShader.hlsl"},
-        .entry_point = "ps_main",
-        .shader_model = shader_model,
-        .shader_type = qhenki::gfx::ShaderType::PIXEL_SHADER,
-        .flags = compiler_flags,
-    };
-    THROW_IF_FALSE(m_context->create_shader_dynamic(nullptr, &m_pixel_shader, pixel_shader));
+    THROW_IF_FALSE(load_shader(vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
+    THROW_IF_FALSE(load_shader(ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
 
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));

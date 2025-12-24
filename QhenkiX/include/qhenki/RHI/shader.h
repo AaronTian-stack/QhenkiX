@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <smartpointer.h>
 #include <cstdint>
@@ -15,7 +15,6 @@ enum ShaderType : uint8_t
 enum class ShaderModel
 {
     SM_5_0,
-    SM_5_1,
     SM_6_0,
     SM_6_1,
     SM_6_2,
@@ -27,7 +26,6 @@ enum class ShaderModel
 struct Shader
 {
     ShaderType type;
-    ShaderModel shader_model; // SM shader was compiled with
     sPtr<void> internal_state;
 };
 } // namespace qhenki::gfx

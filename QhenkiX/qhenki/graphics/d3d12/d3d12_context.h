@@ -1,12 +1,13 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12shader.h>
 #include <dxgi1_6.h>
 #include <dxgidebug.h>
 #include <wrl/client.h>
-#include <boost/pool/object_pool.hpp>
 
 #include <D3D12MemAlloc.h>
+#include <dxcapi.h>
+
 #include "../d3d11/d3d11_shader_compiler.h"
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_pipeline.h"
@@ -38,13 +39,12 @@ class D3D12Context : public Context
     std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers; // 2 is upper limit
     std::array<Descriptor, 2> m_swapchain_descriptors{};       // 2 is upper limit
 
+    ComPtr<IDxcUtils> m_library;
+
     D3D12DescriptorHeap m_imgui_heap{};              // ImGUI only
     std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
 
     Queue* m_swapchain_queue = nullptr;
-
-    std::mutex m_pipeline_desc_mutex;
-    boost::object_pool<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_pipeline_desc_pool;
 
     D3D11ShaderCompiler m_d3d11_shader_compiler; // Needed for SM < 6.0
 
@@ -55,7 +55,6 @@ class D3D12Context : public Context
     std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                             const D3D12_SHADER_DESC& shader_desc,
                                                             bool increment_slot) const;
-    void root_signature_reflection(ID3D12ShaderReflection* shader_reflection, const D3D12_SHADER_DESC& shader_desc);
 
     UINT GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
@@ -80,7 +79,7 @@ public:
     bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
     bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
 
-    bool create_shader_dynamic(ShaderCompiler* compiler, Shader* shader, const CompilerInput& input) override;
+    bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
 
     bool create_pipeline(const GraphicsPipelineDesc& desc,
                          GraphicsPipeline* pipeline,

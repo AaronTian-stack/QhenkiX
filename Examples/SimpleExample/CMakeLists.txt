@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(SimpleExample LANGUAGES CXX)
 
+include("${REPO_ROOT}/Examples/cmake/compile_shaders.cmake")
+
 file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.hlsl")
 set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
 source_group("base-shaders" FILES ${SHADER_FILES})
@@ -11,6 +13,8 @@ add_executable(SimpleExample
     exampleapp.h
     ${SHADER_FILES}
 )
+
+add_shader_targets(SimpleExample "${CMAKE_CURRENT_SOURCE_DIR}/SimpleExample.config")
 
 target_compile_features(SimpleExample PRIVATE cxx_std_20)
 
