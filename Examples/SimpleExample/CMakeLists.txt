@@ -7,10 +7,16 @@ file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.hlsl")
 set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
 source_group("base-shaders" FILES ${SHADER_FILES})
 
+set(CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/SimpleExample.config")
+set_source_files_properties(${CONFIG_FILE} PROPERTIES HEADER_FILE_ONLY TRUE)
+source_group("config" FILES ${CONFIG_FILE})
+
 add_executable(SimpleExample
     main.cpp
     exampleapp.cpp
     exampleapp.h
+    shared_structs.h
+    ${CONFIG_FILE}
     ${SHADER_FILES}
 )
 
@@ -32,6 +38,7 @@ target_link_libraries(SimpleExample PRIVATE QhenkiX)
 # Set working directory for Visual Studio debugging
 set_target_properties(SimpleExample PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    FOLDER "Examples"
 )
 
 add_custom_command(TARGET SimpleExample POST_BUILD

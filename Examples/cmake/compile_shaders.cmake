@@ -21,6 +21,8 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             -c "${CONFIG_PATH}"
             -sm ${SXC_DX11_SM}
             -out "${COMPILED_SHADERS_DIR}/dx11"
+            -i "${CMAKE_CURRENT_SOURCE_DIR}"
+            -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
             -g DX11=1
         DEPENDS SXC
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -32,6 +34,8 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             -c "${CONFIG_PATH}"
             -sm ${SXC_DX12_SM}
             -out "${COMPILED_SHADERS_DIR}/dx12"
+            -i "${CMAKE_CURRENT_SOURCE_DIR}"
+            -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
             -g DX12=1
         DEPENDS SXC
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -41,6 +45,10 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
     add_custom_target(${TARGET_NAME}_CompileShaders ALL
         DEPENDS ${TARGET_NAME}_CompileShaders_DX11 ${TARGET_NAME}_CompileShaders_DX12
     )
+
+    set_target_properties(${TARGET_NAME}_CompileShaders_DX11 PROPERTIES FOLDER "Examples/Shaders")
+    set_target_properties(${TARGET_NAME}_CompileShaders_DX12 PROPERTIES FOLDER "Examples/Shaders")
+    set_target_properties(${TARGET_NAME}_CompileShaders PROPERTIES FOLDER "Examples/Shaders")
 
     add_dependencies(${TARGET_NAME} ${TARGET_NAME}_CompileShaders)
 endfunction()

@@ -18,13 +18,13 @@ $redistPattern = '[\\/]redist[\\/]'
 $x64Pattern = '[\\/]x64[\\/]'
 
 $files = @(
-    @(Get-ChildItem -Path "QhenkiX" -Include "*.cpp", "*.h" -Recurse | Where-Object {
+    @(Get-ChildItem -Path "QhenkiX" -Include "*.cpp", "*.h", "*.hlsl" -Recurse | Where-Object {
         $_.FullName -notmatch $externalPattern -and $_.FullName -notmatch $buildPattern
     }),
-    @(Get-ChildItem -Path "Examples" -Include "*.cpp", "*.h" -Recurse | Where-Object {
+    @(Get-ChildItem -Path "Examples" -Include "*.cpp", "*.h", "*.hlsl" -Recurse | Where-Object {
         $_.FullName -notmatch $includePattern -and $_.FullName -notmatch $buildPattern
     }),
-    @(Get-ChildItem -Path "SXC" -Include "*.cpp", "*.h" -Recurse | Where-Object {
+    @(Get-ChildItem -Path "SXC" -Include "*.cpp", "*.h", "*.hlsl" -Recurse | Where-Object {
         $_.FullName -notmatch $includePattern -and $_.FullName -notmatch $buildPattern -and $_.FullName -notmatch $libPattern -and $_.FullName -notmatch $redistPattern -and $_.FullName -notmatch $x64Pattern
     })
 ) | Where-Object { $_ -ne $null }

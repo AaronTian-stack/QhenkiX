@@ -1,5 +1,4 @@
 #pragma once
-
 #include "qhenki/application.h"
 
 struct Vertex

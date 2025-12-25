@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(QhenkiX-Workspace)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # Set repo root for all subprojects
 set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 

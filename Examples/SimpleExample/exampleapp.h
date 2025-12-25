@@ -1,19 +1,10 @@
 #pragma once
 
 #include "qhenki/application.h"
+#include "shared_structs.h"
 
-struct CameraMatrices
-{
-    XMFLOAT4X4 viewProj;
-    XMFLOAT4X4 invViewProj;
-};
-
-struct Vertex
-{
-    XMFLOAT3 position;
-    XMFLOAT3 color;
-    XMFLOAT2 texcoord;
-};
+using CameraMatrices = CameraBuffer;
+using Vertex = VertexInput;
 
 class ExampleApp : public qhenki::Application
 {
