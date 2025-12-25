@@ -82,6 +82,7 @@ struct CompilerOutput
 class ShaderCompiler
 {
 public:
+    virtual bool get_compiler_path_v(char* buffer, size_t length) = 0;
     // Creates a source blob (DXIL or SPIR-V) from the input
     virtual bool compile(const CompilerInput& input, CompilerOutput& output) = 0;
     virtual ~ShaderCompiler() = default;

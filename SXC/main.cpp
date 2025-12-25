@@ -4,6 +4,9 @@
 #include <magic_enum/magic_enum.hpp>
 #include "compiler_job.h"
 #include "graphics/d3d12/d3d12_shader_compiler.h"
+#if defined(_WIN32) || defined(_WIN64)
+#include "graphics/d3d11/d3d11_shader_compiler.h"
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -136,8 +139,15 @@ int main(int argc, char* argv[])
 
         constexpr auto buffer_length = 512;
         std::array<char, buffer_length> buffer1, buffer2;
-        qhenki::gfx::D3D12ShaderCompiler::get_dll_path(buffer1.data(), buffer2.data(), buffer_length);
-        printf("Using shader compiler DLLs:\nDXC: %s\nFXC: %s\n", buffer1.data(), buffer2.data());
+
+        qhenki::gfx::D3D12ShaderCompiler::get_compiler_path(buffer1.data(), buffer_length);
+
+#if defined(_WIN32) || defined(_WIN64)
+        qhenki::gfx::D3D11ShaderCompiler::get_compiler_path(buffer2.data(), buffer_length);
+        printf("Using shader compiler libraries:\nDXC: %s\nFXC: %s\n", buffer1.data(), buffer2.data());
+#else
+        printf("Using shader compiler library:\nDXC: %s\n", buffer1.data());
+#endif
 
         const auto result_count = qhenki::sxc::execute_compilation_job(&inputs, input.output_dir);
 

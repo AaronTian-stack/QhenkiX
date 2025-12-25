@@ -237,12 +237,6 @@ public:
 };
 
 // Will not work with things that don't derive from ID3D11DeviceChild
-template<UINT TDebugNameLength>
-bool set_debug_name(_In_ ID3D11DeviceChild* device_resource, _In_z_ const char (&debug_name)[TDebugNameLength])
-{
-    return SUCCEEDED(device_resource->SetPrivateData(WKPDID_D3DDebugObjectName, TDebugNameLength - 1, debug_name));
-}
-
 bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name);
 
 } // namespace qhenki::gfx

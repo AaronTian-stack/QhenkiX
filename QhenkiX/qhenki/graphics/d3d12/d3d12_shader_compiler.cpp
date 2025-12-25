@@ -5,6 +5,12 @@
 #include <filesystem>
 #include <stdexcept>
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#elif defined(__APPLE__) || defined(__linux__)
+// TODO
+#endif
+
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
 #include "qhenki/utility/string_util.h"
@@ -130,12 +136,49 @@ D3D12ShaderCompiler::D3D12ShaderCompiler()
     }
 }
 
+namespace
+{
+const char* get_dxc_library_name()
+{
+#if defined(_WIN32) || defined(_WIN64)
+    return "dxcompiler.dll";
+#elif defined(__APPLE__)
+    return "libdxcompiler.dylib";
+#elif defined(__linux__)
+    return "libdxcompiler.so";
+#else
+#error "Unsupported platform"
+#endif
+}
+} // namespace
+
+bool D3D12ShaderCompiler::get_compiler_path(char* buffer, size_t length)
+{
+#if defined(_WIN32) || defined(_WIN64)
+    if (const auto dx_compiler = GetModuleHandleA(get_dxc_library_name()))
+    {
+        return GetModuleFileNameA(dx_compiler, buffer, static_cast<DWORD>(length)) != 0;
+    }
+    return false;
+#elif defined(__APPLE__)
+    // TODO
+#elif defined(__linux__)
+    // TODO
+#else
+    return false;
+#endif
+}
+
+bool D3D12ShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
+{
+    return D3D12ShaderCompiler::get_compiler_path(buffer, length);
+}
+
 bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
-    // DXC does not support < SM 6.0, use FXC
     if (input.shader_model < ShaderModel::SM_6_0)
     {
-        return D3D11ShaderCompiler::compile(input, output);
+        return false;
     }
 
     DxcBuffer source_buffer;
@@ -308,9 +351,10 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
             // Try using stack buffer first
             bool failed = true;
-            if (1 + input.pdb_path.size() + char_count < sizeof(buffer_count))
+            if (1 + input.pdb_path.size() + char_count < buffer_count)
             {
-                if (swprintf(path_buffer.data(), buffer_count, L"%s\\%s", pdb_path.data(), name) >= 0)
+                const wchar_t separator = std::filesystem::path::preferred_separator;
+                if (swprintf(path_buffer.data(), buffer_count, L"%s%c%s", pdb_path.data(), separator, name) >= 0)
                 {
                     pdb_file = std::wstring_view(path_buffer.data(), wcslen(path_buffer.data()));
                     failed = false;
@@ -323,9 +367,10 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
                 path.assign(pdb_path.begin(), pdb_path.end());
 
+                const wchar_t separator = std::filesystem::path::preferred_separator;
                 if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
                 {
-                    path += L'\\';
+                    path += separator;
                 }
                 path.append(name, char_count);
                 pdb_file = path;
@@ -346,21 +391,4 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     }
 
     return true;
-}
-
-bool D3D12ShaderCompiler::get_dll_path(char* buffer1, char* buffer2, unsigned long buffer_length)
-{
-    assert(buffer1);
-    assert(buffer2);
-    const auto d3d11_result = D3D11ShaderCompiler::get_dll_path(buffer2, buffer_length);
-    if (HMODULE hDXCompiler = GetModuleHandleA("dxcompiler.dll"))
-    {
-        const auto d3d12_result = GetModuleFileNameA(hDXCompiler, buffer1, buffer_length);
-        return d3d11_result && d3d12_result;
-    }
-    return false;
-}
-
-D3D12ShaderCompiler::~D3D12ShaderCompiler()
-{
 }

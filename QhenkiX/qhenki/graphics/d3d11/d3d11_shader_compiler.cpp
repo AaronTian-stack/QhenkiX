@@ -16,18 +16,23 @@ using Microsoft::WRL::ComPtr;
 using namespace qhenki::gfx;
 using namespace qhenki::util;
 
-void D3D11ShaderCompiler::get_shader_dll_path(char* buffer, const size_t buffer_length)
+// Static implementation
+bool D3D11ShaderCompiler::get_compiler_path(char* buffer, size_t length)
 {
-    if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
+    if (const HMODULE d3d_compiler = GetModuleHandleA("d3dcompiler_47.dll"))
     {
-        GetModuleFileNameA(hD3DCompiler, buffer, buffer_length);
+        GetModuleFileNameA(d3d_compiler, buffer, static_cast<DWORD>(length));
+        return true;
     }
-    else
-    {
-        const char* error_message = "d3dcompiler_47.dll not found";
-        assert(buffer_length > strlen(error_message));
-        (void) snprintf(buffer, buffer_length, "%s", error_message);
-    }
+    const auto error_message = "d3dcompiler_47.dll not found";
+    assert(length > strlen(error_message));
+    snprintf(buffer, length, "%s", error_message);
+    return false;
+}
+
+bool D3D11ShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
+{
+    return D3D11ShaderCompiler::get_compiler_path(buffer, length);
 }
 
 bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
@@ -168,14 +173,4 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     }
 
     return true;
-}
-
-bool D3D11ShaderCompiler::get_dll_path(char* buffer1, const unsigned long buffer_length)
-{
-    assert(buffer1);
-    if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
-    {
-        return GetModuleFileNameA(hD3DCompiler, buffer1, buffer_length);
-    }
-    return false;
 }

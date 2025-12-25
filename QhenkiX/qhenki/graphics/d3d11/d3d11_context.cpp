@@ -97,15 +97,19 @@ ID3D11Resource* get_texture_resource(D3D11Texture& tex)
     }
     return nullptr;
 }
+} // namespace
 
-void set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
+namespace qhenki::gfx
+{
+bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
 {
     if (obj && debug_name)
     {
-        obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(debug_name), debug_name);
+        return SUCCEEDED(obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(debug_name), debug_name));
     }
+    return false;
 }
-} // namespace
+} // namespace qhenki::gfx
 
 void D3D11Context::create(const bool enable_debug_layer)
 {

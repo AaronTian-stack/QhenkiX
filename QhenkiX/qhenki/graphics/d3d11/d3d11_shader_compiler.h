@@ -26,10 +26,9 @@ struct D3D11ShaderOutput
 
 class D3D11ShaderCompiler : public ShaderCompiler
 {
-    static bool get_dll_path(char* buffer1, unsigned long buffer_length);
-
 public:
-    static void get_shader_dll_path(char* buffer, size_t buffer_length);
+    static bool get_compiler_path(char* buffer, size_t length);
+    bool get_compiler_path_v(char* buffer, size_t length) override;
     bool compile(const CompilerInput& input, CompilerOutput& output) override;
 
     friend class D3D12ShaderCompiler;
