@@ -11,6 +11,7 @@ add_executable(SimpleExample
     main.cpp
     exampleapp.cpp
     exampleapp.h
+    shared_structs.h
     ${SHADER_FILES}
 )
 

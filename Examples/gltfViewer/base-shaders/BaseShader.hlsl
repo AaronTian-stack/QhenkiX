@@ -3,6 +3,8 @@
 #define DX12
 #endif
 
+#include "shared_structs.h"
+
 cbuffer CameraBuffer : register(b0)  
 {  
     float4x4 viewProj;  

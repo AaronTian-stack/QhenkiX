@@ -116,8 +116,6 @@ struct GLTFModel
     };
     std::vector<Node> nodes;
 
-    // textures
-    // images
     // skins
     // cameras
     int root_node = -1;
