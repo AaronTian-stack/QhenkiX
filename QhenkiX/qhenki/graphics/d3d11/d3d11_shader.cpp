@@ -67,7 +67,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* device,
 
     if (device_resource)
     {
-        D3D11Context::set_debug_name(device_resource, dbg_name);
+        set_debug_name(device_resource, dbg_name);
     }
 
     *result = true;
@@ -128,6 +128,6 @@ D3D11Shader::D3D11Shader(ID3D11Device* const device,
 
     if (device_resource)
     {
-        D3D11Context::set_debug_name(device_resource, name);
+        set_debug_name(device_resource, name);
     }
 }

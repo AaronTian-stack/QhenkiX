@@ -14,33 +14,26 @@ using namespace DirectX;
 
 namespace qhenki::gfx
 {
-// SM 5.1
 class D3D11Context : public Context
 {
-    ComPtr<IDXGIFactory6> m_dxgi_factory_;
-    ComPtr<ID3D11Debug> m_debug_;
-    ComPtr<ID3D11Device> m_device_;
-    ComPtr<ID3D11DeviceContext> m_device_context_;
+    ComPtr<IDXGIFactory6> m_dxgi_factory;
+    ComPtr<ID3D11Debug> m_debug;
+    ComPtr<ID3D11Device> m_device;
+    ComPtr<ID3D11DeviceContext> m_device_context;
 
-    D3D11LayoutAssembler m_layout_assembler_;
+    D3D11LayoutAssembler m_layout_assembler;
 
-    std::array<D3D11_VIEWPORT, 16> m_viewports_;
+    std::array<D3D11_VIEWPORT, 16> m_viewports;
 
-    std::mutex m_context_mutex_; // For anything that uses the device context. Do not call Context methods from each
-                                 // other to prevent deadlock
+    std::mutex m_context_mutex; // For anything that uses the device context. Do not call Context methods from each
+                                // other to prevent deadlock
 
     bool is_debug_layer_enabled() const override
     {
-        return m_debug_ != nullptr;
+        return m_debug != nullptr;
     }
 
 public:
-    // Will not work with things that don't derive from ID3D11DeviceChild
-    template<UINT TDebugNameLength>
-    static void set_debug_name(_In_ ID3D11DeviceChild* device_resource,
-                               _In_z_ const char (&debug_name)[TDebugNameLength]);
-    static void set_debug_name(ID3D11DeviceChild* obj, const char* debug_name);
-
     void create(bool enable_debug_layer) override;
     bool is_compatibility() const override
     {
@@ -243,9 +236,13 @@ public:
     friend struct D3D11GraphicsPipeline;
 };
 
+// Will not work with things that don't derive from ID3D11DeviceChild
 template<UINT TDebugNameLength>
-void D3D11Context::set_debug_name(ID3D11DeviceChild* device_resource, const char (&debug_name)[TDebugNameLength])
+bool set_debug_name(_In_ ID3D11DeviceChild* device_resource, _In_z_ const char (&debug_name)[TDebugNameLength])
 {
-    device_resource->SetPrivateData(WKPDID_D3DDebugObjectName, TDebugNameLength - 1, debug_name);
+    return SUCCEEDED(device_resource->SetPrivateData(WKPDID_D3DDebugObjectName, TDebugNameLength - 1, debug_name));
 }
+
+bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name);
+
 } // namespace qhenki::gfx

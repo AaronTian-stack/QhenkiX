@@ -31,63 +31,65 @@ constexpr ALLOCATOR_FLAGS operator|(const ALLOCATOR_FLAGS a, const ALLOCATOR_FLA
 }
 } // namespace D3D12MA
 
-static D3D12DescriptorHeap* to_internal(const DescriptorHeap& ext)
+namespace
+{
+D3D12DescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
     auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(ext.internal_state.get());
     assert(d3d12_heap);
     return d3d12_heap;
 }
 
-static D3D12Pipeline* to_internal(const GraphicsPipeline& ext)
+D3D12Pipeline* to_internal(const GraphicsPipeline& ext)
 {
     auto d3d12_pipeline = static_cast<D3D12Pipeline*>(ext.internal_state.get());
     assert(d3d12_pipeline);
     return d3d12_pipeline;
 }
 
-static ComPtr<ID3D12GraphicsCommandList7>* to_internal(const CommandList& ext)
+ComPtr<ID3D12GraphicsCommandList7>* to_internal(const CommandList& ext)
 {
     auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(ext.internal_state.get());
     assert(d3d12_cmd_list);
     return d3d12_cmd_list;
 }
 
-static ComPtr<ID3D12CommandQueue>* to_internal(const Queue& ext)
+ComPtr<ID3D12CommandQueue>* to_internal(const Queue& ext)
 {
     auto d3d12_queue = static_cast<ComPtr<ID3D12CommandQueue>*>(ext.internal_state.get());
     assert(d3d12_queue);
     return d3d12_queue;
 }
 
-static D3D12Fence* to_internal(const Fence& ext)
+D3D12Fence* to_internal(const Fence& ext)
 {
     auto d3d12_fence = static_cast<D3D12Fence*>(ext.internal_state.get());
     assert(d3d12_fence);
     return d3d12_fence;
 }
 
-static ComPtr<ID3D12CommandAllocator>* to_internal(const CommandPool& ext)
+ComPtr<ID3D12CommandAllocator>* to_internal(const CommandPool& ext)
 {
     auto d3d12_cmd_pool = static_cast<ComPtr<ID3D12CommandAllocator>*>(ext.internal_state.get());
     assert(d3d12_cmd_pool);
     return d3d12_cmd_pool;
 }
 
-static ComPtr<D3D12MA::Allocation>* to_internal(const Buffer& ext)
+ComPtr<D3D12MA::Allocation>* to_internal(const Buffer& ext)
 {
     auto alloc = static_cast<ComPtr<D3D12MA::Allocation>*>(ext.internal_state.get());
     assert(alloc);
     return alloc;
 }
 
-static ComPtr<ID3D12RootSignature>* to_internal(const PipelineLayout& ext)
+ComPtr<ID3D12RootSignature>* to_internal(const PipelineLayout& ext)
 {
     auto root_sig = static_cast<ComPtr<ID3D12RootSignature>*>(ext.internal_state.get());
     assert(root_sig);
     return root_sig;
 }
 
-static D3D12Texture* to_internal(const Texture& ext)
+D3D12Texture* to_internal(const Texture& ext)
 {
     auto text = static_cast<D3D12Texture*>(ext.internal_state.get());
     assert(text);
@@ -102,6 +104,7 @@ bool set_debug_name(ID3D12Object* obj, const char* name)
     }
     return false;
 }
+} // namespace
 
 void D3D12Context::create(const bool enable_debug_layer)
 {

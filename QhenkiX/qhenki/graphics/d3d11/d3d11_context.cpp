@@ -11,69 +11,70 @@
 #include "d3d11_heap.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_shader.h"
-#include "d3d11_shader_compiler.h"
 #include "d3d11_swapchain.h"
 #include "qhenki/utility/d3d_util.h"
 
 using namespace qhenki::gfx;
 
-static ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
+namespace
+{
+ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
 {
     auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
     assert(d3d11_buffer);
     return d3d11_buffer;
 }
 
-static D3D11Swapchain* to_internal(const Swapchain& ext)
+D3D11Swapchain* to_internal(const Swapchain& ext)
 {
     auto d3d11_swapchain = static_cast<D3D11Swapchain*>(ext.internal_state.get());
     assert(d3d11_swapchain);
     return d3d11_swapchain;
 }
 
-static D3D11Shader* to_internal(const Shader& ext)
+D3D11Shader* to_internal(const Shader& ext)
 {
     auto d3d11_shader = static_cast<D3D11Shader*>(ext.internal_state.get());
     assert(d3d11_shader);
     return d3d11_shader;
 }
 
-static D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
+D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
 {
     auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
     assert(d3d11_pipeline);
     return d3d11_pipeline;
 }
 
-static ComPtr<ID3D11SamplerState>* to_internal(const Sampler& ext)
+ComPtr<ID3D11SamplerState>* to_internal(const Sampler& ext)
 {
     const auto d3d11_sampler = static_cast<ComPtr<ID3D11SamplerState>*>(ext.internal_state.get());
     assert(d3d11_sampler);
     return d3d11_sampler;
 }
 
-static D3D11Texture* to_internal(const Texture& ext)
+D3D11Texture* to_internal(const Texture& ext)
 {
     const auto d3d11_texture = static_cast<D3D11Texture*>(ext.internal_state.get());
     assert(d3d11_texture);
     return d3d11_texture;
 }
 
-static D3D11_SRV_UAV_Heap* to_internal_srv_uav(const DescriptorHeap& ext)
+D3D11_SRV_UAV_Heap* to_internal_srv_uav(const DescriptorHeap& ext)
 {
     const auto d3d11_heap = static_cast<D3D11_SRV_UAV_Heap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
 
-static D3D11_RTV_Heap* to_internal_rtv(const DescriptorHeap& ext)
+D3D11_RTV_Heap* to_internal_rtv(const DescriptorHeap& ext)
 {
     const auto d3d11_heap = static_cast<D3D11_RTV_Heap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
 
-static D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
+D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
 {
     const auto d3d11_heap = static_cast<D3D11_DSV_Heap*>(ext.internal_state.get());
     assert(d3d11_heap);
@@ -97,18 +98,19 @@ ID3D11Resource* get_texture_resource(D3D11Texture& tex)
     return nullptr;
 }
 
-void D3D11Context::set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
+void set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
 {
     if (obj && debug_name)
     {
         obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(debug_name), debug_name);
     }
 }
+} // namespace
 
 void D3D11Context::create(const bool enable_debug_layer)
 {
     // Create factory
-    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory_))))
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory))))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create DXGI Factory\n");
         throw std::runtime_error("D3D11: Failed to create DXGI Factory");
@@ -116,18 +118,18 @@ void D3D11Context::create(const bool enable_debug_layer)
     if (enable_debug_layer)
     {
         constexpr char factoryName[] = "DXGI Factory";
-        m_dxgi_factory_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
+        m_dxgi_factory->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
     }
 
     // Pick discrete GPU
     ComPtr<IDXGIAdapter1> adapter;
-    if (FAILED(m_dxgi_factory_->EnumAdapterByGpuPreference(0, // Adapter index
-                                                           DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-                                                           __uuidof(IDXGIAdapter1),
-                                                           reinterpret_cast<void**>(adapter.GetAddressOf()))))
+    if (FAILED(m_dxgi_factory->EnumAdapterByGpuPreference(0, // Adapter index
+                                                          DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                                                          __uuidof(IDXGIAdapter1),
+                                                          reinterpret_cast<void**>(adapter.GetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
-        if (FAILED(m_dxgi_factory_->EnumAdapters1(0, &adapter)))
+        if (FAILED(m_dxgi_factory->EnumAdapters1(0, &adapter)))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to find a adapter\n");
             throw std::runtime_error("D3D11: Failed to find a adapter");
@@ -167,9 +169,9 @@ void D3D11Context::create(const bool enable_debug_layer)
                                  &device_feature_level,
                                  1,
                                  D3D11_SDK_VERSION,
-                                 &m_device_,
+                                 &m_device,
                                  nullptr,
-                                 &m_device_context_)))
+                                 &m_device_context)))
     {
         throw std::runtime_error("D3D11: Failed to create D3D11 Device");
     }
@@ -177,8 +179,8 @@ void D3D11Context::create(const bool enable_debug_layer)
     if (enable_debug_layer)
     {
         constexpr char device_name[] = "d3d11_device";
-        m_device_->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(device_name), device_name);
-        if (FAILED(m_device_.As(&m_debug_)))
+        m_device->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(device_name), device_name);
+        if (FAILED(m_device.As(&m_debug)))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
             throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
@@ -196,21 +198,21 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
     swapchain->desc = swapchain_desc;
     swapchain->internal_state = mkS<D3D11Swapchain>();
     const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain->internal_state.get());
-    return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory_.Get(), m_device_.Get(), *frame_index);
+    return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory.Get(), m_device.Get(), *frame_index);
 }
 
 bool D3D11Context::resize_swapchain(
     Swapchain* const swapchain, int width, int height, DescriptorHeap* const rtv_heap, unsigned& frame_index)
 {
-    m_device_context_->Flush();
+    m_device_context->Flush();
     const auto swap_d3d11 = to_internal(*swapchain);
-    return swap_d3d11->resize(m_device_.Get(), m_device_context_.Get(), width, height);
+    return swap_d3d11->resize(m_device.Get(), m_device_context.Get(), width, height);
 }
 
 bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
 {
     bool result = true;
-    shader->internal_state = mkS<D3D11Shader>(m_device_.Get(), type, data, size, nullptr, &result);
+    shader->internal_state = mkS<D3D11Shader>(m_device.Get(), type, data, size, nullptr, &result);
     return result;
 }
 
@@ -234,8 +236,8 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
     const auto true_vs = std::get_if<D3D11VertexShader>(&d3d11_vertex_shader->m_shader);
     assert(true_vs);
 
-    ID3D11InputLayout* input_layout_ = m_layout_assembler_.create_input_layout_reflection(
-        m_device_.Get(), true_vs->vertex_shader_blob.Get(), desc.increment_slot);
+    ID3D11InputLayout* input_layout_ = m_layout_assembler.create_input_layout_reflection(
+        m_device.Get(), true_vs->vertex_shader_blob.Get(), desc.increment_slot);
     d3d11_pipeline->input_layout = input_layout_;
 
     bool succeeded = input_layout_ != nullptr;
@@ -254,8 +256,8 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
         .MultisampleEnable = FALSE,     // Multisample enable not included (TODO: add later?)
         .AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
     };
-    if (FAILED(m_device_->CreateRasterizerState(&rasterizer_desc,
-                                                d3d11_pipeline->rasterizer_state.ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateRasterizerState(&rasterizer_desc,
+                                               d3d11_pipeline->rasterizer_state.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Rasterizer State");
         succeeded = false;
@@ -283,7 +285,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
                 .RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
             };
         }
-        if (FAILED(m_device_->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state)))
+        if (FAILED(m_device->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state)))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Blend State\n");
             succeeded = false;
@@ -310,8 +312,8 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
                          .StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->back_face.StencilFunc)},
         };
 
-        if (FAILED(m_device_->CreateDepthStencilState(&depth_stencil_desc,
-                                                      d3d11_pipeline->depth_stencil_state.ReleaseAndGetAddressOf())))
+        if (FAILED(m_device->CreateDepthStencilState(&depth_stencil_desc,
+                                                     d3d11_pipeline->depth_stencil_state.ReleaseAndGetAddressOf())))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Depth Stencil State\n");
             succeeded = false;
@@ -323,9 +325,9 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
 bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline)
 {
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
     const auto d3d11_pipeline = to_internal(pipeline);
-    d3d11_pipeline->bind(m_device_context_.Get());
+    d3d11_pipeline->bind(m_device_context.Get());
     return true;
 }
 
@@ -421,7 +423,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
     ComPtr<ID3D11Buffer> d3d11_buffer;
 
-    if (FAILED(m_device_->CreateBuffer(&buffer_info, resource_data_ptr, d3d11_buffer.ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateBuffer(&buffer_info, resource_data_ptr, d3d11_buffer.ReleaseAndGetAddressOf())))
     {
         return false;
     }
@@ -464,7 +466,7 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
                 .NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
             },
     };
-    if (FAILED(m_device_->CreateShaderResourceView(buffer_d3d11->Get(), &desc, view.ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateShaderResourceView(buffer_d3d11->Get(), &desc, view.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
         return false;
@@ -486,15 +488,15 @@ void D3D11Context::copy_buffer(
 
     // Copy entire buffer for now
     // TODO: per subresource
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->CopySubresourceRegion(dst_d3d11->Get(),
-                                             0, // Dst subresource
-                                             static_cast<long>(dst_offset),
-                                             0,
-                                             0,
-                                             src_d3d11->Get(),
-                                             0, // Src subresource
-                                             &box);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->CopySubresourceRegion(dst_d3d11->Get(),
+                                            0, // Dst subresource
+                                            static_cast<long>(dst_offset),
+                                            0,
+                                            0,
+                                            src_d3d11->Get(),
+                                            0, // Src subresource
+                                            &box);
 }
 
 bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
@@ -524,7 +526,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
         };
 
         texture_d3d11->emplace<ComPtr<ID3D11Texture1D>>();
-        if (FAILED(m_device_->CreateTexture1D(
+        if (FAILED(m_device->CreateTexture1D(
                 &texture_desc, nullptr, std::get<ComPtr<ID3D11Texture1D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 1D texture\n");
@@ -547,7 +549,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
         };
 
         texture_d3d11->emplace<ComPtr<ID3D11Texture2D>>();
-        if (FAILED(m_device_->CreateTexture2D(
+        if (FAILED(m_device->CreateTexture2D(
                 &texture_desc, nullptr, std::get<ComPtr<ID3D11Texture2D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 2D texture\n");
@@ -569,7 +571,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
         };
 
         texture_d3d11->emplace<ComPtr<ID3D11Texture3D>>();
-        if (FAILED(m_device_->CreateTexture3D(
+        if (FAILED(m_device->CreateTexture3D(
                 &texture_desc, nullptr, std::get<ComPtr<ID3D11Texture3D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 3D texture\n");
@@ -601,7 +603,7 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     auto& view = heap_d3d11->shader_resource_views[descriptor->offset];
 
     // TODO: description
-    if (FAILED(m_device_->CreateShaderResourceView(resource, nullptr, view.ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateShaderResourceView(resource, nullptr, view.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture SRV\n");
         return false;
@@ -624,7 +626,7 @@ bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture,
     const auto resource = get_texture_resource(*texture_d3d11);
     assert(resource);
 
-    if (FAILED(m_device_->CreateDepthStencilView(resource, nullptr, heap_d3d11->back().ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateDepthStencilView(resource, nullptr, heap_d3d11->back().ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture DSV\n");
         return false;
@@ -650,7 +652,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
     assert(BitsPerPixel(texture->desc.format) % 8 == 0); // TODO: check this for compressed formats
     const auto bpp = BitsPerPixel(texture->desc.format) / 8;
 
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
 
     const UINT32 num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
     size_t data_offset = 0;
@@ -676,12 +678,12 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
             .back = texture->desc.depth_or_array_size,
         };
 
-        m_device_context_->UpdateSubresource(resource,
-                                             subresource, // TODO: which subresource
-                                             &box,
-                                             src,
-                                             mip_width * bpp,
-                                             mip_depth * bpp);
+        m_device_context->UpdateSubresource(resource,
+                                            subresource, // TODO: which subresource
+                                            &box,
+                                            src,
+                                            mip_width * bpp,
+                                            mip_depth * bpp);
 
         data_offset += bytes_per_row * mip_height; // Assume data pointer is tightly packed no padding
     }
@@ -717,7 +719,7 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
         .MaxLOD = desc.max_lod,
     };
 
-    const auto result = m_device_->CreateSamplerState(&sampler_desc, sampler_d3d11->ReleaseAndGetAddressOf());
+    const auto result = m_device->CreateSamplerState(&sampler_desc, sampler_d3d11->ReleaseAndGetAddressOf());
 
     if (FAILED(result))
     {
@@ -732,8 +734,8 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
 {
     D3D11_MAPPED_SUBRESOURCE mapped_resource;
     const auto buffer_d3d11 = to_internal(buffer);
-    std::scoped_lock lock(m_context_mutex_);
-    if (FAILED(m_device_context_->Map(buffer_d3d11->Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
+    std::scoped_lock lock(m_context_mutex);
+    if (FAILED(m_device_context->Map(buffer_d3d11->Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to map buffer\n");
         return nullptr;
@@ -744,8 +746,8 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
 void D3D11Context::unmap_buffer(const Buffer& buffer)
 {
     const auto buffer_d3d11 = to_internal(buffer);
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->Unmap(buffer_d3d11->Get(), 0);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->Unmap(buffer_d3d11->Get(), 0);
 }
 
 void D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
@@ -763,15 +765,15 @@ void D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
         auto buffer = to_internal(*buffers[i]);
         buffer_d3d11[i] = buffer->Get();
     }
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11.data(), strides, offsets);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11.data(), strides, offsets);
 }
 
 void D3D11Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset)
 {
     const auto buffer_d3d11 = to_internal(buffer);
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
 }
 
 bool D3D11Context::create_queue(const QueueType type, Queue* queue)
@@ -799,7 +801,7 @@ bool D3D11Context::reset_command_pool(CommandPool* command_pool)
     return true; // D3D11 does not have command pools
 }
 
-ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context_,
+ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context,
                                   const RenderTarget* const depth_stencil)
 {
     ID3D11DepthStencilView* ds = nullptr;
@@ -825,7 +827,7 @@ ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context_
             assert(clear);
 
             const auto& [clear_depth_value, clear_stencil_value] = depth_stencil->clear_params.dsv_clear_params;
-            m_device_context_->ClearDepthStencilView(ds, clear, clear_depth_value, clear_stencil_value);
+            m_device_context->ClearDepthStencilView(ds, clear, clear_depth_value, clear_stencil_value);
         }
     }
     return ds;
@@ -839,10 +841,10 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
 {
     const auto swap_d3d11 = to_internal(*swapchain);
     const auto rtv = swap_d3d11->sc_render_target.Get();
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->ClearRenderTargetView(rtv, clear_color_values);
-    ID3D11DepthStencilView* ds = start_dsv(m_device_context_, depth_stencil);
-    m_device_context_->OMSetRenderTargets(1, &rtv, ds);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->ClearRenderTargetView(rtv, clear_color_values);
+    ID3D11DepthStencilView* ds = start_dsv(m_device_context, depth_stencil);
+    m_device_context->OMSetRenderTargets(1, &rtv, ds);
 }
 
 void D3D11Context::start_render_pass(CommandList* cmd_list,
@@ -850,7 +852,7 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
                                      const RenderTarget* const* rts,
                                      const RenderTarget* const depth_stencil)
 {
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
     std::array<ID3D11RenderTargetView* const*, 8> rtvs{};
     // Clear render target views (if applicable)
     for (unsigned int i = 0; i < rt_count; i++)
@@ -862,20 +864,20 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
         const auto& rtv = heap->at(rts[i]->descriptor.offset);
         if (rts[i]->clear_type & RenderTarget::ClearType::Color)
         {
-            m_device_context_->ClearRenderTargetView(rtv.Get(), rts[i]->clear_params.clear_color_value.data());
+            m_device_context->ClearRenderTargetView(rtv.Get(), rts[i]->clear_params.clear_color_value.data());
         }
         rtvs[i] = rtv.GetAddressOf();
     }
-    ID3D11DepthStencilView* ds = start_dsv(m_device_context_, depth_stencil);
+    ID3D11DepthStencilView* ds = start_dsv(m_device_context, depth_stencil);
 
-    m_device_context_->OMSetRenderTargets(rt_count, rtvs[0], ds);
+    m_device_context->OMSetRenderTargets(rt_count, rtvs[0], ds);
 }
 
 void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport)
 {
     for (unsigned int i = 0; i < count; i++)
     {
-        m_viewports_[i] = {
+        m_viewports[i] = {
             .TopLeftX = viewport[i].TopLeftX,
             .TopLeftY = viewport[i].TopLeftY,
             .Width = viewport[i].Width,
@@ -884,21 +886,21 @@ void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_
             .MaxDepth = viewport[i].MaxDepth,
         };
     }
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->RSSetViewports(count, m_viewports_.data());
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->RSSetViewports(count, m_viewports.data());
 }
 
 void D3D11Context::set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect)
 {
     // D3D12_RECT = D3D11_RECT = RECT
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->RSSetScissorRects(count, scissor_rect);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->RSSetScissorRects(count, scissor_rect);
 }
 
 void D3D11Context::draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
 {
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->Draw(vertex_count, start_vertex_offset);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->Draw(vertex_count, start_vertex_offset);
 }
 
 void D3D11Context::draw_indexed(CommandList* cmd_list,
@@ -906,15 +908,15 @@ void D3D11Context::draw_indexed(CommandList* cmd_list,
                                 uint32_t start_index_offset,
                                 int32_t base_vertex_offset)
 {
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
 }
 
 void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
 {
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
     ImGui_ImplSDL3_InitForD3D(window.get_window());
-    ImGui_ImplDX11_Init(m_device_.Get(), m_device_context_.Get());
+    ImGui_ImplDX11_Init(m_device.Get(), m_device_context.Get());
 }
 
 void D3D11Context::start_imgui_frame()
@@ -926,7 +928,7 @@ void D3D11Context::start_imgui_frame()
 
 void D3D11Context::render_imgui_draw_data(CommandList* cmd_list)
 {
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
@@ -942,7 +944,7 @@ void D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
                                                       Buffer* const* buffers,
                                                       const PipelineStage stage)
 {
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
     std::array<ID3D11Buffer*, 15> buffer_d3d11{};
     assert(count <= buffer_d3d11.size());
     for (unsigned i = 0; i < count; i++)
@@ -952,13 +954,13 @@ void D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
     switch (stage)
     {
     case PipelineStage::VERTEX:
-        m_device_context_->VSSetConstantBuffers(slot, count, buffer_d3d11.data());
+        m_device_context->VSSetConstantBuffers(slot, count, buffer_d3d11.data());
         break;
     case PipelineStage::PIXEL:
-        m_device_context_->PSSetConstantBuffers(slot, count, buffer_d3d11.data());
+        m_device_context->PSSetConstantBuffers(slot, count, buffer_d3d11.data());
         break;
     case PipelineStage::COMPUTE:
-        m_device_context_->CSSetConstantBuffers(slot, count, buffer_d3d11.data());
+        m_device_context->CSSetConstantBuffers(slot, count, buffer_d3d11.data());
         break;
     }
 }
@@ -968,7 +970,7 @@ void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
                                                     Descriptor* const* descriptors,
                                                     PipelineStage stage)
 {
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
     std::array<ID3D11ShaderResourceView*, 15> srv{};
     assert(count <= srv.size());
     assert(*descriptors);
@@ -981,13 +983,13 @@ void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
     switch (stage)
     {
     case PipelineStage::VERTEX:
-        m_device_context_->VSSetShaderResources(slot, count, srv.data());
+        m_device_context->VSSetShaderResources(slot, count, srv.data());
         break;
     case PipelineStage::PIXEL:
-        m_device_context_->PSSetShaderResources(slot, count, srv.data());
+        m_device_context->PSSetShaderResources(slot, count, srv.data());
         break;
     case PipelineStage::COMPUTE:
-        m_device_context_->CSSetShaderResources(slot, count, srv.data());
+        m_device_context->CSSetShaderResources(slot, count, srv.data());
         break;
     }
 }
@@ -995,8 +997,8 @@ void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
 void D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
 {
     assert(false);
-    std::scoped_lock lock(m_context_mutex_);
-    // m_device_context_->CSSetUnorderedAccessViews(slot, count, buffer_d3d11[0], nullptr);
+    std::scoped_lock lock(m_context_mutex);
+    // m_device_context->CSSetUnorderedAccessViews(slot, count, buffer_d3d11[0], nullptr);
 }
 
 void D3D11Context::compatibility_set_textures(const unsigned slot,
@@ -1046,7 +1048,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
         }
     }
     const UINT n1 = -1; // Keep current offset
-    std::scoped_lock lock(m_context_mutex_);
+    std::scoped_lock lock(m_context_mutex);
     switch (flag)
     {
     // case ACCESS_RENDER_TARGET:
@@ -1056,28 +1058,28 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
             // TODO: need a better way of doing this
             // D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
         case PipelineStage::VERTEX:
-            m_device_context_->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
-                                                                         nullptr,
-                                                                         nullptr,
-                                                                         slot,
-                                                                         count,
-                                                                         resource_views.unordered_access_views.data(),
-                                                                         &n1);
+            m_device_context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
+                                                                        nullptr,
+                                                                        nullptr,
+                                                                        slot,
+                                                                        count,
+                                                                        resource_views.unordered_access_views.data(),
+                                                                        &n1);
             break;
         case PipelineStage::PIXEL:
-            m_device_context_->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
-                                                                         nullptr,
-                                                                         nullptr,
-                                                                         slot,
-                                                                         count,
-                                                                         resource_views.unordered_access_views.data(),
-                                                                         &n1);
+            m_device_context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
+                                                                        nullptr,
+                                                                        nullptr,
+                                                                        slot,
+                                                                        count,
+                                                                        resource_views.unordered_access_views.data(),
+                                                                        &n1);
             break;
         case PipelineStage::COMPUTE:
-            m_device_context_->CSSetUnorderedAccessViews(slot,
-                                                         count,
-                                                         resource_views.unordered_access_views.data(),
-                                                         nullptr);
+            m_device_context->CSSetUnorderedAccessViews(slot,
+                                                        count,
+                                                        resource_views.unordered_access_views.data(),
+                                                        nullptr);
             break;
         default:
             OutputDebugStringA("Qhenki D3D11 ERROR: Invalid pipeline stage for storage access\n");
@@ -1087,13 +1089,13 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
         switch (stage)
         {
         case PipelineStage::VERTEX:
-            m_device_context_->VSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
+            m_device_context->VSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
             break;
         case PipelineStage::PIXEL:
-            m_device_context_->PSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
+            m_device_context->PSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
             break;
         case PipelineStage::COMPUTE:
-            m_device_context_->CSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
+            m_device_context->CSSetShaderResources(slot, count, resource_views.shader_resource_views.data());
             break;
         }
         break;
@@ -1117,13 +1119,13 @@ void D3D11Context::compatibility_set_samplers(const unsigned slot,
     switch (stage)
     {
     case PipelineStage::VERTEX:
-        m_device_context_->VSSetSamplers(slot, count, sampler_d3d11.data());
+        m_device_context->VSSetSamplers(slot, count, sampler_d3d11.data());
         break;
     case PipelineStage::PIXEL:
-        m_device_context_->PSSetSamplers(slot, count, sampler_d3d11.data());
+        m_device_context->PSSetSamplers(slot, count, sampler_d3d11.data());
         break;
     case PipelineStage::COMPUTE:
-        m_device_context_->CSSetSamplers(slot, count, sampler_d3d11.data());
+        m_device_context->CSSetSamplers(slot, count, sampler_d3d11.data());
         break;
     default:
         throw std::runtime_error("D3D11: Invalid pipeline stage");
@@ -1132,8 +1134,8 @@ void D3D11Context::compatibility_set_samplers(const unsigned slot,
 
 void D3D11Context::wait_idle(Queue* const queue)
 {
-    std::scoped_lock lock(m_context_mutex_);
-    m_device_context_->Flush();
+    std::scoped_lock lock(m_context_mutex);
+    m_device_context->Flush();
 }
 
 bool D3D11Context::present(Swapchain* const swapchain,
@@ -1149,15 +1151,15 @@ bool D3D11Context::present(Swapchain* const swapchain,
 
 D3D11Context::~D3D11Context()
 {
-    m_device_context_->ClearState();
-    m_device_context_->Flush();
-    m_device_context_.Reset();
-    m_dxgi_factory_.Reset();
-    m_layout_assembler_.clear_maps();
+    m_device_context->ClearState();
+    m_device_context->Flush();
+    m_device_context.Reset();
+    m_dxgi_factory.Reset();
+    m_layout_assembler.clear_maps();
     if (D3D11Context::is_debug_layer_enabled())
     {
-        m_debug_->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
-        m_debug_.Reset();
+        m_debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+        m_debug.Reset();
     }
-    m_device_.Reset();
+    m_device.Reset();
 }
