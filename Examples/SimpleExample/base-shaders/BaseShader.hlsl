@@ -4,7 +4,7 @@ cbuffer CameraBuffer : register(b0)
 {
     float4x4 viewProj;
     float4x4 invViewProj;
-};  
+};
 
 Texture2D g_texture : register(t1);
 
@@ -28,7 +28,7 @@ struct PSInput
     float3 color : COLOR0;
     float2 uv : TEXCOORD0;
 };
- 
+
 PSInput vs_main(VSInput input)
 {
     PSInput output;
@@ -37,7 +37,7 @@ PSInput vs_main(VSInput input)
     output.position = mul(worldPosition, viewProj);
     output.color = input.color;
     output.uv = input.uv;
-    
+
     return output;
 }
 
@@ -49,9 +49,9 @@ struct PSOutput
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
-    
+
     float3 multColor = g_texture.Sample(samp, input.uv).rgb * input.color;
     output.color = float4(multColor, 1.0);
-   
+
     return output;
 }

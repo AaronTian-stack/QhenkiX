@@ -7,10 +7,15 @@ file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.hlsl")
 set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
 source_group("base-shaders" FILES ${SHADER_FILES})
 
+set(CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ImGuiExample.config")
+set_source_files_properties(${CONFIG_FILE} PROPERTIES HEADER_FILE_ONLY TRUE)
+source_group("config" FILES ${CONFIG_FILE})
+
 add_executable(ImGuiExample
     main.cpp
     imgui_exampleapp.cpp
     imgui_exampleapp.h
+    ${CONFIG_FILE}
     ${SHADER_FILES}
 )
 
