@@ -1,4 +1,4 @@
-#include "d3d11_shader_compiler.h"
+#include "fxc_shader_compiler.h"
 
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
@@ -16,21 +16,26 @@ using Microsoft::WRL::ComPtr;
 using namespace qhenki::gfx;
 using namespace qhenki::util;
 
-void D3D11ShaderCompiler::get_shader_dll_path(char* buffer, const size_t buffer_length)
+// Static implementation
+bool FXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
 {
-    if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
+    if (const HMODULE d3d_compiler = GetModuleHandleA("d3dcompiler_47.dll"))
     {
-        GetModuleFileNameA(hD3DCompiler, buffer, buffer_length);
+        GetModuleFileNameA(d3d_compiler, buffer, static_cast<DWORD>(length));
+        return true;
     }
-    else
-    {
-        const char* error_message = "d3dcompiler_47.dll not found";
-        assert(buffer_length > strlen(error_message));
-        (void) snprintf(buffer, buffer_length, "%s", error_message);
-    }
+    const auto error_message = "d3dcompiler_47.dll not found";
+    assert(length > strlen(error_message));
+    snprintf(buffer, length, "%s", error_message);
+    return false;
 }
 
-bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
+bool FXCShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
+{
+    return FXCShaderCompiler::get_compiler_path(buffer, length);
+}
+
+bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
 {
     UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 
@@ -58,7 +63,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
     if (input.shader_model > ShaderModel::SM_5_0)
     {
-        output.error_message = "D3D11ShaderCompiler: Shader model not supported";
+        output.error_message = "FXCShaderCompiler: Shader model not supported";
         return false;
     }
 
@@ -122,12 +127,12 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         return false;
     }
 
-    output.internal_state = mkS<D3D11ShaderOutput>();
+    output.internal_state = mkS<FXCShaderOutput>();
     output.shader_size = shader_blob->GetBufferSize();
     output.shader_data = shader_blob->GetBufferPointer();
 
-    const auto d3d_shader_output = static_cast<D3D11ShaderOutput*>(output.internal_state.get());
-    d3d_shader_output->shader_blob = shader_blob;
+    const auto fxc_shader_output = static_cast<FXCShaderOutput*>(output.internal_state.get());
+    fxc_shader_output->shader_blob = shader_blob;
 
     if (input.flags & CompilerInput::DEBUG)
     {
@@ -141,7 +146,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
                                                debug_info_blob.ReleaseAndGetAddressOf());
         if (FAILED(pdb_result))
         {
-            output.error_message = "D3D11ShaderCompiler: Failed to get PDB blob from shader";
+            output.error_message = "FXCShaderCompiler: Failed to get PDB blob from shader";
             return false;
         }
 
@@ -153,7 +158,7 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
                                              debug_info_path.ReleaseAndGetAddressOf());
         if (FAILED(pdb_path))
         {
-            output.error_message = "D3D11ShaderCompiler: Failed to get debug name blob from shader";
+            output.error_message = "FXCShaderCompiler: Failed to get debug name blob from shader";
             return false;
         }
 
@@ -162,20 +167,10 @@ bool D3D11ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         const auto name = reinterpret_cast<const char*>(debug_name_data + 1);
         if (!write_file(name, debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize()))
         {
-            output.error_message = "D3D11ShaderCompiler: Failed to write PDB file :: " + std::string(name);
+            output.error_message = "FXCShaderCompiler: Failed to write PDB file :: " + std::string(name);
             return false;
         }
     }
 
     return true;
-}
-
-bool D3D11ShaderCompiler::get_dll_path(char* buffer1, const unsigned long buffer_length)
-{
-    assert(buffer1);
-    if (HMODULE hD3DCompiler = GetModuleHandleA("d3dcompiler_47.dll"))
-    {
-        return GetModuleFileNameA(hD3DCompiler, buffer1, buffer_length);
-    }
-    return false;
 }

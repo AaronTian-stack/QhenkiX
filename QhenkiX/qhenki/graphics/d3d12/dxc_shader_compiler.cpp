@@ -1,9 +1,15 @@
-#include "d3d12_shader_compiler.h"
+#include "dxc_shader_compiler.h"
 
 #include <d3dcompiler.h>
 #include <cassert>
 #include <filesystem>
 #include <stdexcept>
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#elif defined(__APPLE__) || defined(__linux__)
+// TODO
+#endif
 
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
@@ -12,12 +18,12 @@
 using namespace qhenki::gfx;
 using namespace qhenki::util;
 
-DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type)
+DXGI_FORMAT DXCShaderCompiler::mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type)
 {
     switch (type)
     {
     case D3D_REGISTER_COMPONENT_UNKNOWN:
-        throw std::runtime_error("D3D12ShaderCompiler: mask_to_format: Unknown component type");
+        throw std::runtime_error("DXCShaderCompiler: mask_to_format: Unknown component type");
     case D3D_REGISTER_COMPONENT_UINT32:
     {
         switch (mask)
@@ -31,7 +37,7 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
         case 0xF:
             return DXGI_FORMAT_R32G32B32A32_UINT;
         default:
-            throw std::runtime_error("D3D12ShaderCompiler: uint32 mask");
+            throw std::runtime_error("DXCShaderCompiler: uint32 mask");
         }
     }
     case D3D_REGISTER_COMPONENT_SINT32:
@@ -47,7 +53,7 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
         case 0xF:
             return DXGI_FORMAT_R32G32B32A32_SINT;
         default:
-            throw std::runtime_error("D3D12ShaderCompiler: sint32 mask");
+            throw std::runtime_error("DXCShaderCompiler: sint32 mask");
         }
     }
     case D3D_REGISTER_COMPONENT_FLOAT32:
@@ -63,7 +69,7 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
         case 0xF:
             return DXGI_FORMAT_R32G32B32A32_FLOAT;
         default:
-            throw std::runtime_error("D3D12ShaderCompiler: float32 mask");
+            throw std::runtime_error("DXCShaderCompiler: float32 mask");
         }
     }
     case D3D_REGISTER_COMPONENT_UINT16:
@@ -75,11 +81,11 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
         case 0x3:
             return DXGI_FORMAT_R16G16_UINT;
         case 0x7:
-            throw std::runtime_error("D3D12ShaderCompiler: 3 component uint16 mask");
+            throw std::runtime_error("DXCShaderCompiler: 3 component uint16 mask");
         case 0xF:
             return DXGI_FORMAT_R16G16B16A16_UINT;
         default:
-            throw std::runtime_error("D3D12ShaderCompiler: uint16 mask");
+            throw std::runtime_error("DXCShaderCompiler: uint16 mask");
         }
     }
     case D3D_REGISTER_COMPONENT_SINT16:
@@ -87,11 +93,11 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
         switch (mask)
         {
         case 0x1:
-            throw std::runtime_error("D3D12ShaderCompiler: 1 component sint16 mask");
+            throw std::runtime_error("DXCShaderCompiler: 1 component sint16 mask");
         case 0x3:
             return DXGI_FORMAT_R16G16_SINT;
         case 0x7:
-            throw std::runtime_error("D3D12ShaderCompiler: 3 component sint16 mask");
+            throw std::runtime_error("DXCShaderCompiler: 3 component sint16 mask");
         case 0xF:
             return DXGI_FORMAT_R16G16B16A16_SINT;
         }
@@ -105,7 +111,7 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
         case 0x3:
             return DXGI_FORMAT_R16G16_FLOAT;
         case 0x7:
-            throw std::runtime_error("D3D12ShaderCompiler: 3 component float16 mask");
+            throw std::runtime_error("DXCShaderCompiler: 3 component float16 mask");
         case 0xF:
             return DXGI_FORMAT_R16G16B16A16_FLOAT;
         }
@@ -113,29 +119,66 @@ DXGI_FORMAT D3D12ShaderCompiler::mask_to_format(const uint32_t mask, const D3D_R
     case D3D_REGISTER_COMPONENT_UINT64:
     case D3D_REGISTER_COMPONENT_SINT64:
     case D3D_REGISTER_COMPONENT_FLOAT64:
-        throw std::runtime_error("D3D12ShaderCompiler: 64 bit component type not supported");
+        throw std::runtime_error("DXCShaderCompiler: 64 bit component type not supported");
     }
     return DXGI_FORMAT_UNKNOWN;
 }
 
-D3D12ShaderCompiler::D3D12ShaderCompiler()
+DXCShaderCompiler::DXCShaderCompiler()
 {
     if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
     {
-        throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcLibrary");
+        throw std::runtime_error("DXCShaderCompiler: Failed to create DxcLibrary");
     }
     if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_compiler.ReleaseAndGetAddressOf()))))
     {
-        throw std::runtime_error("D3D12ShaderCompiler: Failed to create DxcCompiler");
+        throw std::runtime_error("DXCShaderCompiler: Failed to create DxcCompiler");
     }
 }
 
-bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
+namespace
 {
-    // DXC does not support < SM 6.0, use FXC
+const char* get_dxc_library_name()
+{
+#if defined(_WIN32) || defined(_WIN64)
+    return "dxcompiler.dll";
+#elif defined(__APPLE__)
+    return "libdxcompiler.dylib";
+#elif defined(__linux__)
+    return "libdxcompiler.so";
+#else
+#error "Unsupported platform"
+#endif
+}
+} // namespace
+
+bool DXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
+{
+#if defined(_WIN32) || defined(_WIN64)
+    if (const auto dx_compiler = GetModuleHandleA(get_dxc_library_name()))
+    {
+        return GetModuleFileNameA(dx_compiler, buffer, static_cast<DWORD>(length)) != 0;
+    }
+    return false;
+#elif defined(__APPLE__)
+    // TODO
+#elif defined(__linux__)
+    // TODO
+#else
+    return false;
+#endif
+}
+
+bool DXCShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
+{
+    return DXCShaderCompiler::get_compiler_path(buffer, length);
+}
+
+bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
+{
     if (input.shader_model < ShaderModel::SM_6_0)
     {
-        return D3D11ShaderCompiler::compile(input, output);
+        return false;
     }
 
     DxcBuffer source_buffer;
@@ -145,7 +188,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     const auto succeed = read_file(input_path.data(), &data, &size);
     if (!succeed)
     {
-        output.error_message = "D3D12ShaderCompiler: Failed to read/open file :: " +
+        output.error_message = "DXCShaderCompiler: Failed to read/open file :: " +
                                std::string(input_path.begin(), input_path.end());
         return false;
     }
@@ -158,7 +201,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     ComPtr<IDxcIncludeHandler> include_handler;
     if (FAILED(m_library->CreateDefaultIncludeHandler(&include_handler)))
     {
-        output.error_message = "D3D12ShaderCompiler: Failed to create include handler";
+        output.error_message = "DXCShaderCompiler: Failed to create include handler";
         return false;
     }
 
@@ -263,21 +306,20 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
     free(data); // Not needed anymore
 
-    output.internal_state = mkS<D3D12ShaderOutput>();
-    const auto d3d12_output = static_cast<D3D12ShaderOutput*>(output.internal_state.get());
+    output.internal_state = mkS<DXCShaderOutput>();
+    const auto dxc_output = static_cast<DXCShaderOutput*>(output.internal_state.get());
 
     // Save the blob in output
-    if (const auto hr_s = result->GetOutput(DXC_OUT_OBJECT,
-                                            IID_PPV_ARGS(d3d12_output->shader_blob.ReleaseAndGetAddressOf()),
-                                            nullptr);
+    if (const auto hr_s =
+            result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(dxc_output->shader_blob.ReleaseAndGetAddressOf()), nullptr);
         FAILED(hr_s))
     {
         output_error();
         return false;
     }
 
-    output.shader_size = d3d12_output->shader_blob->GetBufferSize();
-    output.shader_data = d3d12_output->shader_blob->GetBufferPointer();
+    output.shader_size = dxc_output->shader_blob->GetBufferSize();
+    output.shader_data = dxc_output->shader_blob->GetBufferPointer();
 
     // Assumed to be null-terminated!
     const auto& pdb_path = input.pdb_path;
@@ -285,7 +327,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     {
         if (!std::filesystem::is_directory(pdb_path))
         {
-            output.error_message = "D3D12ShaderCompiler: PDB path is not a valid directory :: " +
+            output.error_message = "DXCShaderCompiler: PDB path is not a valid directory :: " +
                                    std::string(pdb_path.begin(), pdb_path.end());
         }
         ComPtr<IDxcBlobUtf16> debug_info_path;
@@ -308,9 +350,10 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
             // Try using stack buffer first
             bool failed = true;
-            if (1 + input.pdb_path.size() + char_count < sizeof(buffer_count))
+            if (1 + input.pdb_path.size() + char_count < buffer_count)
             {
-                if (swprintf(path_buffer.data(), buffer_count, L"%s\\%s", pdb_path.data(), name) >= 0)
+                const wchar_t separator = std::filesystem::path::preferred_separator;
+                if (swprintf(path_buffer.data(), buffer_count, L"%s%c%s", pdb_path.data(), separator, name) >= 0)
                 {
                     pdb_file = std::wstring_view(path_buffer.data(), wcslen(path_buffer.data()));
                     failed = false;
@@ -323,9 +366,10 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
 
                 path.assign(pdb_path.begin(), pdb_path.end());
 
+                const wchar_t separator = std::filesystem::path::preferred_separator;
                 if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
                 {
-                    path += L'\\';
+                    path += separator;
                 }
                 path.append(name, char_count);
                 pdb_file = path;
@@ -335,7 +379,7 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
                     write_file(pdb_file.data(), debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());
                 !write_result)
             {
-                output.error_message = "D3D12ShaderCompiler: Failed to write PDB file :: " +
+                output.error_message = "DXCShaderCompiler: Failed to write PDB file :: " +
                                        std::string(pdb_file.begin(), pdb_file.end());
             }
         }
@@ -346,21 +390,4 @@ bool D3D12ShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     }
 
     return true;
-}
-
-bool D3D12ShaderCompiler::get_dll_path(char* buffer1, char* buffer2, unsigned long buffer_length)
-{
-    assert(buffer1);
-    assert(buffer2);
-    const auto d3d11_result = D3D11ShaderCompiler::get_dll_path(buffer2, buffer_length);
-    if (HMODULE hDXCompiler = GetModuleHandleA("dxcompiler.dll"))
-    {
-        const auto d3d12_result = GetModuleFileNameA(hDXCompiler, buffer1, buffer_length);
-        return d3d11_result && d3d12_result;
-    }
-    return false;
-}
-
-D3D12ShaderCompiler::~D3D12ShaderCompiler()
-{
 }
