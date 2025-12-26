@@ -19,18 +19,18 @@ struct ShaderDebugName
     // Followed by [0-3] zero bytes to align to a 4-byte boundary.
 };
 
-struct D3D11ShaderOutput
+struct FXCShaderOutput
 {
     ComPtr<ID3DBlob> shader_blob;
 };
 
-class D3D11ShaderCompiler : public ShaderCompiler
+class FXCShaderCompiler : public ShaderCompiler
 {
 public:
     static bool get_compiler_path(char* buffer, size_t length);
     bool get_compiler_path_v(char* buffer, size_t length) override;
     bool compile(const CompilerInput& input, CompilerOutput& output) override;
 
-    friend class D3D12ShaderCompiler;
+    friend class DXCShaderCompiler;
 };
 } // namespace qhenki::gfx

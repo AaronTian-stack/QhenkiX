@@ -8,7 +8,7 @@
 #include <D3D12MemAlloc.h>
 #include <dxcapi.h>
 
-#include "../d3d11/d3d11_shader_compiler.h"
+#include "../d3d11/fxc_shader_compiler.h"
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_pipeline.h"
 #include "d3d12_root_hasher.h"
@@ -46,7 +46,7 @@ class D3D12Context : public Context
 
     Queue* m_swapchain_queue = nullptr;
 
-    D3D11ShaderCompiler m_d3d11_shader_compiler; // Needed for SM < 6.0
+    FXCShaderCompiler m_fxc_shader_compiler; // Needed for SM < 6.0
 
     D3D12RootHasher m_root_reflection;
 

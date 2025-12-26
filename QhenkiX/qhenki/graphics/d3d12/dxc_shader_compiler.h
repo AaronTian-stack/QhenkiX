@@ -11,12 +11,12 @@ using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-struct D3D12ShaderOutput
+struct DXCShaderOutput
 {
     ComPtr<IDxcBlob> shader_blob;
 };
 
-class D3D12ShaderCompiler : public ShaderCompiler
+class DXCShaderCompiler : public ShaderCompiler
 {
     ComPtr<IDxcUtils> m_library;
     ComPtr<IDxcCompiler3> m_compiler; // Not thread safe
@@ -24,13 +24,13 @@ class D3D12ShaderCompiler : public ShaderCompiler
     static DXGI_FORMAT mask_to_format(uint32_t mask, D3D_REGISTER_COMPONENT_TYPE type);
 
 public:
-    D3D12ShaderCompiler();
+    DXCShaderCompiler();
 
     static bool get_compiler_path(char* buffer, size_t length);
     bool get_compiler_path_v(char* buffer, size_t length) override;
     bool compile(const CompilerInput& input, CompilerOutput& output) override;
 
-    ~D3D12ShaderCompiler() override = default;
+    ~DXCShaderCompiler() override = default;
 
     friend class D3D12Context;
 };

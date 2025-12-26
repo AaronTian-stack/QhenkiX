@@ -10,7 +10,7 @@
 #include <d3dcompiler.h>
 
 #include "d3d12_pipeline.h"
-#include "d3d12_shader_compiler.h"
+#include "dxc_shader_compiler.h"
 #include "qhenki/application.h"
 
 #include "d3d12_descriptor_heap.h"
@@ -421,8 +421,8 @@ bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType
     }
 
     shader->type = type;
-    shader->internal_state = mkS<D3D12ShaderOutput>();
-    auto* out = static_cast<D3D12ShaderOutput*>(shader->internal_state.get());
+    shader->internal_state = mkS<DXCShaderOutput>();
+    auto* out = static_cast<DXCShaderOutput*>(shader->internal_state.get());
     out->shader_blob = container_blob;
 
     return true;
@@ -451,8 +451,8 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
             input_element_desc.emplace_back(D3D12_INPUT_ELEMENT_DESC{
                 .SemanticName = signature_parameter_desc.SemanticName,
                 .SemanticIndex = signature_parameter_desc.SemanticIndex,
-                .Format = D3D12ShaderCompiler::mask_to_format(signature_parameter_desc.Mask,
-                                                              signature_parameter_desc.ComponentType),
+                .Format = DXCShaderCompiler::mask_to_format(signature_parameter_desc.Mask,
+                                                            signature_parameter_desc.ComponentType),
                 .InputSlot = slot,
                 .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
                 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -502,14 +502,14 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
 
-    const D3D12ShaderOutput* vs12;
+    const DXCShaderOutput* vs12;
 
     ComPtr<ID3D12ShaderReflection> shader_reflection;
     D3D12_SHADER_DESC shader_desc{};
     // SM >= 6.0
     {
-        vs12 = static_cast<D3D12ShaderOutput*>(vertex_shader.internal_state.get());
-        const auto ps12 = static_cast<D3D12ShaderOutput*>(pixel_shader.internal_state.get());
+        vs12 = static_cast<DXCShaderOutput*>(vertex_shader.internal_state.get());
+        const auto ps12 = static_cast<DXCShaderOutput*>(pixel_shader.internal_state.get());
         assert(vs12);
         assert(ps12);
 

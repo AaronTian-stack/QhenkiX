@@ -16,9 +16,9 @@
 
 #include <argparse/argparse.hpp>
 
-#include "graphics/d3d12/d3d12_shader_compiler.h"
+#include "graphics/d3d12/dxc_shader_compiler.h"
 #if defined(_WIN32) || defined(_WIN64)
-#include "graphics/d3d11/d3d11_shader_compiler.h"
+#include "graphics/d3d11/fxc_shader_compiler.h"
 #endif
 #include "utility/d3d_util.h"
 
@@ -599,9 +599,9 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
         CompilerInputVector* input_vector;
     };
 
-    tbb::enumerable_thread_specific<gfx::D3D12ShaderCompiler> d3d12_compilers;
+    tbb::enumerable_thread_specific<gfx::DXCShaderCompiler> d3d12_compilers;
 #if defined(_WIN32) || defined(_WIN64)
-    tbb::enumerable_thread_specific<gfx::D3D11ShaderCompiler> d3d11_compilers;
+    tbb::enumerable_thread_specific<gfx::FXCShaderCompiler> d3d11_compilers;
 #endif
     // Compile shader
     auto compile_shaders = tbb::make_filter<OutputPathAndCompilerInputVector, PathAndOutputs>(
