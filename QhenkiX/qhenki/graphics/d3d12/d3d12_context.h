@@ -52,8 +52,6 @@ class D3D12Context : public Context
 
     Queue* m_swapchain_queue = nullptr;
 
-    FXCShaderCompiler m_fxc_shader_compiler; // Needed for SM < 6.0
-
     D3D12RootHasher m_root_reflection;
 
     Fence m_fence_wait_all{}; // For stalling queues
@@ -61,8 +59,6 @@ class D3D12Context : public Context
     std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                             const D3D12_SHADER_DESC& shader_desc,
                                                             bool increment_slot) const;
-
-    UINT GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
 public:
     std::string create(bool enable_debug_layer) override;

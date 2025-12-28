@@ -500,28 +500,6 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
     return input_element_desc;
 }
 
-UINT D3D12Context::GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const
-{
-    D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
-    if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options))))
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get D3D12 options\n");
-        return 0;
-    }
-    switch (type)
-    {
-    case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
-        return D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
-    case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
-        return D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
-    case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
-    case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
-        return 1 << 20; // 1M
-    default:
-        return 0;
-    }
-}
-
 bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                    GraphicsPipeline* const pipeline,
                                    const Shader& vertex_shader,
@@ -886,11 +864,41 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
                                           const char* debug_name)
 {
     assert(heap);
-    // Check that you are not trying to make GPU heap of RTVs, this is not valid
+    // Check that you are not trying to make GPU heap of RTVs / DSVs, this is not valid
     if (desc.visibility == DescriptorHeapDesc::Visibility::GPU && desc.type == DescriptorHeapDesc::Type::RTV)
     {
         OutputDebugStringA("Qhenki D3D12: Cannot create GPU visible RTV heap\n");
         return false;
+    }
+    if (desc.visibility == DescriptorHeapDesc::Visibility::GPU && desc.type == DescriptorHeapDesc::Type::DSV)
+    {
+        OutputDebugStringA("Qhenki D3D12: Cannot create GPU visible DSV heap\n");
+        return false;
+    }
+
+    if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
+    {
+        switch (m_capabilities.options.ResourceBindingTier)
+        {
+        case D3D12_RESOURCE_BINDING_TIER_1:
+            assert(false); // Should never happen here because we require Tier 2, but limit is same as Tier 2
+        case D3D12_RESOURCE_BINDING_TIER_2:
+            if (desc.descriptor_count > D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2)
+            {
+                OutputDebugStringA("Qhenki D3D12: Descriptor count exceeds maximum for Resource Binding Tier\n");
+                return false;
+            }
+            // No break since sampler check is the same for both Tier 2 and 3
+        case D3D12_RESOURCE_BINDING_TIER_3:
+            // There is no bound here for CBV/SRV/UAV
+            if (desc.type == DescriptorHeapDesc::Type::SAMPLER &&
+                desc.descriptor_count > D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE)
+            {
+                OutputDebugStringA("Qhenki D3D12: Descriptor count exceeds maximum for Resource Binding Tier\n");
+                return false;
+            }
+            break;
+        }
     }
 
     heap->desc = desc;
@@ -917,8 +925,6 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         OutputDebugStringA("Qhenki D3D12: Invalid descriptor heap type\n");
         return false;
     }
-
-    assert(desc.descriptor_count <= GetMaxDescriptorsForHeapType(m_device.Get(), heap_desc.Type));
 
     heap_desc.NumDescriptors = desc.descriptor_count;
 
