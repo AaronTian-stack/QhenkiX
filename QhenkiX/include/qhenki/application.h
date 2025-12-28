@@ -68,15 +68,6 @@ protected:
     }
 
 public:
-    unsigned get_frame_index() const
-    {
-        return m_frame_index;
-    }
-    void increment_frame_index()
-    {
-        m_frame_index = (m_frame_index + 1) % m_frames_in_flight;
-    }
-
     bool is_main_thread() const
     {
         return std::this_thread::get_id() == m_main_thread_id;

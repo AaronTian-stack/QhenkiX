@@ -96,14 +96,14 @@ void ImGUIExampleApp::create()
     THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
 
     // Schedule copies to GPU buffers / texture
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[get_frame_index()]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[get_frame_index()]));
+    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[m_frame_index]));
     m_context->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer, 0, desc.size);
     m_context->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer, 0, index_desc.size);
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list));
-    auto current_fence_value = ++m_fence_frame_ready_val[get_frame_index()];
+    auto current_fence_value = ++m_fence_frame_ready_val[m_frame_index];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
@@ -125,7 +125,7 @@ void ImGUIExampleApp::create()
 
     qhenki::gfx::WaitInfo wait_info{.count = 1,
                                     .fences = &m_fence_frame_ready,
-                                    .values = &m_fence_frame_ready_val[get_frame_index()]};
+                                    .values = &m_fence_frame_ready_val[m_frame_index]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info)); // Block CPU until done
 }
 
@@ -136,11 +136,11 @@ void ImGUIExampleApp::render()
 
     const auto dim = this->m_window_.get_display_size();
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[get_frame_index()]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
 
     // Create a command list in the open state
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[get_frame_index()]));
+    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[m_frame_index]));
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {
@@ -155,12 +155,12 @@ void ImGUIExampleApp::render()
         .src_layout = qhenki::gfx::Layout::PRESENT,
         .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
     };
-    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, get_frame_index());
+    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
     // Clear back buffer / Start render pass
     std::array clear_values = {0.f, 0.f, 0.f, 1.f};
-    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), nullptr, get_frame_index());
+    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), nullptr, m_frame_index);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{
@@ -211,14 +211,14 @@ void ImGUIExampleApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, get_frame_index());
+    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, m_frame_index);
     m_context->issue_barrier(&cmd_list, 1, &barrier_present);
 
     // Close the command list
     m_context->close_command_list(&cmd_list);
 
     // Submit command list
-    auto current_fence_value = m_fence_frame_ready_val[get_frame_index()];
+    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
@@ -230,12 +230,12 @@ void ImGUIExampleApp::render()
 
     // You MUST call Present at the end of the render loop
     // TODO: change for Vulkan
-    m_context->present(&m_swapchain, 0, nullptr, get_frame_index());
+    m_context->present(&m_swapchain, 0, nullptr, m_frame_index);
 
-    increment_frame_index();
+    m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
 
     // If next frame is not ready to be used, wait until it is
-    auto next_fence_value = m_fence_frame_ready_val[get_frame_index()];
+    auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
         qhenki::gfx::WaitInfo wait_info{.wait_all = true,
@@ -245,7 +245,7 @@ void ImGUIExampleApp::render()
                                         .timeout = INFINITE};
         m_context->wait_fences(wait_info);
     }
-    m_fence_frame_ready_val[get_frame_index()] = current_fence_value + 1;
+    m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
 void ImGUIExampleApp::resize(int width, int height)

@@ -27,6 +27,8 @@ class D3D11Context : public Context
 
     std::array<D3D11_VIEWPORT, 16> m_viewports;
 
+    UINT m_frame_index;
+
     D3D11MultithreadLock acquire_lock() const
     {
         return D3D11MultithreadLock(m_multithread.Get());
@@ -66,6 +68,7 @@ public:
         return true;
     }
     bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
+    unsigned get_swapchain_frame_index(const Swapchain& swapchain) override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
     // thread safe

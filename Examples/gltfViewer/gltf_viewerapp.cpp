@@ -359,7 +359,7 @@ void gltfViewerApp::render()
                 thread_local ContextModel cm;
                 cm = {
                     .context = m_context.get(),
-                    .pool = &m_cmd_pools_thread[get_frame_index()], // Needs its own command pool for async loading
+                    .pool = &m_cmd_pools_thread[m_frame_index], // Needs its own command pool for async loading
                     .queue = &m_graphics_queue,
                     .model_count = m_models.size(),
                     .models = m_models.data(),
@@ -437,19 +437,19 @@ void gltfViewerApp::render()
     m_camera.update(false);
 
     // Update matrix buffer
-    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[get_frame_index()]);
+    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
     assert(buffer_pointer);
     memcpy(buffer_pointer, &m_camera.matrices, sizeof(qhenki::CameraMatrices));
     memcpy(static_cast<uint8_t*>(buffer_pointer) + sizeof(qhenki::CameraMatrices),
            &m_camera.transform.translation,
            sizeof(XMFLOAT3));
-    m_context->unmap_buffer(m_matrix_buffers[get_frame_index()]);
+    m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[get_frame_index()]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
 
     // Create a command list in the open state
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[get_frame_index()], "main command list"));
+    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[m_frame_index], "main command list"));
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {
@@ -464,7 +464,7 @@ void gltfViewerApp::render()
         .src_layout = qhenki::gfx::Layout::PRESENT,
         .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
     };
-    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, get_frame_index());
+    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
     // Clear back buffer / Start render pass
@@ -474,7 +474,7 @@ void gltfViewerApp::render()
         .clear_type = qhenki::gfx::RenderTarget::Depth,
         .descriptor = m_depth_buffer_descriptor,
     };
-    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), &depth, get_frame_index());
+    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), &depth, m_frame_index);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{
@@ -503,11 +503,10 @@ void gltfViewerApp::render()
     // Bind resources
     if (m_context->is_compatibility())
     {
-        m_context->compatibility_set_constant_buffers(
-            0,
-            1,
-            qhenki::util::ptr_array(m_matrix_buffers[get_frame_index()]).data(),
-            qhenki::gfx::PipelineStage::VERTEX);
+        m_context->compatibility_set_constant_buffers(0,
+                                                      1,
+                                                      qhenki::util::ptr_array(m_matrix_buffers[m_frame_index]).data(),
+                                                      qhenki::gfx::PipelineStage::VERTEX);
     }
     else
     {
@@ -518,7 +517,7 @@ void gltfViewerApp::render()
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
 
         // Copy matrix descriptors to GPU heap
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[get_frame_index()], descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], descriptor));
 
         // Sampler
         THROW_IF_FALSE(m_context->get_descriptor(0, &m_sampler_heap, &descriptor));
@@ -780,14 +779,14 @@ void gltfViewerApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, get_frame_index());
+    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, m_frame_index);
     m_context->issue_barrier(&cmd_list, 1, &barrier_present);
 
     // Close the command list
     m_context->close_command_list(&cmd_list);
 
     // Submit command list
-    auto current_fence_value = m_fence_frame_ready_val[get_frame_index()];
+    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
     // To delete the model at m_model_index need to wait for this fence value
     // m_model_last_used_fence_value[m_model_index] = current_fence_value;
     qhenki::gfx::SubmitInfo info{
@@ -801,12 +800,12 @@ void gltfViewerApp::render()
 
     // You MUST call Present at the end of the render loop
     // TODO: change for Vulkan
-    m_context->present(&m_swapchain, 0, nullptr, get_frame_index());
+    m_context->present(&m_swapchain, 0, nullptr, m_frame_index);
 
-    increment_frame_index();
+    m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
 
     // If next frame is not ready to be used, wait until it is
-    auto next_fence_value = m_fence_frame_ready_val[get_frame_index()];
+    auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
         qhenki::gfx::WaitInfo wait_info{.wait_all = true,
@@ -816,7 +815,7 @@ void gltfViewerApp::render()
                                         .timeout = INFINITE};
         m_context->wait_fences(wait_info);
     }
-    m_fence_frame_ready_val[get_frame_index()] = current_fence_value + 1;
+    m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
 void gltfViewerApp::resize(int width, int height)
