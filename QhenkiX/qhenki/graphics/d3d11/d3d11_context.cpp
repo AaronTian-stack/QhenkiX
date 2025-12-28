@@ -3,6 +3,7 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_dx11.h"
 #include "imgui/imgui_impl_sdl3.h"
+#include "qhenki/utility/string_util.h"
 
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
@@ -135,17 +136,14 @@ std::string D3D11Context::create(const bool enable_debug_layer)
     }
 
     DXGI_ADAPTER_DESC1 desc;
-    HRESULT hr = adapter->GetDesc1(&desc);
+    const auto hr = adapter->GetDesc1(&desc);
     if (SUCCEEDED(hr))
     {
-        wchar_t adapter_description[128];
-        swprintf(adapter_description,
-                 128,
-                 L"Adapter: %s, Vendor ID: 0x%04X, Device ID: 0x%04X\n",
-                 desc.Description,
-                 desc.VendorId,
-                 desc.DeviceId);
-        OutputDebugStringW(adapter_description);
+        const auto adapter_description = util::format_wstring(L"Adapter: %s, Vendor ID: 0x%04X, Device ID: 0x%04X\n",
+                                                              desc.Description,
+                                                              desc.VendorId,
+                                                              desc.DeviceId);
+        OutputDebugStringW(adapter_description.buffer.data());
     }
 
     // TODO: Increase to 11_1 for UAV in vertex shader?
