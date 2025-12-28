@@ -60,7 +60,7 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
     default:
         throw std::runtime_error("API not implemented");
     }
-    
+
     const std::string create_error = m_context->create(enable_debug_layer);
     if (!create_error.empty())
     {
