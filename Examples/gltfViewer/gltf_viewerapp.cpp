@@ -15,7 +15,7 @@
 
 void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& node)
 {
-    if (node.parent_index > 0)
+    if (node.parent_index >= 0)
     {
         if (model.nodes[node.parent_index].global_transform.dirty)
         {
