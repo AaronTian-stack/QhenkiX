@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         const auto sm = magic_enum::enum_cast<qhenki::gfx::ShaderModel>(sm_str.buffer.data());
         if (!sm.has_value())
         {
-            throw std::runtime_error("Failed to reflect shader model: " + std::string(sm_str.data()));
+            throw std::runtime_error("Failed to reflect shader model: " + std::string(sm_str.buffer.data()));
         }
 
         const auto optimization = magic_enum::enum_cast<CompilerInput::Optimization>(
