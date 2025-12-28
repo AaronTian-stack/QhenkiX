@@ -131,7 +131,6 @@ std::string D3D11Context::create(const bool enable_debug_layer)
                                                           __uuidof(IDXGIAdapter1),
                                                           reinterpret_cast<void**>(adapter.GetAddressOf()))))
     {
-
         return "D3D11: Failed to find a discrete GPU adapter";
     }
 
