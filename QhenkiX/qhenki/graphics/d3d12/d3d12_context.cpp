@@ -106,7 +106,7 @@ bool set_debug_name(ID3D12Object* obj, const char* name)
 }
 } // namespace
 
-void D3D12Context::create(const bool enable_debug_layer)
+std::string D3D12Context::create(const bool enable_debug_layer)
 {
     UINT dxgi_factory_flags = 0;
     if (enable_debug_layer)
@@ -128,8 +128,7 @@ void D3D12Context::create(const bool enable_debug_layer)
     // Create the DXGI factory
     if (FAILED(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(m_dxgi_factory.ReleaseAndGetAddressOf()))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DXGI factory\n");
-        throw std::runtime_error("D3D12: Failed to create DXGI factory");
+        return "D3D12: Failed to create DXGI factory";
     }
     if (enable_debug_layer)
     {
@@ -143,35 +142,27 @@ void D3D12Context::create(const bool enable_debug_layer)
                                                           __uuidof(IDXGIAdapter1),
                                                           reinterpret_cast<void**>(adapter.GetAddressOf()))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
-        if (FAILED(m_dxgi_factory->EnumAdapters1(0, &adapter)))
-        {
-            throw std::runtime_error("D3D12: Failed to find a adapter");
-        }
+        return "D3D12: Failed to find a discrete GPU adapter";
     }
 
     DXGI_ADAPTER_DESC1 desc;
     HRESULT hr = adapter->GetDesc1(&desc);
-    if (FAILED(hr))
+    if (SUCCEEDED(hr))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get adapter description");
-    }
-    else
-    {
-        OutputDebugStringW((L"D3D12: Selected adapter: " + std::wstring(desc.Description) + L"\n").c_str());
+        wchar_t msg[256];
+        swprintf(msg, 256, L"D3D12: Selected adapter: %ls\n", desc.Description);
+        OutputDebugStringW(msg);
     }
 
     if (FAILED(
             D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(m_device.ReleaseAndGetAddressOf()))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create device");
-        throw std::runtime_error("D3D12: Failed to create device");
+        return "D3D12: Failed to create device";
     }
 
     if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DxcLibrary");
-        throw std::runtime_error("Qhenki D3D12 Error: Failed to create DxcLibrary");
+        return "D3D12: Failed to create DxcLibrary";
     }
 
     // Heap Tier is considered in D3D12MA library so technically no need to consider it here (yet)
@@ -179,52 +170,50 @@ void D3D12Context::create(const bool enable_debug_layer)
                                              &m_capabilities.options,
                                              sizeof(m_capabilities.options))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options\n");
+        return "D3D12: Failed to check feature support for D3D12_OPTIONS";
     }
     if (m_capabilities.options.ResourceBindingTier < D3D12_RESOURCE_BINDING_TIER_3)
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Resource Binding Tier 3 is required\n");
-        throw std::runtime_error("D3D12: Resource Binding Tier 3 is required");
+        return "D3D12: Resource Binding Tier 3 is required";
     }
 
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12,
                                              &m_capabilities.options12,
                                              sizeof(m_capabilities.options12))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 12\n");
+        return "D3D12: Failed to check feature support for D3D12_OPTIONS12";
     }
     if (!m_capabilities.options12.EnhancedBarriersSupported)
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Enhanced barriers are not supported\n");
-        throw std::runtime_error("D3D12: Enhanced barriers are not supported");
+        return "D3D12: Enhanced barriers are not supported";
     }
 
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS4,
                                              &m_capabilities.options4,
                                              sizeof(m_capabilities.options4))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 4\n");
+        return "D3D12: Failed to check feature support for D3D12_OPTIONS4";
     }
 
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,
                                              &m_capabilities.options5,
                                              sizeof(m_capabilities.options5))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 5\n");
+        return "D3D12: Failed to check feature support for D3D12_OPTIONS5";
     }
 
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6,
                                              &m_capabilities.options6,
                                              sizeof(m_capabilities.options6))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 6\n");
+        return "D3D12: Failed to check feature support for D3D12_OPTIONS5";
     }
 
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7,
                                              &m_capabilities.options7,
                                              sizeof(m_capabilities.options7))))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to query D3D12 options 7\n");
+        return "D3D12: Failed to check feature support for D3D12_OPTIONS5";
     }
 
     // Find highest supported shader model
@@ -250,8 +239,7 @@ void D3D12Context::create(const bool enable_debug_layer)
     }
     if (m_capabilities.shader_model.HighestShaderModel < D3D_SHADER_MODEL_6_0)
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Shader Model >= 6.0 is required\n");
-        throw std::runtime_error("D3D12: Shader Model 6.0 is required");
+        return "D3D12: Shader Model >= SM_6_0 is required";
     }
 
     const D3D12MA::ALLOCATOR_DESC allocator_desc{
@@ -262,8 +250,7 @@ void D3D12Context::create(const bool enable_debug_layer)
 
     if (FAILED(CreateAllocator(&allocator_desc, &m_allocator)))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create memory allocator");
-        throw std::runtime_error("D3D12: Failed to create memory allocator");
+        return "D3D12: Failed to create memory allocator";
     }
 
     if (enable_debug_layer && SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&m_dxgi_debug))))
@@ -271,7 +258,12 @@ void D3D12Context::create(const bool enable_debug_layer)
         m_dxgi_debug->EnableLeakTrackingForThread();
     }
 
-    create_fence(&m_fence_wait_all, 0);
+    if (!create_fence(&m_fence_wait_all, 0))
+    {
+        return "D3D12: Failed to create fence";
+    }
+
+    return "";
 }
 
 bool D3D12Context::create_swapchain(const DisplayWindow& window,

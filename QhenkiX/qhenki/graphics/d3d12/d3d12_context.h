@@ -65,7 +65,7 @@ class D3D12Context : public Context
     UINT GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
 public:
-    void create(bool enable_debug_layer) override;
+    std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override
     {
         return false;

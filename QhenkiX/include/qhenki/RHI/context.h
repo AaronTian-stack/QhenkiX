@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <string>
 
 #include <qhenki/display_window.h>
 #include "shader.h"
@@ -25,7 +26,8 @@ namespace qhenki::gfx
 class Context
 {
 public:
-    virtual void create(bool enable_debug_layer) = 0; // TODO: return error string for potential dialog box
+    // Returns empty string on success, error message on failure
+    virtual std::string create(bool enable_debug_layer) = 0;
     virtual bool is_compatibility() const = 0;
 
     // Creates swapchain based off specified description
