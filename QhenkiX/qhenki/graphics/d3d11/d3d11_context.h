@@ -1,11 +1,11 @@
 #pragma once
 
-#include <d3d11.h>
 #include <DirectXMath.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
 
 #include "d3d11_layout_assembler.h"
+#include "d3d11_multithread.h"
 
 #include "qhenki/RHI/context.h"
 
@@ -14,19 +14,39 @@ using namespace DirectX;
 
 namespace qhenki::gfx
 {
+
 class D3D11Context : public Context
 {
     ComPtr<IDXGIFactory6> m_dxgi_factory;
     ComPtr<ID3D11Debug> m_debug;
     ComPtr<ID3D11Device> m_device;
     ComPtr<ID3D11DeviceContext> m_device_context;
+    ComPtr<ID3D10Multithread> m_multithread;
 
     D3D11LayoutAssembler m_layout_assembler;
 
     std::array<D3D11_VIEWPORT, 16> m_viewports;
 
-    std::mutex m_context_mutex; // For anything that uses the device context. Do not call Context methods from each
-                                // other to prevent deadlock
+    D3D11MultithreadLock acquire_lock() const
+    {
+        return D3D11MultithreadLock(m_multithread.Get());
+    }
+
+    void enter_recording() const
+    {
+        if (m_multithread)
+        {
+            m_multithread->Enter();
+        }
+    }
+
+    void leave_recording() const
+    {
+        if (m_multithread)
+        {
+            m_multithread->Leave();
+        }
+    }
 
 public:
     std::string create(bool enable_debug_layer) override;
