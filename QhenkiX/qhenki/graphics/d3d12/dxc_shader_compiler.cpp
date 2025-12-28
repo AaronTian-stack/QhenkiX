@@ -353,7 +353,8 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
             if (1 + input.pdb_path.size() + char_count < buffer_count)
             {
                 const wchar_t separator = std::filesystem::path::preferred_separator;
-                const auto formatted = qhenki::util::format_wstring<buffer_count>(L"%s%c%s", pdb_path.data(), separator, name);
+                const auto formatted =
+                    qhenki::util::format_wstring<buffer_count>(L"%s%c%s", pdb_path.data(), separator, name);
                 if (!formatted.truncated)
                 {
                     path_buffer = formatted.buffer;
