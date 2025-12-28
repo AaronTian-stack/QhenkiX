@@ -81,7 +81,7 @@ D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
     return d3d11_heap;
 }
 
-ID3D11Resource* get_texture_resource(D3D11Texture& tex)
+ID3D11Resource* get_texture_resource(const D3D11Texture& tex)
 {
     if (std::holds_alternative<ComPtr<ID3D11Texture1D>>(tex))
     {
@@ -158,6 +158,7 @@ void D3D11Context::create(const bool enable_debug_layer)
         OutputDebugStringW(adapter_description);
     }
 
+    // TODO: Increase to 11_1 for UAV in vertex shader?
     constexpr D3D_FEATURE_LEVEL device_feature_level = D3D_FEATURE_LEVEL_11_0;
 
     UINT creation_flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
