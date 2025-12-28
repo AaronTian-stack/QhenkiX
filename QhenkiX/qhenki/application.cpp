@@ -7,6 +7,7 @@
 #include "imgui/imgui_impl_sdl3.h"
 #include "qhenki/display_window.h"
 #include "qhenki/RHI/context.h"
+#include "qhenki/utility/string_util.h"
 
 using namespace qhenki;
 
@@ -17,27 +18,33 @@ using namespace qhenki;
  */
 void Application::init_display_window()
 {
-    char title[256] = "QhenkiX Application";
+    util::FormatResult<256> result;
     switch (m_graphics_api)
     {
     case gfx::API::D3D11:
-        std::snprintf(title, sizeof(title), "%s | DX11", "QhenkiX Application");
-        break;
-    case gfx::API::D3D12:
-        std::snprintf(title, sizeof(title), "%s | DX12", "QhenkiX Application");
-        break;
-    default:
-        std::snprintf(title, sizeof(title), "%s | undefined", "QhenkiX Application");
+    {
+        result = util::format_string("%s | DX11", "QhenkiX Application");
         break;
     }
+    case gfx::API::D3D12:
+    {
+        result = util::format_string("%s | DX12", "QhenkiX Application");
+        break;
+    }
+    default:
+    {
+        result = util::format_string("%s | undefined", "QhenkiX Application");
+        break;
+    }
+    }
 
-    DisplayInfo info{
+    const DisplayInfo info{
         .width = 1280,
         .height = 720,
         .fullscreen = false,
         .undecorated = false,
         .resizable = true,
-        .title = title,
+        .title = result.buffer.data(),
     };
 
     m_window_.create_window(info, 0);

@@ -1,8 +1,9 @@
 ﻿#include "d3d11_layout_assembler.h"
 
+#include "qhenki/utility/string_util.h"
+
 #include <d3d11shader.h>
 #include <d3dcompiler.h>
-#include <string>
 
 using namespace qhenki::gfx;
 
@@ -172,17 +173,12 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         }
         else
         {
-            std::array<char, 256> error_msg;
-            const auto r = snprintf(error_msg.data(),
-                                    error_msg.size() * sizeof(char),
-                                    "D3D11: Unsupported input format for %s[%d] with mask %d\n",
-                                    paramDesc.SemanticName,
-                                    paramDesc.SemanticIndex,
-                                    paramDesc.Mask);
-            if (r >= 0)
-            {
-                OutputDebugStringA(error_msg.data());
-            }
+            const auto error_msg =
+                qhenki::util::format_string<256>("D3D11: Unsupported input format for %s[%d] with mask %d\n",
+                                                 paramDesc.SemanticName,
+                                                 paramDesc.SemanticIndex,
+                                                 paramDesc.Mask);
+            OutputDebugStringA(error_msg.buffer.data());
         }
 
         if (increment_slot)

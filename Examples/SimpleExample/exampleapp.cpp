@@ -4,6 +4,7 @@
 #include <qhenki/utility/file_util.h>
 #include "qhenki/utility/general_util.h"
 #include "qhenki/utility/math_util.h"
+#include "qhenki/utility/string_util.h"
 
 #include <array>
 #include <cstddef>
@@ -19,12 +20,11 @@ void ExampleApp::create()
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
-        std::array<char, 256> path;
-        std::snprintf(path.data(), path.size(), "compiled-shaders/%s/%s", subdir, name);
+        const auto path = qhenki::util::format_string("compiled-shaders/%s/%s", subdir, name);
 
         void* raw = nullptr;
         size_t size = 0;
-        if (!qhenki::util::read_file(path.data(), &raw, &size))
+        if (!qhenki::util::read_file(path.buffer.data(), &raw, &size))
         {
             return false;
         }

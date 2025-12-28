@@ -149,9 +149,8 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     HRESULT hr = adapter->GetDesc1(&desc);
     if (SUCCEEDED(hr))
     {
-        wchar_t msg[256];
-        swprintf(msg, 256, L"D3D12: Selected adapter: %ls\n", desc.Description);
-        OutputDebugStringW(msg);
+        const auto msg = qhenki::util::format_wstring<256>(L"D3D12: Selected adapter: %ls\n", desc.Description);
+        OutputDebugStringW(msg.buffer.data());
     }
 
     if (FAILED(

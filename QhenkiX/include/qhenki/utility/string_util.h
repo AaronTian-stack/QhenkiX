@@ -2,6 +2,8 @@
 
 #include <utf8.h>
 #include <array>
+#include <cstdarg>
+#include <cstdio>
 #include <string>
 
 namespace qhenki::util
@@ -57,5 +59,39 @@ template<size_t StackCapacity> Utf8To16Scoped<StackCapacity>::Utf8To16Scoped(std
         heap[input.size()] = L'\0';
         m_stack_buffer = false;
     }
+}
+
+template<size_t N> struct FormatResult
+{
+    std::array<char, N> buffer;
+    bool truncated;
+};
+
+template<size_t N> struct FormatWResult
+{
+    std::array<wchar_t, N> buffer;
+    bool truncated;
+};
+
+template<size_t N = 256> FormatResult<N> format_string(const char* fmt, ...)
+{
+    FormatResult<N> result{};
+    va_list args;
+    va_start(args, fmt);
+    const int written = std::vsnprintf(result.buffer.data(), N, fmt, args);
+    va_end(args);
+    result.truncated = (written < 0) || (static_cast<size_t>(written) >= N);
+    return result;
+}
+
+template<size_t N = 256> FormatWResult<N> format_wstring(const wchar_t* fmt, ...)
+{
+    FormatWResult<N> result{};
+    va_list args;
+    va_start(args, fmt);
+    const int written = std::vswprintf(result.buffer.data(), N, fmt, args);
+    va_end(args);
+    result.truncated = (written < 0) || (static_cast<size_t>(written) >= N);
+    return result;
 }
 } // namespace qhenki::util

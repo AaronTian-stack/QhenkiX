@@ -1,5 +1,7 @@
 #include "qhenki/utility/include_handlers.h"
 
+#include "qhenki/utility/string_util.h"
+
 #include <cassert>
 #include <filesystem>
 #include <fstream>
@@ -16,21 +18,21 @@ HRESULT __stdcall qhenki::gfx::MultiIncludeHandler::Open(
 
         std::ifstream file;
 
-        char fullPath[1024];
-        if (dir.size() + strlen(pFileName) + 1 < sizeof(fullPath))
+        constexpr size_t path_size = 1024;
+        if (dir.size() + strlen(pFileName) + 1 < path_size)
         {
-            std::snprintf(fullPath, sizeof(fullPath), "%s/%s", dir.c_str(), pFileName);
-            file.open(fullPath, std::ios::binary | std::ios::ate);
+            const auto full_path = qhenki::util::format_string<path_size>("%s/%s", dir.c_str(), pFileName);
+            file.open(full_path.buffer.data(), std::ios::binary | std::ios::ate);
         }
         else
         {
-            std::string fullPath = dir + "/" + pFileName;
-            file.open(fullPath, std::ios::binary | std::ios::ate);
+            std::string full_path = dir + "/" + pFileName;
+            file.open(full_path, std::ios::binary | std::ios::ate);
         }
 
         if (file)
         {
-            std::streamsize size = file.tellg();
+            const std::streamsize size = file.tellg();
             file.seekg(0, std::ios::beg);
             char* buffer = new char[size];
             if (file.read(buffer, size))
