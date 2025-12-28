@@ -16,7 +16,6 @@
 #include "queue.h"
 #include "render_target.h"
 #include "sampler.h"
-#include "shader_compiler.h"
 #include "submission.h"
 #include "texture.h"
 
@@ -25,8 +24,6 @@ namespace qhenki::gfx
 // TODO: replace all D3D types with qhenki::gfx types
 class Context
 {
-    virtual bool is_debug_layer_enabled() const = 0;
-
 public:
     virtual void create(bool enable_debug_layer) = 0; // TODO: return error string for potential dialog box
     virtual bool is_compatibility() const = 0;

@@ -28,11 +28,6 @@ class D3D11Context : public Context
     std::mutex m_context_mutex; // For anything that uses the device context. Do not call Context methods from each
                                 // other to prevent deadlock
 
-    bool is_debug_layer_enabled() const override
-    {
-        return m_debug != nullptr;
-    }
-
 public:
     void create(bool enable_debug_layer) override;
     bool is_compatibility() const override

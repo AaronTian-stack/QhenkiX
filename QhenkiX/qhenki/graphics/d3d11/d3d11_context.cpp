@@ -121,8 +121,8 @@ void D3D11Context::create(const bool enable_debug_layer)
     }
     if (enable_debug_layer)
     {
-        constexpr char factoryName[] = "DXGI Factory";
-        m_dxgi_factory->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factoryName), factoryName);
+        constexpr char factory_name[] = "DXGI Factory";
+        m_dxgi_factory->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(factory_name), factory_name);
     }
 
     // Pick discrete GPU
@@ -432,7 +432,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         return false;
     }
 
-    if (is_debug_layer_enabled())
+    if (m_debug)
     {
         if (debug_name)
         {
@@ -1160,7 +1160,7 @@ D3D11Context::~D3D11Context()
     m_device_context.Reset();
     m_dxgi_factory.Reset();
     m_layout_assembler.clear_maps();
-    if (D3D11Context::is_debug_layer_enabled())
+    if (m_debug)
     {
         m_debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
         m_debug.Reset();

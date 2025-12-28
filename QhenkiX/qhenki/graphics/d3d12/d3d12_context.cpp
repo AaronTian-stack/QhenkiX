@@ -1094,7 +1094,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         }
     }
 
-    if (is_debug_layer_enabled())
+    if (m_debug)
     {
         set_debug_name(buffer_d3d12->Get()->GetResource(), debug_name);
     }
@@ -2021,7 +2021,7 @@ D3D12Context::~D3D12Context()
     m_allocator.Reset();
     m_swapchain.Reset();
     m_dxgi_factory.Reset();
-    if (D3D12Context::is_debug_layer_enabled())
+    if (m_debug)
     {
         m_dxgi_debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_IGNORE_INTERNAL);
         m_dxgi_debug.Reset();
