@@ -2044,11 +2044,12 @@ void D3D12Context::destroy_imgui()
 
 void D3D12Context::wait_idle(Queue* const queue)
 {
-    auto value = get_fence_value(m_fence_wait_all) + 1;
+    m_fence_wait_all_last_signaled += 1;
+    auto value = m_fence_wait_all_last_signaled;
 
     // Signal
     const auto queue_d3d12 = to_internal(*queue);
-    auto fence = to_internal(m_fence_wait_all);
+    const auto fence = to_internal(m_fence_wait_all);
     queue_d3d12->Get()->Signal(fence->fence.Get(), value);
 
     const WaitInfo wait_info{
