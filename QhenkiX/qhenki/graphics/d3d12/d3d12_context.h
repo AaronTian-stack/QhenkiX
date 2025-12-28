@@ -21,10 +21,16 @@ namespace qhenki::gfx
 {
 class D3D12Context : public Context
 {
-    D3D12_FEATURE_DATA_D3D12_OPTIONS12 m_options12 = {}; // Enhanced barriers
-    D3D12_FEATURE_DATA_SHADER_MODEL m_shader_model = {};
-
-    D3D12_FEATURE_DATA_D3D12_OPTIONS m_options = {};
+    struct Capabilities
+    {
+        D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};     // TiledResourcesTier, ResourceBindingTier, ResourceHeapTier
+        D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};   // SamplerFeedbackTier
+        D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12 = {}; // Enhanced barriers
+        D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};   // VariableShadingRateTier
+        D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};   // RaytracingTier
+        D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};   // MeshShaderTier
+        D3D12_FEATURE_DATA_SHADER_MODEL shader_model = {}; // Shader Model
+    } m_capabilities;
 
     ComPtr<IDXGIFactory6> m_dxgi_factory = nullptr;
 
@@ -59,7 +65,7 @@ class D3D12Context : public Context
     UINT GetMaxDescriptorsForHeapType(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
 public:
-    void create(bool enable_debug_layer) override;
+    std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override
     {
         return false;

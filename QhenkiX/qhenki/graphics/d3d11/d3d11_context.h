@@ -29,7 +29,7 @@ class D3D11Context : public Context
                                 // other to prevent deadlock
 
 public:
-    void create(bool enable_debug_layer) override;
+    std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override
     {
         return true;

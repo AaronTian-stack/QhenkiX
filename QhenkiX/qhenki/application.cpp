@@ -60,7 +60,13 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
     default:
         throw std::runtime_error("API not implemented");
     }
-    m_context->create(enable_debug_layer);
+
+    const std::string create_error = m_context->create(enable_debug_layer);
+    if (!create_error.empty())
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", create_error.c_str(), nullptr);
+        return;
+    }
 
     THROW_IF_FALSE(m_context->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue));
 

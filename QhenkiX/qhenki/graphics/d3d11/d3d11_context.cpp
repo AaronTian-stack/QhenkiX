@@ -81,7 +81,7 @@ D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
     return d3d11_heap;
 }
 
-ID3D11Resource* get_texture_resource(D3D11Texture& tex)
+ID3D11Resource* get_texture_resource(const D3D11Texture& tex)
 {
     if (std::holds_alternative<ComPtr<ID3D11Texture1D>>(tex))
     {
@@ -111,13 +111,12 @@ bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
 }
 } // namespace qhenki::gfx
 
-void D3D11Context::create(const bool enable_debug_layer)
+std::string D3D11Context::create(const bool enable_debug_layer)
 {
     // Create factory
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory))))
     {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create DXGI Factory\n");
-        throw std::runtime_error("D3D11: Failed to create DXGI Factory");
+        return "D3D11: Failed to create DXGI Factory";
     }
     if (enable_debug_layer)
     {
@@ -132,21 +131,12 @@ void D3D11Context::create(const bool enable_debug_layer)
                                                           __uuidof(IDXGIAdapter1),
                                                           reinterpret_cast<void**>(adapter.GetAddressOf()))))
     {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to find discrete GPU. Defaulting to 0th adapter\n");
-        if (FAILED(m_dxgi_factory->EnumAdapters1(0, &adapter)))
-        {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to find a adapter\n");
-            throw std::runtime_error("D3D11: Failed to find a adapter");
-        }
+        return "D3D11: Failed to find a discrete GPU adapter";
     }
 
     DXGI_ADAPTER_DESC1 desc;
     HRESULT hr = adapter->GetDesc1(&desc);
-    if (FAILED(hr))
-    {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get adapter description\n");
-    }
-    else
+    if (SUCCEEDED(hr))
     {
         wchar_t adapter_description[128];
         swprintf(adapter_description,
@@ -158,6 +148,7 @@ void D3D11Context::create(const bool enable_debug_layer)
         OutputDebugStringW(adapter_description);
     }
 
+    // TODO: Increase to 11_1 for UAV in vertex shader?
     constexpr D3D_FEATURE_LEVEL device_feature_level = D3D_FEATURE_LEVEL_11_0;
 
     UINT creation_flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
@@ -177,7 +168,7 @@ void D3D11Context::create(const bool enable_debug_layer)
                                  nullptr,
                                  &m_device_context)))
     {
-        throw std::runtime_error("D3D11: Failed to create D3D11 Device");
+        return "D3D11: Failed to create D3D11 Device";
     }
 
     if (enable_debug_layer)
@@ -186,10 +177,11 @@ void D3D11Context::create(const bool enable_debug_layer)
         m_device->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof(device_name), device_name);
         if (FAILED(m_device.As(&m_debug)))
         {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get the debug layer from the device");
-            throw std::runtime_error("D3D11: Failed to get the debug layer from the device");
+            return "D3D11: Failed to get the debug layer from the device";
         }
     }
+
+    return "";
 }
 
 bool D3D11Context::create_swapchain(const DisplayWindow& window,
