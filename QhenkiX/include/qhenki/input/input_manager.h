@@ -16,8 +16,9 @@ class InputManager
     XMFLOAT2 m_mouse_position_prev{0, 0};
     XMFLOAT2 m_mouse_delta{0, 0};
     XMFLOAT2 m_mouse_scroll{0, 0};
-    uint32_t m_mouse_flags{0};
-    uint32_t m_mouse_flags_prev{0};
+    uint32_t m_mouse_flags = 0;
+    uint32_t m_mouse_flags_prev = 0;
+    bool m_was_relative_mode = false;
 
 public:
     void update(SDL_Window* window);

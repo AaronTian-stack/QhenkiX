@@ -55,6 +55,7 @@ class D3D12Context : public Context
     D3D12RootHasher m_root_reflection;
 
     Fence m_fence_wait_all{}; // For stalling queues
+    uint64_t m_fence_wait_all_last_signaled = 0;
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                             const D3D12_SHADER_DESC& shader_desc,

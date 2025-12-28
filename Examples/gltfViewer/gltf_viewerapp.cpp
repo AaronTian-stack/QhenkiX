@@ -15,7 +15,7 @@
 
 void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& node)
 {
-    if (node.parent_index > 0)
+    if (node.parent_index >= 0)
     {
         if (model.nodes[node.parent_index].global_transform.dirty)
         {
@@ -805,13 +805,14 @@ void gltfViewerApp::render()
 
     increment_frame_index();
 
-    // If next frame is ready to be used, otherwise wait
-    if (m_context->get_fence_value(m_fence_frame_ready) < m_fence_frame_ready_val[get_frame_index()])
+    // If next frame is not ready to be used, wait until it is
+    auto next_fence_value = m_fence_frame_ready_val[get_frame_index()];
+    if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
         qhenki::gfx::WaitInfo wait_info{.wait_all = true,
                                         .count = 1,
                                         .fences = &m_fence_frame_ready,
-                                        .values = &current_fence_value,
+                                        .values = &next_fence_value,
                                         .timeout = INFINITE};
         m_context->wait_fences(wait_info);
     }
