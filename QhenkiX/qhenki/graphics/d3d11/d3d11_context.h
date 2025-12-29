@@ -17,15 +17,14 @@ namespace qhenki::gfx
 
 class D3D11Context : public Context
 {
+    std::array<D3D11_VIEWPORT, 16> m_viewports;
+    D3D11LayoutAssembler m_layout_assembler;
+
     ComPtr<IDXGIFactory6> m_dxgi_factory;
     ComPtr<ID3D11Debug> m_debug;
     ComPtr<ID3D11Device> m_device;
     ComPtr<ID3D11DeviceContext> m_device_context;
     ComPtr<ID3D10Multithread> m_multithread;
-
-    D3D11LayoutAssembler m_layout_assembler;
-
-    std::array<D3D11_VIEWPORT, 16> m_viewports;
 
     UINT m_frame_index = 0;
 
