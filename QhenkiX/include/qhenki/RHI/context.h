@@ -189,7 +189,7 @@ public:
     virtual void compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers) = 0;
     virtual void compatibility_set_textures(
         unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) = 0;
-    virtual void compatibility_set_samplers(unsigned slot,
+    virtual bool compatibility_set_samplers(unsigned slot,
                                             unsigned count,
                                             Sampler* const* samplers,
                                             PipelineStage stage) = 0;

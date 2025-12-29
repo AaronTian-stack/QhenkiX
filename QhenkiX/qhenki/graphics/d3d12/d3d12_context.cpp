@@ -2083,11 +2083,13 @@ void D3D12Context::compatibility_set_textures(
 {
 }
 
-void D3D12Context::compatibility_set_samplers(unsigned slot,
+bool D3D12Context::compatibility_set_samplers(unsigned slot,
                                               unsigned count,
                                               Sampler* const* samplers,
                                               PipelineStage stage)
 {
+    // Should not be relying on this in D3D12
+    return false;
 }
 
 void D3D12Context::wait_idle(Queue* const queue)

@@ -1219,13 +1219,16 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
     }
 }
 
-void D3D11Context::compatibility_set_samplers(const unsigned slot,
+bool D3D11Context::compatibility_set_samplers(const unsigned slot,
                                               const unsigned count,
                                               Sampler* const* samplers,
                                               const PipelineStage stage)
 {
-    std::array<ID3D11SamplerState*, 15> sampler_d3d11{};
-    assert(count <= sampler_d3d11.size());
+    std::array<ID3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_REGISTER_COUNT> sampler_d3d11{};
+    if (count > sampler_d3d11.size())
+    {
+        return false;
+    }
     for (unsigned i = 0; i < count; i++)
     {
         sampler_d3d11[i] = samplers[i] ? to_internal(*samplers[i])->Get() : nullptr;
@@ -1242,8 +1245,9 @@ void D3D11Context::compatibility_set_samplers(const unsigned slot,
         m_device_context->CSSetSamplers(slot, count, sampler_d3d11.data());
         break;
     default:
-        throw std::runtime_error("D3D11: Invalid pipeline stage");
+        return false;
     }
+    return true;
 }
 
 void D3D11Context::wait_idle(Queue* const queue)
