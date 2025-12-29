@@ -2067,20 +2067,26 @@ bool D3D12Context::compatibility_set_constant_buffers(unsigned slot,
     return false;
 }
 
-void D3D12Context::compatibility_set_shader_buffers(unsigned slot,
+bool D3D12Context::compatibility_set_shader_buffers(unsigned slot,
                                                     unsigned count,
                                                     Descriptor* const* descriptors,
                                                     PipelineStage stage)
 {
+    // Should not be relying on this in D3D12
+    return false;
 }
 
 bool D3D12Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
 {
+    // Should not be relying on this in D3D12
+    return false;
 }
 
 bool D3D12Context::compatibility_set_textures(
     unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
 {
+    // Should not be relying on this in D3D12
+    return false;
 }
 
 bool D3D12Context::compatibility_set_samplers(unsigned slot,
