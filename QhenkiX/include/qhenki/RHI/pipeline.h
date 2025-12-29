@@ -8,31 +8,32 @@
 
 namespace qhenki::gfx
 {
+// TODO: Replace D3D types
 struct RasterizerDesc
 {
-    D3D12_FILL_MODE fill_mode = D3D12_FILL_MODE_SOLID; // 4
-    D3D12_CULL_MODE cull_mode = D3D12_CULL_MODE_NONE;  // 4
-    BOOL front_counter_clockwise = TRUE;               // 4
-    int depth_bias = 0;                                // 4
-    float depth_bias_clamp = 0.f;                      // 4
-    float slope_scaled_depth_bias = 0.f;               // 4
-    BOOL depth_clip_enable = TRUE;                     // 4
-                                                       // Always uses alpha MSAA
-                                                       // No AA lines
-                                                       // No forced Sample Count
-                                                       // TODO: Conservative Rasterization?
+    D3D12_FILL_MODE fill_mode = D3D12_FILL_MODE_SOLID;
+    D3D12_CULL_MODE cull_mode = D3D12_CULL_MODE_NONE;
+    int depth_bias = 0;
+    float depth_bias_clamp = 0.0f;
+    float slope_scaled_depth_bias = 0.0f;
+    bool front_counter_clockwise = true;
+    bool depth_clip_enable = true;
+    // Always uses alpha MSAA
+    // No AA lines
+    // No forced Sample Count
+    // TODO: Conservative Rasterization?
 };
 
 struct DepthStencilDesc
 {
-    D3D12_DEPTH_STENCILOP_DESC front_face;                                // 16
-    D3D12_DEPTH_STENCILOP_DESC back_face;                                 // 16
-    uint32_t depth_enable = TRUE;                                         // 4
-    D3D12_DEPTH_WRITE_MASK depth_write_mask = D3D12_DEPTH_WRITE_MASK_ALL; // 4
-    D3D12_COMPARISON_FUNC depth_func = D3D12_COMPARISON_FUNC_LESS;        // 4
-    BOOL stencil_enable = FALSE;                                          // 4
-    uint8_t stencil_read_mask;                                            // 1
-    uint8_t stencil_write_mask;                                           // 1
+    D3D12_DEPTH_STENCILOP_DESC front_face;
+    D3D12_DEPTH_STENCILOP_DESC back_face;
+    D3D12_DEPTH_WRITE_MASK depth_write_mask = D3D12_DEPTH_WRITE_MASK_ALL;
+    D3D12_COMPARISON_FUNC depth_func = D3D12_COMPARISON_FUNC_LESS;
+    uint8_t stencil_read_mask;
+    uint8_t stencil_write_mask;
+    bool depth_enable = true;
+    bool stencil_enable = false;
     // Vulkan uses a single struct for both front and back face (read/write mask)
 };
 
@@ -46,13 +47,13 @@ struct GraphicsPipelineDesc
 {
     std::optional<D3D12_BLEND_DESC> blend_desc;
     std::optional<DepthStencilDesc> depth_stencil_state;
+    std::array<DXGI_FORMAT, 8> rtv_formats{};
     std::optional<RasterizerDesc> rasterizer_state;
     std::optional<InputLayoutDesc> input_layout;
     std::optional<DXGI_SAMPLE_DESC> multisample_desc;
-    PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
-    int num_render_targets = 0;
-    std::array<DXGI_FORMAT, 8> rtv_formats{};
+    unsigned num_render_targets = 0;
     DXGI_FORMAT dsv_format{};
+    PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
     bool increment_slot = false; // Whether to increment slot of input, used during reflection
 };
 
