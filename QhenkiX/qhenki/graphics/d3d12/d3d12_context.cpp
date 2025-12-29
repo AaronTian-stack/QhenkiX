@@ -9,6 +9,8 @@
 #include <d3d12shader.h>
 #include <d3dcompiler.h>
 
+#include <algorithm>
+
 #include "d3d12_pipeline.h"
 #include "dxc_shader_compiler.h"
 #include "qhenki/application.h"
@@ -579,6 +581,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                             .NumElements = static_cast<uint32_t>(input_layout_desc.size())};
 
     // Prefer root signature embedded in shader container if present
+    ComPtr<ID3D12RootSignature> root_signature;
     if (vs12)
     {
         const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
@@ -591,9 +594,12 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             rsig_ptr && rsig_size)
         {
             assert(!in_layout); // Should not have both
-            const auto root_result = m_root_reflection.add_root_signature(m_device.Get(), rsig_ptr, rsig_size);
-            assert(root_result);
-            pso_desc.pRootSignature = root_result;
+            if (FAILED(m_device->CreateRootSignature(
+                    0, rsig_ptr, rsig_size, IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
+            {
+                return false;
+            }
+            pso_desc.pRootSignature = root_signature.Get();
         }
     }
 

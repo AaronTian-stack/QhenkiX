@@ -9,7 +9,6 @@
 
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_pipeline.h"
-#include "d3d12_root_hasher.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/RHI/descriptor_table.h"
 
@@ -49,8 +48,6 @@ class D3D12Context : public Context
     std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
 
     Queue* m_swapchain_queue = nullptr;
-
-    D3D12RootHasher m_root_reflection;
 
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;

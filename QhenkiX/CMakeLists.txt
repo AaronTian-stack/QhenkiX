@@ -28,7 +28,6 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.cpp"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_root_hasher.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.cpp"
 
     "${QHENKIX_DIR}/input/input_manager.cpp"
@@ -56,7 +55,6 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_fence.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_pipeline.h"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_root_hasher.h"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
     "${QHENKIX_DIR}/utility/d3d_util.h"
