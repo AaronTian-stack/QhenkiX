@@ -720,11 +720,11 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
     {
         const UINT32 mip = subresource % texture->desc.mip_levels;
 
-        // Ok because texture max width is less < UINT32
         const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
         const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
-        // Ok because upcast
-        const UINT32 mip_depth = std::max(1u, static_cast<UINT32>(texture->desc.depth_or_array_size) >> mip);
+        const UINT32 mip_depth = texture->desc.dimension == TextureDimension::TEXTURE_3D
+                                   ? std::max<UINT32>(1u, texture->desc.depth_or_array_size >> mip)
+                                   : 1u;
         const UINT32 bytes_per_row = mip_width * bpp; // Pitch of logical resource
 
         const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
@@ -745,7 +745,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
                                             mip_width * bpp,
                                             mip_depth * bpp);
 
-        data_offset += bytes_per_row * mip_height; // Assume data pointer is tightly packed no padding
+        data_offset += bytes_per_row * mip_height * mip_depth; // Assume data pointer is tightly packed no padding
     }
 
     return true;
