@@ -27,7 +27,7 @@ class D3D11Context : public Context
 
     std::array<D3D11_VIEWPORT, 16> m_viewports;
 
-    UINT m_frame_index;
+    UINT m_frame_index = 0;
 
     D3D11MultithreadLock acquire_lock() const
     {
@@ -52,10 +52,7 @@ class D3D11Context : public Context
 
 public:
     std::string create(bool enable_debug_layer) override;
-    bool is_compatibility() const override
-    {
-        return true;
-    }
+    bool is_compatibility() const override;
     bool create_swapchain(const DisplayWindow& window,
                           const SwapchainDesc& swapchain_desc,
                           Swapchain* swapchain,
@@ -63,15 +60,12 @@ public:
                           unsigned* frame_index) override;
     bool resize_swapchain(
         Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) override;
-    bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override
-    {
-        return true;
-    }
+    bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
     bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
     unsigned get_swapchain_frame_index(const Swapchain& swapchain) override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
-    // thread safe
+
     bool create_pipeline(const GraphicsPipelineDesc& desc,
                          GraphicsPipeline* pipeline,
                          const Shader& vertex_shader,
@@ -81,46 +75,23 @@ public:
     bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) override;
 
     // D3D11 does not have root signatures
-    bool create_pipeline_layout(PipelineLayoutDesc* const desc, PipelineLayout* layout) override
-    {
-        return true;
-    }
-    void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override
-    {
-    }
+    bool create_pipeline_layout(PipelineLayoutDesc* const desc, PipelineLayout* layout) override;
+    void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override;
 
     bool set_pipeline_constant(
-        CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override
-    {
-        return !is_compatibility();
-    }
+        CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
 
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
     // Heaps only store views in D3D11
-    void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override
-    {
-    }
+    void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
                              const DescriptorHeap& heap,
-                             const DescriptorHeap& sampler_heap) override
-    {
-    }
+                             const DescriptorHeap& sampler_heap) override;
 
-    void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override
-    {
-    }
-    bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override
-    {
-        return true;
-    }
-    bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* const heap, Descriptor* descriptor) override
-    {
-        return true;
-    }
-    bool free_descriptor(Descriptor* descriptor) override
-    {
-        return true;
-    }
+    void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
+    bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
+    bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* const heap, Descriptor* descriptor) override;
+    bool free_descriptor(Descriptor* descriptor) override;
 
     bool create_buffer(const BufferDesc& desc,
                        const void* data,
@@ -128,10 +99,7 @@ public:
                        const char* debug_name = nullptr) override;
     bool create_descriptor_constant_view(const Buffer& buffer,
                                          DescriptorHeap* const heap,
-                                         Descriptor* descriptor) override
-    {
-        return true;
-    }
+                                         Descriptor* descriptor) override;
     bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     void copy_buffer(CommandList* cmd_list,
@@ -148,10 +116,7 @@ public:
     bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
 
     bool create_sampler(const SamplerDesc& desc, Sampler* sampler) override;
-    bool create_descriptor(const Sampler& sampler, DescriptorHeap* const heap, Descriptor* const descriptor) override
-    {
-        return true;
-    }
+    bool create_descriptor(const Sampler& sampler, DescriptorHeap* const heap, Descriptor* const descriptor) override;
 
     void* map_buffer(const Buffer& buffer) override;
     void unmap_buffer(const Buffer& buffer) override;
@@ -196,36 +161,19 @@ public:
                       uint32_t start_index_offset,
                       int32_t base_vertex_offset) override;
 
-    void submit_command_lists(const SubmitInfo& submit_info, Queue* queue) override
-    {
-    }
+    void submit_command_lists(const SubmitInfo& submit_info, Queue* queue) override;
 
-    bool create_fence(Fence* fence, uint64_t initial_value) override
-    {
-        return true;
-    }
-    uint64_t get_fence_value(const Fence& fence) override
-    {
-        return 0;
-    }
-    bool wait_fences(const WaitInfo& info) override
-    {
-        return true;
-    }
+    bool create_fence(Fence* fence, uint64_t initial_value) override;
+    uint64_t get_fence_value(const Fence& fence) override;
+    bool wait_fences(const WaitInfo& info) override;
 
     void set_barrier_resource(unsigned count,
                               ImageBarrier* barriers,
                               const Swapchain& swapchain,
-                              unsigned frame_index) override
-    {
-    }
-    void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override
-    {
-    }
+                              unsigned frame_index) override;
+    void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override;
 
-    void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override
-    {
-    }
+    void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
 
     void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
     void start_imgui_frame() override;

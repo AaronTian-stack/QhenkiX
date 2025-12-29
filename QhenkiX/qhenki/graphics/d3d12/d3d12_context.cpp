@@ -265,6 +265,11 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     return "";
 }
 
+bool D3D12Context::is_compatibility() const
+{
+    return false;
+}
+
 bool D3D12Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
                                     Swapchain* const swapchain,
@@ -2045,6 +2050,36 @@ void D3D12Context::destroy_imgui()
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
+}
+
+void D3D12Context::compatibility_set_constant_buffers(unsigned slot,
+                                                      unsigned count,
+                                                      Buffer* const* buffers,
+                                                      PipelineStage stage)
+{
+}
+
+void D3D12Context::compatibility_set_shader_buffers(unsigned slot,
+                                                    unsigned count,
+                                                    Descriptor* const* descriptors,
+                                                    PipelineStage stage)
+{
+}
+
+void D3D12Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
+{
+}
+
+void D3D12Context::compatibility_set_textures(
+    unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
+{
+}
+
+void D3D12Context::compatibility_set_samplers(unsigned slot,
+                                              unsigned count,
+                                              Sampler* const* samplers,
+                                              PipelineStage stage)
+{
 }
 
 void D3D12Context::wait_idle(Queue* const queue)

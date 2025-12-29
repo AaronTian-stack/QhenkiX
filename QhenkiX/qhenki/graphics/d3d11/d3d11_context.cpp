@@ -189,6 +189,11 @@ std::string D3D11Context::create(const bool enable_debug_layer)
     return "";
 }
 
+bool D3D11Context::is_compatibility() const
+{
+    return true;
+}
+
 bool D3D11Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
                                     Swapchain* const swapchain,
@@ -208,6 +213,11 @@ bool D3D11Context::resize_swapchain(
     m_device_context->Flush();
     const auto swap_d3d11 = to_internal(*swapchain);
     return swap_d3d11->resize(m_device.Get(), m_device_context.Get(), width, height);
+}
+
+bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
+{
+    return true;
 }
 
 bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
@@ -331,6 +341,23 @@ bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
     return true;
 }
 
+bool D3D11Context::create_pipeline_layout(PipelineLayoutDesc* const desc, PipelineLayout* layout)
+{
+    return true;
+}
+
+void D3D11Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
+{
+}
+
+bool D3D11Context::set_pipeline_constant(
+    CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data)
+{
+    // Return false instead of true like in other no ops
+    // You shouldn't be calling this path in compatibility context
+    return false;
+}
+
 bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
                                           DescriptorHeap* const heap,
                                           const char* debug_name)
@@ -355,6 +382,35 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     }
 
     // Could maybe also force fixed size for slightly stricter match with D3D12
+    return true;
+}
+
+void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
+{
+}
+
+void D3D11Context::set_descriptor_heap(CommandList* cmd_list,
+                                       const DescriptorHeap& heap,
+                                       const DescriptorHeap& sampler_heap)
+{
+}
+
+void D3D11Context::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
+{
+}
+
+bool D3D11Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
+{
+    return true;
+}
+
+bool D3D11Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* const heap, Descriptor* descriptor)
+{
+    return true;
+}
+
+bool D3D11Context::free_descriptor(Descriptor* descriptor)
+{
     return true;
 }
 
@@ -439,6 +495,13 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     buffer->desc = desc;
     buffer->internal_state = mkS<ComPtr<ID3D11Buffer>>(d3d11_buffer);
 
+    return true;
+}
+
+bool D3D11Context::create_descriptor_constant_view(const Buffer& buffer,
+                                                   DescriptorHeap* const heap,
+                                                   Descriptor* descriptor)
+{
     return true;
 }
 
@@ -727,6 +790,11 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
     return true;
 }
 
+bool D3D11Context::create_descriptor(const Sampler& sampler, DescriptorHeap* const heap, Descriptor* const descriptor)
+{
+    return true;
+}
+
 void* D3D11Context::map_buffer(const Buffer& buffer)
 {
     D3D11_MAPPED_SUBRESOURCE mapped_resource;
@@ -830,6 +898,26 @@ ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context,
     return ds;
 }
 
+bool D3D11Context::present(Swapchain* const swapchain,
+                           unsigned fence_count,
+                           Fence* wait_fences,
+                           unsigned swapchain_index)
+{
+    assert(swapchain);
+    const auto swap_d3d11 = to_internal(*swapchain);
+    if (SUCCEEDED(swap_d3d11->swapchain->Present(1, 0)))
+    {
+        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
+        return true;
+    }
+    return false;
+}
+
+unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
+{
+    return m_frame_index;
+}
+
 void D3D11Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
                                      const float* clear_color_values,
@@ -901,6 +989,40 @@ void D3D11Context::draw_indexed(CommandList* cmd_list,
                                 int32_t base_vertex_offset)
 {
     m_device_context->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
+}
+
+void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
+{
+}
+
+bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value)
+{
+    return true;
+}
+
+uint64_t D3D11Context::get_fence_value(const Fence& fence)
+{
+    return 0;
+}
+
+bool D3D11Context::wait_fences(const WaitInfo& info)
+{
+    return true;
+}
+
+void D3D11Context::set_barrier_resource(unsigned count,
+                                        ImageBarrier* barriers,
+                                        const Swapchain& swapchain,
+                                        unsigned frame_index)
+{
+}
+
+void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
+{
+}
+
+void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+{
 }
 
 void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
@@ -1041,8 +1163,8 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
     case ACCESS_STORAGE_ACCESS:
         switch (stage)
         {
-            // TODO: need a better way of doing this
-            // D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
+        // TODO: need a better way of doing this
+        // D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
         case PipelineStage::VERTEX:
             m_device_context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
                                                                         nullptr,
@@ -1122,26 +1244,6 @@ void D3D11Context::wait_idle(Queue* const queue)
 {
     auto lock = acquire_lock();
     m_device_context->Flush();
-}
-
-bool D3D11Context::present(Swapchain* const swapchain,
-                           unsigned fence_count,
-                           Fence* wait_fences,
-                           unsigned swapchain_index)
-{
-    assert(swapchain);
-    const auto swap_d3d11 = to_internal(*swapchain);
-    if (SUCCEEDED(swap_d3d11->swapchain->Present(1, 0)))
-    {
-        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
-        return true;
-    }
-    return false;
-}
-
-unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
-{
-    return m_frame_index;
 }
 
 D3D11Context::~D3D11Context()
