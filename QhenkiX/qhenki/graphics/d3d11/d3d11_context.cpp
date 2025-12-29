@@ -1110,10 +1110,11 @@ void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
     }
 }
 
-void D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
+bool D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
 {
+    // TODO
     assert(false);
-    // m_device_context->CSSetUnorderedAccessViews(slot, count, buffer_d3d11[0], nullptr);
+    return false;
 }
 
 void D3D11Context::compatibility_set_textures(const unsigned slot,

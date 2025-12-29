@@ -2074,7 +2074,7 @@ void D3D12Context::compatibility_set_shader_buffers(unsigned slot,
 {
 }
 
-void D3D12Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
+bool D3D12Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
 {
 }
 
