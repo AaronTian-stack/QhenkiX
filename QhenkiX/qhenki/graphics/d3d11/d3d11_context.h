@@ -73,7 +73,6 @@ public:
                          const char* debug_name) override;
     bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) override;
 
-    // D3D11 does not have root signatures
     bool create_pipeline_layout(PipelineLayoutDesc* const desc, PipelineLayout* layout) override;
     void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override;
 
@@ -138,8 +137,6 @@ public:
     bool close_command_list(CommandList* cmd_list) override;
 
     bool reset_command_pool(CommandPool* command_pool) override;
-
-    // Recording commands is NOT thread safe in D3D11
 
     void start_render_pass(CommandList* cmd_list,
                            Swapchain* swapchain,
@@ -207,7 +204,7 @@ public:
     friend struct D3D11GraphicsPipeline;
 };
 
-// Will not work with things that don't derive from ID3D11DeviceChild
+// Will not work with things that do not derive from ID3D11DeviceChild
 bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name);
 
 } // namespace qhenki::gfx
