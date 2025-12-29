@@ -1,17 +1,14 @@
 #pragma once
 
+#include <D3D12MemAlloc.h>
 #include <d3d12shader.h>
+#include <dxcapi.h>
 #include <dxgi1_6.h>
 #include <dxgidebug.h>
 #include <wrl/client.h>
 
-#include <D3D12MemAlloc.h>
-#include <dxcapi.h>
-
-#include "../d3d11/fxc_shader_compiler.h"
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_pipeline.h"
-#include "d3d12_root_hasher.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/RHI/descriptor_table.h"
 
@@ -32,7 +29,7 @@ class D3D12Context : public Context
         D3D12_FEATURE_DATA_SHADER_MODEL shader_model = {}; // Shader Model
     } m_capabilities;
 
-    ComPtr<IDXGIFactory6> m_dxgi_factory = nullptr;
+    ComPtr<IDXGIFactory6> m_dxgi_factory;
 
     ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> m_dred_settings;
     ComPtr<ID3D12Debug3> m_debug;
@@ -52,8 +49,6 @@ class D3D12Context : public Context
 
     Queue* m_swapchain_queue = nullptr;
 
-    D3D12RootHasher m_root_reflection;
-
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
 
@@ -63,10 +58,7 @@ class D3D12Context : public Context
 
 public:
     std::string create(bool enable_debug_layer) override;
-    bool is_compatibility() const override
-    {
-        return false;
-    }
+    bool is_compatibility() const override;
     bool create_swapchain(const DisplayWindow& window,
                           const SwapchainDesc& swapchain_desc,
                           Swapchain* swapchain,
@@ -191,34 +183,29 @@ public:
     void destroy_imgui() override;
 
     // D3D12 does not implement compability functions
-    void compatibility_set_constant_buffers(unsigned slot,
+    bool compatibility_set_constant_buffers(unsigned slot,
                                             unsigned count,
                                             Buffer* const* buffers,
-                                            PipelineStage stage) override
-    {
-    }
-    void compatibility_set_shader_buffers(unsigned slot,
+                                            PipelineStage stage) override;
+    bool compatibility_set_shader_buffers(unsigned slot,
                                           unsigned count,
                                           Descriptor* const* descriptors,
-                                          PipelineStage stage) override
-    {
-    }
-    void compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers) override
-    {
-    }
-    void compatibility_set_textures(
-        unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override
-    {
-    }
-    void compatibility_set_samplers(unsigned slot,
+                                          PipelineStage stage) override;
+    bool compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers) override;
+    bool compatibility_set_textures(
+        unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override;
+    bool compatibility_set_samplers(unsigned slot,
                                     unsigned count,
                                     Sampler* const* samplers,
-                                    PipelineStage stage) override
-    {
-    }
+                                    PipelineStage stage) override;
 
     void wait_idle(Queue* queue) override;
 
+    D3D12Context() = default;
     ~D3D12Context() override;
+    D3D12Context(const D3D12Context&) = delete;
+    D3D12Context& operator=(const D3D12Context&) = delete;
+    D3D12Context(D3D12Context&&) = delete;
+    D3D12Context& operator=(D3D12Context&&) = delete;
 };
 } // namespace qhenki::gfx

@@ -9,6 +9,8 @@
 #include <d3d12shader.h>
 #include <d3dcompiler.h>
 
+#include <algorithm>
+
 #include "d3d12_pipeline.h"
 #include "dxc_shader_compiler.h"
 #include "qhenki/application.h"
@@ -35,63 +37,63 @@ namespace
 {
 D3D12DescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
-    auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(ext.internal_state.get());
+    const auto d3d12_heap = static_cast<D3D12DescriptorHeap*>(ext.internal_state.get());
     assert(d3d12_heap);
     return d3d12_heap;
 }
 
 D3D12Pipeline* to_internal(const GraphicsPipeline& ext)
 {
-    auto d3d12_pipeline = static_cast<D3D12Pipeline*>(ext.internal_state.get());
+    const auto d3d12_pipeline = static_cast<D3D12Pipeline*>(ext.internal_state.get());
     assert(d3d12_pipeline);
     return d3d12_pipeline;
 }
 
 ComPtr<ID3D12GraphicsCommandList7>* to_internal(const CommandList& ext)
 {
-    auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(ext.internal_state.get());
+    const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(ext.internal_state.get());
     assert(d3d12_cmd_list);
     return d3d12_cmd_list;
 }
 
 ComPtr<ID3D12CommandQueue>* to_internal(const Queue& ext)
 {
-    auto d3d12_queue = static_cast<ComPtr<ID3D12CommandQueue>*>(ext.internal_state.get());
+    const auto d3d12_queue = static_cast<ComPtr<ID3D12CommandQueue>*>(ext.internal_state.get());
     assert(d3d12_queue);
     return d3d12_queue;
 }
 
 D3D12Fence* to_internal(const Fence& ext)
 {
-    auto d3d12_fence = static_cast<D3D12Fence*>(ext.internal_state.get());
+    const auto d3d12_fence = static_cast<D3D12Fence*>(ext.internal_state.get());
     assert(d3d12_fence);
     return d3d12_fence;
 }
 
 ComPtr<ID3D12CommandAllocator>* to_internal(const CommandPool& ext)
 {
-    auto d3d12_cmd_pool = static_cast<ComPtr<ID3D12CommandAllocator>*>(ext.internal_state.get());
+    const auto d3d12_cmd_pool = static_cast<ComPtr<ID3D12CommandAllocator>*>(ext.internal_state.get());
     assert(d3d12_cmd_pool);
     return d3d12_cmd_pool;
 }
 
 ComPtr<D3D12MA::Allocation>* to_internal(const Buffer& ext)
 {
-    auto alloc = static_cast<ComPtr<D3D12MA::Allocation>*>(ext.internal_state.get());
+    const auto alloc = static_cast<ComPtr<D3D12MA::Allocation>*>(ext.internal_state.get());
     assert(alloc);
     return alloc;
 }
 
 ComPtr<ID3D12RootSignature>* to_internal(const PipelineLayout& ext)
 {
-    auto root_sig = static_cast<ComPtr<ID3D12RootSignature>*>(ext.internal_state.get());
+    const auto root_sig = static_cast<ComPtr<ID3D12RootSignature>*>(ext.internal_state.get());
     assert(root_sig);
     return root_sig;
 }
 
 D3D12Texture* to_internal(const Texture& ext)
 {
-    auto text = static_cast<D3D12Texture*>(ext.internal_state.get());
+    const auto text = static_cast<D3D12Texture*>(ext.internal_state.get());
     assert(text);
     return text;
 }
@@ -263,6 +265,11 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     }
 
     return "";
+}
+
+bool D3D12Context::is_compatibility() const
+{
+    return false;
 }
 
 bool D3D12Context::create_swapchain(const DisplayWindow& window,
@@ -574,6 +581,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                             .NumElements = static_cast<uint32_t>(input_layout_desc.size())};
 
     // Prefer root signature embedded in shader container if present
+    ComPtr<ID3D12RootSignature> root_signature;
     if (vs12)
     {
         const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
@@ -586,9 +594,12 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             rsig_ptr && rsig_size)
         {
             assert(!in_layout); // Should not have both
-            const auto root_result = m_root_reflection.add_root_signature(m_device.Get(), rsig_ptr, rsig_size);
-            assert(root_result);
-            pso_desc.pRootSignature = root_result;
+            if (FAILED(m_device->CreateRootSignature(
+                    0, rsig_ptr, rsig_size, IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
+            {
+                return false;
+            }
+            pso_desc.pRootSignature = root_signature.Get();
         }
     }
 
@@ -2045,6 +2056,46 @@ void D3D12Context::destroy_imgui()
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
+}
+
+bool D3D12Context::compatibility_set_constant_buffers(unsigned slot,
+                                                      unsigned count,
+                                                      Buffer* const* buffers,
+                                                      PipelineStage stage)
+{
+    // Should not be relying on this in D3D12
+    return false;
+}
+
+bool D3D12Context::compatibility_set_shader_buffers(unsigned slot,
+                                                    unsigned count,
+                                                    Descriptor* const* descriptors,
+                                                    PipelineStage stage)
+{
+    // Should not be relying on this in D3D12
+    return false;
+}
+
+bool D3D12Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
+{
+    // Should not be relying on this in D3D12
+    return false;
+}
+
+bool D3D12Context::compatibility_set_textures(
+    unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
+{
+    // Should not be relying on this in D3D12
+    return false;
+}
+
+bool D3D12Context::compatibility_set_samplers(unsigned slot,
+                                              unsigned count,
+                                              Sampler* const* samplers,
+                                              PipelineStage stage)
+{
+    // Should not be relying on this in D3D12
+    return false;
 }
 
 void D3D12Context::wait_idle(Queue* const queue)

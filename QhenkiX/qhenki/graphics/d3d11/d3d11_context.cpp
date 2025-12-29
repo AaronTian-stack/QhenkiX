@@ -22,28 +22,28 @@ namespace
 {
 ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
 {
-    auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
+    const auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
     assert(d3d11_buffer);
     return d3d11_buffer;
 }
 
 D3D11Swapchain* to_internal(const Swapchain& ext)
 {
-    auto d3d11_swapchain = static_cast<D3D11Swapchain*>(ext.internal_state.get());
+    const auto d3d11_swapchain = static_cast<D3D11Swapchain*>(ext.internal_state.get());
     assert(d3d11_swapchain);
     return d3d11_swapchain;
 }
 
 D3D11Shader* to_internal(const Shader& ext)
 {
-    auto d3d11_shader = static_cast<D3D11Shader*>(ext.internal_state.get());
+    const auto d3d11_shader = static_cast<D3D11Shader*>(ext.internal_state.get());
     assert(d3d11_shader);
     return d3d11_shader;
 }
 
 D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
 {
-    auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
+    const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
     assert(d3d11_pipeline);
     return d3d11_pipeline;
 }
@@ -189,6 +189,11 @@ std::string D3D11Context::create(const bool enable_debug_layer)
     return "";
 }
 
+bool D3D11Context::is_compatibility() const
+{
+    return true;
+}
+
 bool D3D11Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
                                     Swapchain* const swapchain,
@@ -208,6 +213,11 @@ bool D3D11Context::resize_swapchain(
     m_device_context->Flush();
     const auto swap_d3d11 = to_internal(*swapchain);
     return swap_d3d11->resize(m_device.Get(), m_device_context.Get(), width, height);
+}
+
+bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
+{
+    return true;
 }
 
 bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
@@ -331,6 +341,23 @@ bool D3D11Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
     return true;
 }
 
+bool D3D11Context::create_pipeline_layout(PipelineLayoutDesc* const desc, PipelineLayout* layout)
+{
+    return true;
+}
+
+void D3D11Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
+{
+}
+
+bool D3D11Context::set_pipeline_constant(
+    CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data)
+{
+    // Return false instead of true like in other no ops
+    // You shouldn't be calling this path in compatibility context
+    return false;
+}
+
 bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
                                           DescriptorHeap* const heap,
                                           const char* debug_name)
@@ -355,6 +382,35 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     }
 
     // Could maybe also force fixed size for slightly stricter match with D3D12
+    return true;
+}
+
+void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
+{
+}
+
+void D3D11Context::set_descriptor_heap(CommandList* cmd_list,
+                                       const DescriptorHeap& heap,
+                                       const DescriptorHeap& sampler_heap)
+{
+}
+
+void D3D11Context::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
+{
+}
+
+bool D3D11Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
+{
+    return true;
+}
+
+bool D3D11Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* const heap, Descriptor* descriptor)
+{
+    return true;
+}
+
+bool D3D11Context::free_descriptor(Descriptor* descriptor)
+{
     return true;
 }
 
@@ -442,6 +498,13 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     return true;
 }
 
+bool D3D11Context::create_descriptor_constant_view(const Buffer& buffer,
+                                                   DescriptorHeap* const heap,
+                                                   Descriptor* descriptor)
+{
+    return true;
+}
+
 bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
     assert(descriptor);
@@ -502,7 +565,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
 {
     texture->desc = desc;
     texture->internal_state = mkS<D3D11Texture>();
-    auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
+    const auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
 
     UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
     if (is_depth_stencil_format(desc.format))
@@ -657,11 +720,11 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
     {
         const UINT32 mip = subresource % texture->desc.mip_levels;
 
-        // Ok because texture max width is less < UINT32
         const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
         const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
-        // Ok because upcast
-        const UINT32 mip_depth = std::max(1u, static_cast<UINT32>(texture->desc.depth_or_array_size) >> mip);
+        const UINT32 mip_depth = texture->desc.dimension == TextureDimension::TEXTURE_3D
+                                   ? std::max<UINT32>(1u, texture->desc.depth_or_array_size >> mip)
+                                   : 1u;
         const UINT32 bytes_per_row = mip_width * bpp; // Pitch of logical resource
 
         const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
@@ -682,7 +745,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
                                             mip_width * bpp,
                                             mip_depth * bpp);
 
-        data_offset += bytes_per_row * mip_height; // Assume data pointer is tightly packed no padding
+        data_offset += bytes_per_row * mip_height * mip_depth; // Assume data pointer is tightly packed no padding
     }
 
     return true;
@@ -724,6 +787,11 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
         return false;
     }
 
+    return true;
+}
+
+bool D3D11Context::create_descriptor(const Sampler& sampler, DescriptorHeap* const heap, Descriptor* const descriptor)
+{
     return true;
 }
 
@@ -830,6 +898,26 @@ ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context,
     return ds;
 }
 
+bool D3D11Context::present(Swapchain* const swapchain,
+                           unsigned fence_count,
+                           Fence* wait_fences,
+                           unsigned swapchain_index)
+{
+    assert(swapchain);
+    const auto swap_d3d11 = to_internal(*swapchain);
+    if (SUCCEEDED(swap_d3d11->swapchain->Present(1, 0)))
+    {
+        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
+        return true;
+    }
+    return false;
+}
+
+unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
+{
+    return m_frame_index;
+}
+
 void D3D11Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
                                      const float* clear_color_values,
@@ -903,6 +991,40 @@ void D3D11Context::draw_indexed(CommandList* cmd_list,
     m_device_context->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
 }
 
+void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
+{
+}
+
+bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value)
+{
+    return true;
+}
+
+uint64_t D3D11Context::get_fence_value(const Fence& fence)
+{
+    return 0;
+}
+
+bool D3D11Context::wait_fences(const WaitInfo& info)
+{
+    return true;
+}
+
+void D3D11Context::set_barrier_resource(unsigned count,
+                                        ImageBarrier* barriers,
+                                        const Swapchain& swapchain,
+                                        unsigned frame_index)
+{
+}
+
+void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
+{
+}
+
+void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+{
+}
+
 void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
 {
     auto lock = acquire_lock();
@@ -929,13 +1051,16 @@ void D3D11Context::destroy_imgui()
     ImGui::DestroyContext();
 }
 
-void D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
+bool D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
                                                       const unsigned count,
                                                       Buffer* const* buffers,
                                                       const PipelineStage stage)
 {
-    std::array<ID3D11Buffer*, 15> buffer_d3d11{};
-    assert(count <= buffer_d3d11.size());
+    std::array<ID3D11Buffer*, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> buffer_d3d11{};
+    if (count > buffer_d3d11.size())
+    {
+        return false;
+    }
     for (unsigned i = 0; i < count; i++)
     {
         buffer_d3d11[i] = to_internal(*buffers[i])->Get();
@@ -951,16 +1076,22 @@ void D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
     case PipelineStage::COMPUTE:
         m_device_context->CSSetConstantBuffers(slot, count, buffer_d3d11.data());
         break;
+    default:
+        return false;
     }
+    return true;
 }
 
-void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
+bool D3D11Context::compatibility_set_shader_buffers(unsigned slot,
                                                     unsigned count,
                                                     Descriptor* const* descriptors,
                                                     PipelineStage stage)
 {
-    std::array<ID3D11ShaderResourceView*, 15> srv{};
-    assert(count <= srv.size());
+    std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> srv{};
+    if (count > srv.size())
+    {
+        return false;
+    }
     assert(*descriptors);
     for (unsigned i = 0; i < count; i++)
     {
@@ -980,39 +1111,42 @@ void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
         m_device_context->CSSetShaderResources(slot, count, srv.data());
         break;
     }
+    return true;
 }
 
-void D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
+bool D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
 {
+    // TODO
     assert(false);
-    // m_device_context->CSSetUnorderedAccessViews(slot, count, buffer_d3d11[0], nullptr);
+    return false;
 }
 
-void D3D11Context::compatibility_set_textures(const unsigned slot,
+bool D3D11Context::compatibility_set_textures(const unsigned slot,
                                               const unsigned count,
                                               Descriptor* const* descriptors,
                                               const AccessFlags flag,
                                               const PipelineStage stage)
 {
     // Read or write (as UAV not RT) access
-
     union ResourceViews
     {
-        std::array<ID3D11UnorderedAccessView*, 15> unordered_access_views;
-        std::array<ID3D11ShaderResourceView*, 15> shader_resource_views;
+        std::array<ID3D11UnorderedAccessView*, D3D11_PS_CS_UAV_REGISTER_COUNT> unordered_access_views;
+        std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> shader_resource_views;
     } resource_views;
 
     switch (flag)
     {
     case ACCESS_STORAGE_ACCESS:
-        resource_views.unordered_access_views = std::array<ID3D11UnorderedAccessView*, 15>{};
+        resource_views.unordered_access_views =
+            std::array<ID3D11UnorderedAccessView*, D3D11_PS_CS_UAV_REGISTER_COUNT>{};
         break;
     case ACCESS_SHADER_RESOURCE:
-        resource_views.shader_resource_views = std::array<ID3D11ShaderResourceView*, 15>{};
+        resource_views.shader_resource_views =
+            std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>{};
         break;
     default:
         OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
-        return;
+        return false;
     }
 
     assert(*descriptors);
@@ -1031,27 +1165,19 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
             break;
         default:
             OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
-            return;
+            return false;
         }
     }
-    const UINT n1 = -1; // Keep current offset
+    constexpr UINT n1 = ~0u; // Keep current offset
     switch (flag)
     {
     // case ACCESS_RENDER_TARGET:
     case ACCESS_STORAGE_ACCESS:
         switch (stage)
         {
-            // TODO: need a better way of doing this
-            // D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
+        // TODO: need a better way of doing this
+        // D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
         case PipelineStage::VERTEX:
-            m_device_context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
-                                                                        nullptr,
-                                                                        nullptr,
-                                                                        slot,
-                                                                        count,
-                                                                        resource_views.unordered_access_views.data(),
-                                                                        &n1);
-            break;
         case PipelineStage::PIXEL:
             m_device_context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
                                                                         nullptr,
@@ -1069,6 +1195,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
             break;
         default:
             OutputDebugStringA("Qhenki D3D11 ERROR: Invalid pipeline stage for storage access\n");
+            return false;
         }
         break;
     case ACCESS_SHADER_RESOURCE:
@@ -1087,17 +1214,21 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
         break;
     default:
         OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
-        break;
+        return false;
     }
+    return true;
 }
 
-void D3D11Context::compatibility_set_samplers(const unsigned slot,
+bool D3D11Context::compatibility_set_samplers(const unsigned slot,
                                               const unsigned count,
                                               Sampler* const* samplers,
                                               const PipelineStage stage)
 {
-    std::array<ID3D11SamplerState*, 15> sampler_d3d11{};
-    assert(count <= sampler_d3d11.size());
+    std::array<ID3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_REGISTER_COUNT> sampler_d3d11{};
+    if (count > sampler_d3d11.size())
+    {
+        return false;
+    }
     for (unsigned i = 0; i < count; i++)
     {
         sampler_d3d11[i] = samplers[i] ? to_internal(*samplers[i])->Get() : nullptr;
@@ -1114,34 +1245,15 @@ void D3D11Context::compatibility_set_samplers(const unsigned slot,
         m_device_context->CSSetSamplers(slot, count, sampler_d3d11.data());
         break;
     default:
-        throw std::runtime_error("D3D11: Invalid pipeline stage");
+        return false;
     }
+    return true;
 }
 
 void D3D11Context::wait_idle(Queue* const queue)
 {
     auto lock = acquire_lock();
     m_device_context->Flush();
-}
-
-bool D3D11Context::present(Swapchain* const swapchain,
-                           unsigned fence_count,
-                           Fence* wait_fences,
-                           unsigned swapchain_index)
-{
-    assert(swapchain);
-    const auto swap_d3d11 = to_internal(*swapchain);
-    if (SUCCEEDED(swap_d3d11->swapchain->Present(1, 0)))
-    {
-        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
-        return true;
-    }
-    return false;
-}
-
-unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
-{
-    return m_frame_index;
 }
 
 D3D11Context::~D3D11Context()
