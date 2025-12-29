@@ -85,8 +85,8 @@ void ExampleApp::create()
 
     // Create pipeline
     qhenki::gfx::GraphicsPipelineDesc pipeline_desc = {
-        .num_render_targets = 1,
         .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .num_render_targets = 1,
         .increment_slot = false,
     };
     THROW_IF_FALSE(m_context->create_pipeline(
