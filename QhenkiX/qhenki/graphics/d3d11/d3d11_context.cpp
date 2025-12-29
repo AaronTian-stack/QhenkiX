@@ -430,9 +430,14 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         }
     }
 
-    D3D11_BUFFER_DESC buffer_info{};
-    buffer_info.ByteWidth = desc.size;
-    buffer_info.StructureByteStride = desc.stride;
+    assert(desc.size <= UINT_MAX);
+    assert(desc.stride <= UINT_MAX);
+
+    D3D11_BUFFER_DESC buffer_info{
+        .ByteWidth = static_cast<UINT>(desc.size),
+        .StructureByteStride = static_cast<UINT>(desc.stride),
+    };
+
     if (desc.usage & BufferUsage::VERTEX)
     {
         buffer_info.BindFlags |= D3D11_BIND_VERTEX_BUFFER;
@@ -469,27 +474,15 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         buffer_info.CPUAccessFlags = 0;
     }
 
-    D3D11_SUBRESOURCE_DATA resource_data;
-    resource_data.pSysMem = data;
-
-    // Only prefill if explicitly CPU visible, you will need to copy to device local memory like D3D12
-    // TODO: get rid of this feature to make it consistent with D3D12?
-    const auto resource_data_ptr = data && buffer_info.CPUAccessFlags == D3D11_CPU_ACCESS_WRITE ? &resource_data
-                                                                                                : nullptr;
-
     ComPtr<ID3D11Buffer> d3d11_buffer;
-
-    if (FAILED(m_device->CreateBuffer(&buffer_info, resource_data_ptr, d3d11_buffer.ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateBuffer(&buffer_info, nullptr, d3d11_buffer.ReleaseAndGetAddressOf())))
     {
         return false;
     }
 
     if (m_debug)
     {
-        if (debug_name)
-        {
-            set_debug_name(d3d11_buffer.Get(), debug_name);
-        }
+        set_debug_name(d3d11_buffer.Get(), debug_name);
     }
 
     buffer->desc = desc;
