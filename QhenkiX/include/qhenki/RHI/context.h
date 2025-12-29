@@ -182,7 +182,7 @@ public:
                                                     unsigned count,
                                                     Buffer* const* buffers,
                                                     PipelineStage stage) = 0;
-    virtual void compatibility_set_shader_buffers(unsigned slot,
+    virtual bool compatibility_set_shader_buffers(unsigned slot,
                                                   unsigned count,
                                                   Descriptor* const* descriptors,
                                                   PipelineStage stage) = 0;

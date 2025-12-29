@@ -187,7 +187,7 @@ public:
                                             unsigned count,
                                             Buffer* const* buffers,
                                             PipelineStage stage) override;
-    void compatibility_set_shader_buffers(unsigned slot,
+    bool compatibility_set_shader_buffers(unsigned slot,
                                           unsigned count,
                                           Descriptor* const* descriptors,
                                           PipelineStage stage) override;

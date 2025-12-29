@@ -1082,13 +1082,16 @@ bool D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
     return true;
 }
 
-void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
+bool D3D11Context::compatibility_set_shader_buffers(unsigned slot,
                                                     unsigned count,
                                                     Descriptor* const* descriptors,
                                                     PipelineStage stage)
 {
-    std::array<ID3D11ShaderResourceView*, 15> srv{};
-    assert(count <= srv.size());
+    std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> srv{};
+    if (count > srv.size())
+    {
+        return false;
+    }
     assert(*descriptors);
     for (unsigned i = 0; i < count; i++)
     {
@@ -1108,6 +1111,7 @@ void D3D11Context::compatibility_set_shader_buffers(unsigned slot,
         m_device_context->CSSetShaderResources(slot, count, srv.data());
         break;
     }
+    return true;
 }
 
 bool D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers)
