@@ -76,6 +76,7 @@ public:
         Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) override;
     bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
     bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
+    unsigned get_swapchain_frame_index(const Swapchain& swapchain) override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
 

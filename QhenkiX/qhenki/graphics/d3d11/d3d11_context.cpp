@@ -13,6 +13,7 @@
 #include "d3d11_pipeline.h"
 #include "d3d11_shader.h"
 #include "d3d11_swapchain.h"
+#include "qhenki/application.h"
 #include "qhenki/utility/d3d_util.h"
 
 using namespace qhenki::gfx;
@@ -1130,8 +1131,17 @@ bool D3D11Context::present(Swapchain* const swapchain,
 {
     assert(swapchain);
     const auto swap_d3d11 = to_internal(*swapchain);
-    const auto result = swap_d3d11->swapchain->Present(1, 0);
-    return result == S_OK;
+    if (SUCCEEDED(swap_d3d11->swapchain->Present(1, 0)))
+    {
+        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
+        return true;
+    }
+    return false;
+}
+
+unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
+{
+    return m_frame_index;
 }
 
 D3D11Context::~D3D11Context()

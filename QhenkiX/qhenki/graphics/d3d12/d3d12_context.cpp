@@ -436,6 +436,11 @@ bool D3D12Context::present(Swapchain* const swapchain,
     return result == S_OK;
 }
 
+unsigned D3D12Context::get_swapchain_frame_index(const Swapchain& swapchain)
+{
+    return m_swapchain->GetCurrentBackBufferIndex();
+}
+
 bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
 {
     assert(data);

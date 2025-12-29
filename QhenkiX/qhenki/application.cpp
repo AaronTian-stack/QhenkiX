@@ -97,7 +97,7 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
     THROW_IF_FALSE(m_context->create_swapchain_descriptors(m_swapchain, &m_rtv_heap));
 
     // Create fences
-    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[get_frame_index()]));
+    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[m_frame_index]));
 
     create();
     // Starts the main loop
