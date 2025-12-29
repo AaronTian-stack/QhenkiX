@@ -1099,12 +1099,12 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
 
-    const auto is_cpu_visible = (desc.visibility & CPU_SEQUENTIAL) || (desc.visibility & CPU_RANDOM);
+    const auto is_cpu_visible = desc.visibility & CPU_SEQUENTIAL;
 
     D3D12MA::ALLOCATION_DESC allocation_desc{};
     if (is_cpu_visible)
     {
-        allocation_desc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        allocation_desc.HeapType = desc.visibility & GPU ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
     }
     else
     {
@@ -1559,7 +1559,7 @@ bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap* con
 void* D3D12Context::map_buffer(const Buffer& buffer)
 {
     // Check if buffer is CPU visible
-    if ((buffer.desc.visibility & CPU_SEQUENTIAL) || (buffer.desc.visibility & CPU_RANDOM))
+    if (buffer.desc.visibility & CPU_SEQUENTIAL)
     {
         const auto allocation = to_internal(buffer);
         const auto resource = allocation->Get()->GetResource();
@@ -1581,8 +1581,7 @@ void* D3D12Context::map_buffer(const Buffer& buffer)
 
 void D3D12Context::unmap_buffer(const Buffer& buffer)
 {
-    // Check if buffer is CPU visible
-    if ((buffer.desc.visibility & CPU_SEQUENTIAL) || (buffer.desc.visibility & CPU_RANDOM))
+    if (buffer.desc.visibility & CPU_SEQUENTIAL)
     {
         const auto allocation = to_internal(buffer);
         const auto resource = allocation->Get()->GetResource();

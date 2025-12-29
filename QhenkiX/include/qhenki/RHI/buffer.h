@@ -33,10 +33,8 @@ enum BufferVisibility : uint8_t
 {
     // Device local memory. Can be & with other visibilities to try to get BAR memory
     GPU = BIT(0),
-    // Host Visible: Written to by the CPU sequentially
+    // Host Visible: Written to by the CPU preferably sequentially
     CPU_SEQUENTIAL = BIT(1),
-    // Host Visible: Written to by the CPU randomly. Cached randomly, try to avoid using this
-    CPU_RANDOM = BIT(2),
 };
 
 // Constant/Uniform buffers must follow D3D11 alignment rules (equivalent to std140 GLSL)
