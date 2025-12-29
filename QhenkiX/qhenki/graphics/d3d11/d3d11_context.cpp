@@ -463,7 +463,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
     }
-    if ((desc.visibility & CPU_SEQUENTIAL) || (desc.visibility & CPU_RANDOM))
+    if (desc.visibility & CPU_SEQUENTIAL)
     {
         buffer_info.Usage = D3D11_USAGE_DYNAMIC;
         buffer_info.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
