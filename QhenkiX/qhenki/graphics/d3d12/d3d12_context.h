@@ -204,6 +204,11 @@ public:
 
     void wait_idle(Queue* queue) override;
 
+    D3D12Context() = default;
     ~D3D12Context() override;
+    D3D12Context(const D3D12Context&) = delete;
+    D3D12Context& operator=(const D3D12Context&) = delete;
+    D3D12Context(D3D12Context&&) = delete;
+    D3D12Context& operator=(D3D12Context&&) = delete;
 };
 } // namespace qhenki::gfx

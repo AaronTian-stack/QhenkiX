@@ -197,7 +197,13 @@ public:
                                     PipelineStage stage) override;
 
     void wait_idle(Queue* queue) override;
+
+    D3D11Context() = default;
     ~D3D11Context() override;
+    D3D11Context(const D3D11Context&) = delete;
+    D3D11Context& operator=(const D3D11Context&) = delete;
+    D3D11Context(D3D11Context&&) = delete;
+    D3D11Context& operator=(D3D11Context&&) = delete;
 
     friend struct D3D11GraphicsPipeline;
 };
