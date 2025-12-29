@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <cstdint>
@@ -50,8 +50,7 @@ struct GraphicsPipelineDesc
     std::optional<InputLayoutDesc> input_layout;
     std::optional<DXGI_SAMPLE_DESC> multisample_desc;
     PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
-    int num_render_targets =
-        -1; // If this is <= 0, pipeline is lazily created based off what render target is bound at draw time
+    int num_render_targets = 0;
     std::array<DXGI_FORMAT, 8> rtv_formats{};
     DXGI_FORMAT dsv_format{};
     bool increment_slot = false; // Whether to increment slot of input, used during reflection
