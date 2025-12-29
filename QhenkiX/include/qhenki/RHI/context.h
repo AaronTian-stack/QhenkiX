@@ -178,7 +178,7 @@ public:
     virtual void render_imgui_draw_data(CommandList* cmd_list) = 0;
     virtual void destroy_imgui() = 0;
 
-    virtual void compatibility_set_constant_buffers(unsigned slot,
+    virtual bool compatibility_set_constant_buffers(unsigned slot,
                                                     unsigned count,
                                                     Buffer* const* buffers,
                                                     PipelineStage stage) = 0;

@@ -1051,13 +1051,16 @@ void D3D11Context::destroy_imgui()
     ImGui::DestroyContext();
 }
 
-void D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
+bool D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
                                                       const unsigned count,
                                                       Buffer* const* buffers,
                                                       const PipelineStage stage)
 {
-    std::array<ID3D11Buffer*, 15> buffer_d3d11{};
-    assert(count <= buffer_d3d11.size());
+    std::array<ID3D11Buffer*, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> buffer_d3d11{};
+    if (count > buffer_d3d11.size())
+    {
+        return false;
+    }
     for (unsigned i = 0; i < count; i++)
     {
         buffer_d3d11[i] = to_internal(*buffers[i])->Get();
@@ -1073,7 +1076,10 @@ void D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
     case PipelineStage::COMPUTE:
         m_device_context->CSSetConstantBuffers(slot, count, buffer_d3d11.data());
         break;
+    default:
+        return false;
     }
+    return true;
 }
 
 void D3D11Context::compatibility_set_shader_buffers(unsigned slot,

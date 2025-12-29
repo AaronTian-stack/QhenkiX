@@ -179,7 +179,7 @@ public:
     void render_imgui_draw_data(CommandList* cmd_list) override;
     void destroy_imgui() override;
 
-    void compatibility_set_constant_buffers(unsigned slot,
+    bool compatibility_set_constant_buffers(unsigned slot,
                                             unsigned count,
                                             Buffer* const* buffers,
                                             PipelineStage stage) override;

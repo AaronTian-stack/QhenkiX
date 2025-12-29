@@ -183,7 +183,7 @@ public:
     void destroy_imgui() override;
 
     // D3D12 does not implement compability functions
-    void compatibility_set_constant_buffers(unsigned slot,
+    bool compatibility_set_constant_buffers(unsigned slot,
                                             unsigned count,
                                             Buffer* const* buffers,
                                             PipelineStage stage) override;
