@@ -192,7 +192,7 @@ public:
                                           Descriptor* const* descriptors,
                                           PipelineStage stage) override;
     bool compatibility_set_uav_buffers(unsigned slot, unsigned count, Buffer* const* buffers) override;
-    void compatibility_set_textures(
+    bool compatibility_set_textures(
         unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override;
     bool compatibility_set_samplers(unsigned slot,
                                     unsigned count,

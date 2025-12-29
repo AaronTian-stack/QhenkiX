@@ -1117,31 +1117,32 @@ bool D3D11Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, 
     return false;
 }
 
-void D3D11Context::compatibility_set_textures(const unsigned slot,
+bool D3D11Context::compatibility_set_textures(const unsigned slot,
                                               const unsigned count,
                                               Descriptor* const* descriptors,
                                               const AccessFlags flag,
                                               const PipelineStage stage)
 {
     // Read or write (as UAV not RT) access
-
     union ResourceViews
     {
-        std::array<ID3D11UnorderedAccessView*, 15> unordered_access_views;
-        std::array<ID3D11ShaderResourceView*, 15> shader_resource_views;
+        std::array<ID3D11UnorderedAccessView*, D3D11_PS_CS_UAV_REGISTER_COUNT> unordered_access_views;
+        std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> shader_resource_views;
     } resource_views;
 
     switch (flag)
     {
     case ACCESS_STORAGE_ACCESS:
-        resource_views.unordered_access_views = std::array<ID3D11UnorderedAccessView*, 15>{};
+        resource_views.unordered_access_views =
+            std::array<ID3D11UnorderedAccessView*, D3D11_PS_CS_UAV_REGISTER_COUNT>{};
         break;
     case ACCESS_SHADER_RESOURCE:
-        resource_views.shader_resource_views = std::array<ID3D11ShaderResourceView*, 15>{};
+        resource_views.shader_resource_views =
+            std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>{};
         break;
     default:
         OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
-        return;
+        return false;
     }
 
     assert(*descriptors);
@@ -1160,10 +1161,10 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
             break;
         default:
             OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
-            return;
+            return false;
         }
     }
-    const UINT n1 = -1; // Keep current offset
+    constexpr UINT n1 = ~0u; // Keep current offset
     switch (flag)
     {
     // case ACCESS_RENDER_TARGET:
@@ -1173,14 +1174,6 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
         // TODO: need a better way of doing this
         // D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL and D3D11_KEEP_UNORDERED_ACCESS_VIEWS ?
         case PipelineStage::VERTEX:
-            m_device_context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
-                                                                        nullptr,
-                                                                        nullptr,
-                                                                        slot,
-                                                                        count,
-                                                                        resource_views.unordered_access_views.data(),
-                                                                        &n1);
-            break;
         case PipelineStage::PIXEL:
             m_device_context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
                                                                         nullptr,
@@ -1198,6 +1191,7 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
             break;
         default:
             OutputDebugStringA("Qhenki D3D11 ERROR: Invalid pipeline stage for storage access\n");
+            return false;
         }
         break;
     case ACCESS_SHADER_RESOURCE:
@@ -1216,8 +1210,9 @@ void D3D11Context::compatibility_set_textures(const unsigned slot,
         break;
     default:
         OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
-        break;
+        return false;
     }
+    return true;
 }
 
 bool D3D11Context::compatibility_set_samplers(const unsigned slot,

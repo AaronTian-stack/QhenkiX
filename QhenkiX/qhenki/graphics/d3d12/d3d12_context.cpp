@@ -2078,7 +2078,7 @@ bool D3D12Context::compatibility_set_uav_buffers(unsigned slot, unsigned count, 
 {
 }
 
-void D3D12Context::compatibility_set_textures(
+bool D3D12Context::compatibility_set_textures(
     unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage)
 {
 }
