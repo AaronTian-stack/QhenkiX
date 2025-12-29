@@ -73,7 +73,7 @@ public:
                          const char* debug_name) override;
     bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) override;
 
-    bool create_pipeline_layout(PipelineLayoutDesc* const desc, PipelineLayout* layout) override;
+    bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) override;
     void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override;
 
     bool set_pipeline_constant(
@@ -88,16 +88,14 @@ public:
 
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
     bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
-    bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* const heap, Descriptor* descriptor) override;
+    bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* heap, Descriptor* descriptor) override;
     bool free_descriptor(Descriptor* descriptor) override;
 
     bool create_buffer(const BufferDesc& desc,
                        const void* data,
                        Buffer* buffer,
                        const char* debug_name = nullptr) override;
-    bool create_descriptor_constant_view(const Buffer& buffer,
-                                         DescriptorHeap* const heap,
-                                         Descriptor* descriptor) override;
+    bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
     bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     void copy_buffer(CommandList* cmd_list,
@@ -114,7 +112,7 @@ public:
     bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
 
     bool create_sampler(const SamplerDesc& desc, Sampler* sampler) override;
-    bool create_descriptor(const Sampler& sampler, DescriptorHeap* const heap, Descriptor* const descriptor) override;
+    bool create_descriptor(const Sampler& sampler, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     void* map_buffer(const Buffer& buffer) override;
     void unmap_buffer(const Buffer& buffer) override;
