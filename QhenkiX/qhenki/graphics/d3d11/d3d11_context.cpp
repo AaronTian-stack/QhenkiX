@@ -22,28 +22,28 @@ namespace
 {
 ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
 {
-    auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
+    const auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
     assert(d3d11_buffer);
     return d3d11_buffer;
 }
 
 D3D11Swapchain* to_internal(const Swapchain& ext)
 {
-    auto d3d11_swapchain = static_cast<D3D11Swapchain*>(ext.internal_state.get());
+    const auto d3d11_swapchain = static_cast<D3D11Swapchain*>(ext.internal_state.get());
     assert(d3d11_swapchain);
     return d3d11_swapchain;
 }
 
 D3D11Shader* to_internal(const Shader& ext)
 {
-    auto d3d11_shader = static_cast<D3D11Shader*>(ext.internal_state.get());
+    const auto d3d11_shader = static_cast<D3D11Shader*>(ext.internal_state.get());
     assert(d3d11_shader);
     return d3d11_shader;
 }
 
 D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
 {
-    auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
+    const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
     assert(d3d11_pipeline);
     return d3d11_pipeline;
 }
@@ -565,7 +565,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
 {
     texture->desc = desc;
     texture->internal_state = mkS<D3D11Texture>();
-    auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
+    const auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
 
     UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
     if (is_depth_stencil_format(desc.format))
