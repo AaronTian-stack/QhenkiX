@@ -35,6 +35,8 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/math/basis.cpp"
     "${QHENKIX_DIR}/math/transform.cpp"
 
+    "${QHENKIX_DIR}/memory/arena.cpp"
+
     "${QHENKIX_DIR}/utility/d3d_util.cpp"
     "${QHENKIX_DIR}/utility/file_util.cpp"
     "${QHENKIX_DIR}/utility/include_handlers.cpp"
@@ -81,6 +83,8 @@ set(QHENKIX_PUBLIC_HEADERS
 
     "${QHENKIX_PUBLIC_DIR}/math/basis.h"
     "${QHENKIX_PUBLIC_DIR}/math/transform.h"
+
+    "${QHENKIX_PUBLIC_DIR}/memory/arena.h"
 
     "${QHENKIX_PUBLIC_DIR}/RHI/barrier.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/buffer.h"
