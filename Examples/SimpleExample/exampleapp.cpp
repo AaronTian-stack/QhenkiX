@@ -126,8 +126,8 @@ void ExampleApp::create()
     THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
 
     // Make 2 matrix constant buffers for double buffering
-    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u32(sizeof(CameraMatrices),
-                                                                        qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
+    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(CameraMatrices),
+                                                                      qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
                                         .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     // TODO: persistent mapping flag
