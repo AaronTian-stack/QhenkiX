@@ -69,6 +69,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     }
 
     thread_local memory::Arena arena{4 * MEGABYTE};
+    arena.reset();
 
     const auto macros = arena.alloc_array<D3D_SHADER_MACRO>(input.get_defines().size() + 1);
     size_t macros_idx = 0;

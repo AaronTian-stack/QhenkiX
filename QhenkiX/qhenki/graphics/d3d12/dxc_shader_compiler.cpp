@@ -209,6 +209,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     }
 
     thread_local memory::Arena arena{4 * MEGABYTE};
+    arena.reset();
 
     const auto args = arena.alloc_array<const wchar_t*>(input.get_defines().size() + input.includes.size() * 2 + 10);
     size_t args_idx = 0;
