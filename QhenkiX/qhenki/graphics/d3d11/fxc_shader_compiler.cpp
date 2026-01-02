@@ -76,6 +76,12 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     const auto defines = arena.alloc_array<std::string>(input.get_defines().size() * 2);
     size_t defines_idx = 0;
 
+    if (!macros || !defines)
+    {
+        output.error_message = "FXCShaderCompiler: Failed to allocate scratch space";
+        return false;
+    }
+
     for (const auto& define : input.get_defines())
     {
         // Convert the defines into D3D_SHADER_MACRO

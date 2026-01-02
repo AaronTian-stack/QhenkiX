@@ -210,9 +210,14 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     thread_local memory::Arena arena{4 * MEGABYTE};
 
-    const auto args_size = input.get_defines().size() + input.includes.size() * 2 + 10;
-    auto args = arena.alloc_array<const wchar_t*>(args_size);
+    const auto args = arena.alloc_array<const wchar_t*>(input.get_defines().size() + input.includes.size() * 2 + 10);
     size_t args_idx = 0;
+
+    if (!args)
+    {
+        output.error_message = "DXCShaderCompiler: Failed to allocate scratch space";
+        return false;
+    }
 
     switch (input.optimization)
     {
@@ -242,9 +247,15 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         args[args_idx++] = w_entry_point.c_str();
     }
 
-    const size_t w_buffer_size = 32 * 1024;
-    auto w_buffer = arena.alloc_array<wchar_t>(w_buffer_size);
+    // Upper bound don't know how many characters are actually needed
+    constexpr size_t w_buffer_size = 32ull * 1024;
+    const auto w_buffer = arena.alloc_array<wchar_t>(w_buffer_size);
     size_t w_buffer_p = 0;
+    if (!w_buffer)
+    {
+        output.error_message = "DXCShaderCompiler: Failed to allocate scratch space";
+        return false;
+    }
 
     auto widen_and_push = [&](const std::string& str, const wchar_t* flag)
     {
@@ -304,12 +315,6 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         }
     };
 
-    if (args_idx > args_size)
-    {
-        output.error_message = "DXCShaderCompiler: Argument buffer overflow";
-        return false;
-    }
-
     if FAILED (m_compiler->Compile(&source_buffer,
                                    args,
                                    static_cast<UINT32>(args_idx + 1),
@@ -363,6 +368,11 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
             const auto path_buffer = arena.alloc_array<wchar_t>(required_size);
             size_t path_idx = 0;
+            if (!path_buffer)
+            {
+                output.error_message = "DXCShaderCompiler: Failed to allocate scratch space";
+                return false;
+            }
 
             // Copy pdb_path
             std::ranges::copy(input.pdb_path, path_buffer + path_idx);
