@@ -54,10 +54,10 @@ class D3D12Context : public Context
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
 
-    containers::AtomicStack<memory::Arena> m_arenas{[]
-                                                    {
-                                                        return std::make_unique<memory::Arena>(4 * util::MEGABYTE);
-                                                    }};
+    containers::AtomicStack<memory::Arena, 16> m_arenas{[]
+                                                        {
+                                                            return memory::Arena(4 * util::MEGABYTE);
+                                                        }};
 
     D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                 const D3D12_SHADER_DESC& shader_desc,

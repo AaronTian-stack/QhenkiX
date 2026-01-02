@@ -87,6 +87,7 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/memory/arena.h"
 
     "${QHENKIX_PUBLIC_DIR}/containers/atomic_stack.h"
+    "${QHENKIX_PUBLIC_DIR}/containers/static_vector.h"
 
     "${QHENKIX_PUBLIC_DIR}/RHI/barrier.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/buffer.h"
