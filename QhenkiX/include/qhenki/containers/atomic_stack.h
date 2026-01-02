@@ -24,10 +24,9 @@ template<typename T, size_t Capacity> class AtomicStack
         Node* next;
     };
     std::array<Node, Capacity> m_nodes{};
+    std::atomic<Node*> m_free_nodes{nullptr};
 
     std::atomic<Node*> m_head{nullptr};
-
-    std::atomic<Node*> m_free_nodes{nullptr};
 
     // Function to create new objects when stack is empty
     std::function<T()> m_factory;
