@@ -1,3 +1,5 @@
+option(EXAMPLES_FORCE_SHADER_RECOMPILE "Force recompilation of all shaders" OFF)
+
 function(add_shader_targets TARGET_NAME CONFIG_PATH)
     set(options)
     set(oneValueArgs DX11_SM DX12_SM)
@@ -24,6 +26,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             -i "${CMAKE_CURRENT_SOURCE_DIR}"
             -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
             -g DX11=1
+            $<$<BOOL:${EXAMPLES_FORCE_SHADER_RECOMPILE}>:-f>
         DEPENDS SXC
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Compiling shaders for ${TARGET_NAME} (DX11)..."
@@ -37,6 +40,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             -i "${CMAKE_CURRENT_SOURCE_DIR}"
             -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
             -g DX12=1
+            $<$<BOOL:${EXAMPLES_FORCE_SHADER_RECOMPILE}>:-f>
         DEPENDS SXC
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Compiling shaders for ${TARGET_NAME} (DX12)..."
