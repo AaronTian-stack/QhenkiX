@@ -6,7 +6,8 @@
 namespace qhenki::util
 {
 constexpr uint64_t CONSTANT_BUFFER_ALIGNMENT = 256;
-constexpr uint64_t MEGABYTE = 1024 * 1024;
+constexpr uint64_t KILOBYTE = 1024;
+constexpr uint64_t MEGABYTE = KILOBYTE * 1024;
 
 #define BIT(x) (1 << (x))
 

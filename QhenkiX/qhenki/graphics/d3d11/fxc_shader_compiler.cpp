@@ -6,6 +6,7 @@
 #include <array>
 #include <cassert>
 
+#include "qhenki/memory/arena.h"
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
 #include "qhenki/utility/include_handlers.h"
@@ -67,15 +68,13 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         return false;
     }
 
-    thread_local std::vector<D3D_SHADER_MACRO>
-        macros; // TODO: replace with stack allocator and share with below temp alloc.
-    macros.clear();
-    macros.reserve(input.get_defines().size() + 1);
+    thread_local memory::Arena arena{4 * MEGABYTE};
 
-    // Need to keep in scope for substrings until shader is compiled
-    thread_local std::vector<std::string> defines;
-    defines.clear();
-    defines.reserve(input.get_defines().size() * 2);
+    const auto macros = arena.alloc_array<D3D_SHADER_MACRO>(input.get_defines().size() + 1);
+    size_t macros_idx = 0;
+
+    const auto defines = arena.alloc_array<std::string>(input.get_defines().size() * 2);
+    size_t defines_idx = 0;
 
     for (const auto& define : input.get_defines())
     {
@@ -84,22 +83,21 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         size_t pos = define.find('=');
         if (pos != std::string::npos)
         {
-            defines.push_back(define.substr(0, pos));
-            auto& substr1 = defines.back();
-            defines.push_back(define.substr(pos + 1));
-            auto& substr2 = defines.back();
-            macros.push_back({.Name = substr1.c_str(), .Definition = substr2.c_str()});
+            defines[defines_idx++] = define.substr(0, pos);
+            defines[defines_idx++] = define.substr(pos + 1);
+
+            macros[macros_idx++] = {.Name = defines[defines_idx - 2].c_str(),
+                                    .Definition = defines[defines_idx - 1].c_str()};
         }
         else
         {
-            defines.push_back(define);
-            auto& substr1 = defines.back();
-            macros.push_back({.Name = substr1.c_str(), .Definition = nullptr});
+            defines[defines_idx++] = define;
+            macros[macros_idx++] = {.Name = defines[defines_idx - 1].c_str(), .Definition = nullptr};
         }
     }
-    macros.push_back({.Name = nullptr, .Definition = nullptr});
+    macros[macros_idx++] = {.Name = nullptr, .Definition = nullptr};
 
-    const auto target = ::get_shader_model_char(input.shader_type, input.shader_model);
+    const auto target = get_shader_model_char(input.shader_type, input.shader_model);
 
     MultiIncludeHandler handler(input.includes);
 
@@ -110,7 +108,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     ComPtr<ID3DBlob> error_blob;
     Utf8To16Scoped path_buffer(input.get_path());
     const HRESULT hr = D3DCompileFromFile(path_buffer.c_str(),
-                                          macros.data(),
+                                          macros,
                                           &handler,
                                           input.entry_point.c_str(),
                                           target.c_str(),
