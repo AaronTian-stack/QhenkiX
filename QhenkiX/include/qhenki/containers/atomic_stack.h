@@ -79,8 +79,7 @@ public:
     }
 
     // Apply a function to all objects regardless of ownership
-    template<typename Func>
-    void for_each(Func&& func)
+    template<typename Func> void for_each(Func&& func)
     {
         for (auto& obj : m_owned_objects)
         {
