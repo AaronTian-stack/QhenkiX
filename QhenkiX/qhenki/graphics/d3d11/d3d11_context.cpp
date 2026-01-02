@@ -474,8 +474,12 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         buffer_info.CPUAccessFlags = 0;
     }
 
+    D3D11_SUBRESOURCE_DATA resource_data;
+    resource_data.pSysMem = data;
+    const auto resource_data_ptr = data && desc.visibility == CPU_SEQUENTIAL ? &resource_data : nullptr;
+
     ComPtr<ID3D11Buffer> d3d11_buffer;
-    if (FAILED(m_device->CreateBuffer(&buffer_info, nullptr, d3d11_buffer.ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateBuffer(&buffer_info, resource_data_ptr, d3d11_buffer.ReleaseAndGetAddressOf())))
     {
         return false;
     }
