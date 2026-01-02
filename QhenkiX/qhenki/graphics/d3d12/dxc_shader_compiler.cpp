@@ -289,7 +289,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     }
 
     // Set target profile
-    args[args_idx++] = L"T";
+    args[args_idx++] = L"-T";
     const auto sm = get_shader_model_wchar(input.shader_type, input.shader_model);
     args[args_idx++] = sm.c_str();
 
@@ -305,6 +305,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     // Compile DXIL blob
     ComPtr<IDxcResult> result;
 
+    // Only call this when something bad happens for sure
     auto output_error = [&result, &output]
     {
         // Get any errors
@@ -313,6 +314,10 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
             SUCCEEDED(o_r) && errors->GetStringLength())
         {
             output.error_message = errors->GetStringPointer();
+        }
+        else
+        {
+            output.error_message = "DXCShaderCompiler: Unknown compilation error";
         }
     };
 
