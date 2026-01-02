@@ -31,11 +31,20 @@ public:
     StaticVector(StaticVector&&) = delete;
     StaticVector& operator=(StaticVector&&) = delete;
 
-    template<typename... Args> void emplace_back(Args&&... args)
+    /**
+     * Constructs an element in-place at the end of the vector.
+     * @param args Arguments to forward to the constructor of T.
+     * @return true if the element was successfully added, false if the vector is at capacity.
+     */
+    template<typename... Args> bool emplace_back(Args&&... args)
     {
-        assert(m_size < MaxSize);
+        if (m_size >= MaxSize)
+        {
+            return false;
+        }
         new (&m_storage[m_size]) T(std::forward<Args>(args)...);
         ++m_size;
+        return true;
     }
 
     T& back()

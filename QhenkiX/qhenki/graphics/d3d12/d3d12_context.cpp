@@ -487,6 +487,7 @@ D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection
     assert(shader_reflection);
 
     const auto arena = m_arenas.pop();
+    assert(arena);
     const auto input_element_desc = arena->alloc_array<D3D12_INPUT_ELEMENT_DESC>(shader_desc.InputParameters);
     {
         UINT slot = 0;
@@ -517,7 +518,7 @@ D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection
         }
     }
 
-    m_arenas.push(arena);
+    THROW_IF_FALSE(m_arenas.push(arena));
 
     return input_element_desc;
 }
@@ -777,6 +778,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     }
 
     const auto arena = m_arenas.pop();
+    assert(arena);
     auto ranges = arena->alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
     for (unsigned i = 0; i < desc->spaces.size(); i++)
     {
@@ -851,7 +853,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         return false;
     }
 
-    m_arenas.push(arena);
+    THROW_IF_FALSE(m_arenas.push(arena));
 
     return true;
 }
@@ -1441,6 +1443,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
 
     const auto arena = m_arenas.pop();
+    assert(arena);
     const auto layouts = arena->alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
     const auto row_counts = arena->alloc_array<UINT>(num_subresources);
     const auto row_sizes = arena->alloc_array<UINT64>(num_subresources);
@@ -1520,7 +1523,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
     }
 
-    m_arenas.push(arena);
+    THROW_IF_FALSE(m_arenas.push(arena));
     return true;
 }
 
@@ -1944,6 +1947,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
     const auto command_list = cmd_list_d3d12->Get();
 
     const auto arena = m_arenas.pop();
+    assert(arena);
     auto d3d12_barriers = arena->alloc_array<D3D12_TEXTURE_BARRIER>(count);
 
     for (unsigned i = 0; i < count; i++)
@@ -1985,7 +1989,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
     };
 
     command_list->Barrier(1, &barrier_group);
-    m_arenas.push(arena);
+    THROW_IF_FALSE(m_arenas.push(arena));
 }
 
 void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)

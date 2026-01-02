@@ -50,6 +50,10 @@ public:
     AtomicStack(AtomicStack&&) = delete;
     AtomicStack& operator=(AtomicStack&&) = delete;
 
+    /**
+     * Removes and returns an object from the stack, or creates a new one if the stack is empty.
+     * @return Pointer to the object, or nullptr if the stack is empty and StaticVector is at capacity.
+     */
     T* pop()
     {
         auto head = m_head.load(std::memory_order_acquire);
@@ -67,7 +71,10 @@ public:
             }
         }
 
-        m_owned_objects.emplace_back(m_factory());
+        if (!m_owned_objects.emplace_back(m_factory()))
+        {
+            return nullptr;
+        }
         return &m_owned_objects.back();
     }
 
@@ -87,6 +94,8 @@ public:
         if (new_node == nullptr)
         {
             // No free nodes available, cannot push
+            // This should never happen assuming the user only pushes objects previously popped from this stack
+            // TODO: Throw exception instead?
             return false;
         }
 
