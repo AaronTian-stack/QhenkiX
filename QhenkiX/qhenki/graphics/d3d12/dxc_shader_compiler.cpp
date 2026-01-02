@@ -316,11 +316,8 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         }
     };
 
-    if FAILED (m_compiler->Compile(&source_buffer,
-                                   args,
-                                   static_cast<UINT32>(args_idx + 1),
-                                   include_handler.Get(),
-                                   IID_PPV_ARGS(&result)))
+    if FAILED (m_compiler->Compile(
+                   &source_buffer, args, static_cast<UINT32>(args_idx), include_handler.Get(), IID_PPV_ARGS(&result)))
     {
         output_error();
         return false;
