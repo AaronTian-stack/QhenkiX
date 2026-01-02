@@ -9,6 +9,8 @@
 
 #include "d3d12_descriptor_heap.h"
 #include "d3d12_pipeline.h"
+#include "qhenki/containers/atomic_stack.h"
+#include "qhenki/memory/arena.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/RHI/descriptor_table.h"
 
@@ -52,9 +54,14 @@ class D3D12Context : public Context
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
 
-    std::vector<D3D12_INPUT_ELEMENT_DESC> shader_reflection(ID3D12ShaderReflection* shader_reflection,
-                                                            const D3D12_SHADER_DESC& shader_desc,
-                                                            bool increment_slot) const;
+    containers::AtomicStack<memory::Arena, 16> m_arenas{[]
+                                                        {
+                                                            return memory::Arena(4 * util::MEGABYTE);
+                                                        }};
+
+    D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
+                                                const D3D12_SHADER_DESC& shader_desc,
+                                                bool increment_slot);
 
 public:
     std::string create(bool enable_debug_layer) override;

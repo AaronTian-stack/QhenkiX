@@ -2,6 +2,7 @@
 
 #include <d3dcompiler.h>
 #include <cassert>
+#include <cstring>
 #include <filesystem>
 #include <stdexcept>
 
@@ -10,6 +11,8 @@
 #elif defined(__APPLE__) || defined(__linux__)
 // TODO
 #endif
+
+#include <qhenki/memory/arena.h>
 
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
@@ -205,80 +208,99 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         return false;
     }
 
-    thread_local std::vector<const wchar_t*> args; // TODO: stack allocator and share with args_ptrs
-    args.clear();
-    args.reserve((input.get_defines().size() + input.includes.size()) * 2 + 10);
+    thread_local memory::Arena arena{4 * MEGABYTE};
+    arena.reset();
 
-    if (input.optimization == CompilerInput::Optimization::O0)
-        args.emplace_back(L"-O0");
-    if (input.optimization == CompilerInput::Optimization::O1)
-        args.emplace_back(L"-O1");
-    if (input.optimization == CompilerInput::Optimization::O2)
-        args.emplace_back(L"-O2");
-    // O3 is default
+    const auto args = arena.alloc_array<const wchar_t*>(input.get_defines().size() + input.includes.size() * 2 + 10);
+    size_t args_idx = 0;
+
+    if (!args)
+    {
+        output.error_message = "DXCShaderCompiler: Failed to allocate scratch space";
+        return false;
+    }
+
+    switch (input.optimization)
+    {
+    case CompilerInput::Optimization::O0:
+        args[args_idx++] = L"-O0";
+        break;
+    case CompilerInput::Optimization::O1:
+        args[args_idx++] = L"-O1";
+        break;
+    case CompilerInput::Optimization::O2:
+        args[args_idx++] = L"-O2";
+        break;
+    case CompilerInput::Optimization::O3:
+        // O3 is default
+        break;
+    }
 
     // DXIL libraries don't require an entry point
     std::wstring w_entry_point;
     const bool is_library = (input.shader_type == LIBRARY_SHADER);
     if (!is_library)
     {
-        args.emplace_back(L"-E");
+        args[args_idx++] = L"-E";
         utf8::utf8to16(input.entry_point.begin(),
                        input.entry_point.end(),
                        std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
-        args.push_back(w_entry_point.c_str());
+        args[args_idx++] = w_entry_point.c_str();
     }
 
-    // Allocate a large buffer of wchar_t. If it overflows, start making wstring (possible heap allocation)
-    std::array<wchar_t, 1024> w_buffer;
-    ptrdiff_t w_buffer_p = 0;
-    std::vector<std::wstring> wstring_backup;
+    // Upper bound don't know how many characters are actually needed
+    constexpr size_t w_buffer_size = 32ull * 1024;
+    const auto w_buffer = arena.alloc_array<wchar_t>(w_buffer_size);
+    size_t w_buffer_p = 0;
+    if (!w_buffer)
+    {
+        output.error_message = "DXCShaderCompiler: Failed to allocate scratch space";
+        return false;
+    }
 
     auto widen_and_push = [&](const std::string& str, const wchar_t* flag)
     {
-        assert(str.size() < LLONG_MAX);
-        args.emplace_back(flag);
-        // Try to widen the string using w_buffer
-        if (w_buffer_p + str.size() + 1 < w_buffer.size())
+        args[args_idx++] = flag;
+        if (w_buffer_p > w_buffer_size)
         {
-            utf8::utf8to16(str.begin(), str.end(), w_buffer.begin() + w_buffer_p);
-            w_buffer[w_buffer_p + str.size()] = L'\0'; // Null-terminate the string
-            args.push_back(w_buffer.data() + w_buffer_p);
-            w_buffer_p += 1 + str.size(); // Move pointer forward
+            output.error_message = "DXCShaderCompiler: Widen buffer overflow";
+            return false;
         }
-        else
-        {
-            wstring_backup.emplace_back();
-            auto& wstr = wstring_backup.back();
-            wstr.reserve(str.size());
-            utf8::utf8to16(str.begin(), str.end(), std::back_inserter(wstr));
-            wstr.push_back(L'\0'); // Null-terminate the string
-            args.push_back(wstr.c_str());
-        }
+        utf8::utf8to16(str.begin(), str.end(), w_buffer + w_buffer_p);
+        w_buffer[w_buffer_p + str.size()] = L'\0'; // Null terminate the string
+        args[args_idx++] = w_buffer + w_buffer_p;
+        w_buffer_p += 1 + str.size(); // Move pointer forward
+        return true;
     };
 
     for (const auto& define : input.get_defines())
     {
-        widen_and_push(define, L"-D");
+        if (!widen_and_push(define, L"-D"))
+        {
+            return false;
+        }
     }
     for (const auto& include : input.includes)
     {
-        widen_and_push(include, L"-I");
+        if (!widen_and_push(include, L"-I"))
+        {
+            return false;
+        }
     }
 
     // Set target profile
-    args.emplace_back(L"-T");
+    args[args_idx++] = L"T";
     const auto sm = get_shader_model_wchar(input.shader_type, input.shader_model);
-    args.emplace_back(sm.c_str());
+    args[args_idx++] = sm.c_str();
 
     if (input.flags & CompilerInput::DEBUG)
     {
-        args.emplace_back(DXC_ARG_DEBUG); // Generate debug info (/Zi)
+        args[args_idx++] = DXC_ARG_DEBUG; // Generate debug info (/Zi)
     }
-    args.emplace_back(L"-Qstrip_debug");
+    args[args_idx++] = L"-Qstrip_debug";
 
-    args.emplace_back(DXC_ARG_ENABLE_STRICTNESS);   // Strict mode
-    args.emplace_back(DXC_ARG_WARNINGS_ARE_ERRORS); //-WX
+    args[args_idx++] = DXC_ARG_ENABLE_STRICTNESS;   // Strict mode
+    args[args_idx++] = DXC_ARG_WARNINGS_ARE_ERRORS; // -WX
 
     // Compile DXIL blob
     ComPtr<IDxcResult> result;
@@ -294,11 +316,8 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         }
     };
 
-    if FAILED (m_compiler->Compile(&source_buffer,
-                                   args.data(),
-                                   static_cast<UINT32>(args.size()),
-                                   include_handler.Get(),
-                                   IID_PPV_ARGS(&result)))
+    if FAILED (m_compiler->Compile(
+                   &source_buffer, args, static_cast<UINT32>(args_idx), include_handler.Get(), IID_PPV_ARGS(&result)))
     {
         output_error();
         return false;
@@ -339,44 +358,37 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         if (SUCCEEDED(hr_d))
         {
             const auto name = debug_info_path->GetStringPointer();
-
-            std::wstring_view pdb_file;
-            std::wstring path;
-
-            constexpr auto buffer_count = 1024;
-            std::array<wchar_t, buffer_count> path_buffer;
             const auto char_count = debug_info_path->GetBufferSize() / sizeof(wchar_t);
-            assert(false); // TODO: expand pdb_path
 
-            // Try using stack buffer first
-            bool failed = true;
-            if (1 + input.pdb_path.size() + char_count < buffer_count)
+            constexpr wchar_t separator = std::filesystem::path::preferred_separator;
+            const size_t required_size = input.pdb_path.size() + char_count +
+                                         2; // +1 for separator, +1 for null terminator
+
+            const auto path_buffer = arena.alloc_array<wchar_t>(required_size);
+            size_t path_idx = 0;
+            if (!path_buffer)
             {
-                const wchar_t separator = std::filesystem::path::preferred_separator;
-                const auto formatted =
-                    qhenki::util::format_wstring<buffer_count>(L"%s%c%s", pdb_path.data(), separator, name);
-                if (!formatted.truncated)
-                {
-                    path_buffer = formatted.buffer;
-                    pdb_file = std::wstring_view(path_buffer.data(), wcslen(path_buffer.data()));
-                    failed = false;
-                }
+                output.error_message = "DXCShaderCompiler: Failed to allocate scratch space";
+                return false;
             }
-            // wstring fallback (may allocate heap)
-            if (failed)
+
+            // Copy pdb_path
+            std::ranges::copy(input.pdb_path, path_buffer + path_idx);
+            path_idx += input.pdb_path.size();
+
+            // Add separator if needed
+            if (!input.pdb_path.empty() && input.pdb_path.back() != L'\\' && input.pdb_path.back() != L'/')
             {
-                path.reserve(pdb_path.size() + char_count);
-
-                path.assign(pdb_path.begin(), pdb_path.end());
-
-                const wchar_t separator = std::filesystem::path::preferred_separator;
-                if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
-                {
-                    path += separator;
-                }
-                path.append(name, char_count);
-                pdb_file = path;
+                path_buffer[path_idx++] = separator;
             }
+
+            // Copy name
+            std::ranges::copy(std::span(name, char_count), path_buffer + path_idx);
+            path_idx += char_count;
+
+            path_buffer[path_idx] = L'\0';
+
+            const std::wstring_view pdb_file(path_buffer, path_idx);
 
             if (const auto write_result =
                     write_file(pdb_file.data(), debug_info_blob->GetBufferPointer(), debug_info_blob->GetBufferSize());

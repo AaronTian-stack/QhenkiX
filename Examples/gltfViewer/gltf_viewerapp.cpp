@@ -153,8 +153,8 @@ void gltfViewerApp::create()
     THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
     // Make 2 matrix constant buffers for double buffering
-    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u32(sizeof(qhenki::CameraMatrices),
-                                                                        qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
+    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(qhenki::CameraMatrices),
+                                                                      qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
                                         .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     // TODO: persistent mapping flag
@@ -167,8 +167,8 @@ void gltfViewerApp::create()
 
     if (m_context->is_compatibility())
     {
-        qhenki::gfx::BufferDesc desc{.size = qhenki::util::align_u32(sizeof(XMFLOAT4X4) * 2 + sizeof(int),
-                                                                     qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
+        qhenki::gfx::BufferDesc desc{.size = qhenki::util::align_u(sizeof(XMFLOAT4X4) * 2 + sizeof(int),
+                                                                   qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
                                      .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                      .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
         THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, "Model Buffer"));

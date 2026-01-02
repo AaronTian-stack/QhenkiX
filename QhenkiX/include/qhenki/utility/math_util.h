@@ -1,11 +1,13 @@
 #pragma once
 
 #include <cassert>
-#include <cstdint>
+#include <concepts>
 
 namespace qhenki::util
 {
-constexpr auto CONSTANT_BUFFER_ALIGNMENT = 256;
+constexpr uint64_t CONSTANT_BUFFER_ALIGNMENT = 256;
+constexpr uint64_t KILOBYTE = 1024;
+constexpr uint64_t MEGABYTE = KILOBYTE * 1024;
 
 #define BIT(x) (1 << (x))
 
@@ -14,10 +16,11 @@ inline bool is_power_of_two(const uint32_t value)
     return (value & (value - 1)) == 0;
 }
 
-// Alignment should be power of 2
-inline uint32_t align_u32(const uint32_t size, const uint32_t alignment)
+template<typename T>
+    requires std::unsigned_integral<T>
+constexpr T align_u(const T size, const T alignment)
 {
-    assert(is_power_of_two(alignment) && "Alignment must be a power of two.");
+    assert(is_power_of_two(alignment));
     return (size + alignment - 1) & ~(alignment - 1);
 }
 }; // namespace qhenki::util

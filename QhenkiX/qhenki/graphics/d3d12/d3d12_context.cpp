@@ -438,6 +438,12 @@ bool D3D12Context::present(Swapchain* const swapchain,
     assert(swapchain);
     // Vulkan version will use the queue swapchain was created with
 
+    m_arenas.for_each(
+        [](memory::Arena* arena)
+        {
+            arena->reset();
+        });
+
     // D3D12 does not actually have to wait on anything
     const auto result = m_swapchain->Present(1, 0);
     return result == S_OK;
@@ -474,14 +480,15 @@ bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType
     return true;
 }
 
-std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
-                                                                      const D3D12_SHADER_DESC& shader_desc,
-                                                                      const bool increment_slot) const
+D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
+                                                          const D3D12_SHADER_DESC& shader_desc,
+                                                          const bool increment_slot)
 {
     assert(shader_reflection);
 
-    std::vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
-    input_element_desc.reserve(shader_desc.InputParameters);
+    const auto arena = m_arenas.pop();
+    assert(arena);
+    const auto input_element_desc = arena->alloc_array<D3D12_INPUT_ELEMENT_DESC>(shader_desc.InputParameters);
     {
         UINT slot = 0;
         for (UINT parameter_index = 0; parameter_index < shader_desc.InputParameters; parameter_index++)
@@ -494,7 +501,7 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
                 continue;
             }
 
-            input_element_desc.emplace_back(D3D12_INPUT_ELEMENT_DESC{
+            input_element_desc[parameter_index] = D3D12_INPUT_ELEMENT_DESC{
                 .SemanticName = signature_parameter_desc.SemanticName,
                 .SemanticIndex = signature_parameter_desc.SemanticIndex,
                 .Format = DXCShaderCompiler::mask_to_format(signature_parameter_desc.Mask,
@@ -503,11 +510,15 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> D3D12Context::shader_reflection(ID3D12Shad
                 .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
                 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                 .InstanceDataStepRate = 0u, // TODO: manual options for instancing
-            });
+            };
             if (increment_slot)
+            {
                 slot++;
+            }
         }
     }
+
+    THROW_IF_FALSE(m_arenas.push(arena));
 
     return input_element_desc;
 }
@@ -576,9 +587,8 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                        .BytecodeLength = ps12->shader_blob->GetBufferSize()};
     }
 
-    const auto& input_layout_desc = d3d12_pipeline->input_layout_desc;
-    pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc.data(),
-                            .NumElements = static_cast<uint32_t>(input_layout_desc.size())};
+    pso_desc.InputLayout = {.pInputElementDescs = d3d12_pipeline->input_layout_desc,
+                            .NumElements = shader_desc.InputParameters};
 
     // Prefer root signature embedded in shader container if present
     ComPtr<ID3D12RootSignature> root_signature;
@@ -713,7 +723,6 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create Graphics Pipeline State\n");
         return false;
     }
-    d3d12_pipeline->input_layout_desc.clear();
 
     set_debug_name(d3d12_pipeline->pipeline_state.Get(), debug_name);
 
@@ -768,8 +777,9 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         };
     }
 
-    std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> ranges;
-    ranges.reserve(desc->spaces.size());
+    const auto arena = m_arenas.pop();
+    assert(arena);
+    auto ranges = arena->alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
     for (unsigned i = 0; i < desc->spaces.size(); i++)
     {
         auto& space = desc->spaces[i];
@@ -782,8 +792,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
                               return a.binding < b.binding;
                           });
         // Assemble ranges dynamically
-        std::vector<D3D12_DESCRIPTOR_RANGE> l_ranges; // TODO: Replace with small vector
-        l_ranges.reserve(space.size());
+        auto l_ranges = arena->alloc_array<D3D12_DESCRIPTOR_RANGE>(space.size());
         unsigned offset = 0;
         for (unsigned j = 0; j < space.size(); j++)
         {
@@ -798,18 +807,18 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
                 .OffsetInDescriptorsFromTableStart = offset,
             };
             offset += binding.count;
-            l_ranges.emplace_back(range);
+            l_ranges[j] = range;
         }
         params[param_index++] = {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             .DescriptorTable =
                 {
-                    .NumDescriptorRanges = static_cast<UINT>(l_ranges.size()),
-                    .pDescriptorRanges = l_ranges.data(),
+                    .NumDescriptorRanges = static_cast<UINT>(space.size()),
+                    .pDescriptorRanges = l_ranges,
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
-        ranges.emplace_back(std::move(l_ranges));
+        ranges[i] = l_ranges;
     }
 
     D3D12_ROOT_SIGNATURE_DESC root_sig_desc{
@@ -843,6 +852,8 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create root signature\n");
         return false;
     }
+
+    THROW_IF_FALSE(m_arenas.push(arena));
 
     return true;
 }
@@ -1431,14 +1442,16 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     const auto texture_allocation = to_internal(*texture);
     const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
 
-    UINT64 size;
-    std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(num_subresources); // TODO: replace with small vector
-    std::vector<UINT> row_counts(num_subresources); // For subresource height TODO: replace with small vector
-    std::vector<UINT64> row_sizes(num_subresources);
-    m_device->GetCopyableFootprints(
-        &desc, 0, num_subresources, 0, layouts.data(), row_counts.data(), row_sizes.data(), &size);
+    const auto arena = m_arenas.pop();
+    assert(arena);
+    const auto layouts = arena->alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
+    const auto row_counts = arena->alloc_array<UINT>(num_subresources);
+    const auto row_sizes = arena->alloc_array<UINT64>(num_subresources);
 
-    BufferDesc staging_desc{
+    UINT64 size;
+    m_device->GetCopyableFootprints(&desc, 0, num_subresources, 0, layouts, row_counts, row_sizes, &size);
+
+    const BufferDesc staging_desc{
         .size = size,
         .usage = BufferUsage::COPY_SRC,
         .visibility = CPU_SEQUENTIAL,
@@ -1510,6 +1523,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
     }
 
+    THROW_IF_FALSE(m_arenas.push(arena));
     return true;
 }
 
@@ -1932,8 +1946,9 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
 
-    thread_local std::vector<D3D12_TEXTURE_BARRIER> d3d12_barriers; // TODO: replace with stack allocator
-    d3d12_barriers.resize(count);
+    const auto arena = m_arenas.pop();
+    assert(arena);
+    auto d3d12_barriers = arena->alloc_array<D3D12_TEXTURE_BARRIER>(count);
 
     for (unsigned i = 0; i < count; i++)
     {
@@ -1970,10 +1985,11 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
     D3D12_BARRIER_GROUP barrier_group = {
         .Type = D3D12_BARRIER_TYPE_TEXTURE,
         .NumBarriers = count,
-        .pTextureBarriers = d3d12_barriers.data(),
+        .pTextureBarriers = d3d12_barriers,
     };
 
     command_list->Barrier(1, &barrier_group);
+    THROW_IF_FALSE(m_arenas.push(arena));
 }
 
 void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
