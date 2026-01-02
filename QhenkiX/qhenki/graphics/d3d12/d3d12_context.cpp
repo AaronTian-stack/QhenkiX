@@ -438,6 +438,12 @@ bool D3D12Context::present(Swapchain* const swapchain,
     assert(swapchain);
     // Vulkan version will use the queue swapchain was created with
 
+    m_arenas.for_each(
+        [](memory::Arena* arena)
+        {
+            arena->reset();
+        });
+
     // D3D12 does not actually have to wait on anything
     const auto result = m_swapchain->Present(1, 0);
     return result == S_OK;
