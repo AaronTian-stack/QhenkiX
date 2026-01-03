@@ -2,10 +2,7 @@
 
 using namespace qhenki;
 
-OrthographicCamera::OrthographicCamera()
-    : Camera()
-{
-}
+OrthographicCamera::OrthographicCamera() = default;
 
 OrthographicCamera::OrthographicCamera(float viewport_width, float viewport_height)
     : Camera(viewport_width, viewport_height)

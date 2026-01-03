@@ -1,4 +1,4 @@
-﻿#include "d3d11_swapchain.h"
+#include "d3d11_swapchain.h"
 #include "d3d11_context.h"
 
 using namespace qhenki::gfx;
@@ -10,7 +10,7 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
                             unsigned& frame_index)
 {
     frame_index = 0;
-    DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor = {
+    const DXGI_SWAP_CHAIN_DESC1 swapchain_desc = {
         .Width = static_cast<UINT>(desc.width),
         .Height = static_cast<UINT>(desc.height),
         .Format = desc.format,
@@ -23,15 +23,11 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
         .Flags = {},
     };
 
-    DXGI_SWAP_CHAIN_FULLSCREEN_DESC swap_chain_fullscreen_descriptor = {};
-    swap_chain_fullscreen_descriptor.Windowed = true;
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreen_desc = {};
+    fullscreen_desc.Windowed = true;
 
-    if (FAILED(dxgi_factory->CreateSwapChainForHwnd(device,
-                                                    window.get_window_handle(),
-                                                    &swap_chain_descriptor,
-                                                    &swap_chain_fullscreen_descriptor,
-                                                    nullptr,
-                                                    &swapchain)))
+    if (FAILED(dxgi_factory->CreateSwapChainForHwnd(
+            device, window.get_window_handle(), &swapchain_desc, &fullscreen_desc, nullptr, &swapchain)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Swapchain\n");
         return false;
@@ -43,14 +39,14 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
 
 bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
 {
-    ComPtr<ID3D11Texture2D> backBuffer = nullptr;
-    if (FAILED(swapchain->GetBuffer(0, IID_PPV_ARGS(&backBuffer))))
+    ComPtr<ID3D11Texture2D> back_buffer = nullptr;
+    if (FAILED(swapchain->GetBuffer(0, IID_PPV_ARGS(&back_buffer))))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get Back Buffer from Swapchain\n");
         return false;
     }
 
-    if (FAILED(device->CreateRenderTargetView(backBuffer.Get(), nullptr, &sc_render_target)))
+    if (FAILED(device->CreateRenderTargetView(back_buffer.Get(), nullptr, &sc_render_target)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Render Target View\n");
         return false;
@@ -63,8 +59,8 @@ bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
 
 bool D3D11Swapchain::resize(ID3D11Device* const device,
                             ID3D11DeviceContext* const device_context,
-                            int width,
-                            int height)
+                            const int width,
+                            const int height)
 {
     device_context->Flush();
 

@@ -1,4 +1,4 @@
-﻿#include "d3d11_layout_assembler.h"
+#include "d3d11_layout_assembler.h"
 
 #include "qhenki/utility/string_util.h"
 
@@ -7,21 +7,12 @@
 
 using namespace qhenki::gfx;
 
+namespace
+{
 template<typename T> void hash_combine(std::size_t& seed, const T& v)
 {
     std::hash<T> hasher;
     seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
-
-std::size_t hash_string(LPCSTR str)
-{
-    std::size_t hash = 0;
-    while (*str)
-    {
-        hash_combine(hash, *str);
-        str++;
-    }
-    return hash;
 }
 
 std::size_t hash_input_element(const D3D11_INPUT_ELEMENT_DESC& desc)
@@ -48,6 +39,7 @@ std::size_t hash_input_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layou
 
     return seed;
 }
+} // namespace
 
 void D3D11LayoutAssembler::add_input(const D3D11_INPUT_ELEMENT_DESC& input)
 {
@@ -56,18 +48,22 @@ void D3D11LayoutAssembler::add_input(const D3D11_INPUT_ELEMENT_DESC& input)
 
 ID3D11InputLayout* D3D11LayoutAssembler::find_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layout)
 {
-    auto hash = hash_input_layout(layout);
+    const auto hash = hash_input_layout(layout);
     if (m_layout_map.contains(hash))
+    {
         return m_layout_map[hash].layout.Get();
+    }
 
     return nullptr;
 }
 
 D3D11Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
 {
-    std::lock_guard lock(m_layout_mutex);
+    std::scoped_lock lock(m_layout_mutex);
     if (m_layout_logical_map.contains(layout))
+    {
         return m_layout_logical_map[layout];
+    }
     return nullptr;
 }
 
@@ -80,8 +76,8 @@ D3D11Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
 std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layout_manual(
     ID3D11Device* const device, ID3DBlob* const vertex_shader_blob)
 {
-    std::lock_guard lock(m_layout_mutex);
-    // hash the input layout
+    std::scoped_lock lock(m_layout_mutex);
+    // Hash the input layout
     find_layout(m_layout_desc)
 
         ComPtr<ID3D11InputLayout>
@@ -90,13 +86,13 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
                                          static_cast<UINT>(m_layout_desc.size()),
                                          vertex_shader_blob->GetBufferPointer(),
                                          vertex_shader_blob->GetBufferSize(),
-                                         &layout)))
+                                         layout.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout manual\n");
         return {};
     }
 
-    m_layout_map[hash] = {layout, m_layout_desc};
+    m_layout_map[hash] = {.layout = layout, .desc = m_layout_desc};
     m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
 
     return layout;
@@ -108,25 +104,33 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
     assert(vs_reflection);
 
     D3D11_SHADER_DESC shader_desc;
-    vs_reflection->GetDesc(&shader_desc);
+    if (FAILED(vs_reflection->GetDesc(&shader_desc)))
+    {
+        return {};
+    }
 
     UINT slot = 0;
 
     std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc;
     input_layout_desc.reserve(shader_desc.InputParameters);
-    for (uint32_t i = 0; i < shader_desc.InputParameters; i++)
+    for (UINT i = 0; i < shader_desc.InputParameters; i++)
     {
-        D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
-        vs_reflection->GetInputParameterDesc(i, &paramDesc);
+        D3D11_SIGNATURE_PARAMETER_DESC param_desc;
+        if (FAILED(vs_reflection->GetInputParameterDesc(i, &param_desc)))
+        {
+            continue;
+        }
 
         // Ignore system attributes
-        if (paramDesc.SystemValueType == D3D_NAME_VERTEX_ID || paramDesc.SystemValueType == D3D_NAME_PRIMITIVE_ID ||
-            paramDesc.SystemValueType == D3D_NAME_INSTANCE_ID)
+        if (param_desc.SystemValueType == D3D_NAME_VERTEX_ID || param_desc.SystemValueType == D3D_NAME_PRIMITIVE_ID ||
+            param_desc.SystemValueType == D3D_NAME_INSTANCE_ID)
+        {
             continue;
+        }
 
-        D3D11_INPUT_ELEMENT_DESC elementDesc = {
-            .SemanticName = paramDesc.SemanticName,
-            .SemanticIndex = paramDesc.SemanticIndex,
+        D3D11_INPUT_ELEMENT_DESC element_desc = {
+            .SemanticName = param_desc.SemanticName,
+            .SemanticIndex = param_desc.SemanticIndex,
             .InputSlot = slot,
             .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
             // TODO: INSTANCING
@@ -135,57 +139,83 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         };
 
         // Determine DXGI format
-        if (paramDesc.Mask == 1)
+        if (param_desc.Mask == 1)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-                elementDesc.Format = DXGI_FORMAT_R32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-                elementDesc.Format = DXGI_FORMAT_R32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-                elementDesc.Format = DXGI_FORMAT_R32_FLOAT;
+            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32_UINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32_SINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32_FLOAT;
+            }
         }
-        else if (paramDesc.Mask <= 3)
+        else if (param_desc.Mask <= 3)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32_UINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32_SINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32_FLOAT;
+            }
         }
-        else if (paramDesc.Mask <= 7)
+        else if (param_desc.Mask <= 7)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32B32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32B32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32B32_UINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32B32_SINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+            }
         }
-        else if (paramDesc.Mask <= 15)
+        else if (param_desc.Mask <= 15)
         {
-            if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32B32A32_UINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32B32A32_SINT;
-            else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-                elementDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32B32A32_UINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32B32A32_SINT;
+            }
+            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
+            {
+                element_desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+            }
         }
         else
         {
             const auto error_msg =
                 qhenki::util::format_string<256>("D3D11: Unsupported input format for %s[%d] with mask %d\n",
-                                                 paramDesc.SemanticName,
-                                                 paramDesc.SemanticIndex,
-                                                 paramDesc.Mask);
+                                                 param_desc.SemanticName,
+                                                 param_desc.SemanticIndex,
+                                                 param_desc.Mask);
             OutputDebugStringA(error_msg.buffer.data());
         }
 
         if (increment_slot)
+        {
             slot++;
+        }
 
         // save element desc
-        input_layout_desc.push_back(elementDesc);
+        input_layout_desc.push_back(element_desc);
     }
 
     return input_layout_desc;
@@ -195,29 +225,32 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11De
                                                                         ID3DBlob* const vertex_shader_blob,
                                                                         bool increment_slot)
 {
-    ComPtr<ID3D11ShaderReflection> pVertexShaderReflection;
+    ComPtr<ID3D11ShaderReflection> vs_shader_reflection;
     if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(),
                           vertex_shader_blob->GetBufferSize(),
                           IID_ID3D11ShaderReflection,
-                          &pVertexShaderReflection)))
+                          &vs_shader_reflection)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Input layout reflection failed\n");
         return nullptr;
     }
 
     D3D11_SHADER_DESC shader_desc;
-    pVertexShaderReflection->GetDesc(&shader_desc);
+    if FAILED (vs_shader_reflection->GetDesc(&shader_desc))
+    {
+        return nullptr;
+    }
 
-    std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(pVertexShaderReflection.Get(),
+    std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(vs_shader_reflection.Get(),
                                                                                        increment_slot);
 
     if (input_layout_desc.empty())
     {
-        return {};
+        return nullptr;
     }
 
     // hash and check if layout already exists
-    std::lock_guard lock(m_layout_mutex);
+    std::scoped_lock lock(m_layout_mutex);
     find_layout(input_layout_desc)
 
         ComPtr<ID3D11InputLayout>
@@ -232,7 +265,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11De
         return nullptr;
     }
 
-    m_layout_map[hash] = {layout, std::move(input_layout_desc)};
+    m_layout_map[hash] = {.layout = layout, .desc = std::move(input_layout_desc)};
     m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
 
     return layout.Get();
@@ -240,7 +273,7 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11De
 
 void D3D11LayoutAssembler::clear_maps()
 {
-    std::lock_guard lock(m_layout_mutex);
+    std::scoped_lock lock(m_layout_mutex);
     m_layout_map.clear();
     m_layout_logical_map.clear();
     m_layout_desc.clear();

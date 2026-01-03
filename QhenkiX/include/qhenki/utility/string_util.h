@@ -80,7 +80,7 @@ template<size_t N = 256> FormatResult<N> format_string(const char* fmt, ...)
     va_start(args, fmt);
     const int written = std::vsnprintf(result.buffer.data(), N, fmt, args);
     va_end(args);
-    result.truncated = (written < 0) || (static_cast<size_t>(written) >= N);
+    result.truncated = written < 0 || static_cast<size_t>(written) >= N;
     return result;
 }
 
@@ -91,7 +91,7 @@ template<size_t N = 256> FormatWResult<N> format_wstring(const wchar_t* fmt, ...
     va_start(args, fmt);
     const int written = std::vswprintf(result.buffer.data(), N, fmt, args);
     va_end(args);
-    result.truncated = (written < 0) || (static_cast<size_t>(written) >= N);
+    result.truncated = written < 0 || static_cast<size_t>(written) >= N;
     return result;
 }
 } // namespace qhenki::util

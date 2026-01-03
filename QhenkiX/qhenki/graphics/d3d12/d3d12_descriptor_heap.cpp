@@ -1,4 +1,4 @@
-﻿#include "d3d12_descriptor_heap.h"
+#include "d3d12_descriptor_heap.h"
 
 #include <cassert>
 
@@ -21,7 +21,7 @@ bool D3D12DescriptorHeap::create(ID3D12Device* device, const D3D12_DESCRIPTOR_HE
     return true;
 }
 
-bool D3D12DescriptorHeap::allocate(UINT64* alloc_offset)
+bool D3D12DescriptorHeap::allocate(size_t* alloc_offset)
 {
     std::scoped_lock lock(m_mutex);
     // Check free list
@@ -41,7 +41,7 @@ bool D3D12DescriptorHeap::allocate(UINT64* alloc_offset)
     return true;
 }
 
-void D3D12DescriptorHeap::deallocate(UINT64* alloc_offset)
+void D3D12DescriptorHeap::deallocate(size_t* alloc_offset)
 {
     if (*alloc_offset == CREATE_NEW_DESCRIPTOR)
     {
@@ -78,4 +78,9 @@ bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle
     }
     OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU start for non shader visible heap\n");
     return false;
+}
+
+const ComPtr<ID3D12DescriptorHeap>& D3D12DescriptorHeap::get() const
+{
+    return m_heap;
 }

@@ -750,7 +750,9 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         for (const auto& space : spaces)
         {
             if (!space.empty())
+            {
                 count++;
+            }
         }
         return count;
     };
@@ -784,7 +786,9 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     {
         auto& space = desc->spaces[i];
         if (space.empty())
+        {
             continue;
+        }
         // Sort vector of LayoutBindings by binding register
         std::ranges::sort(space,
                           [](const LayoutBinding& a, const LayoutBinding& b)
@@ -956,15 +960,19 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     heap_desc.NumDescriptors = desc.descriptor_count;
 
     if (desc.visibility == DescriptorHeapDesc::Visibility::CPU)
+    {
         heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    }
     else if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
+    {
         heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    }
 
     const bool result = d3d12_heap->create(m_device.Get(), heap_desc);
 
     if (result)
     {
-        set_debug_name(d3d12_heap->Get().Get(), debug_name);
+        set_debug_name(d3d12_heap->get().Get(), debug_name);
     }
 
     return result;
@@ -977,7 +985,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
     const auto heap_d3d12 = to_internal(heap);
     if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV || heap.desc.type == DescriptorHeapDesc::Type::SAMPLER)
     {
-        cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heap_d3d12->Get().GetAddressOf());
+        cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heap_d3d12->get().GetAddressOf());
         cmd_list->m_current_bound_heaps = {&heap, nullptr};
     }
     else
@@ -995,8 +1003,8 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list,
     const auto sampler_heap_d3d12 = to_internal(sampler_heap);
     if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
     {
-        ID3D12DescriptorHeap* heaps[] = {heap_d3d12->Get().Get(), sampler_heap_d3d12->Get().Get()};
-        cmd_list_d3d12->Get()->SetDescriptorHeaps(2, heaps);
+        const std::array heaps = {heap_d3d12->get().Get(), sampler_heap_d3d12->get().Get()};
+        cmd_list_d3d12->Get()->SetDescriptorHeaps(heaps.size(), heaps.data());
         cmd_list->m_current_bound_heaps = {&heap, &sampler_heap};
     }
     else
@@ -2011,7 +2019,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
     init_info.NumFramesInFlight = swapchain.desc.buffer_count;
     init_info.RTVFormat = swapchain.desc.format;
     init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
-    init_info.SrvDescriptorHeap = m_imgui_heap.Get().Get();
+    init_info.SrvDescriptorHeap = m_imgui_heap.get().Get();
 
     struct qinfo
     {
@@ -2061,7 +2069,7 @@ void D3D12Context::start_imgui_frame()
 void D3D12Context::render_imgui_draw_data(CommandList* cmd_list)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    ID3D12DescriptorHeap* heaps[] = {m_imgui_heap.Get().Get()};
+    ID3D12DescriptorHeap* heaps[] = {m_imgui_heap.get().Get()};
     cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heaps);
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd_list_d3d12->Get());
 }

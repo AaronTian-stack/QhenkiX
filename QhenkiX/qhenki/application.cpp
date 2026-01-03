@@ -121,7 +121,9 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
             }
             m_input_manager.handle_extra_events(event);
             if (ImGui::GetCurrentContext())
+            {
                 ImGui_ImplSDL3_ProcessEvent(&event);
+            }
         }
         m_input_manager.update(m_window_.get_window()); // After all SDL events
         render();
