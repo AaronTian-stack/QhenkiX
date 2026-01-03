@@ -4,7 +4,7 @@
 
 using namespace DirectX;
 
-namespace qhenki
+namespace qhenki::math
 {
 struct Basis
 {
@@ -78,4 +78,4 @@ struct Basis
     Basis invert() const;
     Basis transpose() const;
 };
-} // namespace qhenki
+} // namespace qhenki::math

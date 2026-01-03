@@ -1,6 +1,6 @@
 #include "qhenki/math/basis.h"
 
-using namespace qhenki;
+using namespace qhenki::math;
 
 Basis::Basis(const XMFLOAT3& axis, float angle)
 {

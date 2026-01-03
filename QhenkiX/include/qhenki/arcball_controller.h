@@ -13,18 +13,18 @@ namespace qhenki
  */
 class ArcBallController
 {
-    Transform* m_transform = nullptr;
+    math::Transform* m_transform = nullptr;
     XMFLOAT3 m_target_position{};
     float m_target_distance = 2.f;
 
 public:
     ArcBallController() = default;
-    explicit ArcBallController(Transform* transform)
+    explicit ArcBallController(math::Transform* transform)
         : m_transform(transform)
     {
     }
 
-    void set_camera(Transform* transform);
+    void set_camera(math::Transform* transform);
 
     float get_target_distance() const
     {

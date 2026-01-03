@@ -106,10 +106,10 @@ struct GLTFModel
         int parent_index = -1;
         int mesh_index = -1;
         // light
-        qhenki::Transform local_transform;
+        qhenki::math::Transform local_transform;
         struct
         {
-            qhenki::Transform transform;
+            qhenki::math::Transform transform;
             bool dirty = true;
         } global_transform;
         std::vector<int> children_indices;

@@ -33,7 +33,7 @@ void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* con
             // glTF is column-major order
             auto matrix3x3 = XMFLOAT3X3(m[0], m[1], m[2], m[4], m[5], m[6], m[8], m[9], m[10]);
             auto translation = XMFLOAT3(m[3], m[7], m[11]);
-            node.local_transform = qhenki::Transform(qhenki::Basis(matrix3x3), translation);
+            node.local_transform = qhenki::math::Transform(qhenki::math::Basis(matrix3x3), translation);
         }
         else
         {
@@ -60,7 +60,7 @@ void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* con
             auto transform = XMMatrixScalingFromVector(scale) * XMMatrixRotationQuaternion(quat);
             XMFLOAT3X3 matrix3x3;
             XMStoreFloat3x3(&matrix3x3, transform);
-            node.local_transform = qhenki::Transform(qhenki::Basis(matrix3x3), trans);
+            node.local_transform = qhenki::math::Transform(qhenki::math::Basis(matrix3x3), trans);
         }
         model->nodes.push_back(node);
     }
