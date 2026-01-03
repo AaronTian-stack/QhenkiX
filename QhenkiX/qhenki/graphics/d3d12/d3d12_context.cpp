@@ -750,7 +750,9 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         for (const auto& space : spaces)
         {
             if (!space.empty())
+            {
                 count++;
+            }
         }
         return count;
     };
@@ -784,7 +786,9 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     {
         auto& space = desc->spaces[i];
         if (space.empty())
+        {
             continue;
+        }
         // Sort vector of LayoutBindings by binding register
         std::ranges::sort(space,
                           [](const LayoutBinding& a, const LayoutBinding& b)
@@ -956,9 +960,13 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     heap_desc.NumDescriptors = desc.descriptor_count;
 
     if (desc.visibility == DescriptorHeapDesc::Visibility::CPU)
+    {
         heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    }
     else if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
+    {
         heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    }
 
     const bool result = d3d12_heap->create(m_device.Get(), heap_desc);
 

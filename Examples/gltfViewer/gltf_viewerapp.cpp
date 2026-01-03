@@ -323,7 +323,9 @@ void gltfViewerApp::render()
             frame_times[frame_index] = ImGui::GetIO().DeltaTime;
             frame_index = (frame_index + 1) % max_frames;
             if (frame_index == 0)
+            {
                 buffer_filled = true;
+            }
 
             static float ordered_times[max_frames];
             size_t count = buffer_filled ? max_frames : frame_index;
