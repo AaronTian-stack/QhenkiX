@@ -21,7 +21,7 @@ bool D3D12DescriptorHeap::create(ID3D12Device* device, const D3D12_DESCRIPTOR_HE
     return true;
 }
 
-bool D3D12DescriptorHeap::allocate(UINT64* alloc_offset)
+bool D3D12DescriptorHeap::allocate(size_t* alloc_offset)
 {
     std::scoped_lock lock(m_mutex);
     // Check free list
@@ -41,7 +41,7 @@ bool D3D12DescriptorHeap::allocate(UINT64* alloc_offset)
     return true;
 }
 
-void D3D12DescriptorHeap::deallocate(UINT64* alloc_offset)
+void D3D12DescriptorHeap::deallocate(size_t* alloc_offset)
 {
     if (*alloc_offset == CREATE_NEW_DESCRIPTOR)
     {
