@@ -2,9 +2,9 @@
 
 using namespace qhenki::math;
 
-Basis::Basis(const XMFLOAT3& axis, float angle)
+Basis::Basis(const XMFLOAT3& axis, const float angle)
 {
-    XMMATRIX rotation = XMMatrixRotationAxis(XMLoadFloat3(&axis), angle);
+    const XMMATRIX rotation = XMMatrixRotationAxis(XMLoadFloat3(&axis), angle);
     XMStoreFloat3x3(&basis, rotation);
 }
 
@@ -97,7 +97,7 @@ Basis& Basis::operator*=(const Basis& rhs)
 
 XMFLOAT4 Basis::to_rotation_quaternion() const
 {
-    auto m = orthonormalized();
+    const auto m = orthonormalized();
     return m.to_quaternion();
 }
 
