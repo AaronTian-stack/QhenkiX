@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <wrl/client.h>
 #include <mutex>
@@ -45,9 +45,7 @@ public:
     bool get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle,
                             size_t offset_bytes,
                             size_t num_descriptor_offset) const;
-    const ComPtr<ID3D12DescriptorHeap>& Get() const
-    {
-        return m_heap;
-    }
+
+    const ComPtr<ID3D12DescriptorHeap>& get() const;
 };
 } // namespace qhenki::gfx

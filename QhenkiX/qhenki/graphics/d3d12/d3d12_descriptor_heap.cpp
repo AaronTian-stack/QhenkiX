@@ -1,4 +1,4 @@
-﻿#include "d3d12_descriptor_heap.h"
+#include "d3d12_descriptor_heap.h"
 
 #include <cassert>
 
@@ -78,4 +78,9 @@ bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle
     }
     OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU start for non shader visible heap\n");
     return false;
+}
+
+const ComPtr<ID3D12DescriptorHeap>& D3D12DescriptorHeap::get() const
+{
+    return m_heap;
 }
