@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "d3d11_layout_assembler.h"
 
@@ -14,6 +14,6 @@ struct D3D11GraphicsPipeline
     ComPtr<ID3D11BlendState> blend_state = nullptr;
     ComPtr<ID3D11DepthStencilState> depth_stencil_state = nullptr;
     // Binds both vertex pixel shaders and pipeline states. If any state struct is null, the state is not changed.
-    void bind(ID3D11DeviceContext* const context);
+    void bind(ID3D11DeviceContext* context) const;
 };
 } // namespace qhenki::gfx
