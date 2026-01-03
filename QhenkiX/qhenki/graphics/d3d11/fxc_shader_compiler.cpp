@@ -33,7 +33,7 @@ bool FXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
 
 bool FXCShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
 {
-    return FXCShaderCompiler::get_compiler_path(buffer, length);
+    return get_compiler_path(buffer, length);
 }
 
 bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
