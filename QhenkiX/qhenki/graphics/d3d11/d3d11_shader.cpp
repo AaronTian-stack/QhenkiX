@@ -25,7 +25,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* device,
         m_shader = D3D11VertexShader();
         // Needs to keep a copy of the vertex shader for reflection purposes
         ComPtr<ID3DBlob> blob;
-        if ((D3DCreateBlob(size, &blob)))
+        if (D3DCreateBlob(size, &blob))
         {
             *result = false;
             break;
@@ -41,7 +41,7 @@ D3D11Shader::D3D11Shader(ID3D11Device* device,
         else
         {
             device_resource = std::get<D3D11VertexShader>(m_shader).vertex_shader.Get();
-            // the blob needs to be saved
+            // The blob needs to be saved
             auto& tvs = std::get<D3D11VertexShader>(m_shader);
             tvs.vertex_shader_blob = blob;
         }
@@ -71,63 +71,4 @@ D3D11Shader::D3D11Shader(ID3D11Device* device,
     }
 
     *result = true;
-}
-
-D3D11Shader::D3D11Shader(ID3D11Device* const device,
-                         const ShaderType shader_type,
-                         const char* name,
-                         const CompilerOutput& output,
-                         bool* result)
-    : m_type(shader_type)
-{
-    const auto blob = static_cast<ComPtr<ID3DBlob>*>(output.internal_state.get())->Get();
-    assert(blob);
-
-    *result = true;
-    ID3D11DeviceChild* device_resource = nullptr;
-    switch (shader_type)
-    {
-    case VERTEX_SHADER:
-    {
-        m_shader = D3D11VertexShader();
-        if (FAILED(device->CreateVertexShader(blob->GetBufferPointer(),
-                                              blob->GetBufferSize(),
-                                              nullptr,
-                                              &std::get<D3D11VertexShader>(m_shader).vertex_shader)))
-        {
-            *result = false;
-        }
-        else
-        {
-            device_resource = std::get<D3D11VertexShader>(m_shader).vertex_shader.Get();
-            // the blob needs to be saved
-            auto& tvs = std::get<D3D11VertexShader>(m_shader);
-            tvs.vertex_shader_blob = ComPtr<ID3DBlob>(blob);
-        }
-        break;
-    }
-    case PIXEL_SHADER:
-    {
-        m_shader = ComPtr<ID3D11PixelShader>();
-        if (FAILED(device->CreatePixelShader(blob->GetBufferPointer(),
-                                             blob->GetBufferSize(),
-                                             nullptr,
-                                             std::get<ComPtr<ID3D11PixelShader>>(m_shader).ReleaseAndGetAddressOf())))
-        {
-            *result = false;
-        }
-        else
-        {
-            device_resource = std::get<ComPtr<ID3D11PixelShader>>(m_shader).Get();
-        }
-        break;
-    }
-    default:
-        throw std::runtime_error("D3D11: Shader type not implemented");
-    }
-
-    if (device_resource)
-    {
-        set_debug_name(device_resource, name);
-    }
 }

@@ -30,8 +30,6 @@ public:
                 size_t size,
                 const char* dbg_name,
                 bool* result);
-    D3D11Shader(
-        ID3D11Device* device, ShaderType shader_type, const char* name, const CompilerOutput& output, bool* result);
 
     friend class D3D11Context;
     friend struct D3D11GraphicsPipeline;
