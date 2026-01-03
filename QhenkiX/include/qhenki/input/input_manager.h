@@ -6,7 +6,7 @@
 
 using namespace DirectX;
 
-namespace qhenki
+namespace qhenki::input
 {
 class InputManager
 {
@@ -40,4 +40,4 @@ public:
     const XMFLOAT2& get_mouse_delta() const;
     const XMFLOAT2& get_mouse_scroll() const;
 };
-} // namespace qhenki
+} // namespace qhenki::input

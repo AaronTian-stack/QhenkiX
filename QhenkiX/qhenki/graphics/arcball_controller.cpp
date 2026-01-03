@@ -7,6 +7,7 @@
 
 using namespace DirectX;
 using namespace qhenki;
+using namespace qhenki::math;
 
 void ArcBallController::set_camera(Transform* transform)
 {

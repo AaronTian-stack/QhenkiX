@@ -2,7 +2,7 @@
 
 #include "basis.h"
 
-namespace qhenki
+namespace qhenki::math
 {
 struct TransformSIMD
 {
@@ -79,4 +79,4 @@ public:
     {
     }
 };
-} // namespace qhenki
+} // namespace qhenki::math

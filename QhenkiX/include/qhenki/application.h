@@ -36,7 +36,7 @@ private:
 
 protected:
     // Audio
-    InputManager m_input_manager{}; // Input
+    input::InputManager m_input_manager{}; // Input
     // Files
     // Preferences
 

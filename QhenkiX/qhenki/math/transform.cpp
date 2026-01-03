@@ -1,6 +1,6 @@
 ﻿#include "qhenki/math/transform.h"
 
-using namespace qhenki;
+using namespace qhenki::math;
 
 void Transform::invert()
 {

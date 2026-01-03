@@ -20,7 +20,7 @@ protected:
     CameraMatrices m_matrices{};
 
 public:
-    Transform transform{};
+    math::Transform transform{};
 
     Camera()
     {
