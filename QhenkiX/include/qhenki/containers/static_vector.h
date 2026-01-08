@@ -65,6 +65,7 @@ public:
                 new (&m_storage[i]) T(std::move(*reinterpret_cast<T*>(&vector.m_storage[i])));
             }
         }
+        vector.m_size = 0;
         return *this;
     }
 
