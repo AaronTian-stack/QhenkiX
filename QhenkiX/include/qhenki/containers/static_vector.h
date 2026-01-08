@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
@@ -13,11 +14,40 @@ namespace qhenki::containers
  */
 template<typename T, size_t MaxSize> class StaticVector
 {
-    std::aligned_storage_t<sizeof(T), alignof(T)> m_storage[MaxSize];
+    alignas(T) std::array<uint8_t, sizeof(T) * MaxSize> m_storage;
     size_t m_size = 0;
 
 public:
     StaticVector() = default;
+
+    StaticVector(const StaticVector& vector)
+    {
+        for (size_t i = 0; i < m_size; i++)
+        {
+            new (&m_storage[i]) T(*reinterpret_cast<const T*>(&vector.m_storage[i]));
+        }
+    }
+
+    StaticVector& operator=(const StaticVector& vector)
+    {
+        if (this != &vector)
+        {
+            for (size_t i = 0; i < m_size; i++)
+            {
+                new (&m_storage[i]) T(*reinterpret_cast<const T*>(&vector.m_storage[i]));
+            }
+        }
+        return *this;
+    }
+
+    StaticVector(StaticVector&& vector) noexcept
+    {
+        for (size_t i = 0; i < m_size; i++)
+        {
+            new (&m_storage[i]) T(std::move(*reinterpret_cast<T*>(&vector.m_storage[i])));
+        }
+    }
+
     ~StaticVector()
     {
         for (size_t i = 0; i < m_size; i++)
@@ -26,10 +56,17 @@ public:
         }
     }
 
-    StaticVector(const StaticVector&) = delete;
-    StaticVector& operator=(const StaticVector&) = delete;
-    StaticVector(StaticVector&&) = delete;
-    StaticVector& operator=(StaticVector&&) = delete;
+    StaticVector& operator=(StaticVector&& vector) noexcept
+    {
+        if (this != &vector)
+        {
+            for (size_t i = 0; i < m_size; i++)
+            {
+                new (&m_storage[i]) T(std::move(*reinterpret_cast<T*>(&vector.m_storage[i])));
+            }
+        }
+        return *this;
+    }
 
     /**
      * Constructs an element in-place at the end of the vector.
@@ -61,15 +98,15 @@ public:
 
     T* begin()
     {
-        return reinterpret_cast<T*>(m_storage);
+        return reinterpret_cast<T*>(m_storage.data());
     }
     T* end()
     {
-        return reinterpret_cast<T*>(m_storage) + m_size;
+        return reinterpret_cast<T*>(m_storage.data()) + m_size;
     }
     const T* begin() const
     {
-        return reinterpret_cast<const T*>(m_storage);
+        return reinterpret_cast<const T*>(m_storage.data());
     }
     const T* end() const
     {
