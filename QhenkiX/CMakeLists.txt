@@ -124,6 +124,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${QHENKIX_PUBLIC
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("
+    int main() {
+        try { throw 1; } catch (...) { return 0; }
+    }
+" HAS_EXCEPTIONS_ENABLED)
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC HAS_EXCEPTIONS=$<IF:$<BOOL:${HAS_EXCEPTIONS_ENABLED}>,1,0>)
+
 target_include_directories(${PROJECT_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${IMGUI_DIR}"
