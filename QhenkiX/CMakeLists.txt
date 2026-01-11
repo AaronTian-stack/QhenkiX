@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.18)
 project(QhenkiX LANGUAGES CXX)
 
+# Disable exceptions for QhenkiX library only
+if(MSVC)
+    add_compile_options(/EHs-)
+else()
+    add_compile_options(-fno-exceptions)
+endif()
+
 if(NOT SDL3_VERSION)
     set(SDL3_VERSION "3.2.28")
 endif()
@@ -122,15 +129,6 @@ source_group("external/ImGui" FILES ${IMGUI_SOURCES})
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${QHENKIX_PUBLIC_HEADERS}")
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
-
-include(CheckCXXSourceCompiles)
-check_cxx_source_compiles("
-    int main() {
-        try { throw 1; } catch (...) { return 0; }
-    }
-" HAS_EXCEPTIONS_ENABLED)
-
-target_compile_definitions(${PROJECT_NAME} PUBLIC HAS_EXCEPTIONS=$<IF:$<BOOL:${HAS_EXCEPTIONS_ENABLED}>,1,0>)
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
