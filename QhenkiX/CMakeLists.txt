@@ -87,7 +87,6 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/memory/arena.h"
 
     "${QHENKIX_PUBLIC_DIR}/containers/atomic_stack.h"
-    "${QHENKIX_PUBLIC_DIR}/containers/static_vector.h"
 
     "${QHENKIX_PUBLIC_DIR}/RHI/barrier.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/buffer.h"
@@ -123,6 +122,16 @@ source_group("external/ImGui" FILES ${IMGUI_SOURCES})
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${QHENKIX_PUBLIC_HEADERS}")
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+
+# Disable synchronous exceptions
+if(MSVC)
+    foreach(var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+        string(REPLACE "/EHsc" "" ${var} "${${var}}")
+    endforeach()
+    target_compile_options(${PROJECT_NAME} BEFORE PRIVATE /EHs)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -fno-exceptions)
+endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
