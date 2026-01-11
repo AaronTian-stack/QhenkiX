@@ -5,8 +5,6 @@
 #include <functional>
 #include <memory>
 
-#include "static_vector.h"
-
 namespace qhenki::containers
 {
 /**
