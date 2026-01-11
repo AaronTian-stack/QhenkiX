@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <memory>
 
@@ -11,21 +12,24 @@ namespace qhenki::containers
  * Lock free stack implemented with linked lists and atomics.
  * @tparam T Type of object stored in the stack.
  * @tparam Capacity Maximum number of objects that can be stored in the stack.
+ * @tparam Factory Callable type that returns T when invoked with no arguments.
  */
-template<typename T, size_t Capacity> class AtomicStack
+template<typename T, uint32_t Capacity, typename Factory = std::function<T()>> class AtomicStack
 {
+    static constexpr uint32_t NULL_INDEX = std::numeric_limits<uint32_t>::max();
+    static_assert(Capacity > 0 && Capacity < NULL_INDEX);
+
     struct Node
     {
         T* data;
-        Node* next;
+        uint32_t next;
     };
 
-    struct TaggedPtr
+    struct TaggedIndex
     {
-        Node* ptr;
-        // In case the same node gets returned but now with a different next node. Incremented when pushing.
-        uintptr_t tag;
-        // Example
+        // 32 bit index + 32 bit tag. Packing is to support atomics.
+        uint64_t packed;
+        // Tag prevents ABA problem (example):
         // Current state of m_head: A -> B -> C
         // Thread 1 is about to pop A (next B)
         // Thread 2 does pop() pop() and returns A
@@ -33,8 +37,33 @@ template<typename T, size_t Capacity> class AtomicStack
         // Thread 1 A.next (next of head node) is outdated and would set head to B (resulting in B -> C)
         // But tags don't match (Thread 2 returned A with incremented tag) and this is prevented
         // Thread 1 can properly update it's local head node with CAS
-        bool operator==(const TaggedPtr&) const = default;
+
+        constexpr TaggedIndex()
+            : packed{static_cast<uint64_t>(NULL_INDEX)}
+        {
+        }
+        constexpr TaggedIndex(const uint32_t idx, const uint32_t t)
+            : packed{static_cast<uint64_t>(idx) | (static_cast<uint64_t>(t) << 32)}
+        {
+        }
+
+        uint32_t index() const
+        {
+            return static_cast<uint32_t>(packed);
+        }
+        uint32_t tag() const
+        {
+            return static_cast<uint32_t>(packed >> 32);
+        }
+        bool is_null() const
+        {
+            return index() == NULL_INDEX;
+        }
+
+        bool operator==(const TaggedIndex&) const = default;
     };
+    static_assert(sizeof(TaggedIndex) == 8);
+    static_assert(std::atomic<TaggedIndex>::is_always_lock_free);
 
     alignas(T) std::array<std::byte, sizeof(T) * Capacity> m_storage;
     std::atomic<size_t> m_size{0};
@@ -42,29 +71,29 @@ template<typename T, size_t Capacity> class AtomicStack
     std::array<Node, Capacity> m_nodes{};
 
     // Available Node structs that can be associated with some T* to avoid heap allocating Nodes
-    std::atomic<TaggedPtr> m_free_nodes{};
+    std::atomic<TaggedIndex> m_free_nodes{};
     // Nodes that can be popped
-    std::atomic<TaggedPtr> m_head{};
+    std::atomic<TaggedIndex> m_head{};
 
     // Function to create new objects when stack is empty
-    std::function<T()> m_factory;
+    Factory m_factory;
 
 public:
-    explicit AtomicStack(std::function<T()> factory)
+    explicit AtomicStack(Factory factory)
         : m_factory{std::move(factory)}
     {
-        for (size_t i = 0; i < Capacity; i++)
+        for (uint32_t i = 0; i < Capacity; i++)
         {
-            m_nodes[i].next = i + 1 < Capacity ? &m_nodes[i + 1] : nullptr;
+            m_nodes[i].next = i + 1 < Capacity ? i + 1 : NULL_INDEX;
         }
-        m_free_nodes.store(TaggedPtr{&m_nodes[0], 0}, std::memory_order_release);
+        m_free_nodes.store(TaggedIndex{0, 0}, std::memory_order_release);
     }
 
     ~AtomicStack()
     {
-        T* objects = reinterpret_cast<T*>(m_storage.data());
+        auto objects = reinterpret_cast<T*>(m_storage.data());
         const auto count = m_size.load(std::memory_order_acquire);
-        for (size_t i = 0; i < count; i++)
+        for (uint32_t i = 0; i < count; i++)
         {
             std::destroy_at(&objects[i]);
         }
@@ -85,21 +114,21 @@ public:
         // pointer to newly constructed T stored in m_storage. If it is from m_head, the node is then moved into
         // m_free_nodes so that it can be associated with a new T*.
 
-        TaggedPtr head = m_head.load(std::memory_order_acquire);
+        auto head = m_head.load(std::memory_order_acquire);
 
         // Reuse T from head case
-        while (head.ptr != nullptr)
+        while (!head.is_null())
         {
-            auto head_node = head.ptr;
-            TaggedPtr new_head{head_node->next, head.tag + 1};
+            auto head_idx = head.index();
+            auto head_node = node_at(head_idx);
+            const TaggedIndex new_head{head_node->next, head.tag() + 1};
 
             if (m_head.compare_exchange_weak(head, new_head, std::memory_order_release, std::memory_order_acquire))
             {
                 T* data = head_node->data;
-                return_node_to_free_list(head_node);
+                return_node_to_free_list(head_idx);
                 return data;
             }
-            // head is updated by compare_exchange_weak on failure
         }
 
         // Stack is empty, create a new object
@@ -128,25 +157,22 @@ public:
             return false;
         }
 
-        auto new_node = acquire_node_from_free_list();
-        if (new_node == nullptr)
+        auto new_node_idx = acquire_node_from_free_list();
+        if (new_node_idx == NULL_INDEX)
         {
             // No free nodes available, cannot push
             // This should never happen assuming the user only pushes objects previously popped from this stack
-#if HAS_EXCEPTIONS
-            throw std::runtime_error("No free nodes available");
-#else
             return false;
-#endif
         }
 
+        auto new_node = node_at(new_node_idx);
         new_node->data = data;
 
         auto head = m_head.load(std::memory_order_acquire);
         while (true)
         {
-            new_node->next = head.ptr;
-            const TaggedPtr new_head{new_node, head.tag + 1};
+            new_node->next = head.index();
+            const TaggedIndex new_head{new_node_idx, head.tag() + 1};
 
             if (m_head.compare_exchange_weak(head, new_head, std::memory_order_release, std::memory_order_acquire))
             {
@@ -167,33 +193,40 @@ public:
     }
 
 private:
-    Node* acquire_node_from_free_list()
+    Node* node_at(uint32_t idx)
     {
-        TaggedPtr head = m_free_nodes.load(std::memory_order_acquire);
+        return idx == NULL_INDEX ? nullptr : &m_nodes[idx];
+    }
 
-        while (head.ptr != nullptr)
+    uint32_t acquire_node_from_free_list()
+    {
+        auto head = m_free_nodes.load(std::memory_order_acquire);
+
+        while (!head.is_null())
         {
-            auto head_node = head.ptr;
-            const TaggedPtr new_head{head_node->next, head.tag + 1};
+            auto head_idx = head.index();
+            auto head_node = node_at(head_idx);
+            const TaggedIndex new_head{head_node->next, head.tag() + 1};
 
             if (m_free_nodes.compare_exchange_weak(
                     head, new_head, std::memory_order_release, std::memory_order_acquire))
             {
-                return head_node;
+                return head_idx;
             }
         }
-        return nullptr;
+        return NULL_INDEX;
     }
 
-    void return_node_to_free_list(Node* node)
+    void return_node_to_free_list(uint32_t node_idx)
     {
+        auto node = node_at(node_idx);
         node->data = nullptr;
 
         auto head = m_free_nodes.load(std::memory_order_acquire);
         while (true)
         {
-            node->next = head.ptr;
-            const TaggedPtr new_head{node, head.tag + 1};
+            node->next = head.index();
+            const TaggedIndex new_head{node_idx, head.tag() + 1};
 
             if (m_free_nodes.compare_exchange_weak(
                     head, new_head, std::memory_order_release, std::memory_order_acquire))
