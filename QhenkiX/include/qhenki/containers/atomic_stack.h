@@ -62,7 +62,6 @@ template<typename T, uint32_t Capacity, typename Factory = std::function<T()>> c
 
         bool operator==(const TaggedIndex&) const = default;
     };
-    static_assert(sizeof(TaggedIndex) == 8);
     static_assert(std::atomic<TaggedIndex>::is_always_lock_free);
 
     alignas(T) std::array<std::byte, sizeof(T) * Capacity> m_storage;
@@ -72,6 +71,7 @@ template<typename T, uint32_t Capacity, typename Factory = std::function<T()>> c
 
     // Available Node structs that can be associated with some T* to avoid heap allocating Nodes
     std::atomic<TaggedIndex> m_free_nodes{};
+
     // Nodes that can be popped
     std::atomic<TaggedIndex> m_head{};
 
