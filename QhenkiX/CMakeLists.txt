@@ -1,13 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(QhenkiX LANGUAGES CXX)
 
-# Disable exceptions for QhenkiX library only
-if(MSVC)
-    add_compile_options(/EHs-)
-else()
-    add_compile_options(-fno-exceptions)
-endif()
-
 if(NOT SDL3_VERSION)
     set(SDL3_VERSION "3.2.28")
 endif()
@@ -129,6 +122,16 @@ source_group("external/ImGui" FILES ${IMGUI_SOURCES})
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${QHENKIX_PUBLIC_HEADERS}")
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+
+# Disable synchronous exceptions
+if(MSVC)
+    foreach(var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+        string(REPLACE "/EHsc" "" ${var} "${${var}}")
+    endforeach()
+    target_compile_options(${PROJECT_NAME} BEFORE PRIVATE /EHs)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -fno-exceptions)
+endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
