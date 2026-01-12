@@ -74,7 +74,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     const auto macros = arena.alloc_array<D3D_SHADER_MACRO>(input.get_defines().size() + 1);
     size_t macros_idx = 0;
 
-    const auto defines = arena.alloc_array<std::string>(input.get_defines().size() * 2);
+    const auto defines = arena.alloc_array_managed<std::string>(input.get_defines().size() * 2);
     size_t defines_idx = 0;
 
     if (!macros || !defines)
