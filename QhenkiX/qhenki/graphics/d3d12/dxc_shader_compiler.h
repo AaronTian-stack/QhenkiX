@@ -21,8 +21,6 @@ class DXCShaderCompiler : public ShaderCompiler
     ComPtr<IDxcUtils> m_library;
     ComPtr<IDxcCompiler3> m_compiler; // Not thread safe
 
-    static DXGI_FORMAT mask_to_format(uint32_t mask, D3D_REGISTER_COMPONENT_TYPE type);
-
 public:
     DXCShaderCompiler();
 
@@ -33,5 +31,8 @@ public:
     ~DXCShaderCompiler() override = default;
 
     friend class D3D12Context;
+
+private:
+    static DXGI_FORMAT mask_to_format(uint32_t mask, D3D_REGISTER_COMPONENT_TYPE type);
 };
 } // namespace qhenki::gfx

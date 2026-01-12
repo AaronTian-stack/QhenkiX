@@ -59,10 +59,6 @@ class D3D12Context : public Context
                                                             return memory::Arena(4 * util::MEGABYTE);
                                                         }};
 
-    D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
-                                                const D3D12_SHADER_DESC& shader_desc,
-                                                bool increment_slot);
-
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
@@ -214,5 +210,10 @@ public:
     D3D12Context& operator=(const D3D12Context&) = delete;
     D3D12Context(D3D12Context&&) = delete;
     D3D12Context& operator=(D3D12Context&&) = delete;
+
+private:
+    D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
+                                                const D3D12_SHADER_DESC& shader_desc,
+                                                bool increment_slot);
 };
 } // namespace qhenki::gfx

@@ -28,27 +28,6 @@ class D3D11Context : public Context
 
     UINT m_frame_index = 0;
 
-    D3D11MultithreadLock acquire_lock() const
-    {
-        return D3D11MultithreadLock(m_multithread.Get());
-    }
-
-    void enter_recording() const
-    {
-        if (m_multithread)
-        {
-            m_multithread->Enter();
-        }
-    }
-
-    void leave_recording() const
-    {
-        if (m_multithread)
-        {
-            m_multithread->Leave();
-        }
-    }
-
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
@@ -200,6 +179,28 @@ public:
     D3D11Context& operator=(D3D11Context&&) = delete;
 
     friend struct D3D11GraphicsPipeline;
+
+private:
+    D3D11MultithreadLock acquire_lock() const
+    {
+        return D3D11MultithreadLock(m_multithread.Get());
+    }
+
+    void enter_recording() const
+    {
+        if (m_multithread)
+        {
+            m_multithread->Enter();
+        }
+    }
+
+    void leave_recording() const
+    {
+        if (m_multithread)
+        {
+            m_multithread->Leave();
+        }
+    }
 };
 
 // Will not work with things that do not derive from ID3D11DeviceChild
