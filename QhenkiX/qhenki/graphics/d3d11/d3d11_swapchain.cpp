@@ -76,9 +76,3 @@ bool D3D11Swapchain::resize(ID3D11Device* const device,
 
     return create_swapchain_resources(device);
 }
-
-D3D11Swapchain::~D3D11Swapchain()
-{
-    swapchain.Reset();
-    sc_render_target.Reset();
-}

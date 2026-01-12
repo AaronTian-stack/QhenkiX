@@ -22,6 +22,5 @@ struct D3D11Swapchain
                 unsigned& frame_index);
     bool create_swapchain_resources(ID3D11Device* device);
     bool resize(ID3D11Device* device, ID3D11DeviceContext* device_context, int width, int height);
-    ~D3D11Swapchain();
 };
 } // namespace qhenki::gfx

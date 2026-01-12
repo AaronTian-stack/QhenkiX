@@ -2,7 +2,6 @@
 
 #include <d3dcompiler.h>
 #include <cassert>
-#include <cstring>
 #include <filesystem>
 #include <stdexcept>
 
