@@ -31,7 +31,6 @@ public:
     static constexpr unsigned m_frames_in_flight = 2;
 
 private:
-    std::thread::id m_main_thread_id{};
     gfx::API m_graphics_api = gfx::API::D3D11;
 
 protected:
@@ -43,7 +42,7 @@ protected:
     bool m_QUIT = false; // Set to true when the application should quit
     unsigned m_frame_index = 0;
     DisplayWindow m_window_;
-    uPtr<gfx::Context> m_context = nullptr;
+    uPtr<gfx::Context> m_context;
     gfx::Swapchain m_swapchain{};
     gfx::Queue m_graphics_queue{};    // A graphics queue is given to the application by default
     gfx::DescriptorHeap m_rtv_heap{}; // Default RTV heap that also contains swapchain descriptors
@@ -68,11 +67,6 @@ protected:
     }
 
 public:
-    bool is_main_thread() const
-    {
-        return std::this_thread::get_id() == m_main_thread_id;
-    }
-
     // Call this from the main thread
     void run(gfx::API api, bool enable_debug_layer);
     gfx::API get_graphics_api() const

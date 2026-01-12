@@ -53,7 +53,6 @@ void Application::init_display_window()
 void Application::run(const gfx::API api, const bool enable_debug_layer)
 {
     m_graphics_api = api;
-    m_main_thread_id = std::this_thread::get_id();
     init_display_window();
     switch (api)
     {
