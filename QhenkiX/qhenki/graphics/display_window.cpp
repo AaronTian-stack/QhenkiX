@@ -41,11 +41,6 @@ SDL_Window* DisplayWindow::get_window() const
     return m_window;
 }
 
-HWND DisplayWindow::get_window_handle() const
-{
-    return m_hwnd;
-}
-
 bool DisplayWindow::set_fullscreen(bool fullscreen)
 {
     if (SDL_SetWindowFullscreen(m_window, fullscreen) != 0)
@@ -127,16 +122,6 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 
     const SDL_DisplayID id = SDL_GetDisplayForWindow(m_window);
     m_current_monitor = *SDL_GetCurrentDisplayMode(id);
-
-    const auto window_properties = SDL_GetWindowProperties(m_window);
-
-    m_hwnd = static_cast<HWND>(SDL_GetPointerProperty(window_properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
-    if (m_hwnd == nullptr)
-    {
-        SDL_Log("Unable to get window handle: %s", SDL_GetError());
-        SDL_Quit();
-        throw std::runtime_error("Unable to get window handle");
-    }
 
     SDL_DestroyProperties(properties_id);
 }

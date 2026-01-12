@@ -3,7 +3,9 @@
 #define SDL_MAIN_HANDLED
 #include <DirectXMath.h>
 #include <SDL3/SDL.h>
+#if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
+#endif
 #include <vector>
 
 using namespace DirectX;
@@ -30,8 +32,6 @@ class DisplayWindow
     SDL_DisplayMode m_current_monitor = {};
     DisplayInfo m_display_info = {};
 
-    HWND m_hwnd = nullptr; // TODO: support other platforms besides windows
-
     void create_window_internal(const DisplayInfo& info, int monitor_index);
 
 public:
@@ -46,8 +46,6 @@ public:
 
     SDL_Window* get_window() const;
 
-    HWND get_window_handle() const;
-
     bool set_fullscreen(bool fullscreen);
     bool set_resolution(int width, int height);
 
@@ -58,6 +56,16 @@ public:
     void set_resizable(bool resizable);
 
     ~DisplayWindow();
+
+#if defined(_WIN32) || defined(_WIN64)
+    HWND get_hwnd() const
+    {
+        const auto window_properties = SDL_GetWindowProperties(m_window);
+        const auto hwnd = static_cast<HWND>(
+            SDL_GetPointerProperty(window_properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+        return hwnd;
+    }
+#endif
 
     friend class Application;
 };
