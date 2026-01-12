@@ -41,7 +41,7 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
 
 bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
 {
-    ComPtr<ID3D11Texture2D> back_buffer = nullptr;
+    ComPtr<ID3D11Texture2D> back_buffer;
     if (FAILED(swapchain->GetBuffer(0, IID_PPV_ARGS(&back_buffer))))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get Back Buffer from Swapchain\n");

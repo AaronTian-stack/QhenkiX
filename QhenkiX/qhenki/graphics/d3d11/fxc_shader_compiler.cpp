@@ -87,7 +87,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     {
         // Convert the defines into D3D_SHADER_MACRO
         // Split the string at the first '='
-        size_t pos = define.find('=');
+        const auto pos = define.find('=');
         if (pos != std::string::npos)
         {
             defines[defines_idx++] = define.substr(0, pos);
@@ -108,7 +108,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     MultiIncludeHandler handler(input.includes);
 
-    ComPtr<ID3DBlob> shader_blob = nullptr;
+    ComPtr<ID3DBlob> shader_blob;
     // TODO: d3dcompiler_47.dll should be linked with the application
     // TODO: custom include handler
 

@@ -308,7 +308,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     auto output_error = [&result, &output]
     {
         // Get any errors
-        ComPtr<IDxcBlobUtf8> errors = nullptr;
+        ComPtr<IDxcBlobUtf8> errors;
         if (const auto o_r = result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.ReleaseAndGetAddressOf()), nullptr);
             SUCCEEDED(o_r) && errors->GetStringLength())
         {
