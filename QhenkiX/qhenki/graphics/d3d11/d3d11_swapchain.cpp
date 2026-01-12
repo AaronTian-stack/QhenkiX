@@ -26,8 +26,10 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreen_desc = {};
     fullscreen_desc.Windowed = true;
 
-    if (FAILED(dxgi_factory->CreateSwapChainForHwnd(
-            device, window.get_window_handle(), &swapchain_desc, &fullscreen_desc, nullptr, &swapchain)))
+    const auto hwnd = window.get_hwnd();
+    if (!hwnd ||
+        FAILED(
+            dxgi_factory->CreateSwapChainForHwnd(device, hwnd, &swapchain_desc, &fullscreen_desc, nullptr, &swapchain)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Swapchain\n");
         return false;
@@ -73,10 +75,4 @@ bool D3D11Swapchain::resize(ID3D11Device* const device,
     }
 
     return create_swapchain_resources(device);
-}
-
-D3D11Swapchain::~D3D11Swapchain()
-{
-    swapchain.Reset();
-    sc_render_target.Reset();
 }

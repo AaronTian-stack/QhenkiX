@@ -303,15 +303,15 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
 
     m_swapchain_queue = direct_queue; // For resizing
 
+    const auto hwnd = window.get_hwnd();
     ComPtr<IDXGISwapChain1> swapchain1;
-
-    if (FAILED(m_dxgi_factory->CreateSwapChainForHwnd(
-            queue->Get(), // SwapChain needs the queue so that it can force a flush on it.
-            window.get_window_handle(),
-            &swap_chain_descriptor,
-            &swap_chain_fullscreen_descriptor,
-            nullptr,
-            swapchain1.ReleaseAndGetAddressOf())))
+    if (!hwnd || FAILED(m_dxgi_factory->CreateSwapChainForHwnd(
+                     queue->Get(), // SwapChain needs the queue so that it can force a flush on it.
+                     hwnd,
+                     &swap_chain_descriptor,
+                     &swap_chain_fullscreen_descriptor,
+                     nullptr,
+                     swapchain1.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create Swapchain");
         return false;
