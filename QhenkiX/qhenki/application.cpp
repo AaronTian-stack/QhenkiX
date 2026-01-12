@@ -71,7 +71,7 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
     const std::string create_error = m_context->create(enable_debug_layer);
     if (!create_error.empty())
     {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", create_error.c_str(), nullptr);
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", create_error.c_str(), nullptr);
         return;
     }
 

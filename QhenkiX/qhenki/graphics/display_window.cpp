@@ -2,6 +2,8 @@
 
 #include "qhenki/display_window.h"
 
+#include "qhenki/utility/string_util.h"
+
 using namespace qhenki;
 
 void DisplayWindow::create_window(const DisplayInfo& info, int monitor_index)
@@ -88,8 +90,10 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
     {
-        SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
-        throw std::runtime_error("Unable to initialize SDL");
+        const auto str = util::format_string("Unable to initialize SDL: %s", SDL_GetError());
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", str.buffer.data(), nullptr);
+        SDL_Quit();
+        return;
     }
 
     // TODO: depending on backend need SDL_WINDOW_VULKAN, SDL_WINDOW_METAL, etc
@@ -115,9 +119,10 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 
     if (m_window == nullptr)
     {
-        SDL_Log("Unable to create window: %s", SDL_GetError());
+        const auto str = util::format_string("Unable to create window: %s", SDL_GetError());
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", str.buffer.data(), nullptr);
         SDL_Quit();
-        throw std::runtime_error("Unable to create window");
+        return;
     }
 
     const SDL_DisplayID id = SDL_GetDisplayForWindow(m_window);
