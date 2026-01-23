@@ -1726,6 +1726,8 @@ bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& 
 
 bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
 {
+    assert(cmd_list);
+    cmd_list->internal_state = mkU<ComPtr<ID3D12GraphicsCommandList7>>();
     const auto d3d12_cmd_list = to_internal(*cmd_list);
 
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
