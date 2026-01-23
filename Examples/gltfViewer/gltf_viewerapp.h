@@ -19,6 +19,7 @@ class gltfViewerApp : public qhenki::Application
     // Command pools for main thread
     std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools{};
     std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools_thread{};
+    std::array<qhenki::gfx::CommandList, m_frames_in_flight> m_cmd_lists{};
 
     std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
     std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};
