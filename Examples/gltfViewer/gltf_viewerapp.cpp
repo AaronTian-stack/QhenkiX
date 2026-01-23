@@ -451,7 +451,7 @@ void gltfViewerApp::render()
 
     // Create a command list in the open state
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[m_frame_index], "main command list"));
+    THROW_IF_FALSE(m_context->reset_command_list(&cmd_list, m_cmd_pools[m_frame_index]));
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {

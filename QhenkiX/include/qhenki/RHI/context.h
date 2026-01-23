@@ -127,11 +127,11 @@ public:
 
     virtual bool create_queue(QueueType type, Queue* queue) = 0;
     virtual bool create_command_pool(CommandPool* command_pool, const Queue& queue) = 0;
-    // Begins in OPEN state
+
     virtual bool create_command_list(CommandList* cmd_list,
                                      const CommandPool& command_pool,
                                      const char* debug_name = nullptr) = 0;
-
+    virtual bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) = 0;
     virtual bool close_command_list(CommandList* cmd_list) = 0;
 
     virtual bool reset_command_pool(CommandPool* command_pool) = 0;

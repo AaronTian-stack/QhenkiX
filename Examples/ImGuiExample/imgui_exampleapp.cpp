@@ -98,7 +98,7 @@ void ImGUIExampleApp::create()
     // Schedule copies to GPU buffers / texture
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[m_frame_index]));
+    THROW_IF_FALSE(m_context->reset_command_list(&cmd_list, m_cmd_pools[m_frame_index]));
     m_context->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer, 0, desc.size);
     m_context->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer, 0, index_desc.size);
 
@@ -140,7 +140,7 @@ void ImGUIExampleApp::render()
 
     // Create a command list in the open state
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(m_context->create_command_list(&cmd_list, m_cmd_pools[m_frame_index]));
+    THROW_IF_FALSE(m_context->reset_command_list(&cmd_list, m_cmd_pools[m_frame_index]));
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {

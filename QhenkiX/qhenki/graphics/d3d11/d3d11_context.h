@@ -107,10 +107,11 @@ public:
 
     bool create_queue(QueueType type, Queue* queue) override;
     bool create_command_pool(CommandPool* command_pool, const Queue& queue) override;
+
     bool create_command_list(CommandList* cmd_list,
                              const CommandPool& command_pool,
                              const char* debug_name = nullptr) override;
-
+    bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool close_command_list(CommandList* cmd_list) override;
 
     bool reset_command_pool(CommandPool* command_pool) override;
