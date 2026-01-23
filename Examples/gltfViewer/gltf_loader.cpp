@@ -432,7 +432,8 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
     std::scoped_lock lock(loading);
 
     qhenki::gfx::CommandList cmd_list;
-    THROW_IF_FALSE(data.context->create_command_list(&cmd_list, *data.pool, "copy buffers and transition images"));
+    THROW_IF_FALSE(data.context->create_command_list(&cmd_list, *data.pool));
+    THROW_IF_FALSE(data.context->reset_command_list(&cmd_list, *data.pool));
 
     process_nodes(tiny_model, model);
     process_accessor_views(tiny_model, model);

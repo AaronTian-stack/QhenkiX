@@ -17,6 +17,7 @@ class ImGUIExampleApp : public qhenki::Application
     // One Command Pool per frame, per thread. Pool allocates lists
     // Command pools for main thread
     std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools{};
+    std::array<qhenki::gfx::CommandList, m_frames_in_flight> m_cmd_lists{};
 
     qhenki::gfx::Buffer m_vertex_buffer{};
     qhenki::gfx::Buffer m_index_buffer{};

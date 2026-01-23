@@ -838,15 +838,20 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer
 
 bool D3D11Context::create_queue(const QueueType type, Queue* queue)
 {
-    return true; // D3D11 does not have queues
+    return true;
 }
 
 bool D3D11Context::create_command_pool(CommandPool* command_pool, const Queue& queue)
 {
-    return true; // D3D11 does not have queues
+    return true;
 }
 
 bool D3D11Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
+{
+    return true;
+}
+
+bool D3D11Context::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
     enter_recording();
     return true;
@@ -860,7 +865,7 @@ bool D3D11Context::close_command_list(CommandList* cmd_list)
 
 bool D3D11Context::reset_command_pool(CommandPool* command_pool)
 {
-    return true; // D3D11 does not have command pools
+    return true;
 }
 
 ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context,

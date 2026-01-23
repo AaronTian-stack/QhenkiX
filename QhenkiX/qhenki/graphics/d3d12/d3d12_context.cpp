@@ -986,7 +986,6 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
     if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV || heap.desc.type == DescriptorHeapDesc::Type::SAMPLER)
     {
         cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heap_d3d12->get().GetAddressOf());
-        cmd_list->m_current_bound_heaps = {&heap, nullptr};
     }
     else
     {
@@ -1005,7 +1004,6 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list,
     {
         const std::array heaps = {heap_d3d12->get().Get(), sampler_heap_d3d12->get().Get()};
         cmd_list_d3d12->Get()->SetDescriptorHeaps(heaps.size(), heaps.data());
-        cmd_list->m_current_bound_heaps = {&heap, &sampler_heap};
     }
     else
     {
@@ -1017,8 +1015,6 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     assert(gpu_descriptor.heap);
-    assert(gpu_descriptor.heap == cmd_list->m_current_bound_heaps[0] ||
-           gpu_descriptor.heap == cmd_list->m_current_bound_heaps[1]);
 
     const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
@@ -1716,34 +1712,41 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const Queue& q
     return true;
 }
 
-bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
+bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
     const auto command_allocator = to_internal(command_pool);
-    // create the appropriate command list type
+    const auto d3d12_cmd_list = to_internal(*cmd_list);
+    if (FAILED(d3d12_cmd_list->Get()->Reset(command_allocator->Get(), nullptr)))
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reset command list");
+        return false;
+    }
+    return true;
+}
+
+bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
+{
+    assert(cmd_list);
+    cmd_list->internal_state = mkU<ComPtr<ID3D12GraphicsCommandList7>>();
+    const auto d3d12_cmd_list = to_internal(*cmd_list);
+
+    D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     switch (command_pool.queue->type)
     {
     case GRAPHICS:
-        cmd_list->internal_state = mkS<ComPtr<ID3D12GraphicsCommandList7>>();
+        type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         break;
     case COMPUTE:
-        // break;
+        type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
     case COPY:
-        // break;
-    default:
-        throw std::runtime_error("D3D12: Not implemented command list type");
+        type = D3D12_COMMAND_LIST_TYPE_COPY;
     }
-    const auto d3d12_cmd_list = to_internal(*cmd_list);
-    if FAILED (m_device->CreateCommandList(0,
-                                           D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                           command_allocator->Get(),
-                                           nullptr,
-                                           IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf())))
+    if (FAILED(m_device->CreateCommandList1(
+            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf()))))
     {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command list\n");
         return false;
     }
-
-    set_debug_name(d3d12_cmd_list->Get(), debug_name);
-
     return true;
 }
 

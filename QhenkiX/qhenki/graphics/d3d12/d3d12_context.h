@@ -37,7 +37,7 @@ class D3D12Context : public Context
     ComPtr<ID3D12Debug3> m_debug;
     ComPtr<IDXGIDebug1> m_dxgi_debug;
 
-    ComPtr<ID3D12Device> m_device;
+    ComPtr<ID3D12Device4> m_device;
     ComPtr<D3D12MA::Allocator> m_allocator;
 
     ComPtr<IDXGISwapChain3> m_swapchain;
@@ -138,9 +138,8 @@ public:
 
     bool create_queue(QueueType type, Queue* queue) override;
     bool create_command_pool(CommandPool* command_pool, const Queue& queue) override;
-    bool create_command_list(CommandList* cmd_list,
-                             const CommandPool& command_pool,
-                             const char* debug_name = nullptr) override;
+    bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
+    bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
 
     bool close_command_list(CommandList* cmd_list) override;
 
