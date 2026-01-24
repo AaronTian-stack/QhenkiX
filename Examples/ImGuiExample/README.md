@@ -1,13 +1,11 @@
 # ImGuiExample
 
-"HelloTriangle" application (SimpleExample without textures or animation) with ImGui integration. This example demonstrates basic ImGui integration with QhenkiX.
+"Hello Triangle" application (SimpleExample without textures or animation) with ImGui integration. This example demonstrates basic ImGui integration with QhenkiX.
 
 ## Features
 
 - Basic triangle rendering
 - ImGui user interface integration
-
-See ImGui functions in [context.h](https://github.com/AaronTian-stack/QhenkiX/blob/main/QhenkiX/qhenkiX/graphics/qhenki/context.h)
 
 ![imgui example](../../Media/imgui_example.png)
 
