@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include "descriptor_heap.h"
 
 namespace qhenki::gfx
@@ -14,7 +15,7 @@ struct DescriptorTableDesc
 };
 
 // Creates a new descriptor in the heap, otherwise use the already existing offset to recreate the descriptor.
-constexpr size_t CREATE_NEW_DESCRIPTOR = static_cast<size_t>(-1);
+constexpr size_t CREATE_NEW_DESCRIPTOR = std::numeric_limits<size_t>::max();
 
 struct Descriptor
 {
