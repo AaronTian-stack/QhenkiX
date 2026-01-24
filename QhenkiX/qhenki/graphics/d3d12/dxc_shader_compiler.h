@@ -1,8 +1,8 @@
 #pragma once
 
 #include <directx/d3dcommon.h>
-#include <dxcapi.h>
 #include <directx/dxgiformat.h>
+#include <dxcapi.h>
 #include <wrl/client.h>
 
 #include "qhenki/RHI/shader_compiler.h"
