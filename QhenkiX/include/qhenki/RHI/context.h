@@ -141,7 +141,7 @@ public:
                                    const float* clear_color_values,
                                    const RenderTarget* depth_stencil,
                                    unsigned frame_index) = 0;
-    virtual void start_render_pass(CommandList* cmd_list,
+    virtual bool start_render_pass(CommandList* cmd_list,
                                    unsigned int rt_count,
                                    const RenderTarget* const* rts,
                                    const RenderTarget* depth_stencil) = 0;

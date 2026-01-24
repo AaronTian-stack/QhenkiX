@@ -1777,7 +1777,7 @@ void D3D12Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
-                                     unsigned frame_index)
+                                     const unsigned frame_index)
 {
     assert(cmd_list);
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
@@ -1826,12 +1826,13 @@ void D3D12Context::start_render_pass(CommandList* cmd_list,
     }
 }
 
-void D3D12Context::start_render_pass(CommandList* cmd_list,
+bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      unsigned rt_count,
                                      const RenderTarget* const* rts,
                                      const RenderTarget* const depth_stencil)
 {
     assert(false);
+    return true;
 }
 
 void D3D12Context::set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport)

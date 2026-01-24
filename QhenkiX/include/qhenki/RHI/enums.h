@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 
@@ -9,6 +9,7 @@ enum class IndexType : uint8_t
     UINT16,
     UINT32,
 };
+
 enum class PrimitiveTopology : uint8_t
 {
     POINT_LIST,

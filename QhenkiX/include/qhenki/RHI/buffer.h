@@ -10,8 +10,8 @@ enum class BufferUsage : uint8_t
     VERTEX = BIT(0),
     INDEX = BIT(1),
     CONSTANT = BIT(2),
-    SHADER = BIT(3), // UAV or Structured Buffer=
-    UAV = BIT(4),    // UAV or Structured Buffer=
+    SHADER = BIT(3),
+    UAV = BIT(4),
     INDIRECT = BIT(5),
     COPY_SRC = BIT(6),
     COPY_DST = BIT(7),
@@ -31,18 +31,17 @@ constexpr bool operator&(BufferUsage lhs, BufferUsage rhs)
 
 enum BufferVisibility : uint8_t
 {
-    // Device local memory. Can be & with other visibilities to try to get BAR memory
+    // Device local memory. Can be &ed with other visibilities to try to get BAR memory
     GPU = BIT(0),
     // Host Visible: Written to by the CPU preferably sequentially
     CPU_SEQUENTIAL = BIT(1),
 };
 
-// Constant/Uniform buffers must follow D3D11 alignment rules (equivalent to std140 GLSL)
 struct BufferDesc
 {
     uint64_t size = 0;
     uint64_t stride = 0;
-    BufferUsage usage; // Only used in D3D11 / Vulkan
+    BufferUsage usage;
     BufferVisibility visibility = GPU;
 };
 

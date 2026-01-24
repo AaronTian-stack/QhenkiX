@@ -121,7 +121,7 @@ public:
                            const float* clear_color_values,
                            const RenderTarget* depth_stencil,
                            unsigned frame_index) override;
-    void start_render_pass(CommandList* cmd_list,
+    bool start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,
                            const RenderTarget* const* rts,
                            const RenderTarget* depth_stencil) override;
@@ -202,6 +202,8 @@ private:
             m_multithread->Leave();
         }
     }
+
+    ID3D11DepthStencilView* start_dsv(const RenderTarget* depth_stencil) const;
 };
 
 // Will not work with things that do not derive from ID3D11DeviceChild

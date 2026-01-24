@@ -103,6 +103,37 @@ ID3D11Resource* get_texture_resource(const D3D11Texture& tex)
 
 namespace qhenki::gfx
 {
+ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_stencil) const
+{
+    ID3D11DepthStencilView* ds = nullptr;
+    if (depth_stencil)
+    {
+        if (depth_stencil->clear_type != RenderTarget::ClearType::None)
+        {
+            assert(depth_stencil->descriptor.heap);
+            const auto heap = to_internal_dsv(*depth_stencil->descriptor.heap);
+            assert(heap);
+            ds = heap->at(depth_stencil->descriptor.offset).Get();
+            assert(ds);
+
+            D3D11_CLEAR_FLAG clear = static_cast<D3D11_CLEAR_FLAG>(0);
+            if (depth_stencil->clear_type & RenderTarget::ClearType::Depth)
+            {
+                clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_DEPTH));
+            }
+            if (depth_stencil->clear_type & RenderTarget::ClearType::Stencil)
+            {
+                clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_STENCIL));
+            }
+            assert(clear);
+
+            const auto& [clear_depth_value, clear_stencil_value] = depth_stencil->clear_params.dsv_clear_params;
+            m_device_context->ClearDepthStencilView(ds, clear, clear_depth_value, clear_stencil_value);
+        }
+    }
+    return ds;
+}
+
 bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
 {
     if (obj && debug_name)
@@ -868,37 +899,6 @@ bool D3D11Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
-ID3D11DepthStencilView* start_dsv(ComPtr<ID3D11DeviceContext>& m_device_context,
-                                  const RenderTarget* const depth_stencil)
-{
-    ID3D11DepthStencilView* ds = nullptr;
-    if (depth_stencil)
-    {
-        if (depth_stencil->clear_type != RenderTarget::ClearType::None)
-        {
-            assert(depth_stencil->descriptor.heap);
-            const auto heap = to_internal_dsv(*depth_stencil->descriptor.heap);
-            assert(heap);
-            ds = heap->at(depth_stencil->descriptor.offset).Get();
-            assert(ds);
-
-            D3D11_CLEAR_FLAG clear = static_cast<D3D11_CLEAR_FLAG>(0);
-            if (depth_stencil->clear_type & RenderTarget::ClearType::Depth)
-            {
-                clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_DEPTH));
-            }
-            if (depth_stencil->clear_type & RenderTarget::ClearType::Stencil)
-            {
-                clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_STENCIL));
-            }
-            assert(clear);
-
-            const auto& [clear_depth_value, clear_stencil_value] = depth_stencil->clear_params.dsv_clear_params;
-            m_device_context->ClearDepthStencilView(ds, clear, clear_depth_value, clear_stencil_value);
-        }
-    }
-    return ds;
-}
 
 bool D3D11Context::present(Swapchain* const swapchain,
                            unsigned fence_count,
@@ -929,16 +929,21 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
     const auto swap_d3d11 = to_internal(*swapchain);
     const auto rtv = swap_d3d11->sc_render_target.Get();
     m_device_context->ClearRenderTargetView(rtv, clear_color_values);
-    ID3D11DepthStencilView* ds = start_dsv(m_device_context, depth_stencil);
+    ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
     m_device_context->OMSetRenderTargets(1, &rtv, ds);
 }
 
-void D3D11Context::start_render_pass(CommandList* cmd_list,
-                                     unsigned rt_count,
+bool D3D11Context::start_render_pass(CommandList* cmd_list,
+                                     const unsigned rt_count,
                                      const RenderTarget* const* rts,
                                      const RenderTarget* const depth_stencil)
 {
-    std::array<ID3D11RenderTargetView* const*, 8> rtvs{};
+    std::array<ID3D11RenderTargetView* const*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> rtvs{};
+    if (rt_count > rtvs.size())
+    {
+        OutputDebugStringA("Qhenki D3D11 ERROR: Too many render targets");
+        return false;
+    }
     // Clear render target views (if applicable)
     for (unsigned int i = 0; i < rt_count; i++)
     {
@@ -953,9 +958,10 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
         }
         rtvs[i] = rtv.GetAddressOf();
     }
-    ID3D11DepthStencilView* ds = start_dsv(m_device_context, depth_stencil);
+    ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
 
     m_device_context->OMSetRenderTargets(rt_count, rtvs[0], ds);
+    return true;
 }
 
 void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport)

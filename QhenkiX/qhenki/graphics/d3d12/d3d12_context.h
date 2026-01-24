@@ -151,7 +151,7 @@ public:
                            const RenderTarget* depth_stencil,
                            unsigned frame_index) override;
 
-    void start_render_pass(CommandList* cmd_list,
+    bool start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,
                            const RenderTarget* const* rts,
                            const RenderTarget* depth_stencil) override;
