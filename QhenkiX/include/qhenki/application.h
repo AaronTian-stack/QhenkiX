@@ -41,7 +41,7 @@ protected:
 
     bool m_QUIT = false; // Set to true when the application should quit
     unsigned m_frame_index = 0;
-    DisplayWindow m_window_;
+    DisplayWindow m_window;
     uPtr<gfx::Context> m_context;
     gfx::Swapchain m_swapchain{};
     gfx::Queue m_graphics_queue{};    // A graphics queue is given to the application by default
@@ -50,7 +50,7 @@ protected:
     gfx::Fence m_fence_frame_ready{};
     std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val{0, 0};
 
-    virtual void init_display_window();
+    virtual void init_display_window(void* payload);
 
     virtual void create()
     {
@@ -68,7 +68,10 @@ protected:
 
 public:
     // Call this from the main thread
-    void run(gfx::API api, bool enable_debug_layer);
+    void run(gfx::API api,
+             bool enable_debug_layer,
+             void* init_window_payload,
+             std::optional<gfx::SwapchainDesc> initial_swapchain_desc);
     gfx::API get_graphics_api() const
     {
         return m_graphics_api;

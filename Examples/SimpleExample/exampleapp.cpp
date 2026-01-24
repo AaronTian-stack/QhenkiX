@@ -245,7 +245,7 @@ void ExampleApp::render()
     XMVECTOR up = XMVector3Cross(right, forward);
 
     const auto view = XMMatrixLookAtLH(eye, at, up);
-    const auto dim = this->m_window_.get_display_size();
+    const auto dim = this->m_window.get_display_size();
     const auto proj =
         XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(dim.x) / static_cast<float>(dim.y), 0.01f, 100.0f);
     const auto prod = XMMatrixTranspose(XMMatrixMultiply(view, proj));

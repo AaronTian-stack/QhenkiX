@@ -122,7 +122,7 @@ void ImGUIExampleApp::create()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Docking Branch
-    m_context->init_imgui(m_window_, m_swapchain);
+    m_context->init_imgui(m_window, m_swapchain);
 
     qhenki::gfx::WaitInfo wait_info{.count = 1,
                                     .fences = &m_fence_frame_ready,
@@ -135,7 +135,7 @@ void ImGUIExampleApp::render()
     m_context->start_imgui_frame();
     ImGui::ShowDemoWindow();
 
-    const auto dim = this->m_window_.get_display_size();
+    const auto dim = this->m_window.get_display_size();
 
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
 

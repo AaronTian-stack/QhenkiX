@@ -32,6 +32,49 @@ void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& n
     }
 }
 
+void gltfViewerApp::init_display_window(void* payload)
+{
+    qhenki::util::FormatResult<256> result;
+    const char* title = "gltf Viewer";
+    switch (get_graphics_api())
+    {
+    case qhenki::gfx::API::D3D11:
+    {
+        result = qhenki::util::format_string("%s | DX11", title);
+        break;
+    }
+    case qhenki::gfx::API::D3D12:
+    {
+        result = qhenki::util::format_string("%s | DX12", title);
+        break;
+    }
+    default:
+    {
+        result = qhenki::util::format_string("%s | undefined", title);
+        break;
+    }
+    }
+
+    bool fullscreen = false;
+    if (payload)
+    {
+        auto p = static_cast<Payload*>(payload);
+        assert(p);
+        fullscreen = p->fullscreen;
+    }
+
+    const qhenki::DisplayInfo info{
+        .width = 1280,
+        .height = 720,
+        .fullscreen = fullscreen,
+        .undecorated = false,
+        .resizable = true,
+        .title = result.buffer.data(),
+    };
+
+    m_window.create_window(info, 0);
+}
+
 void gltfViewerApp::create()
 {
     const bool use_dx11 = m_context->is_compatibility();
@@ -142,7 +185,7 @@ void gltfViewerApp::create()
     }
 
     // Depth buffer
-    const auto display_size = m_window_.get_display_size();
+    const auto display_size = m_window.get_display_size();
     qhenki::gfx::TextureDesc depth_desc{
         .width = display_size.x,
         .height = display_size.y,
@@ -182,7 +225,7 @@ void gltfViewerApp::create()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Docking Branch
-    m_context->init_imgui(m_window_, m_swapchain);
+    m_context->init_imgui(m_window, m_swapchain);
 
     m_camera_controller.set_camera(&m_camera.transform);
 }
@@ -388,7 +431,7 @@ void gltfViewerApp::render()
                         },
                 };
                 SDL_ShowOpenFileDialog(
-                    callback, &cm, m_window_.get_window(), filters, SDL_arraysize(filters), nullptr, false);
+                    callback, &cm, m_window.get_window(), filters, SDL_arraysize(filters), nullptr, false);
             }
             ImGui::EndMainMenuBar();
         }
@@ -396,7 +439,7 @@ void gltfViewerApp::render()
         ImGui::End();
     }
 
-    const auto dim = this->m_window_.get_display_size();
+    const auto dim = this->m_window.get_display_size();
     m_camera.viewport_width = static_cast<float>(dim.x);
     m_camera.viewport_height = static_cast<float>(dim.y);
 
@@ -406,7 +449,7 @@ void gltfViewerApp::render()
         const auto delta = m_input_manager.get_mouse_delta();
         bool left = m_input_manager.is_mouse_button_down(SDL_BUTTON_LEFT);
         bool right = m_input_manager.is_mouse_button_down(SDL_BUTTON_RIGHT);
-        SDL_SetWindowRelativeMouseMode(m_window_.get_window(), left || right);
+        SDL_SetWindowRelativeMouseMode(m_window.get_window(), left || right);
         if (left)
         {
             m_camera_controller.rotate(delta.x * speed, delta.y * speed);
@@ -839,8 +882,4 @@ void gltfViewerApp::resize(int width, int height)
 void gltfViewerApp::destroy()
 {
     m_context->destroy_imgui();
-}
-
-gltfViewerApp::~gltfViewerApp()
-{
 }

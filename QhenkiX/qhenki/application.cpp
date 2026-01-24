@@ -16,24 +16,25 @@ using namespace qhenki;
  * For example opening a settings window first to allow the user to select some settings.
  * Or loading resolution settings from a file.
  */
-void Application::init_display_window()
+void Application::init_display_window(void* payload)
 {
     util::FormatResult<256> result;
+    const char* title = "QhenkiX Application";
     switch (m_graphics_api)
     {
     case gfx::API::D3D11:
     {
-        result = util::format_string("%s | DX11", "QhenkiX Application");
+        result = util::format_string("%s | DX11", title);
         break;
     }
     case gfx::API::D3D12:
     {
-        result = util::format_string("%s | DX12", "QhenkiX Application");
+        result = util::format_string("%s | DX12", title);
         break;
     }
     default:
     {
-        result = util::format_string("%s | undefined", "QhenkiX Application");
+        result = util::format_string("%s | undefined", title);
         break;
     }
     }
@@ -47,13 +48,16 @@ void Application::init_display_window()
         .title = result.buffer.data(),
     };
 
-    m_window_.create_window(info, 0);
+    m_window.create_window(info, 0);
 }
 
-void Application::run(const gfx::API api, const bool enable_debug_layer)
+void Application::run(const gfx::API api,
+                      const bool enable_debug_layer,
+                      void* init_window_payload,
+                      std::optional<gfx::SwapchainDesc> initial_swapchain_desc)
 {
     m_graphics_api = api;
-    init_display_window();
+    init_display_window(init_window_payload);
     switch (api)
     {
     case gfx::API::D3D11:
@@ -76,15 +80,30 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
 
     THROW_IF_FALSE(m_context->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue));
 
-    const gfx::SwapchainDesc swapchain_desc = {
-        .width = m_window_.m_display_info.width,
-        .height = m_window_.m_display_info.height,
-        .format = DXGI_FORMAT_R8G8B8A8_UNORM,
-        .buffer_count = m_frames_in_flight,
-        .tearing = true,
-    };
+    gfx::SwapchainDesc swapchain_desc;
+
+    if (initial_swapchain_desc.has_value())
+    {
+        swapchain_desc = initial_swapchain_desc.value();
+        if (swapchain_desc.width == 0 || swapchain_desc.height == 0)
+        {
+            swapchain_desc.width = m_window.m_display_info.width;
+            swapchain_desc.height = m_window.m_display_info.height;
+        }
+    }
+    else
+    {
+        swapchain_desc = {
+            .width = m_window.m_display_info.width,
+            .height = m_window.m_display_info.height,
+            .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .buffer_count = m_frames_in_flight,
+            .tearing = true,
+        };
+    }
+
     THROW_IF_FALSE(
-        m_context->create_swapchain(m_window_, swapchain_desc, &m_swapchain, &m_graphics_queue, &m_frame_index));
+        m_context->create_swapchain(m_window, swapchain_desc, &m_swapchain, &m_graphics_queue, &m_frame_index));
 
     gfx::DescriptorHeapDesc rtv_heap_desc{
         .type = gfx::DescriptorHeapDesc::Type::RTV,
@@ -113,8 +132,8 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
             }
             if (event.type == SDL_EVENT_WINDOW_RESIZED)
             {
-                m_window_.m_display_info.width = event.window.data1;
-                m_window_.m_display_info.height = event.window.data2;
+                m_window.m_display_info.width = event.window.data1;
+                m_window.m_display_info.height = event.window.data2;
                 m_context->resize_swapchain(
                     &m_swapchain, event.window.data1, event.window.data2, &m_rtv_heap, m_frame_index);
                 resize(event.window.data1, event.window.data2);
@@ -125,7 +144,7 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
                 ImGui_ImplSDL3_ProcessEvent(&event);
             }
         }
-        m_input_manager.update(m_window_.get_window()); // After all SDL events
+        m_input_manager.update(m_window.get_window()); // After all SDL events
         render();
     }
     m_context->wait_idle(&m_graphics_queue);
