@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dxgiformat.h>
+#include <directx/dxgiformat.h>
 #include <wrl/client.h>
 #include <string>
 

@@ -42,6 +42,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/utility/include_handlers.cpp"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectX-Headers-1.618.2/src/dxguids.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
@@ -140,6 +141,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/utf8"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectX-Headers-1.618.2/include"
     PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
@@ -169,7 +171,6 @@ if(WIN32)
         d3dcompiler
         dxcompiler
         winmm
-        dxguid
     )
     target_link_libraries(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3-${SDL3_VERSION}/lib/x64/SDL3.lib")
 endif()

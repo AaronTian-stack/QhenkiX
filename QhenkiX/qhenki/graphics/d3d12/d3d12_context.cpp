@@ -6,8 +6,8 @@
 
 #include <DirectXTex.h>
 
-#include <d3d12shader.h>
 #include <d3dcompiler.h>
+#include <directx/d3d12shader.h>
 
 #include <algorithm>
 

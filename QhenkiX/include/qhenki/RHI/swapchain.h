@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <dxgiformat.h>
+#include <directx/dxgiformat.h>
 #include <smartpointer.h>
 
 #include "render_target.h"

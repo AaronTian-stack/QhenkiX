@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include "smartpointer.h"
 
 namespace qhenki::gfx
