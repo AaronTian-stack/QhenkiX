@@ -20,3 +20,5 @@ A more advanced example demonstrating loading and rendering of glTF 3D models.
 - `-api <value>` - Select graphics API:
   - `0` - DirectX 12 (Default)
   - `1` - DirectX 11
+- `-t` `--tearing` - flag to enable tearing
+- `-f` `--fullscreen` - flag to enable fullscreen

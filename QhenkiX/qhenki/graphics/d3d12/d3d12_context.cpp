@@ -132,6 +132,14 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     {
         return "D3D12: Failed to create DXGI factory";
     }
+
+    BOOL allow_tearing = FALSE;
+    if (FAILED(m_dxgi_factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allow_tearing, sizeof(BOOL))))
+    {
+        return "D3D12: Failed to check for allow tearing support";
+    }
+    m_capabilities.allow_tearing = allow_tearing == TRUE;
+
     if (enable_debug_layer)
     {
         m_dxgi_factory->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof("DXGI Factory") - 1, "DXGI Factory");
@@ -280,7 +288,20 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
 {
     assert(swapchain);
     assert(direct_queue);
+
+    if (swapchain_desc.tearing && !m_capabilities.allow_tearing)
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Tearing is not supported on this system\n");
+        return false;
+    }
+
     swapchain->desc = swapchain_desc;
+
+    UINT swap_chain_flags = 0;
+    if (swapchain_desc.tearing && m_capabilities.allow_tearing)
+    {
+        swap_chain_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    }
 
     DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor = {
         .Width = swapchain_desc.width,
@@ -292,7 +313,7 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
         .BufferCount = swapchain_desc.buffer_count,
         .Scaling = DXGI_SCALING_STRETCH,
         .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-        .Flags = {},
+        .Flags = swap_chain_flags,
     };
 
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC swap_chain_fullscreen_descriptor{};
@@ -356,11 +377,13 @@ bool D3D12Context::resize_swapchain(
     }
 
     // Resize buffers
-    if (FAILED(m_swapchain->ResizeBuffers(swapchain->desc.buffer_count,
-                                          width,
-                                          height,
-                                          swapchain->desc.format,
-                                          DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)))
+    UINT resize_flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    if (swapchain->desc.tearing && m_capabilities.allow_tearing)
+    {
+        resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    }
+    if (FAILED(m_swapchain->ResizeBuffers(
+            swapchain->desc.buffer_count, width, height, swapchain->desc.format, resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to resize swap chain buffers\n");
         return false;
@@ -436,17 +459,25 @@ bool D3D12Context::present(Swapchain* const swapchain,
                            unsigned swapchain_index)
 {
     assert(swapchain);
-    // Vulkan version will use the queue swapchain was created with
 
     m_arenas.for_each(
         [](memory::Arena* arena)
         {
             arena->reset();
         });
-
-    // D3D12 does not actually have to wait on anything
-    const auto result = m_swapchain->Present(1, 0);
-    return result == S_OK;
+    UINT sync_interval = 1;
+    UINT flags = 0;
+    if (swapchain->desc.tearing && m_capabilities.allow_tearing)
+    {
+        sync_interval = 0;
+        flags |= DXGI_PRESENT_ALLOW_TEARING;
+    }
+    if (FAILED(m_swapchain->Present(sync_interval, flags)))
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to present");
+        return false;
+    }
+    return true;
 }
 
 unsigned D3D12Context::get_swapchain_frame_index(const Swapchain& swapchain)

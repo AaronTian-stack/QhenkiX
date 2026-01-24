@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 
     // Run simple example application for the QhenkiX Game Framework.
     ExampleApp app;
-    app.run(api, false);
+    app.run(api, false, nullptr, std::nullopt);
 
     return 0;
 }

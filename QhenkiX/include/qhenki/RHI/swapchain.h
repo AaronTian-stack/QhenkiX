@@ -13,6 +13,7 @@ struct SwapchainDesc
     unsigned int height;
     DXGI_FORMAT format;
     unsigned int buffer_count;
+    bool tearing;
 };
 struct Swapchain
 {

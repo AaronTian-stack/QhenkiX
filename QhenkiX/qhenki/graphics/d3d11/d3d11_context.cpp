@@ -151,6 +151,14 @@ std::string D3D11Context::create(const bool enable_debug_layer)
     {
         return "D3D11: Failed to create DXGI Factory";
     }
+
+    BOOL allow_tearing = FALSE;
+    if (FAILED(m_dxgi_factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allow_tearing, sizeof(BOOL))))
+    {
+        return "D3D11: Failed to check for allow tearing support";
+    }
+    m_allow_tearing = allow_tearing == TRUE;
+
     if (enable_debug_layer)
     {
         constexpr char factory_name[] = "DXGI Factory";
@@ -232,10 +240,22 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
                                     unsigned* const frame_index)
 {
     assert(swapchain);
+    if (swapchain_desc.tearing && !m_allow_tearing)
+    {
+        OutputDebugStringA("Qhenki D3D11 ERROR: Tearing is not supported on this system\n");
+        return false;
+    }
     swapchain->desc = swapchain_desc;
     swapchain->internal_state = mkS<D3D11Swapchain>();
     const auto swap_d3d11 = static_cast<D3D11Swapchain*>(swapchain->internal_state.get());
-    return swap_d3d11->create(swapchain_desc, window, m_dxgi_factory.Get(), m_device.Get(), *frame_index);
+
+    UINT swapchain_flags = 0;
+    if (swapchain_desc.tearing && m_allow_tearing)
+    {
+        swapchain_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    }
+    return swap_d3d11->create(
+        swapchain_desc, window, m_dxgi_factory.Get(), m_device.Get(), *frame_index, swapchain_flags);
 }
 
 bool D3D11Context::resize_swapchain(
@@ -243,7 +263,13 @@ bool D3D11Context::resize_swapchain(
 {
     m_device_context->Flush();
     const auto swap_d3d11 = to_internal(*swapchain);
-    return swap_d3d11->resize(m_device.Get(), m_device_context.Get(), width, height);
+
+    UINT resize_flags = 0;
+    if (swapchain->desc.tearing && m_allow_tearing)
+    {
+        resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    }
+    return swap_d3d11->resize(m_device.Get(), m_device_context.Get(), width, height, resize_flags);
 }
 
 bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
@@ -907,7 +933,17 @@ bool D3D11Context::present(Swapchain* const swapchain,
 {
     assert(swapchain);
     const auto swap_d3d11 = to_internal(*swapchain);
-    if (SUCCEEDED(swap_d3d11->swapchain->Present(1, 0)))
+
+    UINT sync_interval = 1;
+    UINT flags = 0;
+
+    if (swapchain->desc.tearing && m_allow_tearing)
+    {
+        sync_interval = 0;
+        flags |= DXGI_PRESENT_ALLOW_TEARING;
+    }
+
+    if (SUCCEEDED(swap_d3d11->swapchain->Present(sync_interval, flags)))
     {
         m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
         return true;

@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 
     // Run ImGUI example application
     ImGUIExampleApp app;
-    app.run(api, false);
+    app.run(api, false, nullptr, std::nullopt);
 
     return 0;
 }
