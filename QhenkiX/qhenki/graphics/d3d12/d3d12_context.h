@@ -1,7 +1,7 @@
 #pragma once
 
 #include <D3D12MemAlloc.h>
-#include <d3d12shader.h>
+#include <directx/d3d12shader.h>
 #include <dxcapi.h>
 #include <dxgi1_6.h>
 #include <dxgidebug.h>

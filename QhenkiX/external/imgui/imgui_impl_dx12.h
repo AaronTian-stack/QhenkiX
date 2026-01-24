@@ -21,8 +21,8 @@
 #pragma once
 #include "imgui.h"      // IMGUI_IMPL_API
 #ifndef IMGUI_DISABLE
-#include <dxgiformat.h> // DXGI_FORMAT
-#include <d3d12.h>      // D3D12_CPU_DESCRIPTOR_HANDLE
+#include <directx/dxgiformat.h> // DXGI_FORMAT
+#include <directx/d3d12.h>      // D3D12_CPU_DESCRIPTOR_HANDLE
 
 // Initialization data, for ImGui_ImplDX12_Init()
 struct ImGui_ImplDX12_InitInfo

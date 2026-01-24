@@ -409,9 +409,6 @@ D3D12_BARRIER_LAYOUT layout(Layout layout)
     case Layout::COMPUTE_QUEUE_COPY_DEST:
         state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST;
         break;
-    case Layout::VIDEO_QUEUE_COMMON:
-        state = D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON;
-        break;
     default:
         throw std::runtime_error("D3DHelper: Invalid layout");
     }
