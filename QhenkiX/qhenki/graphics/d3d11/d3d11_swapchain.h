@@ -19,8 +19,9 @@ struct D3D11Swapchain
                 const DisplayWindow& window,
                 IDXGIFactory2* dxgi_factory,
                 ID3D11Device* device,
-                unsigned& frame_index);
+                unsigned& frame_index,
+                UINT swapchain_flags);
     bool create_swapchain_resources(ID3D11Device* device);
-    bool resize(ID3D11Device* device, ID3D11DeviceContext* device_context, int width, int height);
+    bool resize(ID3D11Device* device, ID3D11DeviceContext* device_context, int width, int height, UINT resize_flags);
 };
 } // namespace qhenki::gfx

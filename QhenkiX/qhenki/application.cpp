@@ -81,6 +81,7 @@ void Application::run(const gfx::API api, const bool enable_debug_layer)
         .height = m_window_.m_display_info.height,
         .format = DXGI_FORMAT_R8G8B8A8_UNORM,
         .buffer_count = m_frames_in_flight,
+        .tearing = true,
     };
     THROW_IF_FALSE(
         m_context->create_swapchain(m_window_, swapchain_desc, &m_swapchain, &m_graphics_queue, &m_frame_index));

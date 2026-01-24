@@ -8,7 +8,6 @@
 #include <wrl/client.h>
 
 #include "d3d12_descriptor_heap.h"
-#include "d3d12_pipeline.h"
 #include "qhenki/containers/atomic_stack.h"
 #include "qhenki/memory/arena.h"
 #include "qhenki/RHI/context.h"
@@ -29,6 +28,7 @@ class D3D12Context : public Context
         D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};   // RaytracingTier
         D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};   // MeshShaderTier
         D3D12_FEATURE_DATA_SHADER_MODEL shader_model = {}; // Shader Model
+        bool allow_tearing;
     } m_capabilities;
 
     ComPtr<IDXGIFactory6> m_dxgi_factory;

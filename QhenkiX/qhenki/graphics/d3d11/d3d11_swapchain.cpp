@@ -7,7 +7,8 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
                             const DisplayWindow& window,
                             IDXGIFactory2* const dxgi_factory,
                             ID3D11Device* const device,
-                            unsigned& frame_index)
+                            unsigned& frame_index,
+                            UINT swapchain_flags)
 {
     frame_index = 0;
     const DXGI_SWAP_CHAIN_DESC1 swapchain_desc = {
@@ -20,7 +21,7 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
         .BufferCount = desc.buffer_count,
         .Scaling = DXGI_SCALING_STRETCH,
         .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-        .Flags = {},
+        .Flags = swapchain_flags,
     };
 
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreen_desc = {};
@@ -62,13 +63,14 @@ bool D3D11Swapchain::create_swapchain_resources(ID3D11Device* const device)
 bool D3D11Swapchain::resize(ID3D11Device* const device,
                             ID3D11DeviceContext* const device_context,
                             const int width,
-                            const int height)
+                            const int height,
+                            UINT resize_flags)
 {
     device_context->Flush();
 
     sc_render_target.Reset();
 
-    if (FAILED(swapchain->ResizeBuffers(0, width, height, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, 0)))
+    if (FAILED(swapchain->ResizeBuffers(0, width, height, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to resize Swapchain buffers\n");
         return false;
