@@ -171,7 +171,7 @@ public:
                                     Sampler* const* samplers,
                                     PipelineStage stage) override;
 
-    void wait_idle(Queue* queue) override;
+    bool wait_idle(Queue* queue) override;
 
     D3D11Context() = default;
     ~D3D11Context() override;

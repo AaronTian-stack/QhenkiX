@@ -41,7 +41,6 @@ D3D11Shader::D3D11Shader(ID3D11Device* device,
         else
         {
             device_resource = std::get<D3D11VertexShader>(m_shader).vertex_shader.Get();
-            // The blob needs to be saved
             auto& tvs = std::get<D3D11VertexShader>(m_shader);
             tvs.vertex_shader_blob = blob;
         }

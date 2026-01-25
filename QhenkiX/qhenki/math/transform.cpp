@@ -1,4 +1,4 @@
-﻿#include "qhenki/math/transform.h"
+#include "qhenki/math/transform.h"
 
 using namespace qhenki::math;
 
@@ -32,19 +32,19 @@ Transform Transform::affine_invert() const
 
 XMMATRIX Transform::to_matrix_simd() const
 {
-    auto eye = XMLoadFloat3(&translation);
-    auto axis_y = basis.axis_y();
-    auto up = XMLoadFloat3(&axis_y);
+    const auto eye = XMLoadFloat3(&translation);
+    const auto axis_y = basis.axis_y();
+    const auto up = XMLoadFloat3(&axis_y);
 
-    auto axis_z = basis.axis_z();
-    auto forward = XMLoadFloat3(&axis_z);
+    const auto axis_z = basis.axis_z();
+    const auto forward = XMLoadFloat3(&axis_z);
 
     return XMMatrixLookToLH(eye, forward, up);
 }
 
 XMFLOAT4X4 Transform::to_matrix() const
 {
-    XMMATRIX m = to_matrix_simd();
+    const XMMATRIX m = to_matrix_simd();
     XMFLOAT4X4 result;
     XMStoreFloat4x4(&result, m);
     return result;
@@ -52,14 +52,14 @@ XMFLOAT4X4 Transform::to_matrix() const
 
 XMVECTOR Transform::inverse_transform_direction(const XMFLOAT3& d) const
 {
-    Basis no_scale = basis.orthonormalized();
-    Transform inv(no_scale, translation);
+    const Basis no_scale = basis.orthonormalized();
+    const Transform inv(no_scale, translation);
     return inv.inverse_transform_vector(d);
 }
 
 XMVECTOR Transform::inverse_transform_point(const XMFLOAT3& p) const
 {
-    auto v = XMLoadFloat3(&p) - XMLoadFloat3(&translation);
+    const auto v = XMLoadFloat3(&p) - XMLoadFloat3(&translation);
     XMFLOAT3 result;
     XMStoreFloat3(&result, v); // TODO: redundant load/store
     return inverse_transform_vector(result);
@@ -67,7 +67,7 @@ XMVECTOR Transform::inverse_transform_point(const XMFLOAT3& p) const
 
 XMVECTOR Transform::inverse_transform_vector(const XMFLOAT3& v) const
 {
-    Transform inv = affine_invert();
+    const Transform inv = affine_invert();
     return inv * v;
 }
 
@@ -81,13 +81,13 @@ Transform& Transform::look_at(const XMFLOAT3& p, const XMFLOAT3& up)
 
 void Transform::rotate_around(const XMFLOAT3& pivot, const XMFLOAT3& global_axis, float angle)
 {
-    XMVECTOR pivot_vec = XMLoadFloat3(&pivot);
-    XMVECTOR axis_vec = XMLoadFloat3(&global_axis);
+    const XMVECTOR pivot_vec = XMLoadFloat3(&pivot);
+    const XMVECTOR axis_vec = XMLoadFloat3(&global_axis);
     XMVECTOR translation_vec = XMLoadFloat3(&translation);
     // Translate to origin
     translation_vec -= pivot_vec;
     // Rotate
-    XMMATRIX rotation = XMMatrixRotationAxis(axis_vec, angle);
+    const XMMATRIX rotation = XMMatrixRotationAxis(axis_vec, angle);
     translation_vec = XMVector3Transform(translation_vec, rotation);
     // Translate back
     translation_vec += pivot_vec;
@@ -97,28 +97,28 @@ void Transform::rotate_around(const XMFLOAT3& pivot, const XMFLOAT3& global_axis
 
 XMVECTOR Transform::transform_direction(const XMFLOAT3& d) const
 {
-    Basis no_scale = basis.orthonormalized();
-    Transform t(no_scale, translation);
+    const Basis no_scale = basis.orthonormalized();
+    const Transform t(no_scale, translation);
     return t.transform_vector(d);
 }
 
 XMVECTOR Transform::transform_point(const XMFLOAT3& p) const
 {
-    XMVECTOR v = XMLoadFloat3(&p) - XMLoadFloat3(&translation);
-    XMMATRIX m = basis.to_matrix();
+    const XMVECTOR v = XMLoadFloat3(&p) - XMLoadFloat3(&translation);
+    const XMMATRIX m = basis.to_matrix();
     return XMVector3Transform(v, m);
 }
 
 XMVECTOR Transform::transform_vector(const XMFLOAT3& v) const
 {
-    XMVECTOR vec = XMLoadFloat3(&v);
-    XMMATRIX m = basis.to_matrix();
+    const XMVECTOR vec = XMLoadFloat3(&v);
+    const XMMATRIX m = basis.to_matrix();
     return XMVector3TransformNormal(vec, m);
 }
 
 void Transform::translate_local(const XMFLOAT3& t)
 {
-    XMVECTOR offset = XMVector3TransformNormal(XMLoadFloat3(&t), XMLoadFloat3x3(&basis.basis));
+    const XMVECTOR offset = XMVector3TransformNormal(XMLoadFloat3(&t), XMLoadFloat3x3(&basis.basis));
     XMStoreFloat3(&translation, offset + XMLoadFloat3(&translation));
 }
 
@@ -142,15 +142,15 @@ Transform Transform::operator*(const Transform& rhs) const
 Transform& Transform::operator*=(const Transform& rhs)
 {
     // d2
-    XMVECTOR d2 = XMLoadFloat3(&rhs.translation);
+    const XMVECTOR d2 = XMLoadFloat3(&rhs.translation);
     // R1
-    XMMATRIX r1 = XMLoadFloat3x3(&basis.basis);
-    // Multiply basis together R1 * R2 = RESULT BASIS
-    XMMATRIX new_basis = XMMatrixMultiply(r1, rhs.basis.to_matrix());
+    const XMMATRIX r1 = XMLoadFloat3x3(&basis.basis);
+    // Multiply basis together R1 * R2 = Result basis
+    const XMMATRIX new_basis = XMMatrixMultiply(r1, rhs.basis.to_matrix());
     // R1 * d2
-    XMVECTOR r1d2 = XMVector3Transform(d2, r1);
-    // R1 * d2 + d1 = RESULT POSITION
-    XMVECTOR r1d2pd1 = r1d2 + XMLoadFloat3(&translation);
+    const XMVECTOR r1d2 = XMVector3Transform(d2, r1);
+    // R1 * d2 + d1 = Result position
+    const XMVECTOR r1d2pd1 = r1d2 + XMLoadFloat3(&translation);
 
     XMStoreFloat3x3(&basis.basis, new_basis);
     XMStoreFloat3(&translation, r1d2pd1);

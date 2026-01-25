@@ -36,7 +36,6 @@ bool D3D11Swapchain::create(const SwapchainDesc& desc,
         return false;
     }
 
-    // create swap chain render target
     return create_swapchain_resources(device);
 }
 

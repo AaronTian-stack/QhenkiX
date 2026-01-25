@@ -12,7 +12,9 @@
 
 #include <tiny_gltf.h>
 
-void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
+namespace
+{
+void process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
 {
     model->root_node = tiny_model.defaultScene >= 0 ? tiny_model.scenes[tiny_model.defaultScene].nodes[0] : -1;
     model->nodes.clear();
@@ -84,15 +86,15 @@ void GLTFLoader::process_nodes(const tinygltf::Model& tiny_model, GLTFModel* con
     }
 }
 
-std::vector<qhenki::gfx::Buffer> GLTFLoader::process_buffers(const tinygltf::Model& tiny_model,
-                                                             GLTFModel* const model,
-                                                             qhenki::gfx::Context& context,
-                                                             qhenki::gfx::CommandList* const cmd_list)
+std::vector<qhenki::gfx::Buffer> process_buffers(const tinygltf::Model& tiny_model,
+                                                 GLTFModel* const model,
+                                                 qhenki::gfx::Context& context,
+                                                 qhenki::gfx::CommandList* const cmd_list)
 {
     model->buffers.clear();
     model->buffers.reserve(tiny_model.buffers.size());
-    // For now just create GPU buffers for everything.
-    // Would want to check if inverse bind matrix, which would be CPU only.
+    // For now just create GPU buffers for everything
+    // Would want to check if inverse bind matrix, which would be CPU only
     std::vector<qhenki::gfx::Buffer> staging_buffers;
     staging_buffers.reserve(tiny_model.buffers.size());
     for (int i = 0; i < tiny_model.buffers.size(); ++i)
@@ -120,7 +122,7 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_buffers(const tinygltf::Mod
     return staging_buffers;
 }
 
-void GLTFLoader::process_accessor_views(const tinygltf::Model& tiny_model, GLTFModel* const model)
+void process_accessor_views(const tinygltf::Model& tiny_model, GLTFModel* const model)
 {
     model->accessors.clear();
     model->accessors.reserve(tiny_model.accessors.size());
@@ -147,7 +149,7 @@ void GLTFLoader::process_accessor_views(const tinygltf::Model& tiny_model, GLTFM
     }
 }
 
-void GLTFLoader::process_meshes(const tinygltf::Model& tiny_model, GLTFModel* const model)
+void process_meshes(const tinygltf::Model& tiny_model, GLTFModel* const model)
 {
     model->meshes.clear();
     model->meshes.reserve(tiny_model.meshes.size());
@@ -172,7 +174,7 @@ void GLTFLoader::process_meshes(const tinygltf::Model& tiny_model, GLTFModel* co
     }
 }
 
-void GLTFLoader::process_materials(const tinygltf::Model& tiny_model, GLTFModel* const model)
+void process_materials(const tinygltf::Model& tiny_model, GLTFModel* const model)
 {
     model->materials.clear();
     model->materials.reserve(tiny_model.materials.size());
@@ -227,9 +229,7 @@ void GLTFLoader::process_materials(const tinygltf::Model& tiny_model, GLTFModel*
     }
 }
 
-qhenki::gfx::Buffer GLTFLoader::copy_materials(GLTFModel* model,
-                                               qhenki::gfx::Context& context,
-                                               qhenki::gfx::CommandList* cmd_list)
+qhenki::gfx::Buffer copy_materials(GLTFModel* model, qhenki::gfx::Context& context, qhenki::gfx::CommandList* cmd_list)
 {
     qhenki::gfx::Buffer staging_buffer;
     qhenki::gfx::BufferDesc desc{.size = sizeof(GLTFModel::Material) * model->materials.size(),
@@ -249,7 +249,7 @@ qhenki::gfx::Buffer GLTFLoader::copy_materials(GLTFModel* model,
     return staging_buffer;
 }
 
-void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* model, qhenki::gfx::Context& context)
+void process_samplers(const tinygltf::Model& tiny_model, GLTFModel* model, qhenki::gfx::Context& context)
 {
     assert(tiny_model.samplers.size() < 16);
     model->samplers.clear();
@@ -311,10 +311,10 @@ void GLTFLoader::process_samplers(const tinygltf::Model& tiny_model, GLTFModel* 
     }
 }
 
-std::vector<qhenki::gfx::Buffer> GLTFLoader::process_textures(const tinygltf::Model& tiny_model,
-                                                              GLTFModel* model,
-                                                              qhenki::gfx::Context& context,
-                                                              qhenki::gfx::CommandList* cmd_list)
+std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_model,
+                                                  GLTFModel* model,
+                                                  qhenki::gfx::Context& context,
+                                                  qhenki::gfx::CommandList* cmd_list)
 {
     std::vector<qhenki::gfx::Buffer> staging_buffers(1 + tiny_model.images.size());
 
@@ -384,6 +384,7 @@ std::vector<qhenki::gfx::Buffer> GLTFLoader::process_textures(const tinygltf::Mo
     context.issue_barrier(cmd_list, barriers.size(), barriers.data());
     return staging_buffers;
 }
+} // namespace
 
 bool GLTFLoader::load(const char* filename, GLTFModel* const model, const ContextData& data)
 {
@@ -393,7 +394,7 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
     tinygltf::Model tiny_model;
     std::string err, warn;
 
-    auto ext = std::string(filename).substr(std::string(filename).find_last_of('.') + 1);
+    const auto ext = std::string(filename).substr(std::string(filename).find_last_of('.') + 1);
     if (ext == "gltf")
     {
         if (!loader.LoadASCIIFromFile(&tiny_model, &err, &warn, filename))
@@ -439,18 +440,21 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
     process_accessor_views(tiny_model, model);
     process_meshes(tiny_model, model);
     process_materials(tiny_model, model);
+
     // Staging buffers need to stay in scope until copying is done
     const auto staging_buffers = process_buffers(tiny_model, model, *data.context, &cmd_list);
     const auto mat_staging_buffers = copy_materials(model, *data.context, &cmd_list);
     process_samplers(tiny_model, model, *data.context);
     const auto staging_buffers_textures = process_textures(tiny_model, model, *data.context, &cmd_list);
     data.context->close_command_list(&cmd_list);
-    { // Wait on work
+
+    {
+        // Wait on work
         qhenki::gfx::Fence fence;
         data.context->create_fence(&fence, 0);
         uint64_t fence_value = 1;
         std::array command_lists{cmd_list};
-        qhenki::gfx::SubmitInfo submit_info{
+        const qhenki::gfx::SubmitInfo submit_info{
             .command_list_count = command_lists.size(),
             .command_lists = command_lists.data(),
             .signal_fence_count = 1,
@@ -458,7 +462,7 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
             .signal_values = &fence_value,
         };
         data.context->submit_command_lists(submit_info, data.queue);
-        qhenki::gfx::WaitInfo wait_info{.wait_all = true, .count = 1, .fences = &fence, .values = &fence_value};
+        const qhenki::gfx::WaitInfo wait_info{.wait_all = true, .count = 1, .fences = &fence, .values = &fence_value};
         data.context->wait_fences(wait_info);
         data.context->reset_command_pool(data.pool);
     }

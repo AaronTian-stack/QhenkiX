@@ -1,5 +1,3 @@
-#include <stdexcept>
-
 #include "qhenki/display_window.h"
 
 #include "qhenki/utility/string_util.h"

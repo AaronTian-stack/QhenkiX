@@ -173,7 +173,7 @@ bool DXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
 
 bool DXCShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
 {
-    return DXCShaderCompiler::get_compiler_path(buffer, length);
+    return get_compiler_path(buffer, length);
 }
 
 bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
@@ -199,7 +199,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     source_buffer.Encoding = DXC_CP_ACP;
 
     // Create default file include handler
-    // TODO: custom include handlers
+    // TODO: Custom include handlers
     ComPtr<IDxcIncludeHandler> include_handler;
     if (FAILED(m_library->CreateDefaultIncludeHandler(&include_handler)))
     {
@@ -301,7 +301,6 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     args[args_idx++] = DXC_ARG_ENABLE_STRICTNESS;   // Strict mode
     args[args_idx++] = DXC_ARG_WARNINGS_ARE_ERRORS; // -WX
 
-    // Compile DXIL blob
     ComPtr<IDxcResult> result;
 
     // Only call this when something bad happens for sure
@@ -344,7 +343,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     output.shader_size = dxc_output->shader_blob->GetBufferSize();
     output.shader_data = dxc_output->shader_blob->GetBufferPointer();
 
-    // Assumed to be null-terminated!
+    // Assumed to be null terminated
     const auto& pdb_path = input.pdb_path;
     if (!pdb_path.empty())
     {

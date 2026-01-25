@@ -4,18 +4,18 @@
 
 int main(int argc, char* argv[])
 {
-    qhenki::gfx::API api = qhenki::gfx::API::D3D12;
+    auto api = qhenki::gfx::API::D3D12;
 
     for (int i = 1; i < argc; i++)
     {
         if (std::string(argv[i]) == "-api" && i + 1 < argc)
         {
-            int apiValue = std::atoi(argv[i + 1]);
-            if (apiValue == 0)
+            const int api_value = std::atoi(argv[i + 1]);
+            if (api_value == 0)
             {
                 api = qhenki::gfx::API::D3D12;
             }
-            else if (apiValue == 1)
+            else if (api_value == 1)
             {
                 api = qhenki::gfx::API::D3D11;
             }

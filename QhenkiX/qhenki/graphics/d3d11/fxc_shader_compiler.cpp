@@ -86,7 +86,6 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     for (const auto& define : input.get_defines())
     {
         // Convert the defines into D3D_SHADER_MACRO
-        // Split the string at the first '='
         const auto pos = define.find('=');
         if (pos != std::string::npos)
         {
@@ -143,7 +142,6 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     {
         ComPtr<ID3DBlob> debug_info_path;
         ComPtr<ID3DBlob> debug_info_blob;
-        // PDB Blob
         const auto pdb_result = D3DGetBlobPart(shader_blob->GetBufferPointer(),
                                                shader_blob->GetBufferSize(),
                                                D3D_BLOB_PDB,

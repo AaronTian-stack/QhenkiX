@@ -59,8 +59,6 @@ class gltfViewerApp : public qhenki::Application
 
     bool m_tearing = false;
 
-    void update_global_transform(GLTFModel& model, GLTFModel::Node& node);
-
 protected:
     void init_display_window(void* payload) override;
     void create() override;

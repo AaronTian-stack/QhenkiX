@@ -17,7 +17,7 @@ template<typename CharT> static bool read_file_impl(const CharT* path, void** da
         return false;
     }
 
-    std::streamsize stream_size = file.tellg();
+    const std::streamsize stream_size = file.tellg();
     if (stream_size < 0)
     {
         return false;
@@ -27,7 +27,7 @@ template<typename CharT> static bool read_file_impl(const CharT* path, void** da
 
     *data = malloc(stream_size);
 
-    if (!file.read(reinterpret_cast<char*>(*data), stream_size))
+    if (!file.read(static_cast<char*>(*data), stream_size))
     {
         free(*data); // Free on failure
         *data = nullptr;
@@ -37,7 +37,7 @@ template<typename CharT> static bool read_file_impl(const CharT* path, void** da
     return true;
 }
 
-template<typename CharT> static bool write_file_impl(const CharT* path, const void* data, size_t size)
+template<typename CharT> static bool write_file_impl(const CharT* path, const void* data, const size_t size)
 {
     std::ofstream file(path, std::ios::binary);
     if (!file)
@@ -45,7 +45,13 @@ template<typename CharT> static bool write_file_impl(const CharT* path, const vo
         return false;
     }
 
-    file.write(reinterpret_cast<const char*>(data), size);
+    if (size > std::numeric_limits<std::streamsize>::max())
+    {
+        return false;
+    }
+    const auto stream_size = static_cast<std::streamsize>(size);
+
+    file.write(static_cast<const char*>(data), stream_size);
     if (!file.good())
     {
         return false;

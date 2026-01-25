@@ -112,7 +112,6 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
         {
             assert(depth_stencil->descriptor.heap);
             const auto heap = to_internal_dsv(*depth_stencil->descriptor.heap);
-            assert(heap);
             ds = heap->at(depth_stencil->descriptor.offset).Get();
             assert(ds);
 
@@ -146,7 +145,6 @@ bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
 
 std::string D3D11Context::create(const bool enable_debug_layer)
 {
-    // Create factory
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory))))
     {
         return "D3D11: Failed to create DXGI Factory";
@@ -194,7 +192,7 @@ std::string D3D11Context::create(const bool enable_debug_layer)
     {
         creation_flags |= D3D11_CREATE_DEVICE_DEBUG;
     }
-    // Create device
+
     if (FAILED(D3D11CreateDevice(adapter.Get(),
                                  D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_UNKNOWN,
                                  nullptr,
@@ -291,7 +289,6 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                    PipelineLayout* in_layout,
                                    const char* debug_name)
 {
-    // D3D11 does not have concept of pipelines. D3D11 "pipeline" is just shader + state + input layout
     pipeline->internal_state = mkS<D3D11GraphicsPipeline>();
     const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline->internal_state.get());
     const auto d3d11_vertex_shader = to_internal(vertex_shader);
@@ -310,7 +307,6 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     bool succeeded = input_layout_ != nullptr;
 
-    // Create Rasterizer state object
     const RasterizerDesc rs = desc.rasterizer_state.value_or(RasterizerDesc{});
     D3D11_RASTERIZER_DESC rasterizer_desc = {
         .FillMode = static_cast<D3D11_FILL_MODE>(rs.fill_mode),
@@ -331,7 +327,6 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
         succeeded = false;
     }
 
-    // Create Blend state
     if (const auto& blend = desc.blend_desc; blend.has_value())
     {
         D3D11_BLEND_DESC blend_desc{
@@ -360,7 +355,6 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
         }
     }
 
-    // Create Depth Stencil state
     if (const auto& ds = desc.depth_stencil_state; ds.has_value())
     {
         D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {
@@ -438,7 +432,7 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         return false;
     }
 
-    // Could maybe also force fixed size for slightly stricter match with D3D12
+    // TODO: Force fixed size for slightly stricter match with D3D12?
     return true;
 }
 
@@ -630,7 +624,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
 
     if (desc.dimension == TextureDimension::TEXTURE_1D)
     {
-        D3D11_TEXTURE1D_DESC texture_desc{
+        const D3D11_TEXTURE1D_DESC texture_desc{
             .Width = static_cast<UINT>(desc.width),
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
@@ -651,7 +645,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     }
     else if (desc.dimension == TextureDimension::TEXTURE_2D)
     {
-        D3D11_TEXTURE2D_DESC texture_desc{
+        const D3D11_TEXTURE2D_DESC texture_desc{
             .Width = static_cast<UINT>(desc.width),
             .Height = static_cast<UINT>(desc.height),
             .MipLevels = desc.mip_levels,
@@ -718,7 +712,7 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
 
     auto& view = heap_d3d11->shader_resource_views[descriptor->offset];
 
-    // TODO: description
+    // TODO: View description
     if (FAILED(m_device->CreateShaderResourceView(resource, nullptr, view.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture SRV\n");
@@ -761,7 +755,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
     ID3D11Resource* resource = get_texture_resource(*texture_d3d11);
     if (!resource)
     {
-        OutputDebugStringA("Qhenki D3D11 ERROR: copy_to_texture Failed to get texture resource\n");
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get texture resource\n");
         return false;
     }
 
@@ -881,13 +875,16 @@ void D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
     std::array<ID3D11Buffer*, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
     for (unsigned int i = 0; i < buffer_count; i++)
     {
-        auto buffer = to_internal(*buffers[i]);
+        const auto buffer = to_internal(*buffers[i]);
         buffer_d3d11[i] = buffer->Get();
     }
     m_device_context->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11.data(), strides, offsets);
 }
 
-void D3D11Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset)
+void D3D11Context::bind_index_buffer(CommandList* cmd_list,
+                                     const Buffer& buffer,
+                                     const IndexType format,
+                                     const unsigned offset)
 {
     const auto buffer_d3d11 = to_internal(buffer);
     m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
@@ -1294,10 +1291,11 @@ bool D3D11Context::compatibility_set_samplers(const unsigned slot,
     return true;
 }
 
-void D3D11Context::wait_idle(Queue* const queue)
+bool D3D11Context::wait_idle(Queue* const queue)
 {
     auto lock = acquire_lock();
     m_device_context->Flush();
+    return true;
 }
 
 D3D11Context::~D3D11Context()

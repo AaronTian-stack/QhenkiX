@@ -8,7 +8,6 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdio>
 #include <memory>
 
 void ExampleApp::create()
@@ -405,9 +404,5 @@ void ExampleApp::resize(int width, int height)
 }
 
 void ExampleApp::destroy()
-{
-}
-
-ExampleApp::~ExampleApp()
 {
 }

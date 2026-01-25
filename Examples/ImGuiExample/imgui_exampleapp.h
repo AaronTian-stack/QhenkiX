@@ -30,7 +30,4 @@ protected:
     void render() override;
     void resize(int width, int height) override;
     void destroy() override;
-
-public:
-    ~ImGUIExampleApp() override;
 };

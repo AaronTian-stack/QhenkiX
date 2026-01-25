@@ -7,7 +7,6 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdio>
 #include <memory>
 
 void ImGUIExampleApp::create()
@@ -255,8 +254,4 @@ void ImGUIExampleApp::resize(int width, int height)
 void ImGUIExampleApp::destroy()
 {
     m_context->destroy_imgui();
-}
-
-ImGUIExampleApp::~ImGUIExampleApp()
-{
 }

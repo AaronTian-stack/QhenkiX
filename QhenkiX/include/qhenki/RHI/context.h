@@ -194,8 +194,7 @@ public:
                                             Sampler* const* samplers,
                                             PipelineStage stage) = 0;
 
-    // Wait for device to idle, should only be used on program exit
-    virtual void wait_idle(Queue* queue) = 0;
+    virtual bool wait_idle(Queue* queue) = 0;
     virtual ~Context() = default;
 };
 } // namespace qhenki::gfx

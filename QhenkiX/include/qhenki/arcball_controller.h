@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <DirectXMath.h>
 
@@ -33,6 +33,6 @@ public:
     void set_target_distance(float distance);
 
     void translate(float x, float y);
-    void rotate(float x, float y);
+    void rotate(float x, float y) const;
 };
 } // namespace qhenki

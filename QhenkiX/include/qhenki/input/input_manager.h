@@ -16,8 +16,8 @@ class InputManager
     XMFLOAT2 m_mouse_position_prev{0, 0};
     XMFLOAT2 m_mouse_delta{0, 0};
     XMFLOAT2 m_mouse_scroll{0, 0};
-    uint32_t m_mouse_flags = 0;
-    uint32_t m_mouse_flags_prev = 0;
+    unsigned m_mouse_flags = 0;
+    unsigned m_mouse_flags_prev = 0;
     bool m_was_relative_mode = false;
 
 public:
@@ -28,9 +28,9 @@ public:
     bool is_key_just_pressed(SDL_Scancode key) const;
     bool is_key_just_released(SDL_Scancode key) const;
 
-    bool is_mouse_button_down(uint32_t button) const;
-    bool is_mouse_button_just_pressed(uint32_t button) const;
-    bool is_mouse_button_just_released(uint32_t button) const;
+    bool is_mouse_button_down(unsigned button) const;
+    bool is_mouse_button_just_pressed(unsigned button) const;
+    bool is_mouse_button_just_released(unsigned button) const;
 
     void reset_mouse_scroll()
     {

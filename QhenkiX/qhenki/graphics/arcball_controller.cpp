@@ -1,4 +1,4 @@
-﻿#include <algorithm>
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 
@@ -16,8 +16,8 @@ void ArcBallController::set_camera(Transform* transform)
 
     // Set camera to be at target distance
     auto diff = XMLoadFloat3(&m_target_position) - XMLoadFloat3(&transform->translation);
-    auto dist = XMVector3Length(diff);
-    float len = XMVectorGetX(dist);
+    const auto dist = XMVector3Length(diff);
+    const float len = XMVectorGetX(dist);
 
     auto cam_pos = XMLoadFloat3(&transform->translation);
     if (std::abs(len) < 1e-6f) // Camera is at target position
@@ -29,7 +29,6 @@ void ArcBallController::set_camera(Transform* transform)
     }
     else
     {
-        // Set camera to look at target position
         transform->look_at(m_target_position, {0.f, 1.f, 0.f}); // TODO: check up vector
         diff = XMVector3Normalize(diff);
         XMStoreFloat3(&transform->translation, cam_pos + diff * (m_target_distance - len));
@@ -61,7 +60,7 @@ void ArcBallController::translate(float x, float y)
 
 const float max_tolerance = 0.00174533f; // .01 degree
 
-void ArcBallController::rotate(float x, float y)
+void ArcBallController::rotate(float x, float y) const
 {
     assert(m_transform);
 

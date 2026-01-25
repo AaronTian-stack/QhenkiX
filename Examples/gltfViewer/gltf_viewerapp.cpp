@@ -13,7 +13,10 @@
 #include <cstdio>
 #include <memory>
 
-void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& node)
+namespace
+{
+
+void update_global_transform(GLTFModel& model, GLTFModel::Node& node)
 {
     if (node.parent_index >= 0)
     {
@@ -31,6 +34,7 @@ void gltfViewerApp::update_global_transform(GLTFModel& model, GLTFModel::Node& n
         node.global_transform.transform = node.local_transform;
     }
 }
+} // namespace
 
 void gltfViewerApp::init_display_window(void* payload)
 {
@@ -58,7 +62,7 @@ void gltfViewerApp::init_display_window(void* payload)
     bool fullscreen = false;
     if (payload)
     {
-        auto p = static_cast<Payload*>(payload);
+        const auto p = static_cast<Payload*>(payload);
         assert(p);
         fullscreen = p->fullscreen;
     }
@@ -863,11 +867,11 @@ void gltfViewerApp::render()
     m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
-void gltfViewerApp::resize(int width, int height)
+void gltfViewerApp::resize(const int width, const int height)
 {
     m_context->wait_idle(&m_graphics_queue);
     // Recreate the depth buffer
-    qhenki::gfx::TextureDesc depth_desc{
+    const qhenki::gfx::TextureDesc depth_desc{
         .width = static_cast<uint64_t>(width),
         .height = static_cast<uint32_t>(height),
         .format = DXGI_FORMAT_D32_FLOAT,
@@ -875,7 +879,7 @@ void gltfViewerApp::resize(int width, int height)
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
-    // This will recreate the descriptor in place since it already has an offset.
+    // This will recreate the descriptor in place since it already has an offset
     THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 }
 

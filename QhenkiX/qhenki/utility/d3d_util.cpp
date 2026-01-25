@@ -37,7 +37,7 @@ std::wstring get_shader_model_wchar(const ShaderType type, const ShaderModel mod
     case COMPUTE_SHADER:
         smc[0] = 'c';
         break;
-    default:
+    case LIBRARY_SHADER:
         break;
     }
 
@@ -74,7 +74,7 @@ std::string get_shader_model_char(const ShaderType type, const ShaderModel model
     case COMPUTE_SHADER:
         smc[0] = 'c';
         break;
-    default:
+    case LIBRARY_SHADER:
         break;
     }
 
@@ -415,7 +415,8 @@ D3D12_BARRIER_LAYOUT layout(Layout layout)
     return state;
 }
 
-D3D12_FILTER filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UINT max_anisotropy)
+D3D12_FILTER filter(
+    const Filter min, const Filter mag, const Filter mip, const ComparisonFunc func, const UINT max_anisotropy)
 {
     // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
     // Assemble the bitmask ourselves
@@ -452,7 +453,7 @@ D3D12_FILTER filter(Filter min, Filter mag, Filter mip, ComparisonFunc func, UIN
     return static_cast<D3D12_FILTER>(filter);
 }
 
-D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(AddressMode mode)
+D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(const AddressMode mode)
 {
     switch (mode)
     {
@@ -469,7 +470,7 @@ D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(AddressMode mode)
     }
 }
 
-D3D12_COMPARISON_FUNC comparison_func(ComparisonFunc func)
+D3D12_COMPARISON_FUNC comparison_func(const ComparisonFunc func)
 {
     switch (func)
     {
@@ -491,12 +492,10 @@ D3D12_COMPARISON_FUNC comparison_func(ComparisonFunc func)
         return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
     case ComparisonFunc::ALWAYS:
         return D3D12_COMPARISON_FUNC_ALWAYS;
-    default:
-        throw std::runtime_error("D3DHelper: Invalid comparison function");
     }
 }
 
-bool is_depth_stencil_format(DXGI_FORMAT format)
+bool is_depth_stencil_format(const DXGI_FORMAT format)
 {
     switch (format)
     {

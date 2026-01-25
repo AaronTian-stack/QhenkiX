@@ -18,7 +18,7 @@ public:
     Arena(size_t capacity);
 
     /**
-     * Resets offset. Does not zero memory.
+     * Resets offset. Does not zero memory. This function does not check if you have destructors to call.
      */
     void reset();
 
@@ -56,6 +56,9 @@ public:
 
     /**
      * Create default initialized array of given type.
+     *
+     * Any unique pointer created from this function must be reset before the arena is reset.
+     *
      * @tparam T Type of array elements.
      * @param count Number of elements in array.
      * @return Unique pointer to the allocated array (calls destructors) or null if arena is full.

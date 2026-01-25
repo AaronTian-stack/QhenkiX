@@ -138,7 +138,6 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
             .InstanceDataStepRate = 0,
         };
 
-        // Determine DXGI format
         if (param_desc.Mask == 1)
         {
             if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
@@ -214,7 +213,7 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
             slot++;
         }
 
-        // save element desc
+        // Save element desc
         input_layout_desc.push_back(element_desc);
     }
 
@@ -249,7 +248,6 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11De
         return nullptr;
     }
 
-    // hash and check if layout already exists
     std::scoped_lock lock(m_layout_mutex);
     find_layout(input_layout_desc)
 

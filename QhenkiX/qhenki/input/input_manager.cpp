@@ -69,24 +69,24 @@ bool InputManager::is_key_just_pressed(const SDL_Scancode key) const
     return m_current_keys[key] != 0 && m_previous_keys[key] == 0;
 }
 
-auto InputManager::is_key_just_released(SDL_Scancode key) const -> bool
+bool InputManager::is_key_just_released(const SDL_Scancode key) const
 {
     return m_current_keys[key] == 0 && m_previous_keys[key] != 0;
 }
 
-auto InputManager::is_mouse_button_down(uint32_t button) const -> bool
+bool InputManager::is_mouse_button_down(const unsigned button) const
 {
     assert(button <= SDL_BUTTON_X2);
     return (m_mouse_flags & SDL_BUTTON_MASK(button)) != 0;
 }
 
-bool InputManager::is_mouse_button_just_pressed(const uint32_t button) const
+bool InputManager::is_mouse_button_just_pressed(const unsigned button) const
 {
     assert(button <= SDL_BUTTON_X2);
     return (m_mouse_flags & SDL_BUTTON_MASK(button)) != 0 && (m_mouse_flags_prev & SDL_BUTTON_MASK(button)) == 0;
 }
 
-bool InputManager::is_mouse_button_just_released(const uint32_t button) const
+bool InputManager::is_mouse_button_just_released(const unsigned button) const
 {
     assert(button <= SDL_BUTTON_X2);
     return (m_mouse_flags & SDL_BUTTON_MASK(button)) == 0 && (m_mouse_flags_prev & SDL_BUTTON_MASK(button)) != 0;
