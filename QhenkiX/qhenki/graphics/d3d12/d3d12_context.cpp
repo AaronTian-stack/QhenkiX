@@ -1090,7 +1090,7 @@ bool D3D12Context::get_descriptor(unsigned descriptor_count_offset,
     assert(descriptor);
     *descriptor = {
         .heap = heap,
-        .offset = heap_d3d12->descriptor_count_to_bytes(descriptor_count_offset),
+        .offset = descriptor_count_offset,
     };
     return true;
 }
@@ -1105,7 +1105,7 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
         OutputDebugStringA("Qhenki D3D12 ERROR: Cannot free a new descriptor\n");
         return false;
     }
-    heap_d3d12->deallocate(&descriptor->offset);
+    heap_d3d12->deallocate(descriptor->offset);
     return true;
 }
 

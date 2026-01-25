@@ -2,9 +2,12 @@
 
 #include <array>
 #include <atomic>
+#include <cassert>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
+#include <type_traits>
 
 namespace qhenki::containers
 {
@@ -75,18 +78,23 @@ template<typename T, uint32_t Capacity, typename Factory = std::function<T()>> c
     // Nodes that can be popped
     std::atomic<TaggedIndex> m_head{};
 
-    // Function to create new objects when stack is empty
-    Factory m_factory;
+    std::optional<Factory> m_factory;
+
+    static constexpr bool is_trivial = std::is_trivially_default_constructible_v<T>;
 
 public:
-    explicit AtomicStack(Factory factory)
+    template<typename F = Factory>
+        requires(!is_trivial)
+    explicit AtomicStack(F factory)
         : m_factory{std::move(factory)}
     {
-        for (uint32_t i = 0; i < Capacity; i++)
-        {
-            m_nodes[i].next = i + 1 < Capacity ? i + 1 : NULL_INDEX;
-        }
-        m_free_nodes.store(TaggedIndex{0, 0}, std::memory_order_release);
+        construct();
+    }
+
+    explicit AtomicStack()
+        requires(is_trivial)
+    {
+        construct();
     }
 
     ~AtomicStack()
@@ -140,7 +148,15 @@ public:
         }
 
         T* objects = reinterpret_cast<T*>(m_storage.data());
-        return std::construct_at(&objects[index], m_factory());
+        if constexpr (is_trivial)
+        {
+            return std::construct_at(&objects[index]);
+        }
+        else
+        {
+            assert(m_factory.has_value());
+            return std::construct_at(&objects[index], m_factory.value()());
+        }
     }
 
     /**
@@ -193,6 +209,15 @@ public:
     }
 
 private:
+    void construct()
+    {
+        for (uint32_t i = 0; i < Capacity; i++)
+        {
+            m_nodes[i].next = i + 1 < Capacity ? i + 1 : NULL_INDEX;
+        }
+        m_free_nodes.store(TaggedIndex{0, 0}, std::memory_order_release);
+    }
+
     Node* node_at(uint32_t idx)
     {
         return idx == NULL_INDEX ? nullptr : &m_nodes[idx];
