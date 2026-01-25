@@ -33,7 +33,7 @@ public:
 
     // Thread safe
     bool allocate(size_t* alloc_offset);
-    void deallocate(size_t* alloc_offset);
+    void deallocate(size_t alloc_offset);
 
     // Offsets are additional to start of heap in descriptors
     void get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle,

@@ -1105,7 +1105,7 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
         OutputDebugStringA("Qhenki D3D12 ERROR: Cannot free a new descriptor\n");
         return false;
     }
-    heap_d3d12->deallocate(&descriptor->offset);
+    heap_d3d12->deallocate(descriptor->offset);
     return true;
 }
 

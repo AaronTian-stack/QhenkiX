@@ -40,16 +40,15 @@ bool D3D12DescriptorHeap::allocate(size_t* alloc_offset)
     return true;
 }
 
-void D3D12DescriptorHeap::deallocate(size_t* alloc_offset)
+void D3D12DescriptorHeap::deallocate(size_t alloc_offset)
 {
-    if (*alloc_offset == CREATE_NEW_DESCRIPTOR)
+    if (alloc_offset == CREATE_NEW_DESCRIPTOR)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Attempted to deallocate a descriptor that was never allocated\n");
         return;
     }
     std::scoped_lock lock(m_mutex);
-    m_free_list.push_back(*alloc_offset);
-    *alloc_offset = CREATE_NEW_DESCRIPTOR;
+    m_free_list.push_back(alloc_offset);
 }
 
 void D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle,
