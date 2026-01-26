@@ -493,6 +493,7 @@ D3D12_COMPARISON_FUNC comparison_func(const ComparisonFunc func)
     case ComparisonFunc::ALWAYS:
         return D3D12_COMPARISON_FUNC_ALWAYS;
     }
+    return D3D12_COMPARISON_FUNC_ALWAYS;
 }
 
 bool is_depth_stencil_format(const DXGI_FORMAT format)
