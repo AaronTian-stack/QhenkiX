@@ -9,8 +9,7 @@ using namespace qhenki::memory;
 
 Arena::Arena(const size_t capacity)
     : m_memory{mkU<uint8_t[]>(capacity)},
-      m_capacity{capacity},
-      m_offset(0)
+      m_capacity{capacity}
 {
 }
 
@@ -19,10 +18,25 @@ void Arena::reset()
     m_offset = 0;
 }
 
+bool Arena::init(const size_t capacity)
+{
+    assert(capacity);
+    if (m_memory)
+    {
+        assert(false);
+        return false;
+    }
+    m_memory = mkU<uint8_t[]>(capacity);
+    m_capacity = capacity;
+    m_offset = 0;
+    return true;
+}
+
 void* Arena::alloc(const size_t size, const size_t alignment)
 {
     assert(size);
     assert(alignment);
+    assert(m_memory);
 
     const auto current_address = reinterpret_cast<size_t>(m_memory.get()) + m_offset;
     const auto aligned_address = util::align_u(current_address, alignment);
