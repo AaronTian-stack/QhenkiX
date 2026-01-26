@@ -16,6 +16,14 @@ class Arena
 
 public:
     Arena(size_t capacity);
+    Arena(const Arena&) = delete;
+    Arena& operator=(const Arena&) = delete;
+    Arena(Arena&&) = default;
+    Arena& operator=(Arena&&) = default;
+    /**
+     * Caller is responsible for destroying contained objects before arena is destroyed.
+     */
+    ~Arena() = default;
 
     /**
      * Resets offset. Does not zero memory. This function does not check if you have destructors to call.
