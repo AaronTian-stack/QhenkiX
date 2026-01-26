@@ -136,6 +136,14 @@ void Application::run(const gfx::API api,
                 m_window.m_display_info.height = event.window.data2;
                 m_context->resize_swapchain(
                     &m_swapchain, event.window.data1, event.window.data2, &m_rtv_heap, m_frame_index);
+                // The swapchain backbuffer index might have changed after resize to use the same index as the last
+                // present, so the last fence value is no longer valid
+                // Reset both wait values to avoid infinite wait (one of them should be decremented)
+                const auto completed_fence_value = m_context->get_fence_value(m_fence_frame_ready);
+                for (unsigned i = 0; i < m_frames_in_flight; i++)
+                {
+                    m_fence_frame_ready_val[i] = completed_fence_value;
+                }
                 resize(event.window.data1, event.window.data2);
             }
             m_input_manager.handle_extra_events(event);
