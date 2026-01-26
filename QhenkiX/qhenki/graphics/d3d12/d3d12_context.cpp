@@ -376,7 +376,7 @@ bool D3D12Context::resize_swapchain(
         buffer->Release();
     }
 
-    UINT resize_flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    UINT resize_flags = 0;
     if (swapchain->desc.tearing && m_capabilities.allow_tearing)
     {
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
