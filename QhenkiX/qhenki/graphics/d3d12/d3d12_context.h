@@ -55,7 +55,8 @@ class D3D12Context : public Context
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
 
-    boost::lockfree::stack<memory::Arena, boost::lockfree::capacity<16>> m_arenas;
+    static constexpr unsigned m_arena_count = 16;
+    boost::lockfree::stack<memory::Arena, boost::lockfree::capacity<m_arena_count>> m_arenas;
 
 public:
     std::string create(bool enable_debug_layer) override;

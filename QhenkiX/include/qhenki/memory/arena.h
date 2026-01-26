@@ -12,9 +12,10 @@ class Arena
 {
     std::unique_ptr<uint8_t[]> m_memory;
     size_t m_capacity;
-    size_t m_offset;
+    size_t m_offset = 0;
 
 public:
+    Arena() = default;
     Arena(size_t capacity);
     Arena(const Arena&) = delete;
     Arena& operator=(const Arena&) = delete;
@@ -29,6 +30,11 @@ public:
      * Resets offset. Does not zero memory. This function does not check if you have destructors to call.
      */
     void reset();
+
+    /**
+     * Initializes the arena memory once. Returns false if already initialized.
+     */
+    bool init(size_t capacity);
 
     /**
      * Create uninitialized block of given size and alignment.
