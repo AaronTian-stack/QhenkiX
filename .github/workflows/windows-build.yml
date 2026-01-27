@@ -57,14 +57,14 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
+    - name: Configure CMake
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
+
     - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
         name: qhenkix-library-windows-${{ matrix.config }}
         path: build/QhenkiX/${{ matrix.config }}/
-
-    - name: Configure CMake
-      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
     - name: Build SXC
       run: cmake --build build --config ${{ matrix.config }} --target SXC --parallel
@@ -97,14 +97,14 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
+    - name: Configure CMake
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
+
     - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
         name: qhenkix-library-windows-${{ matrix.config }}
         path: build/QhenkiX/${{ matrix.config }}/
-
-    - name: Configure CMake
-      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
 
     - name: Build ${{ matrix.example }} (${{ matrix.config }})
       run: cmake --build build --config ${{ matrix.config }} --target ${{ matrix.example }} --parallel
