@@ -12,9 +12,8 @@ option(BUILD_GLTF_VIEWER "Build gltfViewer example" ON)
 option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)
 option(BUILD_SIMPLE_EXAMPLE "Build SimpleExample" ON)
 
-# CI options for using pre-built binaries
-set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to pre-built QhenkiX.lib (CI only)")
-set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to pre-built SXC.exe (CI only)")
+set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib (CI only)")
+set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe (CI only)")
 
 if(QHENKIX_PREBUILT_LIB)
     include(QhenkiX/QhenkiXDeps.cmake)
