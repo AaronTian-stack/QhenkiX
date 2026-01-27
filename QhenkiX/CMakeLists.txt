@@ -132,43 +132,22 @@ else()
     target_compile_options(${PROJECT_NAME} PRIVATE -fno-exceptions)
 endif()
 
-target_include_directories(${PROJECT_NAME} PUBLIC 
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${IMGUI_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/utf8"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectX-Headers-1.618.2/include"
-    PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
+include(QhenkiXDeps.cmake)
+
+target_include_directories(${PROJECT_NAME} PUBLIC ${QHENKIX_INCLUDE_DIRS}
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_library(DirectXTex STATIC IMPORTED)
-target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
-target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3-${SDL3_VERSION}/include")
-
 if(WIN32)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
     if(MSVC)
-        target_compile_options(${PROJECT_NAME} PRIVATE /MP) # Enable multi-processor compilation
+        target_compile_options(${PROJECT_NAME} PRIVATE /MP)
     endif()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
 
-    set_target_properties(DirectXTex PROPERTIES
-        IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib"
-        IMPORTED_LOCATION_DEBUG   "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Debug/DirectXTex.lib"
-        IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib"
-        IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib"
-    )
-
+    qhenkix_setup_DirectXTex()
     target_link_libraries(${PROJECT_NAME} PUBLIC
-        d3d11
-        d3d12
-        dxgi
-        d3dcompiler
-        dxcompiler
-        winmm
+        DirectXTex
+        ${QHENKIX_SYSTEM_LIBS}
+        "${QHENKIX_SDL3_LIB}"
     )
-    target_link_libraries(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3-${SDL3_VERSION}/lib/x64/SDL3.lib")
 endif()
