@@ -12,11 +12,11 @@ option(BUILD_GLTF_VIEWER "Build gltfViewer example" ON)
 option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)
 option(BUILD_SIMPLE_EXAMPLE "Build SimpleExample" ON)
 
-# Option for CI: use pre-built QhenkiX library instead of building from source
+# CI options for using pre-built binaries
 set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to pre-built QhenkiX.lib (CI only)")
+set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to pre-built SXC.exe (CI only)")
 
 if(QHENKIX_PREBUILT_LIB)
-    # Use pre-built library - create an imported target
     include(QhenkiX/QhenkiXDeps.cmake)
     
     add_library(QhenkiX STATIC IMPORTED GLOBAL)
@@ -24,7 +24,7 @@ if(QHENKIX_PREBUILT_LIB)
     target_include_directories(QhenkiX INTERFACE ${QHENKIX_INCLUDE_DIRS})
     
     if(WIN32)
-        qhenkix_setup_directxtex()
+        qhenkix_setup_DirectXTex()
         target_link_libraries(QhenkiX INTERFACE
             DirectXTex
             ${QHENKIX_SYSTEM_LIBS}
@@ -32,11 +32,15 @@ if(QHENKIX_PREBUILT_LIB)
         )
     endif()
 else()
-    # Build from source
     add_subdirectory(QhenkiX)
 endif()
 
-add_subdirectory(SXC)
+if(SXC_PREBUILT_EXE)
+    add_executable(SXC IMPORTED GLOBAL)
+    set_target_properties(SXC PROPERTIES IMPORTED_LOCATION "${SXC_PREBUILT_EXE}")
+else()
+    add_subdirectory(SXC)
+endif()
 
 if(BUILD_GLTF_VIEWER)
     add_subdirectory(Examples/gltfViewer)
