@@ -34,9 +34,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: qhenkix-library-windows-${{ matrix.config }}
-        path: |
-          build/QhenkiX/${{ matrix.config }}/
-          QhenkiX/include/
+        path: build/QhenkiX/${{ matrix.config }}/QhenkiX.lib
         retention-days: 1
 
   build-sxc:
@@ -63,7 +61,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: qhenkix-library-windows-${{ matrix.config }}
-        path: QhenkiX/
+        path: build/QhenkiX/${{ matrix.config }}/
 
     - name: Configure CMake
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
@@ -103,7 +101,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: qhenkix-library-windows-${{ matrix.config }}
-        path: QhenkiX/
+        path: build/QhenkiX/${{ matrix.config }}/
 
     - name: Configure CMake
       run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64
