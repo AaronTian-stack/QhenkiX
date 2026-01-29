@@ -405,7 +405,7 @@ bool D3D12Context::resize_swapchain(
     for (unsigned i = 0; i < swapchain->desc.buffer_count; i++)
     {
         D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
-        d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset, 0);
+        d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset);
         m_device->CreateRenderTargetView(m_swapchain_buffers[i].Get(), nullptr, rtv_cpu_handle);
     }
 
@@ -443,7 +443,7 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
             return false;
         }
         D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
-        d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset, 0);
+        d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset);
 
         m_device->CreateRenderTargetView(m_swapchain_buffers[i].Get(), nullptr, rtv_cpu_handle);
     }
@@ -1056,7 +1056,7 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
 
     const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
-    if (!heap_d3d12->get_GPU_descriptor(&gpu_handle, gpu_descriptor.offset, 0))
+    if (!heap_d3d12->get_GPU_descriptor(&gpu_handle, gpu_descriptor.offset))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU descriptor handle\n");
         return;
@@ -1085,10 +1085,10 @@ bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE src_cpu_handle;
-    src_heap_d3d12->get_CPU_descriptor(&src_cpu_handle, src.offset, 0);
+    src_heap_d3d12->get_CPU_descriptor(&src_cpu_handle, src.offset);
 
     D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
-    dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset, 0);
+    dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset);
 
     m_device->CopyDescriptorsSimple(count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
 
@@ -1210,10 +1210,9 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     return true;
 }
 
-bool get_cpu_descriptor(const Buffer& buffer,
-                        DescriptorHeap* const heap,
-                        Descriptor* descriptor,
-                        D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+static bool get_cpu_descriptor(DescriptorHeap* const heap,
+                               Descriptor* descriptor,
+                               D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
     assert(heap);
 
@@ -1232,7 +1231,7 @@ bool get_cpu_descriptor(const Buffer& buffer,
     }
     descriptor->heap = heap;
 
-    heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset, 0);
+    heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset);
 
     return true;
 }
@@ -1244,7 +1243,7 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
     const auto buffer_d3d12 = to_internal(buffer);
 
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!get_cpu_descriptor(buffer, heap, descriptor, &cpu_handle))
+    if (!get_cpu_descriptor(heap, descriptor, &cpu_handle))
     {
         return false;
     }
@@ -1270,7 +1269,7 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     const auto buffer_d3d12 = to_internal(buffer);
 
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!get_cpu_descriptor(buffer, heap, descriptor, &cpu_handle))
+    if (!get_cpu_descriptor(heap, descriptor, &cpu_handle))
     {
         return false;
     }
@@ -1394,12 +1393,12 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
     return true;
 }
 
-bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
-                                     D3D12DescriptorHeap* const heap_d3d12,
-                                     DescriptorHeapDesc::Type expected_type,
-                                     Descriptor* const descriptor,
-                                     const wchar_t* message,
-                                     D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+static bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
+                                            D3D12DescriptorHeap* const heap_d3d12,
+                                            DescriptorHeapDesc::Type expected_type,
+                                            Descriptor* const descriptor,
+                                            const wchar_t* message,
+                                            D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
     assert(cpu_handle);
     if (heap->desc.type != expected_type)
@@ -1420,7 +1419,7 @@ bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
         }
     }
     descriptor->heap = heap;
-    heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset, 0);
+    heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset);
     return true;
 }
 
@@ -1588,7 +1587,7 @@ bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap* con
     }
     descriptor->heap = heap;
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset, 0);
+    heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset);
     const auto& desc = sampler.desc;
     const D3D12_SAMPLER_DESC sampler_desc{
         .Filter = filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
@@ -1613,7 +1612,7 @@ void* D3D12Context::map_buffer(const Buffer& buffer)
     {
         const auto allocation = to_internal(buffer);
         const auto resource = allocation->Get()->GetResource();
-        const D3D12_RANGE range(0, 0);
+        constexpr D3D12_RANGE range(0, 0);
         void* mapped_ptr;
         const auto result = resource->Map(0, &range, &mapped_ptr);
         if (FAILED(result))
@@ -1804,64 +1803,120 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
-void D3D12Context::start_render_pass(CommandList* cmd_list,
-                                     Swapchain* const swapchain,
-                                     const float* clear_color_values,
-                                     const RenderTarget* const depth_stencil,
-                                     const unsigned frame_index)
+namespace
 {
-    assert(cmd_list);
-    const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
-
-    assert(m_swapchain_descriptors[0].heap && m_swapchain_descriptors[0].heap == m_swapchain_descriptors[1].heap);
-    const auto rtv_heap = to_internal(*m_swapchain_descriptors[0].heap);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle;
-    rtv_heap->get_CPU_descriptor(&rtv_handle, m_swapchain_descriptors[frame_index].offset, 0);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-
+void clear_depth(ID3D12GraphicsCommandList7* command_list,
+                 const D3D12_CPU_DESCRIPTOR_HANDLE ds_handle,
+                 const RenderTarget* const depth_stencil)
+{
     if (depth_stencil)
     {
-        assert(depth_stencil->descriptor.heap);
-        const auto heap = to_internal(*depth_stencil->descriptor.heap);
-        heap->get_CPU_descriptor(&cpu_handle, depth_stencil->descriptor.offset, 0);
-        command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &cpu_handle);
-    }
-    else
-    {
-        command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, nullptr);
-    }
-
-    command_list->ClearRenderTargetView(rtv_handle, clear_color_values, 0, nullptr);
-    if (depth_stencil)
-    {
-        if (depth_stencil->clear_type != RenderTarget::None)
+        if (depth_stencil->clear_type != RenderTarget::NONE)
         {
             auto clear_flags = static_cast<D3D12_CLEAR_FLAGS>(0);
-            if (depth_stencil->clear_type & RenderTarget::Depth)
+            if (depth_stencil->clear_type & RenderTarget::DEPTH)
             {
                 clear_flags |= D3D12_CLEAR_FLAG_DEPTH;
             }
-            if (depth_stencil->clear_type & RenderTarget::Stencil)
+            if (depth_stencil->clear_type & RenderTarget::STENCIL)
             {
                 clear_flags |= D3D12_CLEAR_FLAG_STENCIL;
             }
             assert(clear_flags);
             auto [clear_depth_value, clear_stencil_value] = depth_stencil->clear_params.dsv_clear_params;
             command_list->ClearDepthStencilView(
-                cpu_handle, clear_flags, clear_depth_value, clear_stencil_value, 0, nullptr);
+                ds_handle, clear_flags, clear_depth_value, clear_stencil_value, 0, nullptr);
         }
     }
 }
+} // namespace
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
-                                     unsigned rt_count,
+                                     Swapchain* const swapchain,
+                                     const float* clear_color_values,
+                                     const RenderTarget* const depth_stencil,
+                                     const unsigned frame_index)
+{
+    const auto cmd_list_d3d12 = to_internal(*cmd_list);
+    const auto command_list = cmd_list_d3d12->Get();
+
+    assert(m_swapchain_descriptors[0].heap == m_swapchain_descriptors[1].heap);
+    const auto rtv_heap = to_internal(*m_swapchain_descriptors[0].heap);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle;
+    rtv_heap->get_CPU_descriptor(&rtv_handle, m_swapchain_descriptors[frame_index].offset);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE ds_handle;
+    const D3D12_CPU_DESCRIPTOR_HANDLE* ds_handle_ptr = nullptr;
+    if (depth_stencil)
+    {
+        if (!(depth_stencil->clear_type & RenderTarget::DEPTH) && !(depth_stencil->clear_type & RenderTarget::STENCIL))
+        {
+            return false;
+        }
+        const auto heap = to_internal(*depth_stencil->descriptor.heap);
+        heap->get_CPU_descriptor(&ds_handle, depth_stencil->descriptor.offset);
+        ds_handle_ptr = &ds_handle;
+    }
+
+    command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, ds_handle_ptr);
+
+    command_list->ClearRenderTargetView(rtv_handle, clear_color_values, 0, nullptr);
+    clear_depth(command_list, ds_handle, depth_stencil);
+
+    return true;
+}
+
+bool D3D12Context::start_render_pass(CommandList* cmd_list,
+                                     const unsigned rt_count,
                                      const RenderTarget* const* rts,
                                      const RenderTarget* const depth_stencil)
 {
-    assert(false);
+    if (rt_count > D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
+    {
+        return false;
+    }
+
+    const auto cmd_list_d3d12 = to_internal(*cmd_list);
+    const auto command_list = cmd_list_d3d12->Get();
+
+    std::array<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> rtv_handles;
+    for (unsigned i = 0; i < rt_count; i++)
+    {
+        if (rts[i]->clear_type != RenderTarget::COLOR)
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: non color target passed\n");
+            return false;
+        }
+        const auto& descriptor = rts[i]->descriptor;
+        const auto heap = to_internal(*descriptor.heap);
+        heap->get_CPU_descriptor(&rtv_handles[i], descriptor.offset);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE ds_handle;
+    const D3D12_CPU_DESCRIPTOR_HANDLE* ds_handle_ptr = nullptr;
+    if (depth_stencil)
+    {
+        if (!(depth_stencil->clear_type & RenderTarget::DEPTH) && !(depth_stencil->clear_type & RenderTarget::STENCIL))
+        {
+            return false;
+        }
+        const auto& descriptor = depth_stencil->descriptor;
+        const auto heap = to_internal(*descriptor.heap);
+        heap->get_CPU_descriptor(&ds_handle, descriptor.offset);
+        ds_handle_ptr = &ds_handle;
+    }
+
+    // TODO: Can't assume that render target descriptors are contiguous in heap so FALSE for now
+    // Expose this option in interface
+    command_list->OMSetRenderTargets(rtv_handles.size(), rtv_handles.data(), FALSE, ds_handle_ptr);
+
+    for (unsigned i = 0; i < rt_count; i++)
+    {
+        command_list->ClearRenderTargetView(rtv_handles[i], rts[i]->clear_params.clear_color_value.data(), 0, nullptr);
+    }
+    clear_depth(command_list, ds_handle, depth_stencil);
+
     return true;
 }
 
@@ -2079,8 +2134,8 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
 
         qin->heap->allocate(&array[index].offset);
 
-        qin->heap->get_CPU_descriptor(out_cpu_handle, array[index].offset, 0);
-        qin->heap->get_GPU_descriptor(out_gpu_handle, array[index].offset, 0);
+        qin->heap->get_CPU_descriptor(out_cpu_handle, array[index].offset);
+        qin->heap->get_GPU_descriptor(out_gpu_handle, array[index].offset);
 
         index++;
     };

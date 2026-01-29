@@ -520,7 +520,7 @@ void gltfViewerApp::render()
     std::array clear_values = {0.f, 0.f, 0.f, 1.f};
     qhenki::gfx::RenderTarget depth{
         .clear_params = {.dsv_clear_params = {1.f, 0}},
-        .clear_type = qhenki::gfx::RenderTarget::Depth,
+        .clear_type = qhenki::gfx::RenderTarget::DEPTH,
         .descriptor = m_depth_buffer_descriptor,
     };
     m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), &depth, m_frame_index);

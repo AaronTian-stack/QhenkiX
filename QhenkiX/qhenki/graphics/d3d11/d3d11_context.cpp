@@ -108,7 +108,7 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
     ID3D11DepthStencilView* ds = nullptr;
     if (depth_stencil)
     {
-        if (depth_stencil->clear_type != RenderTarget::ClearType::None)
+        if (depth_stencil->clear_type != RenderTarget::ClearType::NONE)
         {
             assert(depth_stencil->descriptor.heap);
             const auto heap = to_internal_dsv(*depth_stencil->descriptor.heap);
@@ -116,11 +116,11 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
             assert(ds);
 
             D3D11_CLEAR_FLAG clear = static_cast<D3D11_CLEAR_FLAG>(0);
-            if (depth_stencil->clear_type & RenderTarget::ClearType::Depth)
+            if (depth_stencil->clear_type & RenderTarget::ClearType::DEPTH)
             {
                 clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_DEPTH));
             }
-            if (depth_stencil->clear_type & RenderTarget::ClearType::Stencil)
+            if (depth_stencil->clear_type & RenderTarget::ClearType::STENCIL)
             {
                 clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_STENCIL));
             }
@@ -953,7 +953,7 @@ unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
     return m_frame_index;
 }
 
-void D3D11Context::start_render_pass(CommandList* cmd_list,
+bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
@@ -964,6 +964,7 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
     m_device_context->ClearRenderTargetView(rtv, clear_color_values);
     ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
     m_device_context->OMSetRenderTargets(1, &rtv, ds);
+    return true;
 }
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
@@ -985,7 +986,7 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
         assert(heap);
         // Descriptor is used as index
         const auto& rtv = heap->at(rts[i]->descriptor.offset);
-        if (rts[i]->clear_type & RenderTarget::ClearType::Color)
+        if (rts[i]->clear_type & RenderTarget::ClearType::COLOR)
         {
             m_device_context->ClearRenderTargetView(rtv.Get(), rts[i]->clear_params.clear_color_value.data());
         }
