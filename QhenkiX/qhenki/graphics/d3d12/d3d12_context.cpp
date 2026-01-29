@@ -10,6 +10,7 @@
 #include <directx/d3d12shader.h>
 
 #include <algorithm>
+#include <boost/container/small_vector.hpp>
 
 #include "d3d12_pipeline.h"
 #include "dxc_shader_compiler.h"
@@ -356,12 +357,14 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
         }
     }
 
-    // Get RTV descriptors in separate step
     return true;
 }
 
-bool D3D12Context::resize_swapchain(
-    Swapchain* const swapchain, int width, int height, DescriptorHeap* const rtv_heap, unsigned& frame_index)
+bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
+                                    const int width,
+                                    const int height,
+                                    DescriptorHeap* const rtv_heap,
+                                    unsigned& frame_index)
 {
     assert(swapchain);
     assert(rtv_heap);
@@ -597,7 +600,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             m_library->GetDxilContainerPart(&vs_container_buffer, DXC_PART_REFLECTION_DATA, &rdat_ptr, &rdat_size);
         if (SUCCEEDED(hr) && rdat_ptr && rdat_size)
         {
-            const DxcBuffer rdat_buffer = {rdat_ptr, rdat_size, 0};
+            const DxcBuffer rdat_buffer = {.Ptr = rdat_ptr, .Size = rdat_size, .Encoding = 0};
             hr = m_library->CreateReflection(&rdat_buffer, IID_PPV_ARGS(&shader_reflection));
         }
         else
@@ -750,7 +753,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     // TODO: MSAA support
     pso_desc.SampleDesc.Count = 1;
 
-    for (int i = 0; i < desc.num_render_targets; i++)
+    for (unsigned i = 0; i < desc.num_render_targets; i++)
     {
         pso_desc.RTVFormats[i] = desc.rtv_formats[i];
     }
@@ -798,23 +801,21 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
 
     const UINT param_count = desc->push_ranges.size() + spaces;
 
-    std::array<D3D12_ROOT_PARAMETER, 16> params; // TODO: replace with small vector
-    assert(param_count <= params.size());
+    boost::container::small_vector<D3D12_ROOT_PARAMETER, 16> params;
 
-    int param_index = 0;
     for (unsigned i = 0; i < desc->push_ranges.size(); i++)
     {
         const auto& range = desc->push_ranges[i];
-        params[param_index++] = {
+        params.push_back({
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
             .Constants =
                 {
                     .ShaderRegister = range.binding,
-                    .RegisterSpace = 5,                     // TODO: change this to not be hardcoded
-                    .Num32BitValues = (range.size + 3) / 4, // Bytes to 32-bit words conversion rounded up
+                    .RegisterSpace = 5, // TODO: Change this to not be hardcoded
+                    .Num32BitValues = util::ceil_div(range.size, uint32_t{4}),
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        });
     }
 
     memory::Arena arena;
@@ -851,7 +852,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             offset += binding.count;
             l_ranges[j] = range;
         }
-        params[param_index++] = {
+        params.push_back({
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             .DescriptorTable =
                 {
@@ -859,7 +860,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
                     .pDescriptorRanges = l_ranges,
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        });
         ranges[i] = l_ranges;
     }
 
