@@ -67,6 +67,7 @@ public:
 
     virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
     virtual bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) = 0;
+    // TODO: REMOVE THIS
     virtual bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* heap, Descriptor* descriptor) = 0;
     virtual bool free_descriptor(Descriptor* descriptor) = 0;
 
