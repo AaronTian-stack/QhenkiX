@@ -37,13 +37,11 @@ public:
 
     // Offsets are additional to start of heap in descriptors
     void get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle,
-                            size_t offset_descriptors,
-                            size_t num_descriptor_offset) const;
+                            size_t offset_descriptors) const;
 
     // Offsets are additional to start of heap in descriptors
     bool get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle,
-                            size_t offset_descriptors,
-                            size_t num_descriptor_offset) const;
+                            size_t offset_descriptors) const;
 
     const ComPtr<ID3D12DescriptorHeap>& get() const;
 };

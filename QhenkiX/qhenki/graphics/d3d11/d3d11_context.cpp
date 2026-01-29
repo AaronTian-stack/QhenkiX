@@ -953,7 +953,7 @@ unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
     return m_frame_index;
 }
 
-void D3D11Context::start_render_pass(CommandList* cmd_list,
+bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
@@ -964,6 +964,7 @@ void D3D11Context::start_render_pass(CommandList* cmd_list,
     m_device_context->ClearRenderTargetView(rtv, clear_color_values);
     ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
     m_device_context->OMSetRenderTargets(1, &rtv, ds);
+    return true;
 }
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,

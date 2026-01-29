@@ -51,22 +51,18 @@ void D3D12DescriptorHeap::deallocate(size_t alloc_offset)
     m_free_list.push_back(alloc_offset);
 }
 
-void D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle,
-                                             size_t offset_descriptors,
-                                             size_t num_descriptor_offset) const
+void D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_descriptors) const
 {
     *handle = m_heap->GetCPUDescriptorHandleForHeapStart();
-    handle->ptr += (offset_descriptors + num_descriptor_offset) * m_descriptor_size;
+    handle->ptr += offset_descriptors * m_descriptor_size;
 }
 
-bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle,
-                                             size_t offset_descriptors,
-                                             size_t num_descriptor_offset) const
+bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, size_t offset_descriptors) const
 {
     if (m_desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
         *handle = m_heap->GetGPUDescriptorHandleForHeapStart();
-        handle->ptr += (offset_descriptors + num_descriptor_offset) * m_descriptor_size;
+        handle->ptr += offset_descriptors * m_descriptor_size;
         return true;
     }
     OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU start for non shader visible heap\n");

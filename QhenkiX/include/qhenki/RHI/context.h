@@ -136,7 +136,7 @@ public:
 
     virtual bool reset_command_pool(CommandPool* command_pool) = 0;
 
-    virtual void start_render_pass(CommandList* cmd_list,
+    virtual bool start_render_pass(CommandList* cmd_list,
                                    Swapchain* swapchain,
                                    const float* clear_color_values,
                                    const RenderTarget* depth_stencil,
