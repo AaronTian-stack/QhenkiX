@@ -488,11 +488,6 @@ bool D3D11Context::copy_descriptors(unsigned count, const Descriptor& src, const
     return true;
 }
 
-bool D3D11Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* const heap, Descriptor* descriptor)
-{
-    return true;
-}
-
 bool D3D11Context::free_descriptor(Descriptor* descriptor)
 {
     return true;

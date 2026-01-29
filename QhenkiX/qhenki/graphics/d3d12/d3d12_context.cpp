@@ -1096,18 +1096,6 @@ bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const
     return true;
 }
 
-bool D3D12Context::get_descriptor(const unsigned descriptor_count_offset,
-                                  DescriptorHeap* const heap,
-                                  Descriptor* const descriptor)
-{
-    assert(heap);
-    *descriptor = {
-        .heap = heap,
-        .offset = descriptor_count_offset,
-    };
-    return true;
-}
-
 bool D3D12Context::free_descriptor(Descriptor* descriptor)
 {
     assert(descriptor);

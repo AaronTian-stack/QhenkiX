@@ -325,19 +325,19 @@ void ExampleApp::render()
     }
     else
     {
-        qhenki::gfx::Descriptor descriptor; // Location of start of GPU heap
-        THROW_IF_FALSE(m_context->get_descriptor(0, &m_GPU_heap, &descriptor));
+        // Location of start of GPU heap
+        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 0};
 
         // Parameter 0 is table, set to start at beginning of GPU heap
         m_context->set_descriptor_table(&cmd_list, 0, descriptor);
 
         // Copy matrix and texture descriptors to GPU heap
         THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], descriptor));
-        THROW_IF_FALSE(m_context->get_descriptor(1, &m_GPU_heap, &descriptor)); // 1
+        descriptor.offset = 1;
         THROW_IF_FALSE(m_context->copy_descriptors(1, m_texture_descriptor, descriptor));
 
         // Sampler
-        THROW_IF_FALSE(m_context->get_descriptor(0, &m_sampler_heap, &descriptor));
+        descriptor = {.heap = &m_sampler_heap, .offset = 0};
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
     }
 
