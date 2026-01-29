@@ -23,4 +23,11 @@ constexpr T align_u(const T size, const T alignment)
     assert(is_power_of_two(alignment));
     return (size + alignment - 1) & ~(alignment - 1);
 }
+
+template<typename T>
+    requires std::unsigned_integral<T>
+constexpr T ceil_div(const T value, const T divisor)
+{
+    return (value + divisor - 1) / divisor;
+}
 }; // namespace qhenki::util
