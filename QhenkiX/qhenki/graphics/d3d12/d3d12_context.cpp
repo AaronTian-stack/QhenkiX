@@ -1837,7 +1837,7 @@ void D3D12Context::start_render_pass(CommandList* cmd_list,
     command_list->ClearRenderTargetView(rtv_handle, clear_color_values, 0, nullptr);
     if (depth_stencil)
     {
-        if (depth_stencil->clear_type != RenderTarget::None)
+        if (!(depth_stencil->clear_type & RenderTarget::DEPTH) && !(depth_stencil->clear_type & RenderTarget::STENCIL))
         {
             auto clear_flags = static_cast<D3D12_CLEAR_FLAGS>(0);
             if (depth_stencil->clear_type & RenderTarget::Depth)

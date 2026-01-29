@@ -108,7 +108,7 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
     ID3D11DepthStencilView* ds = nullptr;
     if (depth_stencil)
     {
-        if (depth_stencil->clear_type != RenderTarget::ClearType::None)
+        if (depth_stencil->clear_type != RenderTarget::ClearType::NONE)
         {
             assert(depth_stencil->descriptor.heap);
             const auto heap = to_internal_dsv(*depth_stencil->descriptor.heap);
@@ -116,11 +116,11 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
             assert(ds);
 
             D3D11_CLEAR_FLAG clear = static_cast<D3D11_CLEAR_FLAG>(0);
-            if (depth_stencil->clear_type & RenderTarget::ClearType::Depth)
+            if (depth_stencil->clear_type & RenderTarget::ClearType::DEPTH)
             {
                 clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_DEPTH));
             }
-            if (depth_stencil->clear_type & RenderTarget::ClearType::Stencil)
+            if (depth_stencil->clear_type & RenderTarget::ClearType::STENCIL)
             {
                 clear = static_cast<D3D11_CLEAR_FLAG>(static_cast<int>(clear) | static_cast<int>(D3D11_CLEAR_STENCIL));
             }
@@ -985,7 +985,7 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
         assert(heap);
         // Descriptor is used as index
         const auto& rtv = heap->at(rts[i]->descriptor.offset);
-        if (rts[i]->clear_type & RenderTarget::ClearType::Color)
+        if (rts[i]->clear_type & RenderTarget::ClearType::COLOR)
         {
             m_device_context->ClearRenderTargetView(rtv.Get(), rts[i]->clear_params.clear_color_value.data());
         }

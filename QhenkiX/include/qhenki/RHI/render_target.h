@@ -1,8 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <array>
 
 #include "descriptor_table.h"
+#include "qhenki/utility/math_util.h"
 
 namespace qhenki::gfx
 {
@@ -19,10 +20,10 @@ struct RenderTarget
     } clear_params;
     enum ClearType : uint8_t
     {
-        None = 0,
-        Color = 1 << 1,
-        Depth = 1 << 2,
-        Stencil = 1 << 3,
+        NONE = 0,
+        COLOR = BIT(1),
+        DEPTH = BIT(2),
+        STENCIL = BIT(3),
     } clear_type; // Can be combined
     Descriptor descriptor;
 };
