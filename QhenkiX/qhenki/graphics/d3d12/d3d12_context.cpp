@@ -1803,9 +1803,11 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
-static void clear_depth(ID3D12GraphicsCommandList7* command_list,
-                        const D3D12_CPU_DESCRIPTOR_HANDLE ds_handle,
-                        const RenderTarget* const depth_stencil)
+namespace
+{
+void clear_depth(ID3D12GraphicsCommandList7* command_list,
+                 const D3D12_CPU_DESCRIPTOR_HANDLE ds_handle,
+                 const RenderTarget* const depth_stencil)
 {
     if (depth_stencil)
     {
@@ -1827,6 +1829,7 @@ static void clear_depth(ID3D12GraphicsCommandList7* command_list,
         }
     }
 }
+} // namespace
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
