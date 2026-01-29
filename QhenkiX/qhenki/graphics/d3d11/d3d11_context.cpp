@@ -838,7 +838,7 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
     sampler->internal_state = mkS<ComPtr<ID3D11SamplerState>>();
     const auto sampler_d3d11 = static_cast<ComPtr<ID3D11SamplerState>*>(sampler->internal_state.get());
 
-    D3D11_SAMPLER_DESC sampler_desc{
+    const D3D11_SAMPLER_DESC sampler_desc{
         .Filter = static_cast<D3D11_FILTER>(filter(desc.min_filter,
                                                    desc.mag_filter,
                                                    desc.mip_filter,
@@ -1016,13 +1016,13 @@ void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_
     m_device_context->RSSetViewports(count, m_viewports.data());
 }
 
-void D3D11Context::set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect)
+void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
 {
     // D3D12_RECT = D3D11_RECT = RECT
     m_device_context->RSSetScissorRects(count, scissor_rect);
 }
 
-void D3D11Context::draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void D3D11Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
     m_device_context->Draw(vertex_count, start_vertex_offset);
 }

@@ -155,7 +155,7 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     }
 
     DXGI_ADAPTER_DESC1 desc;
-    HRESULT hr = adapter->GetDesc1(&desc);
+    auto hr = adapter->GetDesc1(&desc);
     if (SUCCEEDED(hr))
     {
         const auto msg = qhenki::util::format_wstring<256>(L"D3D12: Selected adapter: %ls\n", desc.Description);
@@ -1284,8 +1284,12 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     return true;
 }
 
-void D3D12Context::copy_buffer(
-    CommandList* cmd_list, const Buffer& src, uint64_t src_offset, Buffer* dst, uint64_t dst_offset, uint64_t bytes)
+void D3D12Context::copy_buffer(CommandList* cmd_list,
+                               const Buffer& src,
+                               const uint64_t src_offset,
+                               Buffer* dst,
+                               const uint64_t dst_offset,
+                               const uint64_t bytes)
 {
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
@@ -1328,7 +1332,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
     D3D12_CLEAR_VALUE clear{
         .Format = desc.format,
     };
-    D3D12_CLEAR_VALUE* clear_ptr = nullptr;
+    const D3D12_CLEAR_VALUE* clear_ptr = nullptr;
     if (is_depth_stencil_format(desc.format))
     {
         clear_ptr = &clear;
@@ -2006,10 +2010,10 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
     return true;
 }
 
-auto D3D12Context::set_barrier_resource(const unsigned count,
+void D3D12Context::set_barrier_resource(const unsigned count,
                                         ImageBarrier* barriers,
                                         const Swapchain& swapchain,
-                                        unsigned frame_index) -> void
+                                        const unsigned frame_index)
 {
     assert(barriers);
     for (unsigned i = 0; i < count; i++)
@@ -2069,7 +2073,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, co
         };
     }
 
-    D3D12_BARRIER_GROUP barrier_group = {
+    const D3D12_BARRIER_GROUP barrier_group = {
         .Type = D3D12_BARRIER_TYPE_TEXTURE,
         .NumBarriers = count,
         .pTextureBarriers = d3d12_barriers,
