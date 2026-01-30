@@ -256,8 +256,11 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
         swapchain_desc, window, m_dxgi_factory.Get(), m_device.Get(), *frame_index, swapchain_flags);
 }
 
-bool D3D11Context::resize_swapchain(
-    Swapchain* const swapchain, int width, int height, DescriptorHeap* const rtv_heap, unsigned& frame_index)
+bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
+                                    const int width,
+                                    const int height,
+                                    DescriptorHeap* const rtv_heap,
+                                    unsigned& frame_index)
 {
     m_device_context->Flush();
     const auto swap_d3d11 = to_internal(*swapchain);
@@ -273,6 +276,36 @@ bool D3D11Context::resize_swapchain(
 bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
 {
     return true;
+}
+
+bool D3D11Context::present(Swapchain* const swapchain,
+                           unsigned fence_count,
+                           Fence* wait_fences,
+                           unsigned swapchain_index)
+{
+    assert(swapchain);
+    const auto swap_d3d11 = to_internal(*swapchain);
+
+    UINT sync_interval = 1;
+    UINT flags = 0;
+
+    if (swapchain->desc.tearing && m_allow_tearing)
+    {
+        sync_interval = 0;
+        flags |= DXGI_PRESENT_ALLOW_TEARING;
+    }
+
+    if (SUCCEEDED(swap_d3d11->swapchain->Present(sync_interval, flags)))
+    {
+        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
+        return true;
+    }
+    return false;
+}
+
+unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
+{
+    return m_frame_index;
 }
 
 bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
@@ -455,11 +488,6 @@ bool D3D11Context::copy_descriptors(unsigned count, const Descriptor& src, const
     return true;
 }
 
-bool D3D11Context::get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* const heap, Descriptor* descriptor)
-{
-    return true;
-}
-
 bool D3D11Context::free_descriptor(Descriptor* descriptor)
 {
     return true;
@@ -568,7 +596,7 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
 
     auto& view = heap_d3d11->shader_resource_views[descriptor->offset];
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC desc{
+    const D3D11_SHADER_RESOURCE_VIEW_DESC desc{
         .Format = DXGI_FORMAT_UNKNOWN,
         .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
         .Buffer =
@@ -585,8 +613,12 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     return true;
 }
 
-void D3D11Context::copy_buffer(
-    CommandList* cmd_list, const Buffer& src, uint64_t src_offset, Buffer* dst, uint64_t dst_offset, uint64_t bytes)
+void D3D11Context::copy_buffer(CommandList* cmd_list,
+                               const Buffer& src,
+                               const uint64_t src_offset,
+                               Buffer* dst,
+                               const uint64_t dst_offset,
+                               const uint64_t bytes)
 {
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
@@ -806,7 +838,7 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
     sampler->internal_state = mkS<ComPtr<ID3D11SamplerState>>();
     const auto sampler_d3d11 = static_cast<ComPtr<ID3D11SamplerState>*>(sampler->internal_state.get());
 
-    D3D11_SAMPLER_DESC sampler_desc{
+    const D3D11_SAMPLER_DESC sampler_desc{
         .Filter = static_cast<D3D11_FILTER>(filter(desc.min_filter,
                                                    desc.mag_filter,
                                                    desc.mip_filter,
@@ -864,8 +896,8 @@ void D3D11Context::unmap_buffer(const Buffer& buffer)
 }
 
 void D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
-                                       unsigned start_slot,
-                                       unsigned buffer_count,
+                                       const unsigned start_slot,
+                                       const unsigned buffer_count,
                                        const Buffer* const* buffers,
                                        const unsigned* sizes,
                                        const unsigned* const strides,
@@ -911,6 +943,7 @@ bool D3D11Context::reset_command_list(CommandList* cmd_list, const CommandPool& 
     return true;
 }
 
+
 bool D3D11Context::close_command_list(CommandList* cmd_list)
 {
     leave_recording();
@@ -920,37 +953,6 @@ bool D3D11Context::close_command_list(CommandList* cmd_list)
 bool D3D11Context::reset_command_pool(CommandPool* command_pool)
 {
     return true;
-}
-
-
-bool D3D11Context::present(Swapchain* const swapchain,
-                           unsigned fence_count,
-                           Fence* wait_fences,
-                           unsigned swapchain_index)
-{
-    assert(swapchain);
-    const auto swap_d3d11 = to_internal(*swapchain);
-
-    UINT sync_interval = 1;
-    UINT flags = 0;
-
-    if (swapchain->desc.tearing && m_allow_tearing)
-    {
-        sync_interval = 0;
-        flags |= DXGI_PRESENT_ALLOW_TEARING;
-    }
-
-    if (SUCCEEDED(swap_d3d11->swapchain->Present(sync_interval, flags)))
-    {
-        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
-        return true;
-    }
-    return false;
-}
-
-unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
-{
-    return m_frame_index;
 }
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
@@ -1014,19 +1016,19 @@ void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_
     m_device_context->RSSetViewports(count, m_viewports.data());
 }
 
-void D3D11Context::set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect)
+void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
 {
     // D3D12_RECT = D3D11_RECT = RECT
     m_device_context->RSSetScissorRects(count, scissor_rect);
 }
 
-void D3D11Context::draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void D3D11Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
     m_device_context->Draw(vertex_count, start_vertex_offset);
 }
 
 void D3D11Context::draw_indexed(CommandList* cmd_list,
-                                uint32_t index_count,
+                                const uint32_t index_count,
                                 uint32_t start_index_offset,
                                 int32_t base_vertex_offset)
 {

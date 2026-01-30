@@ -68,7 +68,6 @@ public:
 
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
     bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
-    bool get_descriptor(unsigned descriptor_count_offset, DescriptorHeap* heap, Descriptor* descriptor) override;
     bool free_descriptor(Descriptor* descriptor) override;
 
     bool create_buffer(const BufferDesc& desc,

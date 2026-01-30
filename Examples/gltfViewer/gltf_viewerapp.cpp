@@ -559,8 +559,8 @@ void gltfViewerApp::render()
     }
     else
     {
-        qhenki::gfx::Descriptor descriptor; // Location of start of GPU heap
-        THROW_IF_FALSE(m_context->get_descriptor(0, &m_GPU_heap, &descriptor));
+        // Location of start of GPU heap
+        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 0};
 
         // Parameter 1 is table, set to start at beginning of GPU heap
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
@@ -569,7 +569,7 @@ void gltfViewerApp::render()
         THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], descriptor));
 
         // Sampler
-        THROW_IF_FALSE(m_context->get_descriptor(0, &m_sampler_heap, &descriptor));
+        descriptor = {.heap = &m_sampler_heap, .offset = 0};
         m_context->set_descriptor_table(&cmd_list, 2, descriptor);
     }
 
@@ -584,21 +584,17 @@ void gltfViewerApp::render()
             // Bindless bind textures, only need to do before all draws
             if (!m_context->is_compatibility()) // NOT compatibility
             {
-                qhenki::gfx::Descriptor descriptor;
+                // Start at 1
+                qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 1};
 
-                // Make sure these match in the shader
-                int start = 1;
+                // Make sure the order matches in the shader
 
-                // Copy texture descriptor
-                THROW_IF_FALSE(m_context->get_descriptor(start++, &m_GPU_heap, &descriptor));
                 THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_gltfTexture_descriptor, descriptor));
+                ++descriptor.offset;
 
-                // Copy material descriptor
-                THROW_IF_FALSE(m_context->get_descriptor(start++, &m_GPU_heap, &descriptor));
                 THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_material_descriptor, descriptor));
+                ++descriptor.offset;
 
-                // Copy texture descriptors
-                THROW_IF_FALSE(m_context->get_descriptor(start++, &m_GPU_heap, &descriptor));
                 // TODO: check that CPU texture descriptors are contiguous, otherwise singular copy will not work
                 // Use the textures size, not descriptors because descriptors may be larger than texture count due to
                 // left over from old model

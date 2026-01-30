@@ -155,7 +155,7 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     }
 
     DXGI_ADAPTER_DESC1 desc;
-    HRESULT hr = adapter->GetDesc1(&desc);
+    auto hr = adapter->GetDesc1(&desc);
     if (SUCCEEDED(hr))
     {
         const auto msg = qhenki::util::format_wstring<256>(L"D3D12: Selected adapter: %ls\n", desc.Description);
@@ -1096,21 +1096,6 @@ bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const
     return true;
 }
 
-bool D3D12Context::get_descriptor(unsigned descriptor_count_offset,
-                                  DescriptorHeap* const heap,
-                                  Descriptor* const descriptor)
-{
-    assert(heap);
-    assert(descriptor);
-    const auto heap_d3d12 = to_internal(*heap);
-    assert(descriptor);
-    *descriptor = {
-        .heap = heap,
-        .offset = descriptor_count_offset,
-    };
-    return true;
-}
-
 bool D3D12Context::free_descriptor(Descriptor* descriptor)
 {
     assert(descriptor);
@@ -1187,7 +1172,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         if (is_cpu_visible)
         {
-            D3D12_RANGE range(0, 0);
+            const D3D12_RANGE range(0, 0);
             void* mapped_ptr;
             if (FAILED(resource->Map(0, &range, &mapped_ptr)))
             {
@@ -1210,10 +1195,9 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
     return true;
 }
-
-static bool get_cpu_descriptor(DescriptorHeap* const heap,
-                               Descriptor* descriptor,
-                               D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+namespace
+{
+bool get_cpu_descriptor(DescriptorHeap* const heap, Descriptor* descriptor, D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
     assert(heap);
 
@@ -1236,6 +1220,7 @@ static bool get_cpu_descriptor(DescriptorHeap* const heap,
 
     return true;
 }
+} // namespace
 
 bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
                                                    DescriptorHeap* const heap,
@@ -1299,8 +1284,12 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     return true;
 }
 
-void D3D12Context::copy_buffer(
-    CommandList* cmd_list, const Buffer& src, uint64_t src_offset, Buffer* dst, uint64_t dst_offset, uint64_t bytes)
+void D3D12Context::copy_buffer(CommandList* cmd_list,
+                               const Buffer& src,
+                               const uint64_t src_offset,
+                               Buffer* dst,
+                               const uint64_t dst_offset,
+                               const uint64_t bytes)
 {
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
@@ -1343,7 +1332,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
     D3D12_CLEAR_VALUE clear{
         .Format = desc.format,
     };
-    D3D12_CLEAR_VALUE* clear_ptr = nullptr;
+    const D3D12_CLEAR_VALUE* clear_ptr = nullptr;
     if (is_depth_stencil_format(desc.format))
     {
         clear_ptr = &clear;
@@ -1393,13 +1382,14 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
 
     return true;
 }
-
-static bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
-                                            D3D12DescriptorHeap* const heap_d3d12,
-                                            DescriptorHeapDesc::Type expected_type,
-                                            Descriptor* const descriptor,
-                                            const wchar_t* message,
-                                            D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+namespace
+{
+bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
+                                     D3D12DescriptorHeap* const heap_d3d12,
+                                     const DescriptorHeapDesc::Type expected_type,
+                                     Descriptor* const descriptor,
+                                     const wchar_t* message,
+                                     D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
     assert(cpu_handle);
     if (heap->desc.type != expected_type)
@@ -1423,6 +1413,7 @@ static bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
     heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset);
     return true;
 }
+} // namespace
 
 bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
                                                  DescriptorHeap* const heap,
@@ -1644,8 +1635,8 @@ void D3D12Context::unmap_buffer(const Buffer& buffer)
 }
 
 void D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
-                                       unsigned start_slot,
-                                       unsigned buffer_count,
+                                       const unsigned start_slot,
+                                       const unsigned buffer_count,
                                        const Buffer* const* buffers,
                                        const unsigned* sizes,
                                        const unsigned* const strides,
@@ -1921,21 +1912,21 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     return true;
 }
 
-void D3D12Context::set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport)
+void D3D12Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
 {
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->Get();
     command_list->RSSetViewports(count, viewport);
 }
 
-void D3D12Context::set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect)
+void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
 {
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->Get();
     command_list->RSSetScissorRects(count, scissor_rect);
 }
 
-void D3D12Context::draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+auto D3D12Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset) -> void
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -1976,7 +1967,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* qu
     }
 }
 
-bool D3D12Context::create_fence(Fence* fence, uint64_t initial_value)
+bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
 {
     fence->internal_state = mkS<D3D12Fence>();
     const auto fence_d3d12 = to_internal(*fence);
@@ -2019,10 +2010,10 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
     return true;
 }
 
-void D3D12Context::set_barrier_resource(unsigned count,
+void D3D12Context::set_barrier_resource(const unsigned count,
                                         ImageBarrier* barriers,
                                         const Swapchain& swapchain,
-                                        unsigned frame_index)
+                                        const unsigned frame_index)
 {
     assert(barriers);
     for (unsigned i = 0; i < count; i++)
@@ -2032,7 +2023,7 @@ void D3D12Context::set_barrier_resource(unsigned count,
     }
 }
 
-void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
+void D3D12Context::set_barrier_resource(const unsigned count, ImageBarrier* barriers, const Texture& render_target)
 {
     assert(barriers);
     for (unsigned i = 0; i < count; i++)
@@ -2041,7 +2032,7 @@ void D3D12Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, 
     }
 }
 
-void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -2082,7 +2073,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, unsigned count, const Im
         };
     }
 
-    D3D12_BARRIER_GROUP barrier_group = {
+    const D3D12_BARRIER_GROUP barrier_group = {
         .Type = D3D12_BARRIER_TYPE_TEXTURE,
         .NumBarriers = count,
         .pTextureBarriers = d3d12_barriers,
