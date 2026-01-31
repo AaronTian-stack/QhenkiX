@@ -818,9 +818,34 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         });
     }
 
+    D3D12_DESCRIPTOR_RANGE** ranges;
+
+    constexpr size_t static_array_size = 16;
+    std::array<D3D12_DESCRIPTOR_RANGE*, static_array_size> static_ranges_ptrs;
+    std::array<std::array<D3D12_DESCRIPTOR_RANGE, static_array_size>, static_array_size> static_ranges;
+
     memory::Arena arena;
-    THROW_IF_FALSE(m_arenas.pop(arena));
-    const auto ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
+    bool use_arena = desc->spaces.size() > static_array_size;
+    if (!use_arena)
+    {
+        for (const auto& space : desc->spaces)
+        {
+            if (space.size() > static_array_size)
+            {
+                use_arena = true;
+                break;
+            }
+        }
+    }
+    if (use_arena)
+    {
+        THROW_IF_FALSE(m_arenas.pop(arena));
+        ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
+    }
+    else
+    {
+        ranges = static_ranges_ptrs.data();
+    }
     for (unsigned i = 0; i < desc->spaces.size(); i++)
     {
         auto& space = desc->spaces[i];
@@ -835,7 +860,15 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
                               return a.binding < b.binding;
                           });
         // Assemble ranges dynamically
-        const auto l_ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE>(space.size());
+        D3D12_DESCRIPTOR_RANGE* l_ranges;
+        if (use_arena)
+        {
+            l_ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE>(space.size());
+        }
+        else
+        {
+            l_ranges = static_ranges[i].data();
+        }
         unsigned offset = 0;
         for (unsigned j = 0; j < space.size(); j++)
         {
@@ -896,7 +929,10 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         return false;
     }
 
-    THROW_IF_FALSE(m_arenas.push(std::move(arena)));
+    if (use_arena)
+    {
+        THROW_IF_FALSE(m_arenas.push(std::move(arena)));
+    }
 
     return true;
 }
@@ -1469,11 +1505,30 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     const auto texture_allocation = to_internal(*texture);
     const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
 
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT* layouts;
+    UINT* row_counts;
+    UINT64* row_sizes;
+
+    constexpr size_t static_array_size = 16;
+    std::array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT, static_array_size> static_layouts;
+    std::array<UINT, static_array_size> static_row_counts;
+    std::array<UINT64, static_array_size> static_row_sizes;
+
     memory::Arena arena;
-    THROW_IF_FALSE(m_arenas.pop(arena));
-    const auto layouts = arena.alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
-    const auto row_counts = arena.alloc_array<UINT>(num_subresources);
-    const auto row_sizes = arena.alloc_array<UINT64>(num_subresources);
+    const bool use_arena = num_subresources > static_array_size;
+    if (use_arena)
+    {
+        THROW_IF_FALSE(m_arenas.pop(arena));
+        layouts = arena.alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
+        row_counts = arena.alloc_array<UINT>(num_subresources);
+        row_sizes = arena.alloc_array<UINT64>(num_subresources);
+    }
+    else
+    {
+        layouts = static_layouts.data();
+        row_counts = static_row_counts.data();
+        row_sizes = static_row_sizes.data();
+    }
 
     UINT64 size;
     m_device->GetCopyableFootprints(&desc, 0, num_subresources, 0, layouts, row_counts, row_sizes, &size);
@@ -1550,7 +1605,11 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
     }
 
-    THROW_IF_FALSE(m_arenas.push(std::move(arena)));
+    if (use_arena)
+    {
+        THROW_IF_FALSE(m_arenas.push(std::move(arena)));
+    }
+
     return true;
 }
 
@@ -2037,9 +2096,22 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, co
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
 
+    D3D12_TEXTURE_BARRIER* d3d12_barriers;
+
+    constexpr size_t static_array_size = 16;
+    std::array<D3D12_TEXTURE_BARRIER, static_array_size> static_barriers;
+
     memory::Arena arena;
-    THROW_IF_FALSE(m_arenas.pop(arena));
-    const auto d3d12_barriers = arena.alloc_array<D3D12_TEXTURE_BARRIER>(count);
+    const bool use_arena = count > static_array_size;
+    if (use_arena)
+    {
+        THROW_IF_FALSE(m_arenas.pop(arena));
+        d3d12_barriers = arena.alloc_array<D3D12_TEXTURE_BARRIER>(count);
+    }
+    else
+    {
+        d3d12_barriers = static_barriers.data();
+    }
 
     for (unsigned i = 0; i < count; i++)
     {
@@ -2080,7 +2152,10 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, co
     };
 
     command_list->Barrier(1, &barrier_group);
-    THROW_IF_FALSE(m_arenas.push(std::move(arena)));
+    if (use_arena)
+    {
+        THROW_IF_FALSE(m_arenas.push(std::move(arena)));
+    }
 }
 
 void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
