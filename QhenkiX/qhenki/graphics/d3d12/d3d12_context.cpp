@@ -1148,6 +1148,7 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
 
 bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
+    assert(buffer);
     buffer->desc = desc;
     buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>();
     const auto buffer_d3d12 = to_internal(*buffer);
@@ -1233,9 +1234,13 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 }
 namespace
 {
-bool get_cpu_descriptor(DescriptorHeap* const heap, Descriptor* descriptor, D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+// Gets or creates descriptor and retrieves its CPU handle
+bool get_native_descriptor_handle(DescriptorHeap* const heap,
+                                  Descriptor* descriptor,
+                                  D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
     assert(heap);
+    assert(descriptor);
 
     const auto heap_d3d12 = to_internal(*heap);
     if (heap->desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
@@ -1265,7 +1270,7 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
     const auto buffer_d3d12 = to_internal(buffer);
 
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!get_cpu_descriptor(heap, descriptor, &cpu_handle))
+    if (!get_native_descriptor_handle(heap, descriptor, &cpu_handle))
     {
         return false;
     }
@@ -1291,7 +1296,7 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     const auto buffer_d3d12 = to_internal(buffer);
 
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!get_cpu_descriptor(heap, descriptor, &cpu_handle))
+    if (!get_native_descriptor_handle(heap, descriptor, &cpu_handle))
     {
         return false;
     }
@@ -1327,6 +1332,7 @@ void D3D12Context::copy_buffer(CommandList* cmd_list,
                                const uint64_t dst_offset,
                                const uint64_t bytes)
 {
+    assert(dst);
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
     const auto src_allocation = to_internal(src);
@@ -1340,6 +1346,7 @@ void D3D12Context::copy_buffer(CommandList* cmd_list,
 
 bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
 {
+    assert(texture);
     if (desc.height > 1 && desc.dimension == TextureDimension::TEXTURE_1D)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Tried to initialize 1D texture with height > 1\n");
@@ -2074,17 +2081,17 @@ void D3D12Context::set_barrier_resource(const unsigned count,
                                         const Swapchain& swapchain,
                                         const unsigned frame_index)
 {
-    assert(barriers);
+    assert(count == 0 || barriers);
+    assert(frame_index == m_swapchain->GetCurrentBackBufferIndex());
     for (unsigned i = 0; i < count; i++)
     {
-        assert(frame_index == m_swapchain->GetCurrentBackBufferIndex());
         barriers[i].resource = static_cast<void*>(m_swapchain_buffers[frame_index].Get());
     }
 }
 
 void D3D12Context::set_barrier_resource(const unsigned count, ImageBarrier* barriers, const Texture& render_target)
 {
-    assert(barriers);
+    assert(count == 0 || barriers);
     for (unsigned i = 0; i < count; i++)
     {
         barriers[i].resource = static_cast<void*>(to_internal(render_target)->allocation.Get()->GetResource());

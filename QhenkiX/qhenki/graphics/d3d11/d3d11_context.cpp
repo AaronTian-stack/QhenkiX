@@ -326,8 +326,6 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
     const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(pipeline->internal_state.get());
     const auto d3d11_vertex_shader = to_internal(vertex_shader);
 
-    assert(d3d11_pipeline);
-
     d3d11_pipeline->vertex_shader = vertex_shader.internal_state.get();
     d3d11_pipeline->pixel_shader = pixel_shader.internal_state.get();
 
@@ -495,6 +493,7 @@ bool D3D11Context::free_descriptor(Descriptor* descriptor)
 
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
+    assert(buffer);
     if (desc.usage & BufferUsage::CONSTANT)
     {
         if (desc.size > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
@@ -620,6 +619,7 @@ void D3D11Context::copy_buffer(CommandList* cmd_list,
                                const uint64_t dst_offset,
                                const uint64_t bytes)
 {
+    assert(dst);
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
 
@@ -643,6 +643,7 @@ void D3D11Context::copy_buffer(CommandList* cmd_list,
 
 bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
 {
+    assert(texture);
     texture->desc = desc;
     texture->internal_state = mkS<D3D11Texture>();
     const auto texture_d3d11 = static_cast<D3D11Texture*>(texture->internal_state.get());
@@ -985,7 +986,6 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
     {
         assert(rts[i]);
         const auto heap = to_internal_rtv(*rts[i]->descriptor.heap);
-        assert(heap);
         // Descriptor is used as index
         const auto& rtv = heap->at(rts[i]->descriptor.offset);
         if (rts[i]->clear_type & RenderTarget::ClearType::COLOR)
