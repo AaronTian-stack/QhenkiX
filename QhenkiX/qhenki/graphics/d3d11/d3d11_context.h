@@ -24,6 +24,8 @@ class D3D11Context : public Context
     ComPtr<ID3D11Debug> m_debug;
     ComPtr<ID3D11Device> m_device;
     ComPtr<ID3D11DeviceContext> m_device_context;
+    ComPtr<IDXGISwapChain1> m_swapchain;
+    ComPtr<ID3D11RenderTargetView> m_swapchain_view;
     ComPtr<ID3D10Multithread> m_multithread;
 
     UINT m_frame_index = 0;

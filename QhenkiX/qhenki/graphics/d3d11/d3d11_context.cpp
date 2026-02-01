@@ -12,7 +12,6 @@
 #include "d3d11_heap.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_shader.h"
-#include "d3d11_swapchain.h"
 #include "qhenki/application.h"
 #include "qhenki/utility/d3d_util.h"
 
@@ -25,13 +24,6 @@ ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
     const auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
     assert(d3d11_buffer);
     return d3d11_buffer;
-}
-
-D3D11Swapchain* to_internal(const Swapchain& ext)
-{
-    const auto d3d11_swapchain = static_cast<D3D11Swapchain*>(ext.internal_state.get());
-    assert(d3d11_swapchain);
-    return d3d11_swapchain;
 }
 
 D3D11Shader* to_internal(const Shader& ext)
@@ -231,6 +223,26 @@ bool D3D11Context::is_compatibility() const
     return true;
 }
 
+namespace
+{
+bool create_swapchain_resources(ID3D11Device* device, IDXGISwapChain1* swapchain, ID3D11RenderTargetView** out_rtv)
+{
+    ComPtr<ID3D11Texture2D> back_buffer;
+    if (FAILED(swapchain->GetBuffer(0, IID_PPV_ARGS(&back_buffer))))
+    {
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to get Back Buffer from Swapchain\n");
+        return false;
+    }
+    if (FAILED(device->CreateRenderTargetView(back_buffer.Get(), nullptr, out_rtv)))
+    {
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Render Target View\n");
+        return false;
+    }
+    set_debug_name(*out_rtv, "Swapchain Render Target");
+    return true;
+}
+} // namespace
+
 bool D3D11Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
                                     Swapchain* const swapchain,
@@ -244,19 +256,43 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
         return false;
     }
 
-    auto swap_d3d11 = mkS<D3D11Swapchain>();
+    *frame_index = 0;
     UINT swapchain_flags = 0;
     if (swapchain_desc.tearing && m_allow_tearing)
     {
         swapchain_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
-    if (!swap_d3d11->create(
-            swapchain_desc, window, m_dxgi_factory.Get(), m_device.Get(), *frame_index, swapchain_flags))
+
+    const DXGI_SWAP_CHAIN_DESC1 dxgi_desc = {
+        .Width = static_cast<UINT>(swapchain_desc.width),
+        .Height = static_cast<UINT>(swapchain_desc.height),
+        .Format = swapchain_desc.format,
+        .SampleDesc = {.Count = 1, .Quality = 0},
+        .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+        .BufferCount = swapchain_desc.buffer_count,
+        .Scaling = DXGI_SCALING_STRETCH,
+        .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+        .Flags = swapchain_flags,
+    };
+
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreen_desc = {};
+    fullscreen_desc.Windowed = true;
+
+    const auto hwnd = window.get_hwnd();
+    if (!hwnd ||
+        FAILED(m_dxgi_factory->CreateSwapChainForHwnd(
+            m_device.Get(), hwnd, &dxgi_desc, &fullscreen_desc, nullptr, m_swapchain.ReleaseAndGetAddressOf())))
+    {
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Swapchain\n");
+        return false;
+    }
+
+    if (!create_swapchain_resources(m_device.Get(), m_swapchain.Get(), m_swapchain_view.ReleaseAndGetAddressOf()))
     {
         return false;
     }
+
     swapchain->desc = swapchain_desc;
-    swapchain->internal_state = std::move(swap_d3d11);
     return true;
 }
 
@@ -267,14 +303,20 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
                                     unsigned& frame_index)
 {
     m_device_context->Flush();
-    const auto swap_d3d11 = to_internal(*swapchain);
+
+    m_swapchain_view.Reset();
 
     UINT resize_flags = 0;
     if (swapchain->desc.tearing && m_allow_tearing)
     {
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
-    return swap_d3d11->resize(m_device.Get(), m_device_context.Get(), width, height, resize_flags);
+    if (FAILED(m_swapchain->ResizeBuffers(0, width, height, swapchain->desc.format, resize_flags)))
+    {
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to resize Swapchain buffers\n");
+        return false;
+    }
+    return create_swapchain_resources(m_device.Get(), m_swapchain.Get(), m_swapchain_view.ReleaseAndGetAddressOf());
 }
 
 bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
@@ -288,7 +330,6 @@ bool D3D11Context::present(Swapchain* const swapchain,
                            unsigned swapchain_index)
 {
     assert(swapchain);
-    const auto swap_d3d11 = to_internal(*swapchain);
 
     UINT sync_interval = 1;
     UINT flags = 0;
@@ -299,7 +340,7 @@ bool D3D11Context::present(Swapchain* const swapchain,
         flags |= DXGI_PRESENT_ALLOW_TEARING;
     }
 
-    if (SUCCEEDED(swap_d3d11->swapchain->Present(sync_interval, flags)))
+    if (SUCCEEDED(m_swapchain->Present(sync_interval, flags)))
     {
         m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
         return true;
@@ -980,11 +1021,10 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      const RenderTarget* const depth_stencil,
                                      unsigned frame_index)
 {
-    const auto swap_d3d11 = to_internal(*swapchain);
-    const auto rtv = swap_d3d11->sc_render_target.Get();
-    m_device_context->ClearRenderTargetView(rtv, clear_color_values);
+    const auto view = m_swapchain_view.Get();
+    m_device_context->ClearRenderTargetView(view, clear_color_values);
     ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
-    m_device_context->OMSetRenderTargets(1, &rtv, ds);
+    m_device_context->OMSetRenderTargets(1, &view, ds);
     return true;
 }
 
