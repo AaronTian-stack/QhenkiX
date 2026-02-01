@@ -575,8 +575,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     }
 
     buffer->desc = desc;
-    buffer->internal_state = mkS<ComPtr<ID3D11Buffer>>(d3d11_buffer);
-
+    buffer->internal_state = mkS<ComPtr<ID3D11Buffer>>(std::move(d3d11_buffer));
     return true;
 }
 
@@ -1321,8 +1320,11 @@ bool D3D11Context::wait_idle(Queue* const queue)
 
 D3D11Context::~D3D11Context()
 {
-    m_device_context->ClearState();
-    m_device_context->Flush();
+    if (m_device_context)
+    {
+        m_device_context->ClearState();
+        m_device_context->Flush();
+    }
     m_multithread.Reset();
     m_device_context.Reset();
     m_dxgi_factory.Reset();

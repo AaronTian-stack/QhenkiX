@@ -1149,7 +1149,6 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 {
     assert(buffer);
 
-    ComPtr<D3D12MA::Allocation> allocation;
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
         .Alignment = 0,
@@ -1186,6 +1185,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
     // Initial state is not used in D3D12
 
+    ComPtr<D3D12MA::Allocation> allocation;
     // Barrier layout is undefined for CreateResource3
     if (FAILED(m_allocator->CreateResource3(&allocation_desc,
                                             &resource_desc,
@@ -1206,7 +1206,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         if (is_cpu_visible)
         {
-            const D3D12_RANGE range(0, 0);
+            constexpr D3D12_RANGE range(0, 0);
             void* mapped_ptr;
             if (FAILED(resource->Map(0, &range, &mapped_ptr)))
             {
