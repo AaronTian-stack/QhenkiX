@@ -748,9 +748,10 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     const auto texture_d3d11 = to_internal(texture);
     const auto heap_d3d11 = to_internal_srv_uav(*heap);
 
-    const size_t offset = descriptor->offset == CREATE_NEW_DESCRIPTOR ? heap_d3d11->shader_resource_views.size()
-                                                                      : descriptor->offset;
-    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+    const auto create_new_descriptor = descriptor->offset == CREATE_NEW_DESCRIPTOR;
+
+    const size_t offset = create_new_descriptor ? heap_d3d11->shader_resource_views.size() : descriptor->offset;
+    if (create_new_descriptor)
     {
         heap_d3d11->shader_resource_views.push_back({});
     }
@@ -761,7 +762,7 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     ComPtr<ID3D11ShaderResourceView> view;
     if (FAILED(m_device->CreateShaderResourceView(resource, nullptr, view.ReleaseAndGetAddressOf())))
     {
-        if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+        if (create_new_descriptor)
         {
             heap_d3d11->shader_resource_views.pop_back();
         }
@@ -770,7 +771,7 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     }
     heap_d3d11->shader_resource_views[offset] = std::move(view);
     descriptor->heap = heap;
-    descriptor->offset = static_cast<unsigned>(offset);
+    descriptor->offset = offset;
     return true;
 }
 
