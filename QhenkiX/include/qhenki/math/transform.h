@@ -49,9 +49,6 @@ public:
     Transform& look_at(const XMFLOAT3& p, const XMFLOAT3& up);
     Transform& look_at(XMVECTOR p, XMVECTOR up);
 
-    void rotate_around(const XMFLOAT3& pivot, const XMFLOAT3& global_axis, float angle);
-    void rotate_around(XMVECTOR pivot, XMVECTOR global_axis, float angle);
-
     XMVECTOR transform_direction(const XMFLOAT3& d) const;
     XMVECTOR transform_direction(XMVECTOR d) const;
     XMVECTOR transform_point(const XMFLOAT3& p) const;

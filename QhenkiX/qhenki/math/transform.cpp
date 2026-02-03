@@ -101,24 +101,6 @@ Transform& Transform::look_at(const XMVECTOR p, const XMVECTOR up)
     return *this;
 }
 
-void Transform::rotate_around(const XMFLOAT3& pivot, const XMFLOAT3& global_axis, const float angle)
-{
-    rotate_around(XMLoadFloat3(&pivot), XMLoadFloat3(&global_axis), angle);
-}
-
-void Transform::rotate_around(const XMVECTOR pivot, const XMVECTOR global_axis, const float angle)
-{
-    const XMVECTOR axis_vec = XMVector3Normalize(global_axis);
-    XMVECTOR trans_vec = XMLoadFloat3(&translation);
-    trans_vec = XMVectorSubtract(trans_vec, pivot);
-    trans_vec = XMVector3Rotate(trans_vec, XMQuaternionRotationAxis(axis_vec, angle));
-    trans_vec = XMVectorAdd(trans_vec, pivot);
-    XMStoreFloat3(&translation, trans_vec);
-
-    const XMVECTOR delta = XMQuaternionRotationAxis(axis_vec, angle);
-    XMStoreFloat4(&rotation, XMQuaternionMultiply(delta, XMLoadFloat4(&rotation)));
-}
-
 XMVECTOR Transform::transform_direction(const XMFLOAT3& d) const
 {
     return transform_direction(XMLoadFloat3(&d));
