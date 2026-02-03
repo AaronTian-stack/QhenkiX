@@ -5,8 +5,6 @@
 #include "gltf_loader.h"
 
 #include "qhenki/application.h"
-#include "qhenki/arcball_controller.h"
-#include "qhenki/perspective_camera.h"
 
 class gltfViewerApp : public qhenki::Application
 {
@@ -43,17 +41,11 @@ class gltfViewerApp : public qhenki::Application
     qhenki::gfx::DescriptorHeap m_sampler_heap{};
     std::vector<qhenki::gfx::Descriptor> m_sampler_descriptors{};
 
-    qhenki::PerspectiveCamera m_camera{};
-    qhenki::ArcBallController m_camera_controller{};
-
     std::mutex m_model_mutex;
     std::atomic_int m_model_index_to_load_into = 0;
     std::array<GLTFModel, m_frames_in_flight> m_models{};
     tsl::robin_map<std::string, int> m_attribute_to_slot{
-        {"POSITION", 0},
-        {"NORMAL", 1},
-        {"COLOR_0", 2},
-        {"TEXCOORD_0", 3},
+        {"POSITION", 0}, {"NORMAL", 1}, {"COLOR_0", 2}, {"TEXCOORD_0", 3},
         //{"TEXCOORD_1", 4},
     };
 
