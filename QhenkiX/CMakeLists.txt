@@ -31,8 +31,8 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/input/input_manager.cpp"
 
-    "${QHENKIX_DIR}/math/basis.cpp"
     "${QHENKIX_DIR}/math/transform.cpp"
+    "${QHENKIX_DIR}/math/transform_simd.cpp"
 
     "${QHENKIX_DIR}/memory/arena.cpp"
 
@@ -80,8 +80,8 @@ set(QHENKIX_PUBLIC_HEADERS
 
     "${QHENKIX_PUBLIC_DIR}/input/input_manager.h"
 
-    "${QHENKIX_PUBLIC_DIR}/math/basis.h"
     "${QHENKIX_PUBLIC_DIR}/math/transform.h"
+    "${QHENKIX_PUBLIC_DIR}/math/transform_simd.h"
 
     "${QHENKIX_PUBLIC_DIR}/memory/arena.h"
 

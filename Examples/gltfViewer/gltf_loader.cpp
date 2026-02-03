@@ -12,6 +12,8 @@
 
 #include <tiny_gltf.h>
 
+#include "qhenki/math/transform_simd.h"
+
 namespace
 {
 void process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
@@ -31,38 +33,55 @@ void process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
         if (tiny_node.scale.empty() && tiny_node.rotation.empty() && tiny_node.translation.empty() &&
             tiny_node.matrix.size() == 16)
         {
-            auto& m = tiny_node.matrix;
-            // glTF is column-major order
-            auto matrix3x3 = XMFLOAT3X3(m[0], m[1], m[2], m[4], m[5], m[6], m[8], m[9], m[10]);
-            auto translation = XMFLOAT3(m[3], m[7], m[11]);
-            node.local_transform = qhenki::math::Transform(qhenki::math::Basis(matrix3x3), translation);
+            const auto& m = tiny_node.matrix;
+            // glTF matrix is column major
+            // Build row major XMMATRIX
+            const XMMATRIX mat = XMMatrixSet(static_cast<float>(m[0]),
+                                             static_cast<float>(m[1]),
+                                             static_cast<float>(m[2]),
+                                             static_cast<float>(m[3]),
+                                             static_cast<float>(m[4]),
+                                             static_cast<float>(m[5]),
+                                             static_cast<float>(m[6]),
+                                             static_cast<float>(m[7]),
+                                             static_cast<float>(m[8]),
+                                             static_cast<float>(m[9]),
+                                             static_cast<float>(m[10]),
+                                             static_cast<float>(m[11]),
+                                             static_cast<float>(m[12]),
+                                             static_cast<float>(m[13]),
+                                             static_cast<float>(m[14]),
+                                             static_cast<float>(m[15]));
+            XMVECTOR scale_vec, rotation_vec, translation_vec;
+            XMMatrixDecompose(&scale_vec, &rotation_vec, &translation_vec, XMMatrixTranspose(mat));
+            XMStoreFloat3(&node.local_transform.scale, scale_vec);
+            XMStoreFloat4(&node.local_transform.rotation, rotation_vec);
+            XMStoreFloat3(&node.local_transform.translation, translation_vec);
         }
         else
         {
-            auto scale = XMVectorSet(1.f, 1.f, 1.f, 1.f);
-            auto quat = XMQuaternionIdentity();
-            auto trans = XMFLOAT3(0.f, 0.f, 0.f);
+            qhenki::math::TransformSIMD transform{.scale = XMVectorSet(1.0f, 1.0f, 1.0f, 0.0f),
+                                                  .rotation = XMQuaternionIdentity(),
+                                                  .translation = g_XMZero};
+
             if (!tiny_node.scale.empty())
             {
-                scale = XMVectorSet(tiny_node.scale[0], tiny_node.scale[1], tiny_node.scale[2], 1.f);
+                transform.scale = XMVectorSet(tiny_node.scale[0], tiny_node.scale[1], tiny_node.scale[2], 1.0f);
             }
             if (!tiny_node.rotation.empty())
             {
-                // Convert to left hand
-                quat = XMVectorSet(tiny_node.rotation[0],
-                                   tiny_node.rotation[1],
-                                   -tiny_node.rotation[2],
-                                   -tiny_node.rotation[3]);
+                transform.rotation = XMVectorSet(tiny_node.rotation[0],
+                                                 tiny_node.rotation[1],
+                                                 tiny_node.rotation[2],
+                                                 tiny_node.rotation[3]);
             }
             if (!tiny_node.translation.empty())
             {
-                // Convert to left hand
-                trans = XMFLOAT3(tiny_node.translation[0], tiny_node.translation[1], -tiny_node.translation[2]);
+                transform.translation =
+                    XMVectorSet(tiny_node.translation[0], tiny_node.translation[1], tiny_node.translation[2], 1.0f);
             } // TRS, DirectXMath is pre multiplied, so we need to reverse the order
-            auto transform = XMMatrixScalingFromVector(scale) * XMMatrixRotationQuaternion(quat);
-            XMFLOAT3X3 matrix3x3;
-            XMStoreFloat3x3(&matrix3x3, transform);
-            node.local_transform = qhenki::math::Transform(qhenki::math::Basis(matrix3x3), trans);
+
+            transform.store(node.local_transform);
         }
         model->nodes.push_back(node);
     }

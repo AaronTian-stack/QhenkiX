@@ -13,6 +13,8 @@
 #include <cstdio>
 #include <memory>
 
+#include "qhenki/math/transform_simd.h"
+
 namespace
 {
 
@@ -25,9 +27,10 @@ void update_global_transform(GLTFModel& model, GLTFModel::Node& node)
             update_global_transform(model, model.nodes[node.parent_index]);
         }
         // Pre-multiply local transform with parent's global transform
-        // TODO: stop store load every time
-        node.global_transform.transform = model.nodes[node.parent_index].global_transform.transform *
-                                          node.local_transform;
+        const auto parent_simd = qhenki::math::TransformSIMD::load(
+            model.nodes[node.parent_index].global_transform.transform);
+        const auto local_simd = qhenki::math::TransformSIMD::load(node.local_transform);
+        (parent_simd * local_simd).store(node.global_transform.transform);
     }
     else
     {
@@ -619,7 +622,7 @@ void gltfViewerApp::render()
                 XMFLOAT4X4 global_4x4;
                 XMFLOAT4X4 global_4x4_inverse;
                 {
-                    auto m = current_node.global_transform.transform.to_matrix_simd();
+                    auto m = qhenki::math::TransformSIMD::load(current_node.global_transform.transform).to_matrix();
                     XMStoreFloat4x4(&global_4x4, XMMatrixTranspose(m));
                     XMStoreFloat4x4(&global_4x4_inverse, XMMatrixTranspose(XMMatrixInverse(nullptr, m)));
                 }

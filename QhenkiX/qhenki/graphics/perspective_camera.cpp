@@ -1,13 +1,15 @@
 #include "qhenki/perspective_camera.h"
 
+#include "qhenki/math/transform_simd.h"
+
 using namespace qhenki;
 
 void PerspectiveCamera::update(bool update_frustum)
 {
-    auto proj = XMMatrixPerspectiveFovLH(fov, viewport_width / viewport_height, near_plane, far_plane);
+    const auto proj = XMMatrixPerspectiveFovLH(fov, viewport_width / viewport_height, near_plane, far_plane);
 
-    transform.basis.orthonormalize();
-    const auto view = transform.to_matrix_simd();
+    const auto world = math::TransformSIMD::load(transform).to_matrix();
+    const auto view = XMMatrixInverse(nullptr, world);
 
     const auto view_proj = XMMatrixTranspose(view * proj);
     const auto inv_view_proj = XMMatrixInverse(nullptr, view_proj);
