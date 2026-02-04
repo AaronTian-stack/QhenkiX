@@ -1914,12 +1914,12 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
         const auto heap = to_internal(*depth_stencil->descriptor.heap);
         heap->get_CPU_descriptor(&ds_handle, depth_stencil->descriptor.offset);
         ds_handle_ptr = &ds_handle;
+        clear_depth(command_list, ds_handle, depth_stencil);
     }
 
     command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, ds_handle_ptr);
 
     command_list->ClearRenderTargetView(rtv_handle, clear_color_values, 0, nullptr);
-    clear_depth(command_list, ds_handle, depth_stencil);
 
     return true;
 }
