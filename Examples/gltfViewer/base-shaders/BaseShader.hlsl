@@ -3,11 +3,11 @@
 #define DX12
 #endif
 
+#include "shared_structs.h"
+
 cbuffer CameraBuffer : register(b0)
 {
-    float4x4 view_proj;
-    float4x4 inv_view_proj;
-    float3 position;
+    CameraData camera_data;
 };
 
 // Per draw attributes
@@ -113,7 +113,7 @@ PSInput vs_main(VSInput input)
 
     float4 modelPosition = mul(float4(input.position, 1.0), model);
 
-    float4 worldPosition = mul(modelPosition, view_proj);
+    float4 worldPosition = mul(modelPosition, camera_data.view_proj);
 
     output.sv_position = worldPosition;
     output.position = modelPosition.xyz;
@@ -121,7 +121,7 @@ PSInput vs_main(VSInput input)
     output.color = input.color;
     output.uv = input.uv;
 
-    output.cameraPosition = position; // Camera position from the constant buffer
+    output.cameraPosition = camera_data.position; // Camera position from the constant buffer
 
     return output;
 }
