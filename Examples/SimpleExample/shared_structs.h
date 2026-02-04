@@ -8,17 +8,29 @@
 using namespace DirectX;
 #endif
 
-struct CameraBuffer
+struct CameraMatrices
 {
     XMFLOAT4X4 view_proj;
     XMFLOAT4X4 inv_view_proj;
 };
 
-struct VertexInput
+struct Vertex
 {
-    XMFLOAT3 position;
-    XMFLOAT3 color;
-    XMFLOAT2 texcoord;
+    XMFLOAT3 position
+#ifndef __cplusplus
+        : POSITION
+#endif
+          ;
+    XMFLOAT3 color
+#ifndef __cplusplus
+        : COLOR0
+#endif
+          ;
+    XMFLOAT2 texcoord
+#ifndef __cplusplus
+        : TEXCOORD0
+#endif
+          ;
 };
 
 #endif // SIMPLEEXAMPLE_SHARED_STRUCTS_H

@@ -3,9 +3,6 @@
 #include "qhenki/application.h"
 #include "shared_structs.h"
 
-using CameraMatrices = CameraBuffer;
-using Vertex = VertexInput;
-
 class ExampleApp : public qhenki::Application
 {
     qhenki::gfx::PipelineLayout m_pipeline_layout{};
