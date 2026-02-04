@@ -5,11 +5,12 @@
 
 // Pseudo ECS components
 
+struct SceneObject;
+
 struct Node
 {
-    uint64_t parent_index;
-    uint64_t first_child;
-    // Normally would have siblings but this example only has single parent child relationship
+    SceneObject* parent = nullptr;
+    SceneObject* first_child_ptr = nullptr;
 };
 
 // Atomic unit of scene
@@ -26,3 +27,11 @@ struct PerspectiveCamera
     SceneObject hierarchy;
     qhenki::component::PerspectiveCameraComponent perspective;
 };
+
+void link_parent_child(SceneObject* parent, SceneObject* child);
+
+// Marks object and all descendants as dirty
+void mark_world_dirty(SceneObject* obj);
+
+// Recomputes world transform and propagate to children
+void update_world_transform(SceneObject* obj);
