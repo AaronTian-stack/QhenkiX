@@ -29,7 +29,7 @@ XMMATRIX TransformSIMD::to_matrix() const
 TransformSIMD TransformSIMD::operator*(const TransformSIMD& rhs) const
 {
     TransformSIMD result;
-    result.rotation = XMQuaternionMultiply(rotation, rhs.rotation);
+    result.rotation = XMQuaternionMultiply(rhs.rotation, rotation);
     result.scale = scale * rhs.scale;
     result.translation = XMVector3Rotate(rhs.translation * scale, rotation) + translation;
     return result;

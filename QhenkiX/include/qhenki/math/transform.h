@@ -23,25 +23,24 @@ public:
 
     XMFLOAT4X4 to_matrix() const;
 
-    // inverse transform direction (no scale)
     /**
-     * Multiplies inverse of transform with direction, does not consider scale.
+     * Multiplies inverse of transform's rotation with direction. Thus does not consider translation or scale.
      * @param d Direction to transform
-     * @return
+     * @return Transformed direction
      */
     XMVECTOR inverse_transform_direction(const XMFLOAT3& d) const;
     XMVECTOR inverse_transform_direction(XMVECTOR d) const;
     /**
-     * Multiplies inverse of transform with point, considers scale.
+     * Multiplies inverse of transform with point. Considers translation, rotation, and scale.
      * @param p Point to transform
-     * @return
+     * @return Transformed point
      */
     XMVECTOR inverse_transform_point(const XMFLOAT3& p) const;
     XMVECTOR inverse_transform_point(XMVECTOR p) const;
     /**
-     * Multiplies inverse of transform with vector, considers scale.
+     * Multiplies inverse of transform with vector. Considers rotation and scale, but not translation.
      * @param v Vector to transform
-     * @return
+     * @return Transformed vector
      */
     XMVECTOR inverse_transform_vector(const XMFLOAT3& v) const;
     XMVECTOR inverse_transform_vector(XMVECTOR v) const;
@@ -79,29 +78,12 @@ public:
         return {0.f, 0.f, 0.f, 1.f};
     }
 
-    Transform()
-        : scale(identity_scale()),
-          rotation(identity_rotation()),
-          translation(0.f, 0.f, 0.f)
-    {
-    }
-    Transform(const XMFLOAT3& translation)
-        : scale(identity_scale()),
-          rotation(identity_rotation()),
-          translation(translation)
-    {
-    }
-    Transform(const XMFLOAT4& rotation, const XMFLOAT3& translation)
-        : scale(identity_scale()),
-          rotation(rotation),
-          translation(translation)
-    {
-    }
-    Transform(const XMFLOAT3& scale, const XMFLOAT4& rotation, const XMFLOAT3& translation)
-        : scale(scale),
-          rotation(rotation),
-          translation(translation)
-    {
-    }
+    Transform();
+    Transform(const XMFLOAT3& translation);
+    Transform(const XMFLOAT4& rotation, const XMFLOAT3& translation);
+    Transform(const XMFLOAT3& scale, const XMFLOAT4& rotation, const XMFLOAT3& translation);
 };
+XMVECTOR axis_x(XMVECTOR quat);
+XMVECTOR axis_y(XMVECTOR quat);
+XMVECTOR axis_z(XMVECTOR quat);
 } // namespace qhenki::math

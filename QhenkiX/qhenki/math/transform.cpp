@@ -167,17 +167,62 @@ XMVECTOR Transform::operator*(const XMVECTOR rhs) const
     return XMVector3Transform(rhs, TransformSIMD::load(*this).to_matrix());
 }
 
+#define AXIS(V, ROTQUAT) return XMVector3Rotate(V, ROTQUAT)
+
 XMVECTOR Transform::axis_x() const
 {
-    return XMVector3Rotate(g_XMIdentityR0, XMLoadFloat4(&rotation));
+    AXIS(g_XMIdentityR0, XMLoadFloat4(&rotation));
 }
 
 XMVECTOR Transform::axis_y() const
 {
-    return XMVector3Rotate(g_XMIdentityR1, XMLoadFloat4(&rotation));
+    AXIS(g_XMIdentityR1, XMLoadFloat4(&rotation));
 }
 
 XMVECTOR Transform::axis_z() const
 {
-    return XMVector3Rotate(g_XMIdentityR2, XMLoadFloat4(&rotation));
+    AXIS(g_XMIdentityR2, XMLoadFloat4(&rotation));
+}
+
+Transform::Transform()
+    : scale(identity_scale()),
+      rotation(identity_rotation()),
+      translation(0.f, 0.f, 0.f)
+{
+}
+
+Transform::Transform(const XMFLOAT3& translation)
+    : scale(identity_scale()),
+      rotation(identity_rotation()),
+      translation(translation)
+{
+}
+
+Transform::Transform(const XMFLOAT4& rotation, const XMFLOAT3& translation)
+    : scale(identity_scale()),
+      rotation(rotation),
+      translation(translation)
+{
+}
+
+Transform::Transform(const XMFLOAT3& scale, const XMFLOAT4& rotation, const XMFLOAT3& translation)
+    : scale(scale),
+      rotation(rotation),
+      translation(translation)
+{
+}
+
+XMVECTOR qhenki::math::axis_x(const XMVECTOR quat)
+{
+    AXIS(g_XMIdentityR0, quat);
+}
+
+XMVECTOR qhenki::math::axis_y(const XMVECTOR quat)
+{
+    AXIS(g_XMIdentityR1, quat);
+}
+
+XMVECTOR qhenki::math::axis_z(const XMVECTOR quat)
+{
+    AXIS(g_XMIdentityR2, quat);
 }

@@ -60,7 +60,7 @@ void process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
         }
         else
         {
-            qhenki::math::TransformSIMD transform{.scale = XMVectorSet(1.0f, 1.0f, 1.0f, 0.0f),
+            qhenki::math::TransformSIMD transform{.scale = {1.0f, 1.0f, 1.0f},
                                                   .rotation = XMQuaternionIdentity(),
                                                   .translation = g_XMZero};
 
