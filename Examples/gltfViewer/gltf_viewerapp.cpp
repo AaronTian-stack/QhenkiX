@@ -1,4 +1,5 @@
 #include "gltf_viewerapp.h"
+#include "shared_structs.h"
 
 #include <imgui/imgui.h>
 #include <SDL3/SDL_dialog.h>
@@ -8,10 +9,13 @@
 #include <qhenki/utility/math_util.h>
 #include <qhenki/utility/string_util.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdio>
 #include <memory>
+
+#include "qhenki/math/transform_simd.h"
 
 namespace
 {
@@ -24,10 +28,10 @@ void update_global_transform(GLTFModel& model, GLTFModel::Node& node)
         {
             update_global_transform(model, model.nodes[node.parent_index]);
         }
-        // Pre-multiply local transform with parent's global transform
-        // TODO: stop store load every time
-        node.global_transform.transform = model.nodes[node.parent_index].global_transform.transform *
-                                          node.local_transform;
+        const auto parent_simd = qhenki::math::TransformSIMD::load(
+            model.nodes[node.parent_index].global_transform.transform);
+        const auto local_simd = qhenki::math::TransformSIMD::load(node.local_transform);
+        (local_simd * parent_simd).store(node.global_transform.transform);
     }
     else
     {
@@ -201,12 +205,12 @@ void gltfViewerApp::create()
     THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
     // Make 2 matrix constant buffers for double buffering
-    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(qhenki::CameraMatrices),
+    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(CameraData),
                                                                       qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
                                         .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     // TODO: persistent mapping flag
-    for (int i = 0; i < m_frames_in_flight; i++)
+    for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
         THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], "Matrix Buffer"));
         THROW_IF_FALSE(
@@ -231,7 +235,10 @@ void gltfViewerApp::create()
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Docking Branch
     m_context->init_imgui(m_window, m_swapchain);
 
-    m_camera_controller.set_camera(&m_camera.transform);
+    link_parent_child(&m_camera_target, &m_camera.hierarchy);
+    m_camera.hierarchy.local_transform.translation = {0.f, 0.f, m_target_distance};
+    m_camera.hierarchy.local_transform.look_at(XMFLOAT3{0.0f, 0.0f, 0.0f}, XMFLOAT3{0.0f, 1.0f, 0.0f});
+    mark_world_dirty(&m_camera_target);
 }
 
 struct ContextModel
@@ -439,55 +446,79 @@ void gltfViewerApp::render()
     }
 
     const auto dim = this->m_window.get_display_size();
-    m_camera.viewport_width = static_cast<float>(dim.x);
-    m_camera.viewport_height = static_cast<float>(dim.y);
 
+    m_camera.perspective.viewport_width = static_cast<float>(dim.x);
+    m_camera.perspective.viewport_height = static_cast<float>(dim.y);
+
+    update_world_transform(&m_camera.hierarchy);
+
+    const bool left = m_input_manager.is_mouse_button_down(SDL_BUTTON_LEFT);
     if (ImGuiIO& io = ImGui::GetIO(); !io.WantCaptureMouse)
     {
         auto speed = 0.01f;
         const auto delta = m_input_manager.get_mouse_delta();
-        bool left = m_input_manager.is_mouse_button_down(SDL_BUTTON_LEFT);
-        bool right = m_input_manager.is_mouse_button_down(SDL_BUTTON_RIGHT);
+
+        const bool right = m_input_manager.is_mouse_button_down(SDL_BUTTON_RIGHT);
         SDL_SetWindowRelativeMouseMode(m_window.get_window(), left || right);
         if (left)
         {
-            m_camera_controller.rotate(delta.x * speed, delta.y * speed);
+            float y = delta.y * speed;
+            const float x = delta.x * speed;
+            const XMVECTOR yaw_delta = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), x);
+            XMVECTOR rot = XMLoadFloat4(&m_camera_target.local_transform.rotation);
+            rot = XMQuaternionMultiply(yaw_delta, rot); // Global
+            XMStoreFloat4(&m_camera_target.local_transform.rotation, rot);
+            const XMVECTOR right_vec = qhenki::math::axis_x(rot);
+            const XMVECTOR pitch_delta = XMQuaternionRotationAxis(right_vec, y);
+            rot = XMLoadFloat4(&m_camera_target.local_transform.rotation);
+            rot = XMQuaternionMultiply(rot, pitch_delta); // Local
+            XMStoreFloat4(&m_camera_target.local_transform.rotation, rot);
+            mark_world_dirty(&m_camera_target);
         }
+
         if (right)
         {
             if (m_input_manager.is_key_down(SDL_SCANCODE_LSHIFT) || m_input_manager.is_key_down(SDL_SCANCODE_RSHIFT))
             {
-                speed *= 100.f;
+                speed = 1.0f;
             }
-            m_camera_controller.translate(-delta.x * speed, delta.y * speed);
+            const XMVECTOR t = m_camera.hierarchy.world_transform.transform_vector(
+                XMVectorSet(-delta.x * speed, delta.y * speed, 0.f, 0.f));
+            m_camera_target.local_transform.translate_global(t);
+            mark_world_dirty(&m_camera_target);
         }
-        bool middle = m_input_manager.is_mouse_button_down(SDL_BUTTON_MIDDLE);
-        bool vertical_scrolling = m_input_manager.get_mouse_scroll().y != 0;
-        if ((vertical_scrolling != 0) ^ middle)
+
+        const auto middle = m_input_manager.is_mouse_button_down(SDL_BUTTON_MIDDLE);
+        const auto scroll_y = m_input_manager.get_mouse_scroll().y;
+        if (scroll_y != 0.0f || middle)
         {
-            float amount = 0.f;
-            if (vertical_scrolling)
-            {
-                amount = m_input_manager.get_mouse_scroll().y * 0.2f;
-            }
-            if (middle)
-            {
-                amount = -delta.y;
-            }
-            auto desired_distance = m_camera_controller.get_target_distance() + amount;
-            m_camera_controller.set_target_distance(desired_distance);
+            float amount = middle ? -delta.y : scroll_y * 0.2f;
+            m_target_distance = std::max(0.01f, m_target_distance + amount);
+            m_camera.hierarchy.local_transform.translation = XMFLOAT3(0.0f, 0.0f, m_target_distance);
+            mark_world_dirty(&m_camera.hierarchy);
         }
     }
+    update_world_transform(&m_camera.hierarchy);
 
-    m_camera.update(false);
+    const XMMATRIX view =
+        XMMatrixInverse(nullptr, qhenki::math::TransformSIMD::load(m_camera.hierarchy.world_transform).to_matrix());
 
-    // Update matrix buffer
+
+    const XMMATRIX proj = XMMatrixPerspectiveFovLH(m_camera.perspective.fov,
+                                                   m_camera.perspective.viewport_width /
+                                                       m_camera.perspective.viewport_height,
+                                                   m_camera.perspective.near_plane,
+                                                   m_camera.perspective.far_plane);
+    const XMMATRIX view_proj = XMMatrixMultiply(view, proj);
+
+    CameraData camera_data;
+    XMStoreFloat4x4(&camera_data.view_proj, XMMatrixTranspose(view_proj));
+    XMStoreFloat4x4(&camera_data.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
+    camera_data.position = m_camera.hierarchy.world_transform.translation;
+
     const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
     assert(buffer_pointer);
-    memcpy(buffer_pointer, &m_camera.matrices, sizeof(qhenki::CameraMatrices));
-    memcpy(static_cast<uint8_t*>(buffer_pointer) + sizeof(qhenki::CameraMatrices),
-           &m_camera.transform.translation,
-           sizeof(XMFLOAT3));
+    memcpy(buffer_pointer, &camera_data, sizeof(CameraData));
     m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
 
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
@@ -614,7 +645,7 @@ void gltfViewerApp::render()
                 XMFLOAT4X4 global_4x4;
                 XMFLOAT4X4 global_4x4_inverse;
                 {
-                    auto m = current_node.global_transform.transform.to_matrix_simd();
+                    auto m = qhenki::math::TransformSIMD::load(current_node.global_transform.transform).to_matrix();
                     XMStoreFloat4x4(&global_4x4, XMMatrixTranspose(m));
                     XMStoreFloat4x4(&global_4x4_inverse, XMMatrixTranspose(XMMatrixInverse(nullptr, m)));
                 }

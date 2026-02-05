@@ -18,6 +18,9 @@ add_executable(gltfViewer
     gltf_model.h
     gltf_viewerapp.cpp
     gltf_viewerapp.h
+    scene.h
+    scene.cpp
+    shared_structs.h
     ${CONFIG_FILE}
     ${SHADER_FILES}
 )

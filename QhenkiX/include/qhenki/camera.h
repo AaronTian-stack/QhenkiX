@@ -2,35 +2,26 @@
 
 #include <DirectXMath.h>
 
-#include "math/transform.h"
-
 using namespace DirectX;
 
-namespace qhenki
+namespace qhenki::component
 {
-struct CameraMatrices
-{
-    XMFLOAT4X4 view_projection{};
-    XMFLOAT4X4 inverse_view_projection{};
-};
-
 class Camera
 {
+public:
+    struct Matrices
+    {
+        XMFLOAT4X4 view_proj{};
+        XMFLOAT4X4 inv_view_proj{};
+    };
+
 protected:
-    CameraMatrices m_matrices{};
+    Matrices m_camera_matrices;
 
 public:
-    math::Transform transform{};
-
-    Camera()
-    {
-    }
-    Camera(const float vw, const float vh)
-        : viewport_width(vw),
-          viewport_height(vh)
-    {
-    }
-    virtual ~Camera() {};
+    Camera() = default;
+    Camera(float vw, float vh);
+    virtual ~Camera() = default;
 
     float near_plane = 0.05f;
     float far_plane = 10000.f;
@@ -38,17 +29,12 @@ public:
     float viewport_width = 0;
     float viewport_height = 0;
 
-    const CameraMatrices& matrices = m_matrices;
-
-    /**
-     * Updates view, projection, view_projection, inverse_view_projection
-     */
+    // Update projection matrix and frustum if requested
     virtual void update(bool update_frustum = false) = 0;
 
-    void unproject(XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
+    void unproject(
+        XMFLOAT3& screen, float viewport_x, float viewport_y, float viewport_width, float viewport_height) const;
 
     void project(XMFLOAT3& world, float viewport_x, float viewport_y, float viewport_width, float viewport_height);
-
-    // friend class Viewport;
 };
-} // namespace qhenki
+} // namespace qhenki::component

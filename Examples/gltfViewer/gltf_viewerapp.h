@@ -3,10 +3,9 @@
 #include <tsl/robin_map.h>
 #include <mutex>
 #include "gltf_loader.h"
+#include "scene.h"
 
 #include "qhenki/application.h"
-#include "qhenki/arcball_controller.h"
-#include "qhenki/perspective_camera.h"
 
 class gltfViewerApp : public qhenki::Application
 {
@@ -43,11 +42,12 @@ class gltfViewerApp : public qhenki::Application
     qhenki::gfx::DescriptorHeap m_sampler_heap{};
     std::vector<qhenki::gfx::Descriptor> m_sampler_descriptors{};
 
-    qhenki::PerspectiveCamera m_camera{};
-    qhenki::ArcBallController m_camera_controller{};
+    SceneObject m_camera_target{};
+    PerspectiveCamera m_camera{};
+    float m_target_distance = 2.0f;
 
     std::mutex m_model_mutex;
-    std::atomic_int m_model_index_to_load_into = 0;
+    std::atomic_int m_model_index_to_load_into{0};
     std::array<GLTFModel, m_frames_in_flight> m_models{};
     tsl::robin_map<std::string, int> m_attribute_to_slot{
         {"POSITION", 0},
@@ -56,8 +56,6 @@ class gltfViewerApp : public qhenki::Application
         {"TEXCOORD_0", 3},
         //{"TEXCOORD_1", 4},
     };
-
-    bool m_tearing = false;
 
 protected:
     void init_display_window(void* payload) override;

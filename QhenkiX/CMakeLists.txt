@@ -11,11 +11,10 @@ set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
 file(GLOB IMGUI_SOURCES "${IMGUI_DIR}/*.cpp")
 set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/application.cpp"
-    "${QHENKIX_DIR}/graphics/arcball_controller.cpp"
     "${QHENKIX_DIR}/graphics/camera.cpp"
     "${QHENKIX_DIR}/graphics/display_window.cpp"
-    "${QHENKIX_DIR}/graphics/orthographic_camera.cpp"
-    "${QHENKIX_DIR}/graphics/perspective_camera.cpp"
+    "${QHENKIX_DIR}/graphics/orthographic_camera_component.cpp"
+    "${QHENKIX_DIR}/graphics/perspective_camera_component.cpp"
     "${QHENKIX_DIR}/graphics/2d/spritebatch.cpp"
 
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_context.cpp"
@@ -31,8 +30,8 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/input/input_manager.cpp"
 
-    "${QHENKIX_DIR}/math/basis.cpp"
     "${QHENKIX_DIR}/math/transform.cpp"
+    "${QHENKIX_DIR}/math/transform_simd.cpp"
 
     "${QHENKIX_DIR}/memory/arena.cpp"
 
@@ -65,11 +64,10 @@ set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
 
 set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/application.h"
-    "${QHENKIX_PUBLIC_DIR}/arcball_controller.h"
     "${QHENKIX_PUBLIC_DIR}/camera.h"
     "${QHENKIX_PUBLIC_DIR}/display_window.h"
-    "${QHENKIX_PUBLIC_DIR}/orthographic_camera.h"
-    "${QHENKIX_PUBLIC_DIR}/perspective_camera.h"
+    "${QHENKIX_PUBLIC_DIR}/orthographic_camera_component.h"
+    "${QHENKIX_PUBLIC_DIR}/perspective_camera_component.h"
 
     "${QHENKIX_PUBLIC_DIR}/2d/spritebatch.h"
 
@@ -80,8 +78,8 @@ set(QHENKIX_PUBLIC_HEADERS
 
     "${QHENKIX_PUBLIC_DIR}/input/input_manager.h"
 
-    "${QHENKIX_PUBLIC_DIR}/math/basis.h"
     "${QHENKIX_PUBLIC_DIR}/math/transform.h"
+    "${QHENKIX_PUBLIC_DIR}/math/transform_simd.h"
 
     "${QHENKIX_PUBLIC_DIR}/memory/arena.h"
 

@@ -20,17 +20,17 @@ struct Vertex
 #ifndef __cplusplus
         : POSITION
 #endif
-          ;
+        ;
     XMFLOAT3 color
 #ifndef __cplusplus
         : COLOR0
 #endif
-          ;
+        ;
     XMFLOAT2 texcoord
 #ifndef __cplusplus
         : TEXCOORD0
 #endif
-          ;
+        ;
 };
 
 #endif // SIMPLEEXAMPLE_SHARED_STRUCTS_H
