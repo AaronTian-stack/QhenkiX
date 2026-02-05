@@ -19,21 +19,38 @@ void InputManager::update(SDL_Window* window)
     m_mouse_position_prev = m_mouse_position;
     m_mouse_flags = SDL_GetMouseState(&m_mouse_position.x, &m_mouse_position.y); // Cached state
 
-    // Always call SDL_GetRelativeMouseState to prevent accumulation
-    // It accumulates since last call, not since relative mode was enabled
-    float rel_x, rel_y;
-    SDL_GetRelativeMouseState(&rel_x, &rel_y);
-
     const bool is_relative_mode = SDL_GetWindowRelativeMouseMode(window);
-    if (is_relative_mode && m_was_relative_mode)
+
+    if (is_relative_mode)
     {
-        m_mouse_delta = {rel_x, rel_y};
+        // Always call SDL_GetRelativeMouseState to prevent accumulation
+        // It accumulates since last call, not since relative mode was enabled
+        float rel_x, rel_y;
+        SDL_GetRelativeMouseState(&rel_x, &rel_y);
+
+        if (m_was_relative_mode)
+        {
+            m_mouse_delta = {rel_x, rel_y};
+        }
+        else
+        {
+            // First frame of relative mode
+            m_mouse_delta = {0, 0};
+        }
     }
     else
     {
-        // First frame of relative mode or not in relative mode
-        m_mouse_delta = {0, 0};
+        if (m_was_relative_mode)
+        {
+            m_mouse_delta = {0, 0};
+        }
+        else
+        {
+            m_mouse_delta = {m_mouse_position.x - m_mouse_position_prev.x,
+                             m_mouse_position.y - m_mouse_position_prev.y};
+        }
     }
+
     m_was_relative_mode = is_relative_mode;
 }
 
