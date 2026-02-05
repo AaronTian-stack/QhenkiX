@@ -34,25 +34,24 @@ void process_nodes(const tinygltf::Model& tiny_model, GLTFModel* const model)
             tiny_node.matrix.size() == 16)
         {
             const auto& m = tiny_node.matrix;
-            // glTF matrix is column major
-            // Build row major XMMATRIX
-            const XMMATRIX mat = XMMatrixSet(static_cast<float>(m[0]),
-                                             static_cast<float>(m[1]),
-                                             static_cast<float>(m[2]),
-                                             static_cast<float>(m[3]),
-                                             static_cast<float>(m[4]),
-                                             static_cast<float>(m[5]),
-                                             static_cast<float>(m[6]),
-                                             static_cast<float>(m[7]),
-                                             static_cast<float>(m[8]),
-                                             static_cast<float>(m[9]),
-                                             static_cast<float>(m[10]),
-                                             static_cast<float>(m[11]),
-                                             static_cast<float>(m[12]),
-                                             static_cast<float>(m[13]),
-                                             static_cast<float>(m[14]),
-                                             static_cast<float>(m[15]));
+            const auto mat = XMMatrixSet(static_cast<float>(m[0]),
+                                         static_cast<float>(m[1]),
+                                         static_cast<float>(m[2]),
+                                         static_cast<float>(m[3]),
+                                         static_cast<float>(m[4]),
+                                         static_cast<float>(m[5]),
+                                         static_cast<float>(m[6]),
+                                         static_cast<float>(m[7]),
+                                         static_cast<float>(m[8]),
+                                         static_cast<float>(m[9]),
+                                         static_cast<float>(m[10]),
+                                         static_cast<float>(m[11]),
+                                         static_cast<float>(m[12]),
+                                         static_cast<float>(m[13]),
+                                         static_cast<float>(m[14]),
+                                         static_cast<float>(m[15]));
             XMVECTOR scale_vec, rotation_vec, translation_vec;
+            // glTF matrix is column major so transpose
             XMMatrixDecompose(&scale_vec, &rotation_vec, &translation_vec, XMMatrixTranspose(mat));
             XMStoreFloat3(&node.local_transform.scale, scale_vec);
             XMStoreFloat4(&node.local_transform.rotation, rotation_vec);
