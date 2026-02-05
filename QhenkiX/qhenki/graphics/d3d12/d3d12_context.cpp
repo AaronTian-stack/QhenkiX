@@ -1619,14 +1619,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     return true;
 }
 
-bool D3D12Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
-{
-    // D3D12 samplers are descriptors and do not have a separate object
-    sampler->desc = desc;
-    return true;
-}
-
-bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap* const heap, Descriptor* descriptor)
+bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* const heap, Descriptor* descriptor)
 {
     const auto heap_d3d12 = to_internal(*heap);
     if (heap->desc.type != DescriptorHeapDesc::Type::SAMPLER)
@@ -1645,7 +1638,6 @@ bool D3D12Context::create_descriptor(const Sampler& sampler, DescriptorHeap* con
     descriptor->heap = heap;
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
     heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset);
-    const auto& desc = sampler.desc;
     const D3D12_SAMPLER_DESC sampler_desc{
         .Filter = filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
         .AddressU = texture_address_mode(desc.address_mode_u),
@@ -2283,7 +2275,7 @@ bool D3D12Context::compatibility_set_textures(
 
 bool D3D12Context::compatibility_set_samplers(unsigned slot,
                                               unsigned count,
-                                              Sampler* const* samplers,
+                                              Descriptor* const* samplers,
                                               PipelineStage stage)
 {
     // Should not be relying on this in D3D12

@@ -32,9 +32,9 @@ enum class ComparisonFunc
 struct SamplerDesc
 {
     unsigned max_anisotropy = 0; // 0 to disable
-    float min_lod = 0;
+    float min_lod = 0.f;
     float max_lod = D3D12_FLOAT32_MAX;
-    float mip_lod_bias = 0;
+    float mip_lod_bias = 0.f;
     float border_color[4]{0.f, 0.f, 0.f, 0.f};
     Filter min_filter = Filter::LINEAR;
     Filter mag_filter = Filter::LINEAR;
@@ -43,11 +43,5 @@ struct SamplerDesc
     AddressMode address_mode_v = AddressMode::WRAP;
     AddressMode address_mode_w = AddressMode::WRAP;
     ComparisonFunc comparison_func = ComparisonFunc::NONE;
-};
-
-struct Sampler
-{
-    SamplerDesc desc;
-    sPtr<void> internal_state;
 };
 } // namespace qhenki::gfx

@@ -92,8 +92,7 @@ public:
 
     bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
 
-    bool create_sampler(const SamplerDesc& desc, Sampler* sampler) override;
-    bool create_descriptor(const Sampler& sampler, DescriptorHeap* heap, Descriptor* descriptor) override;
+    bool create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     void* map_buffer(const Buffer& buffer) override;
     void unmap_buffer(const Buffer& buffer) override;
@@ -169,7 +168,7 @@ public:
         unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) override;
     bool compatibility_set_samplers(unsigned slot,
                                     unsigned count,
-                                    Sampler* const* samplers,
+                                    Descriptor* const* samplers,
                                     PipelineStage stage) override;
 
     bool wait_idle(Queue* queue) override;
