@@ -20,6 +20,11 @@ struct TransformSIMD
 
     XMMATRIX to_matrix() const;
 
+    /**
+     * Multiplies two transforms together (rhs * lhs).
+     * @param rhs Right hand side transform
+     * @return rhs * this
+     */
     TransformSIMD operator*(const TransformSIMD& rhs) const;
 };
 } // namespace qhenki::math

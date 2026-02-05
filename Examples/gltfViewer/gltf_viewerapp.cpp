@@ -32,7 +32,7 @@ void update_global_transform(GLTFModel& model, GLTFModel::Node& node)
         const auto parent_simd = qhenki::math::TransformSIMD::load(
             model.nodes[node.parent_index].global_transform.transform);
         const auto local_simd = qhenki::math::TransformSIMD::load(node.local_transform);
-        (parent_simd * local_simd).store(node.global_transform.transform);
+        (local_simd * parent_simd).store(node.global_transform.transform);
     }
     else
     {

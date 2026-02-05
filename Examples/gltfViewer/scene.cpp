@@ -11,7 +11,7 @@ void unlink_from_parent(SceneObject* child)
     {
         return;
     }
-    auto p = child->node.parent;
+    const auto p = child->node.parent;
     if (p->node.first_child_ptr == child)
     {
         p->node.first_child_ptr = nullptr;
@@ -65,7 +65,7 @@ void update_world_transform(SceneObject* obj)
         {
             const auto parent_simd = qhenki::math::TransformSIMD::load(obj->node.parent->world_transform);
             const auto local_simd = qhenki::math::TransformSIMD::load(obj->local_transform);
-            (parent_simd * local_simd).store(obj->world_transform);
+            (local_simd * parent_simd).store(obj->world_transform);
         }
         else
         {

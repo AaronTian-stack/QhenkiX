@@ -20,17 +20,17 @@ void TransformSIMD::store(Transform& t) const
 
 XMMATRIX TransformSIMD::to_matrix() const
 {
-    const XMMATRIX s = XMMatrixScalingFromVector(scale);
-    const XMMATRIX r = XMMatrixRotationQuaternion(rotation);
-    const XMMATRIX t = XMMatrixTranslationFromVector(translation);
-    return XMMatrixMultiply(XMMatrixMultiply(s, r), t);
+    const auto s = XMMatrixScalingFromVector(scale);
+    const auto r = XMMatrixRotationQuaternion(rotation);
+    const auto t = XMMatrixTranslationFromVector(translation);
+    return s * r * t;
 }
 
 TransformSIMD TransformSIMD::operator*(const TransformSIMD& rhs) const
 {
     TransformSIMD result;
-    result.rotation = XMQuaternionMultiply(rhs.rotation, rotation);
-    result.scale = scale * rhs.scale;
-    result.translation = XMVector3Rotate(rhs.translation * scale, rotation) + translation;
+    result.rotation = XMQuaternionMultiply(rotation, rhs.rotation);
+    result.scale = rhs.scale * scale;
+    result.translation = XMVector3Rotate(translation * rhs.scale, rhs.rotation) + rhs.translation;
     return result;
 }
