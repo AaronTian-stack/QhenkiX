@@ -276,7 +276,7 @@ void process_samplers(const tinygltf::Model& tiny_model, GLTFModel* model, qhenk
     {
         auto& tiny_sampler = tiny_model.samplers[i];
         model->samplers.emplace_back();
-        auto& sampler_desc = model->samplers.back().desc;
+        auto& sampler_desc = model->samplers.back();
         switch (tiny_sampler.magFilter)
         {
         case TINYGLTF_TEXTURE_FILTER_NEAREST:
@@ -325,7 +325,6 @@ void process_samplers(const tinygltf::Model& tiny_model, GLTFModel* model, qhenk
             sampler_desc.address_mode_v = qhenki::gfx::AddressMode::WRAP;
             break;
         }
-        context.create_sampler(sampler_desc, &model->samplers.back());
     }
 }
 
@@ -359,7 +358,7 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
     model->images.clear();
     model->images.reserve(tiny_model.images.size());
 
-    // Important: this step is dependent on accessor views having finished being loaded.
+    // This step is dependent on accessor views having finished being loaded
     for (int i = 0; i < tiny_model.images.size(); i++)
     {
         const auto& tiny_image = tiny_model.images[i];

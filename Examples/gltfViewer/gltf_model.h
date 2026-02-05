@@ -71,7 +71,7 @@ struct GLTFModel
     std::vector<Material> materials;
 
     std::vector<qhenki::gfx::Texture> images; // NOT a glTF texture, but an image
-    std::vector<qhenki::gfx::Sampler> samplers;
+    std::vector<qhenki::gfx::SamplerDesc> samplers;
     struct Texture
     {
         int image_index = -1;

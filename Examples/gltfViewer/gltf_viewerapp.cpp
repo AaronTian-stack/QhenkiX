@@ -781,27 +781,27 @@ void gltfViewerApp::render()
                             if (index < 0)
                             {
                                 // Bind dummy sampler to silence validation warning
-                                // TODO: pass null instead after refactor
-                                m_context->compatibility_set_samplers(
-                                    slot,
-                                    1,
-                                    qhenki::util::ptr_array(m_model.samplers[0]).data(),
-                                    qhenki::gfx::PipelineStage::PIXEL);
+                                m_context->compatibility_set_samplers(slot,
+                                                                      1,
+                                                                      nullptr,
+                                                                      qhenki::gfx::PipelineStage::PIXEL);
                                 return;
                             }
                             const auto sampler_index = m_model.textures[index].sampler_index;
                             if (sampler_index < 0)
                             {
-                                qhenki::gfx::Sampler* nul = nullptr;
-                                m_context->compatibility_set_samplers(slot, 1, &nul, qhenki::gfx::PipelineStage::PIXEL);
+                                m_context->compatibility_set_samplers(slot,
+                                                                      1,
+                                                                      nullptr,
+                                                                      qhenki::gfx::PipelineStage::PIXEL);
                             }
                             else
                             {
-                                m_context->compatibility_set_samplers(
-                                    slot,
-                                    1,
-                                    qhenki::util::ptr_array(m_model.samplers[sampler_index]).data(),
-                                    qhenki::gfx::PipelineStage::PIXEL);
+                                qhenki::gfx::Descriptor samp = m_sampler_descriptors[sampler_index];
+                                m_context->compatibility_set_samplers(slot,
+                                                                      1,
+                                                                      qhenki::util::ptr_array(samp).data(),
+                                                                      qhenki::gfx::PipelineStage::PIXEL);
                             }
                         };
                         start_slot = 0;
