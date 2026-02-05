@@ -256,7 +256,7 @@ struct ContextModel
     };
     HeapAndList texture;
     HeapAndList sampler;
-    HeapAndDescriptor gltfTexture;
+    HeapAndDescriptor gltf_texture;
     HeapAndDescriptor material;
 };
 
@@ -308,7 +308,7 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
 
         // glTF Texture Descriptor
         assert(mat_heap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
-        context.create_descriptor_shader_view(model.texture_buffer, &mat_heap, context_model->gltfTexture.descriptor);
+        context.create_descriptor_shader_view(model.texture_buffer, &mat_heap, context_model->gltf_texture.descriptor);
 
         // Material buffer Descriptor
         assert(mat_heap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
@@ -361,7 +361,7 @@ void gltfViewerApp::render()
                              ImGuiWindowFlags_NoSavedSettings))
         {
             ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
-            // Display frametime graph
+            // Display frame time graph
             constexpr size_t max_frames = 100;
             static float frame_times[max_frames];
             static size_t frame_index = 0;
@@ -396,15 +396,11 @@ void gltfViewerApp::render()
             }
             if (ImGui::MenuItem("Load File"))
             {
-                static const SDL_DialogFileFilter filters[] = {
-                    {"glTF files (*.gltf;*glb)", "gltf;glb"},
-                };
+                SDL_DialogFileFilter filter = {"glTF files (*.gltf;*glb)", "gltf;glb"};
 
-                /*
-                 * The render thread will attempt to use model at m_model_index.
-                 * This will not cause issues unless model at m_model_index is being used in frame in flight,
-                 * which is impossible because you would have had to call this function twice in the same frame.
-                 */
+                // The render thread will attempt to use model at m_model_index.
+                // This should not cause issues unless model at m_model_index is being used in frame in flight,
+                // which is impossible because you would have had to call this function twice in the same frame.
 
                 thread_local ContextModel cm;
                 cm = {
@@ -423,7 +419,7 @@ void gltfViewerApp::render()
                         .heap = &m_sampler_heap,
                         .descriptors = &m_sampler_descriptors,
                     },
-                    .gltfTexture =
+                    .gltf_texture =
                         {
                             .heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
                             .descriptor = &m_model_gltfTexture_descriptor,
@@ -434,8 +430,7 @@ void gltfViewerApp::render()
                             .descriptor = &m_model_material_descriptor,
                         },
                 };
-                SDL_ShowOpenFileDialog(
-                    callback, &cm, m_window.get_window(), filters, SDL_arraysize(filters), nullptr, false);
+                SDL_ShowOpenFileDialog(callback, &cm, m_window.get_window(), &filter, 1, nullptr, false);
             }
             ImGui::EndMainMenuBar();
         }
@@ -721,7 +716,7 @@ void gltfViewerApp::render()
 
                         // Bind based off current material
                         const auto& material = m_model.materials[prim.material_index];
-                        auto set_texture_if_valid = [&](int slot, int index)
+                        auto set_texture_if_valid = [&](const int slot, const int index)
                         {
                             if (index >= 0 && index < static_cast<int>(m_model_texture_descriptors.size()))
                             {
@@ -734,7 +729,7 @@ void gltfViewerApp::render()
                             }
                         };
                         // 5 textures
-                        auto ret_t_index = [&](int index)
+                        auto ret_t_index = [&](const int index)
                         {
                             if (index < 0)
                             {
@@ -750,7 +745,7 @@ void gltfViewerApp::render()
                         set_texture_if_valid(start_slot++, ret_t_index(material.emissive.index));
 
                         // Sampler
-                        auto sampler = [&](int slot, int index)
+                        auto sampler = [&](const int slot, const int index)
                         {
                             if (index < 0)
                             {
