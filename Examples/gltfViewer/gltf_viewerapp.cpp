@@ -28,7 +28,6 @@ void update_global_transform(GLTFModel& model, GLTFModel::Node& node)
         {
             update_global_transform(model, model.nodes[node.parent_index]);
         }
-        // Compose local transform before parent's global transform
         const auto parent_simd = qhenki::math::TransformSIMD::load(
             model.nodes[node.parent_index].global_transform.transform);
         const auto local_simd = qhenki::math::TransformSIMD::load(node.local_transform);
