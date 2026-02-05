@@ -247,7 +247,7 @@ void ExampleApp::render()
     const auto dim = this->m_window.get_display_size();
     const auto proj =
         XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(dim.x) / static_cast<float>(dim.y), 0.01f, 100.0f);
-    const auto prod = XMMatrixTranspose(XMMatrixMultiply(view, proj));
+    const auto prod = XMMatrixTranspose(view * proj);
     XMStoreFloat4x4(&m_matrices.view_proj, prod);
     XMStoreFloat4x4(&m_matrices.inv_view_proj, XMMatrixInverse(nullptr, prod));
 

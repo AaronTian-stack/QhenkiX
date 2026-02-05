@@ -8,13 +8,13 @@
 using namespace DirectX;
 #endif
 
-struct CameraBuffer
+struct CameraMatrices
 {
     XMFLOAT4X4 view_proj;
     XMFLOAT4X4 inv_view_proj;
 };
 
-struct VertexInput
+struct Vertex
 {
     XMFLOAT3 position
 #ifndef __cplusplus
