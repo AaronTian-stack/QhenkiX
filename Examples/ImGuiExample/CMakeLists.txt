@@ -13,8 +13,8 @@ source_group("config" FILES ${CONFIG_FILE})
 
 add_executable(ImGuiExample
     main.cpp
-    imgui_exampleapp.cpp
-    imgui_exampleapp.h
+    imgui_example_app.cpp
+    imgui_example_app.h
     ${CONFIG_FILE}
     ${SHADER_FILES}
 )

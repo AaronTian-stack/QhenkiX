@@ -1,4 +1,4 @@
-#include "exampleapp.h"
+#include "example_app.h"
 #include <wrl/client.h>
 
 #include <qhenki/utility/file_util.h>

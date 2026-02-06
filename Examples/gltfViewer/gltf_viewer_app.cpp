@@ -1,4 +1,4 @@
-#include "gltf_viewerapp.h"
+#include "gltf_viewer_app.h"
 #include "shared_structs.h"
 
 #include <imgui/imgui.h>
@@ -31,6 +31,7 @@ void update_global_transform(GLTFModel& model, GLTFModel::Node& node)
         const auto parent_simd = qhenki::math::TransformSIMD::load(
             model.nodes[node.parent_index].global_transform.transform);
         const auto local_simd = qhenki::math::TransformSIMD::load(node.local_transform);
+        // TODO: Redundant load/store, should instead expand all at once
         (local_simd * parent_simd).store(node.global_transform.transform);
     }
     else
@@ -467,10 +468,8 @@ void gltfViewerApp::render()
             const XMVECTOR yaw_delta = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), x);
             XMVECTOR rot = XMLoadFloat4(&m_camera_target.local_transform.rotation);
             rot = XMQuaternionMultiply(yaw_delta, rot); // Global
-            XMStoreFloat4(&m_camera_target.local_transform.rotation, rot);
             const XMVECTOR right_vec = qhenki::math::axis_x(rot);
             const XMVECTOR pitch_delta = XMQuaternionRotationAxis(right_vec, y);
-            rot = XMLoadFloat4(&m_camera_target.local_transform.rotation);
             rot = XMQuaternionMultiply(rot, pitch_delta); // Local
             XMStoreFloat4(&m_camera_target.local_transform.rotation, rot);
             mark_world_dirty(&m_camera_target);
