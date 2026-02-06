@@ -16,8 +16,8 @@ add_executable(gltfViewer
     gltf_loader.cpp
     gltf_loader.h
     gltf_model.h
-    gltf_viewerapp.cpp
-    gltf_viewerapp.h
+    gltf_viewer_app.cpp
+    gltf_viewer_app.h
     scene.h
     scene.cpp
     shared_structs.h

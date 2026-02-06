@@ -1,5 +1,5 @@
 #include <argparse/argparse.hpp>
-#include "gltf_viewerapp.h"
+#include "gltf_viewer_app.h"
 
 int main(int argc, char* argv[])
 {
