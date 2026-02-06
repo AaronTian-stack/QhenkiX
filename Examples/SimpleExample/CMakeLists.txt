@@ -13,8 +13,8 @@ source_group("config" FILES ${CONFIG_FILE})
 
 add_executable(SimpleExample
     main.cpp
-    exampleapp.cpp
-    exampleapp.h
+    example_app.cpp
+    example_app.h
     shared_structs.h
     ${CONFIG_FILE}
     ${SHADER_FILES}
