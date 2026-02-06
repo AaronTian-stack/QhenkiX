@@ -40,13 +40,6 @@ D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
     return d3d11_pipeline;
 }
 
-ComPtr<ID3D11SamplerState>* to_internal(const Sampler& ext)
-{
-    const auto d3d11_sampler = static_cast<ComPtr<ID3D11SamplerState>*>(ext.internal_state.get());
-    assert(d3d11_sampler);
-    return d3d11_sampler;
-}
-
 D3D11Texture* to_internal(const Texture& ext)
 {
     const auto d3d11_texture = static_cast<D3D11Texture*>(ext.internal_state.get());
@@ -71,6 +64,13 @@ D3D11_RTV_Heap* to_internal_rtv(const DescriptorHeap& ext)
 D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
 {
     const auto d3d11_heap = static_cast<D3D11_DSV_Heap*>(ext.internal_state.get());
+    assert(d3d11_heap);
+    return d3d11_heap;
+}
+
+D3D11_Sampler_Heap* to_internal_sampler(const DescriptorHeap& ext)
+{
+    const auto d3d11_heap = static_cast<D3D11_Sampler_Heap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
@@ -504,7 +504,7 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         heap->internal_state = mkS<D3D11_DSV_Heap>();
         break;
     case DescriptorHeapDesc::Type::SAMPLER:
-        // D3D11 samplers don't need views
+        heap->internal_state = mkS<D3D11_Sampler_Heap>();
         break;
     default:
         OutputDebugStringA("Qhenki D3D11 ERROR: Unsupported descriptor heap type\n");
@@ -893,10 +893,8 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
     return true;
 }
 
-bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
+bool D3D11Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* const heap, Descriptor* const descriptor)
 {
-    assert(sampler);
-
     const D3D11_SAMPLER_DESC sampler_desc{
         .Filter = static_cast<D3D11_FILTER>(filter(desc.min_filter,
                                                    desc.mag_filter,
@@ -925,13 +923,14 @@ bool D3D11Context::create_sampler(const SamplerDesc& desc, Sampler* sampler)
         return false;
     }
 
-    sampler->desc = desc;
-    sampler->internal_state = mkS<ComPtr<ID3D11SamplerState>>(std::move(sampler_state));
-    return true;
-}
+    auto d3d11_heap = to_internal_sampler(*heap);
+    d3d11_heap->push_back(std::move(sampler_state));
 
-bool D3D11Context::create_descriptor(const Sampler& sampler, DescriptorHeap* const heap, Descriptor* const descriptor)
-{
+    *descriptor = {
+        .heap = heap,
+        .offset = d3d11_heap->size() - 1,
+    };
+
     return true;
 }
 
@@ -1323,7 +1322,7 @@ bool D3D11Context::compatibility_set_textures(const unsigned slot,
 
 bool D3D11Context::compatibility_set_samplers(const unsigned slot,
                                               const unsigned count,
-                                              Sampler* const* samplers,
+                                              Descriptor* const* samplers,
                                               const PipelineStage stage)
 {
     std::array<ID3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_REGISTER_COUNT> sampler_d3d11{};
@@ -1333,7 +1332,14 @@ bool D3D11Context::compatibility_set_samplers(const unsigned slot,
     }
     for (unsigned i = 0; i < count; i++)
     {
-        sampler_d3d11[i] = samplers[i] ? to_internal(*samplers[i])->Get() : nullptr;
+        if (samplers)
+        {
+            sampler_d3d11[i] = samplers[i] ? to_internal_sampler(*samplers[i]->heap)->at(i).Get() : nullptr;
+        }
+        else
+        {
+            sampler_d3d11[i] = nullptr;
+        }
     }
     switch (stage)
     {

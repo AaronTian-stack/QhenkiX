@@ -157,9 +157,7 @@ void ExampleApp::create()
         .min_filter = qhenki::gfx::Filter::NEAREST,
         .mag_filter = qhenki::gfx::Filter::NEAREST,
     }; // Default parameters
-    THROW_IF_FALSE(m_context->create_sampler(sampler_desc, &m_sampler));
-    // Create sampler descriptor
-    THROW_IF_FALSE(m_context->create_descriptor(m_sampler, &m_sampler_heap, &m_sampler_descriptor));
+    THROW_IF_FALSE(m_context->create_descriptor(sampler_desc, &m_sampler_heap, &m_sampler_descriptor));
 
     // Texture data
     constexpr auto checkerboard = std::array{
@@ -320,7 +318,7 @@ void ExampleApp::render()
                                               qhenki::gfx::PipelineStage::PIXEL);
         m_context->compatibility_set_samplers(0,
                                               1,
-                                              qhenki::util::ptr_array(m_sampler).data(),
+                                              qhenki::util::ptr_array(m_sampler_descriptor).data(),
                                               qhenki::gfx::PipelineStage::PIXEL);
     }
     else

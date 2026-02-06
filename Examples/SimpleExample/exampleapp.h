@@ -24,7 +24,6 @@ class ExampleApp : public qhenki::Application
     qhenki::gfx::Descriptor m_texture_descriptor{};
     qhenki::gfx::Texture m_texture{};
     qhenki::gfx::Descriptor m_sampler_descriptor{};
-    qhenki::gfx::Sampler m_sampler{};
 
     qhenki::gfx::DescriptorHeap m_CPU_heap{};
     qhenki::gfx::DescriptorHeap m_GPU_heap{};

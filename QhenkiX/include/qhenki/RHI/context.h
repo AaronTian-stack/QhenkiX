@@ -107,8 +107,7 @@ public:
      */
     virtual bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) = 0;
 
-    virtual bool create_sampler(const SamplerDesc& desc, Sampler* sampler) = 0;
-    virtual bool create_descriptor(const Sampler& sampler, DescriptorHeap* heap, Descriptor* descriptor) = 0;
+    virtual bool create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 
     // Write only
     virtual void* map_buffer(const Buffer& buffer) = 0;
@@ -190,7 +189,7 @@ public:
         unsigned slot, unsigned count, Descriptor* const* descriptors, AccessFlags flag, PipelineStage stage) = 0;
     virtual bool compatibility_set_samplers(unsigned slot,
                                             unsigned count,
-                                            Sampler* const* samplers,
+                                            Descriptor* const* samplers,
                                             PipelineStage stage) = 0;
 
     virtual bool wait_idle(Queue* queue) = 0;

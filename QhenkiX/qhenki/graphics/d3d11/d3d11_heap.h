@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -17,4 +17,5 @@ struct D3D11_SRV_UAV_Heap
 };
 typedef std::vector<ComPtr<ID3D11RenderTargetView>> D3D11_RTV_Heap;
 typedef std::vector<ComPtr<ID3D11DepthStencilView>> D3D11_DSV_Heap;
+typedef std::vector<ComPtr<ID3D11SamplerState>> D3D11_Sampler_Heap;
 } // namespace qhenki::gfx
