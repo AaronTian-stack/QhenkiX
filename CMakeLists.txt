@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(QhenkiX-Workspace)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/CMakeOverride.txt)
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Set repo root for all subprojects
