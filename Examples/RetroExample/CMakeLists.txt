@@ -11,6 +11,10 @@ set(CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/RetroExample.config")
 set_source_files_properties(${CONFIG_FILE} PROPERTIES HEADER_FILE_ONLY TRUE)
 source_group("config" FILES ${CONFIG_FILE})
 
+file(GLOB ASSET_FILES "${CMAKE_CURRENT_SOURCE_DIR}/assets/*")
+set_source_files_properties(${ASSET_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
+source_group("assets" FILES ${ASSET_FILES})
+
 add_executable(RetroExample
     main.cpp
     retro_example_app.cpp
@@ -20,6 +24,7 @@ add_executable(RetroExample
     shared_structs.h
     ${CONFIG_FILE}
     ${SHADER_FILES}
+    ${ASSET_FILES}
 )
 
 add_shader_targets(RetroExample "${CMAKE_CURRENT_SOURCE_DIR}/RetroExample.config")
@@ -35,6 +40,7 @@ target_compile_definitions(RetroExample PRIVATE NOMINMAX)
 
 target_include_directories(RetroExample PRIVATE
     ${REPO_ROOT}/QhenkiX/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_link_libraries(RetroExample PRIVATE QhenkiX)

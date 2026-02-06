@@ -2,6 +2,7 @@
 
 int main(int argc, char* argv[])
 {
+    // TODO: Parse command line arguments
     constexpr bool tearing = true;
     constexpr bool fullscreen = false;
 

@@ -7,16 +7,45 @@
 
 class RetroExampleApp : public qhenki::Application
 {
+    struct Mesh
+    {
+        struct Accessor
+        {
+            size_t offset = 0;
+            size_t count = 0;
+            int type = -1;           // scalar, vector...
+            int component_type = -1; // int, byte, short, float...
+        };
+        struct BufferView
+        {
+            size_t offset = 0;
+            size_t length = 0;
+            size_t stride = 0;
+            // int buffer_index = -1;
+        };
+        using AccessorBufferView = std::pair<Accessor, BufferView>;
+        AccessorBufferView position;
+        AccessorBufferView normal;
+        AccessorBufferView texcoord;
+        AccessorBufferView index;
+        qhenki::gfx::Buffer buffer{};
+    };
+
     qhenki::gfx::PipelineLayout m_pipeline_layout{};
     qhenki::gfx::GraphicsPipeline m_pipeline{};
     qhenki::gfx::Shader m_vertex_shader{};
     qhenki::gfx::Shader m_pixel_shader{};
 
+    qhenki::gfx::Buffer m_skybox_buffer{};
+
+    qhenki::gfx::GraphicsPipeline m_skybox_pipeline{};
+    qhenki::gfx::Shader m_skybox_vertex_shader{};
+    qhenki::gfx::Shader m_skybox_pixel_shader{};
+
     std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools{};
     std::array<qhenki::gfx::CommandList, m_frames_in_flight> m_cmd_lists{};
 
-    qhenki::gfx::Buffer m_vertex_buffer{};
-    qhenki::gfx::Buffer m_index_buffer{};
+    Mesh m_skybox_mesh;
 
     std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
     std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};
@@ -36,6 +65,8 @@ class RetroExampleApp : public qhenki::Application
     SceneObject m_camera_target{};
     PerspectiveCamera m_camera{};
     float m_target_distance = 2.0f;
+
+    static const DXGI_FORMAT m_depth_format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 protected:
     void init_display_window(void* payload) override;

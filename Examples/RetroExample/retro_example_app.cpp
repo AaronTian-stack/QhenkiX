@@ -10,10 +10,21 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdio>
 #include <memory>
 
 #include "qhenki/math/transform_simd.h"
+
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#ifndef _DEBUG
+#define TINYGLTF_NOEXCEPTION // Disable exception handling
+#endif
+
+#include <tiny_gltf.h>
+
+#include "qhenki/memory/arena.h"
 
 void RetroExampleApp::init_display_window(void* payload)
 {
@@ -134,11 +145,11 @@ void RetroExampleApp::create()
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
         .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
         .num_render_targets = 1,
-        .dsv_format = DXGI_FORMAT_D32_FLOAT,
+        .dsv_format = m_depth_format,
         .increment_slot = false,
     };
     THROW_IF_FALSE(m_context->create_pipeline(
-        pipeline_desc, &m_pipeline, m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "Retro pipeline"));
+        pipeline_desc, &m_pipeline, m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "Skybox pipeline"));
 
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
@@ -150,7 +161,7 @@ void RetroExampleApp::create()
     qhenki::gfx::TextureDesc depth_desc{
         .width = display_size.x,
         .height = display_size.y,
-        .format = DXGI_FORMAT_D32_FLOAT,
+        .format = m_depth_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
     };
@@ -168,28 +179,68 @@ void RetroExampleApp::create()
             m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap, &m_matrix_descriptors[i]));
     }
 
-    qhenki::gfx::Buffer vertex_CPU;
-    qhenki::gfx::Buffer index_CPU;
+    qhenki::gfx::Buffer cylinder_CPU;
 
-    constexpr auto vertices = std::array{Vertex{{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.5f, 1.0f}},
-                                         Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                                         Vertex{{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}};
-    qhenki::gfx::BufferDesc desc{.size = vertices.size() * sizeof(Vertex),
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err;
+    std::string warn;
+
+    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "assets/cylinder.glb");
+    assert(model.meshes.size() == 1);
+    auto& prim = model.meshes[0].primitives[0];
+    assert(model.meshes[0].primitives.size() == 1);
+    if (!warn.empty())
+    {
+        printf("Warn: %s\n", warn.c_str());
+    }
+    if (!err.empty())
+    {
+        printf("Err: %s\n", err.c_str());
+    }
+    if (!ret)
+    {
+        printf("Failed to parse glTF\n");
+    }
+
+    auto set_accessor = [&model, this](Mesh::AccessorBufferView* abv, const int accessor_idx)
+    {
+        const auto& accessor = model.accessors[accessor_idx];
+        abv->first = {
+            .offset = accessor.byteOffset,
+            .count = accessor.count,
+            .type = accessor.type,
+            .component_type = accessor.componentType,
+        };
+        const auto& buffer_view = model.bufferViews[accessor.bufferView];
+        abv->second = {
+            .offset = buffer_view.byteOffset,
+            .length = buffer_view.byteLength,
+            .stride = buffer_view.byteStride,
+        };
+    };
+
+    set_accessor(&m_skybox_mesh.position, prim.attributes.at("POSITION"));
+    set_accessor(&m_skybox_mesh.normal, prim.attributes.at("NORMAL"));
+    set_accessor(&m_skybox_mesh.texcoord, prim.attributes.at("TEXCOORD_0"));
+    set_accessor(&m_skybox_mesh.index, prim.indices);
+
+    assert(model.buffers.size() == 1);
+    auto& buffer = model.buffers[0];
+    qhenki::gfx::BufferDesc desc{.size = buffer.data.size(),
                                  .usage = qhenki::gfx::BufferUsage::VERTEX,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
-    THROW_IF_FALSE(m_context->create_buffer(desc, vertices.data(), &vertex_CPU, "Vertex Buffer CPU"));
+    THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &cylinder_CPU, "Skybox Vertex Buffer CPU"));
 
     desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, "Vertex Buffer GPU"));
+    THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_skybox_buffer, "Skybox Vertex Buffer GPU"));
 
-    constexpr auto indices = std::array{0u, 1u, 2u};
-    qhenki::gfx::BufferDesc index_desc{.size = indices.size() * sizeof(uint32_t),
-                                       .usage = qhenki::gfx::BufferUsage::INDEX,
-                                       .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
-    THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, "Index Buffer CPU"));
-
-    index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
+    {
+        void* ptr = m_context->map_buffer(cylinder_CPU);
+        assert(ptr);
+        memcpy(ptr, buffer.data.data(), buffer.data.size());
+        m_context->unmap_buffer(cylinder_CPU);
+    }
 
     qhenki::gfx::TextureDesc texture_desc{
         .width = 4,
@@ -219,16 +270,15 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
     auto& cmd_list_init = m_cmd_lists[m_frame_index];
-    m_context->copy_buffer(&cmd_list_init, vertex_CPU, 0, &m_vertex_buffer, 0, desc.size);
-    m_context->copy_buffer(&cmd_list_init, index_CPU, 0, &m_index_buffer, 0, index_desc.size);
+    m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
     THROW_IF_FALSE(m_context->copy_to_texture(&cmd_list_init, checkerboard.data(), &texture_staging, &m_texture));
 
     qhenki::gfx::ImageBarrier barrier_tex = {
-        .src_stage = qhenki::gfx::SyncStage::SYNC_NONE,
-        .dst_stage = qhenki::gfx::SyncStage::SYNC_NONE,
-        .src_access = qhenki::gfx::AccessFlags::NO_ACCESS,
-        .dst_access = qhenki::gfx::AccessFlags::NO_ACCESS,
+        .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,
+        .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
+        .src_access = qhenki::gfx::AccessFlags::ACCESS_COPY_DEST,
+        .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
         .src_layout = qhenki::gfx::Layout::COPY_DEST,
         .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
     };
@@ -250,6 +300,28 @@ void RetroExampleApp::create()
                                     .fences = &m_fence_frame_ready,
                                     .values = &m_fence_frame_ready_val[m_frame_index]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info));
+
+    const char* skybox_vs_name = use_dx11 ? "SkyboxShader_vs_5_0_vs_main.dxbc" : "SkyboxShader_vs_6_6_vs_main.dxil";
+    const char* skybox_ps_name = use_dx11 ? "SkyboxShader_ps_5_0_ps_main.dxbc" : "SkyboxShader_ps_6_6_ps_main.dxil";
+    THROW_IF_FALSE(load_shader(skybox_vs_name, qhenki::gfx::VERTEX_SHADER, &m_skybox_vertex_shader));
+    THROW_IF_FALSE(load_shader(skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
+
+    // Create skybox pipeline
+    qhenki::gfx::DepthStencilDesc skybox_depth_desc{};
+    skybox_depth_desc.depth_func = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    qhenki::gfx::GraphicsPipelineDesc skybox_pipeline_desc = {
+        .depth_stencil_state = skybox_depth_desc,
+        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .num_render_targets = 1,
+        .dsv_format = m_depth_format,
+        .increment_slot = false,
+    };
+    THROW_IF_FALSE(m_context->create_pipeline(skybox_pipeline_desc,
+                                              &m_skybox_pipeline,
+                                              m_skybox_vertex_shader,
+                                              m_skybox_pixel_shader,
+                                              &m_pipeline_layout, // Reuse existing layout (CBV + SRV + sampler)
+                                              "Skybox pipeline"));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -429,8 +501,7 @@ void RetroExampleApp::render()
 
     m_context->set_descriptor_heap(&cmd_list, m_GPU_heap, m_sampler_heap);
 
-    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_pipeline));
-
+    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_skybox_pipeline));
     if (m_context->is_compatibility())
     {
         m_context->compatibility_set_constant_buffers(0,
@@ -460,15 +531,53 @@ void RetroExampleApp::render()
         descriptor = {.heap = &m_sampler_heap, .offset = 0};
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
     }
+    auto stride_from_accessor = [](int component_type, int type) -> unsigned
+    {
+        unsigned comp_size = (component_type == TINYGLTF_PARAMETER_TYPE_FLOAT)          ? 4u
+                           : (component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT) ? 2u
+                           : (component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)   ? 4u
+                                                                                        : 4u;
+        unsigned comp_count = (type == TINYGLTF_TYPE_SCALAR) ? 1u : (type == TINYGLTF_TYPE_VEC2) ? 2u : 3u;
+        return comp_size * comp_count;
+    };
+    auto vb_offset = [](const Mesh::AccessorBufferView& abv) -> unsigned
+    {
+        return static_cast<unsigned>(abv.second.offset + abv.first.offset);
+    };
+    auto vb_length = [](const Mesh::AccessorBufferView& abv) -> unsigned
+    {
+        return static_cast<unsigned>(abv.second.length);
+    };
+    auto vb_stride = [&stride_from_accessor](const Mesh::AccessorBufferView& abv) -> unsigned
+    {
+        return abv.second.stride != 0 ? static_cast<unsigned>(abv.second.stride)
+                                      : stride_from_accessor(abv.first.component_type, abv.first.type);
+    };
+    const std::array<const qhenki::gfx::Buffer*, 3> skybox_vbs = {&m_skybox_buffer, &m_skybox_buffer, &m_skybox_buffer};
+    const std::array skybox_vb_offsets = {vb_offset(m_skybox_mesh.position),
+                                          vb_offset(m_skybox_mesh.normal),
+                                          vb_offset(m_skybox_mesh.texcoord)};
+    const std::array skybox_vb_lengths = {vb_length(m_skybox_mesh.position),
+                                          vb_length(m_skybox_mesh.normal),
+                                          vb_length(m_skybox_mesh.texcoord)};
+    const std::array skybox_vb_strides = {vb_stride(m_skybox_mesh.position),
+                                          vb_stride(m_skybox_mesh.normal),
+                                          vb_stride(m_skybox_mesh.texcoord)};
+    m_context->bind_vertex_buffers(&cmd_list,
+                                   0,
+                                   3,
+                                   skybox_vbs.data(),
+                                   skybox_vb_lengths.data(),
+                                   skybox_vb_strides.data(),
+                                   skybox_vb_offsets.data());
+    const unsigned index_offset = static_cast<unsigned>(m_skybox_mesh.index.second.offset +
+                                                        m_skybox_mesh.index.first.offset);
+    const auto index_type = m_skybox_mesh.index.first.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+                              ? qhenki::gfx::IndexType::UINT16
+                              : qhenki::gfx::IndexType::UINT32;
+    m_context->bind_index_buffer(&cmd_list, m_skybox_buffer, index_type, index_offset);
+    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_skybox_mesh.index.first.count), 0, 0);
 
-    constexpr unsigned offset = 0;
-    auto stride = static_cast<unsigned>(sizeof(Vertex));
-    const auto buffers = &m_vertex_buffer;
-    const auto unsigned_size = static_cast<unsigned>(sizeof(Vertex) * 3);
-    m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, &unsigned_size, &stride, &offset);
-    m_context->bind_index_buffer(&cmd_list, m_index_buffer, qhenki::gfx::IndexType::UINT32, 0);
-
-    m_context->draw_indexed(&cmd_list, 3, 0, 0);
 
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);
@@ -519,7 +628,7 @@ void RetroExampleApp::resize(int width, int height)
     const qhenki::gfx::TextureDesc depth_desc{
         .width = static_cast<uint64_t>(width),
         .height = static_cast<uint32_t>(height),
-        .format = DXGI_FORMAT_D32_FLOAT,
+        .format = m_depth_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
     };
