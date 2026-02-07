@@ -853,9 +853,6 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
         return false;
     }
 
-    assert(BitsPerPixel(texture->desc.format) % 8 == 0); // TODO: check this for compressed formats
-    const auto bpp = BitsPerPixel(texture->desc.format) / 8;
-
     const UINT32 num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
     size_t data_offset = 0;
     for (UINT32 subresource = 0; subresource < num_subresources; subresource++)
@@ -867,7 +864,14 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
         const UINT32 mip_depth = texture->desc.dimension == TextureDimension::TEXTURE_3D
                                    ? std::max<UINT32>(1u, texture->desc.depth_or_array_size >> mip)
                                    : 1u;
-        const UINT32 bytes_per_row = mip_width * bpp; // Pitch of logical resource
+
+        size_t row_pitch = 0;
+        size_t slice_pitch = 0;
+        if (FAILED(ComputePitch(texture->desc.format, mip_width, mip_height, row_pitch, slice_pitch)))
+        {
+            // If failed texture is partially updated but this branch shouldn't happen
+            return false;
+        }
 
         const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
 
@@ -875,19 +879,14 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
             .left = 0,
             .top = 0,
             .front = 0,
-            .right = static_cast<UINT>(mip_width),
+            .right = mip_width,
             .bottom = mip_height,
-            .back = texture->desc.depth_or_array_size,
+            .back = mip_depth,
         };
 
-        m_device_context->UpdateSubresource(resource,
-                                            subresource, // TODO: which subresource
-                                            &box,
-                                            src,
-                                            mip_width * bpp,
-                                            mip_depth * bpp);
+        m_device_context->UpdateSubresource(resource, subresource, &box, src, row_pitch, slice_pitch);
 
-        data_offset += bytes_per_row * mip_height * mip_depth; // Assume data pointer is tightly packed no padding
+        data_offset += slice_pitch * mip_depth;
     }
 
     return true;
