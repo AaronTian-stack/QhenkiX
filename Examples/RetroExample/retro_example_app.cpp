@@ -73,8 +73,8 @@ void RetroExampleApp::create()
 {
     const bool use_dx11 = m_context->is_compatibility();
     const char* subdir = use_dx11 ? "dx11" : "dx12";
-    const char* vs_name = use_dx11 ? "BaseShader_vs_5_0_vs_main.dxbc" : "BaseShader_vs_6_6_vs_main.dxil";
-    const char* ps_name = use_dx11 ? "BaseShader_ps_5_0_ps_main.dxbc" : "BaseShader_ps_6_6_ps_main.dxil";
+    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.dxbc" : "base_vs_6_6_vs_main.dxil";
+    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.dxbc" : "base_ps_6_6_ps_main.dxil";
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
@@ -301,8 +301,8 @@ void RetroExampleApp::create()
                                     .values = &m_fence_frame_ready_val[m_frame_index]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info));
 
-    const char* skybox_vs_name = use_dx11 ? "SkyboxShader_vs_5_0_vs_main.dxbc" : "SkyboxShader_vs_6_6_vs_main.dxil";
-    const char* skybox_ps_name = use_dx11 ? "SkyboxShader_ps_5_0_ps_main.dxbc" : "SkyboxShader_ps_6_6_ps_main.dxil";
+    const char* skybox_vs_name = use_dx11 ? "skybox_vs_5_0_vs_main.dxbc" : "skybox_vs_6_6_vs_main.dxil";
+    const char* skybox_ps_name = use_dx11 ? "skybox_ps_5_0_ps_main.dxbc" : "skybox_ps_6_6_ps_main.dxil";
     THROW_IF_FALSE(load_shader(skybox_vs_name, qhenki::gfx::VERTEX_SHADER, &m_skybox_vertex_shader));
     THROW_IF_FALSE(load_shader(skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
 
