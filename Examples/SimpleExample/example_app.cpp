@@ -14,8 +14,8 @@ void ExampleApp::create()
 {
     const bool use_dx11 = m_context->is_compatibility();
     const char* subdir = use_dx11 ? "dx11" : "dx12";
-    const char* vs_name = use_dx11 ? "BaseShader_vs_5_0_vs_main.dxbc" : "BaseShader_vs_6_6_vs_main.dxil";
-    const char* ps_name = use_dx11 ? "BaseShader_ps_5_0_ps_main.dxbc" : "BaseShader_ps_6_6_ps_main.dxil";
+    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.dxbc" : "base_vs_6_6_vs_main.dxil";
+    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.dxbc" : "base_ps_6_6_ps_main.dxil";
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
