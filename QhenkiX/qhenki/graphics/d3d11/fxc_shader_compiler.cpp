@@ -6,10 +6,10 @@
 #include <array>
 #include <cassert>
 
+#include "fxc_include_handler.h"
 #include "qhenki/memory/arena.h"
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
-#include "qhenki/utility/include_handlers.h"
 
 #include "qhenki/utility/string_util.h"
 
@@ -105,7 +105,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     const auto target = get_shader_model_char(input.shader_type, input.shader_model);
 
-    MultiIncludeHandler handler(input.includes);
+    MultiIncludeHandler handler(input.includes, input.get_path());
 
     ComPtr<ID3DBlob> shader_blob;
     // TODO: d3dcompiler_47.dll should be linked with the application
