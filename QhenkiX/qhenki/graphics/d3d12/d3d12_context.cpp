@@ -1503,10 +1503,6 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
                                    Buffer* const staging,
                                    Texture* const texture)
 {
-    if (staging->internal_state)
-    {
-        OutputDebugStringA("Qhenki D3D12 WARNING: copy_to_texture staging buffer already allocated, overwriting it\n");
-    }
     const UINT num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
     const auto texture_allocation = to_internal(*texture);
     const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
@@ -1544,16 +1540,15 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         .usage = BufferUsage::COPY_SRC,
         .visibility = CPU_SEQUENTIAL,
     };
-    if (!create_buffer(staging_desc, nullptr, staging, nullptr))
+
+    Buffer local_staging;
+    if (!create_buffer(staging_desc, nullptr, &local_staging, nullptr))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create staging buffer for texture copy\n");
         return false;
     }
 
-    const auto upload_memory = static_cast<uint8_t*>(map_buffer(*staging));
-
-    assert(BitsPerPixel(texture->desc.format) % 8 == 0);       // TODO: check if this works for block compressed formats
-    const UINT32 bpp = BitsPerPixel(texture->desc.format) / 8; // Bytes per pixel
+    const auto upload_memory = static_cast<uint8_t*>(map_buffer(local_staging));
 
     size_t data_offset = 0;
 
@@ -1568,32 +1563,40 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         const UINT32 mip_depth = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D
                                    ? std::max<UINT32>(1u, texture->desc.depth_or_array_size >> mip)
                                    : 1u;
-        const UINT32 bytes_per_row = mip_width * bpp; // Pitch of logical resource
+
+        size_t src_row_pitch = 0;
+        size_t src_slice_pitch = 0;
+        if (FAILED(ComputePitch(texture->desc.format, mip_width, mip_height, src_row_pitch, src_slice_pitch)))
+        {
+            return false;
+        }
 
         const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = layouts[subresource];
-        const UINT32 row_pitch = footprint.Footprint.RowPitch; // Pitch of upload buffer
-        const UINT32 slice_pitch = row_pitch * footprint.Footprint.Height;
-        UINT8* dst = &upload_memory[footprint.Offset];
+        const UINT num_rows = row_counts[subresource];
+        const UINT64 row_size_bytes = row_sizes[subresource];
+        const UINT32 dst_row_pitch = footprint.Footprint.RowPitch;
+        const UINT32 dst_slice_bytes = dst_row_pitch * num_rows;
 
+        UINT8* dst = &upload_memory[footprint.Offset];
         const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
 
         for (UINT32 z = 0; z < mip_depth; z++) // 1 for 2D or array textures
         {
-            UINT8* dst_slice = &dst[z * slice_pitch];
-            const UINT8* src_slice = &src[z * mip_height * bytes_per_row];
+            UINT8* dst_slice = &dst[z * dst_slice_bytes];
+            const UINT8* src_slice = &src[z * src_slice_pitch];
 
-            for (UINT32 y = 0; y < mip_height; y++)
+            for (UINT y = 0; y < num_rows; y++)
             {
-                memcpy(&dst_slice[y * row_pitch], &src_slice[y * bytes_per_row], bytes_per_row);
+                memcpy(&dst_slice[y * dst_row_pitch], &src_slice[y * src_row_pitch], row_size_bytes);
             }
         }
 
-        data_offset += bytes_per_row * mip_height * mip_depth; // Assume data pointer is tightly packed no padding
+        data_offset += src_slice_pitch * mip_depth;
     }
 
-    unmap_buffer(*staging);
+    unmap_buffer(local_staging);
 
-    const auto staging_internal = to_internal(*staging);
+    const auto staging_internal = to_internal(local_staging);
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     for (UINT subresource_index = 0; subresource_index < num_subresources; subresource_index++)
     {
@@ -1615,6 +1618,8 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     {
         THROW_IF_FALSE(m_arenas.push(std::move(arena)));
     }
+
+    *staging = std::move(local_staging);
 
     return true;
 }
