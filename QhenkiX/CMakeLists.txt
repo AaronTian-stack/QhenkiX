@@ -38,7 +38,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/memory/arena.cpp"
 
     "${QHENKIX_DIR}/utility/d3d_util.cpp"
-    "${QHENKIX_DIR}/utility/file_util.cpp"
+    "${QHENKIX_DIR}/utility/file_util.cpp"  
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectX-Headers-1.618.2/src/dxguids.cpp"
@@ -50,7 +50,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.h"
-    "${QHENKIX_DIR}/utility/fxc_include_handler.h"
+    "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_shader.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.h"

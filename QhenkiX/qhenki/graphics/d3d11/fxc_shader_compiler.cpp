@@ -6,10 +6,10 @@
 #include <array>
 #include <cassert>
 
+#include "fxc_include_handler.h"
 #include "qhenki/memory/arena.h"
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
-#include "qhenki/utility/include_handlers.h"
 
 #include "qhenki/utility/string_util.h"
 
