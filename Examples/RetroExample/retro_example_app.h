@@ -50,8 +50,8 @@ class RetroExampleApp : public qhenki::Application
     std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
     std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};
 
-    qhenki::gfx::Descriptor m_texture_descriptor{};
-    qhenki::gfx::Texture m_texture{};
+    qhenki::gfx::Descriptor m_skybox_texture_descriptor{};
+    qhenki::gfx::Texture m_skybox_texture{};
     qhenki::gfx::Descriptor m_sampler_descriptor{};
 
     qhenki::gfx::Texture m_depth_buffer{};

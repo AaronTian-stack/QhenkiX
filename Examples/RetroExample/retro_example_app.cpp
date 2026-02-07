@@ -1,6 +1,8 @@
 #include "retro_example_app.h"
 #include "shared_structs.h"
 
+#include <DirectXTex.h>
+
 #include <imgui/imgui.h>
 
 #include <qhenki/utility/file_util.h>
@@ -222,7 +224,6 @@ void RetroExampleApp::create()
 
     set_accessor(&m_skybox_mesh.position, prim.attributes.at("POSITION"));
     set_accessor(&m_skybox_mesh.normal, prim.attributes.at("NORMAL"));
-    set_accessor(&m_skybox_mesh.texcoord, prim.attributes.at("TEXCOORD_0"));
     set_accessor(&m_skybox_mesh.index, prim.indices);
 
     assert(model.buffers.size() == 1);
@@ -242,48 +243,57 @@ void RetroExampleApp::create()
         m_context->unmap_buffer(cylinder_CPU);
     }
 
-    qhenki::gfx::TextureDesc texture_desc{
-        .width = 4,
-        .height = 4,
-        .mip_levels = 3,
-        .format = DXGI_FORMAT_R8G8B8A8_UNORM,
-        .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
-        .initial_layout = qhenki::gfx::Layout::COPY_DEST,
-    };
-    THROW_IF_FALSE(m_context->create_texture(texture_desc, &m_texture, "Checkerboard Texture"));
-
-    THROW_IF_FALSE(m_context->create_descriptor_shader_view(m_texture, &m_CPU_heap, &m_texture_descriptor));
-
     qhenki::gfx::SamplerDesc sampler_desc{
         .min_filter = qhenki::gfx::Filter::NEAREST,
         .mag_filter = qhenki::gfx::Filter::NEAREST,
+        .mip_filter = qhenki::gfx::Filter::NEAREST,
+        .address_mode_u = qhenki::gfx::AddressMode::WRAP,
+        .address_mode_v = qhenki::gfx::AddressMode::WRAP,
+        .address_mode_w = qhenki::gfx::AddressMode::WRAP,
     };
     THROW_IF_FALSE(m_context->create_descriptor(sampler_desc, &m_sampler_heap, &m_sampler_descriptor));
-
-    constexpr auto checkerboard = std::array{
-        0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF,
-        0xFF0000FF, 0xFF0000FF, 0xFFFFFFFF, 0xFF0000FF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF0000FF,
-        0xFFFFFFFF, 0xFF0000FF, 0xFFFF00FF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFF00FF, 0xFF00FFFF,
-    };
-    qhenki::gfx::Buffer texture_staging;
 
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
     auto& cmd_list_init = m_cmd_lists[m_frame_index];
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
-    THROW_IF_FALSE(m_context->copy_to_texture(&cmd_list_init, checkerboard.data(), &texture_staging, &m_texture));
+    qhenki::gfx::Buffer skybox_staging;
+    {
+        const wchar_t* skybox_path = L"assets/skybox.dds";
+        ScratchImage scratch;
+        TexMetadata meta = {};
+        const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
+        THROW_IF_TRUE(FAILED(hr));
+        qhenki::gfx::TextureDesc skybox_tex_desc{
+            .width = meta.width,
+            .height = static_cast<uint32_t>(meta.height),
+            .depth_or_array_size = static_cast<uint16_t>(meta.arraySize),
+            .mip_levels = static_cast<uint16_t>(meta.mipLevels),
+            .format = meta.format,
+            .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
+            .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+        };
+        if (m_context->create_texture(skybox_tex_desc, &m_skybox_texture, "Skybox Texture"))
+        {
+            THROW_IF_FALSE(
+                m_context->create_descriptor_shader_view(m_skybox_texture, &m_CPU_heap, &m_skybox_texture_descriptor));
 
-    qhenki::gfx::ImageBarrier barrier_tex = {
-        .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,
-        .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
-        .src_access = qhenki::gfx::AccessFlags::ACCESS_COPY_DEST,
-        .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
-        .src_layout = qhenki::gfx::Layout::COPY_DEST,
-        .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
-    };
-    m_context->set_barrier_resource(1, &barrier_tex, m_texture);
-    m_context->issue_barrier(&cmd_list_init, 1, &barrier_tex);
+            if (m_context->copy_to_texture(&cmd_list_init, scratch.GetPixels(), &skybox_staging, &m_skybox_texture))
+            {
+                qhenki::gfx::ImageBarrier barrier_skybox = {
+                    .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,
+                    .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
+                    .src_access = qhenki::gfx::AccessFlags::ACCESS_COPY_DEST,
+                    .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
+                    .src_layout = qhenki::gfx::Layout::COPY_DEST,
+                    .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
+                };
+                m_context->set_barrier_resource(1, &barrier_skybox, m_skybox_texture);
+                m_context->issue_barrier(&cmd_list_init, 1, &barrier_skybox);
+            }
+        }
+    }
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list_init));
     auto current_fence_value = ++m_fence_frame_ready_val[m_frame_index];
@@ -307,9 +317,29 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(load_shader(skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
 
     // Create skybox pipeline
+    D3D12_BLEND_DESC skybox_blend_desc{
+        .AlphaToCoverageEnable = FALSE,
+        .IndependentBlendEnable = FALSE,
+        .RenderTarget =
+            {
+                {
+                    .BlendEnable = TRUE,
+                    .LogicOpEnable = FALSE,
+                    .SrcBlend = D3D12_BLEND_SRC_ALPHA,
+                    .DestBlend = D3D12_BLEND_INV_SRC_ALPHA,
+                    .BlendOp = D3D12_BLEND_OP_ADD,
+                    .SrcBlendAlpha = D3D12_BLEND_ONE,
+                    .DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA,
+                    .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+                    .LogicOp = D3D12_LOGIC_OP_NOOP,
+                    .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+                },
+            },
+    };
     qhenki::gfx::DepthStencilDesc skybox_depth_desc{};
     skybox_depth_desc.depth_func = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     qhenki::gfx::GraphicsPipelineDesc skybox_pipeline_desc = {
+        .blend_desc = skybox_blend_desc,
         .depth_stencil_state = skybox_depth_desc,
         .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
         .num_render_targets = 1,
@@ -335,6 +365,8 @@ void RetroExampleApp::create()
     m_camera.hierarchy.local_transform.translation = {0.f, 0.f, m_target_distance};
     m_camera.hierarchy.local_transform.look_at(XMFLOAT3{0.0f, 0.0f, 0.0f}, XMFLOAT3{0.0f, 1.0f, 0.0f});
     mark_world_dirty(&m_camera_target);
+
+    m_camera.perspective.fov = XMConvertToRadians(40);
 }
 
 void RetroExampleApp::render()
@@ -472,7 +504,7 @@ void RetroExampleApp::render()
     m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
-    std::array clear_values = {0.f, 0.f, 0.f, 1.f};
+    std::array clear_values = {1.f, 1.f, 1.f, 1.f};
     qhenki::gfx::RenderTarget depth{
         .clear_params = {.dsv_clear_params = {1.f, 0}},
         .clear_type = qhenki::gfx::RenderTarget::DEPTH,
@@ -510,7 +542,7 @@ void RetroExampleApp::render()
                                                       qhenki::gfx::PipelineStage::VERTEX);
         m_context->compatibility_set_textures(1,
                                               1,
-                                              qhenki::util::ptr_array(m_texture_descriptor).data(),
+                                              qhenki::util::ptr_array(m_skybox_texture_descriptor).data(),
                                               qhenki::gfx::ACCESS_SHADER_RESOURCE,
                                               qhenki::gfx::PipelineStage::PIXEL);
         m_context->compatibility_set_samplers(0,
@@ -526,7 +558,7 @@ void RetroExampleApp::render()
 
         THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], descriptor));
         descriptor.offset = 1;
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_texture_descriptor, descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_skybox_texture_descriptor, descriptor));
 
         descriptor = {.heap = &m_sampler_heap, .offset = 0};
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
@@ -553,19 +585,13 @@ void RetroExampleApp::render()
         return abv.second.stride != 0 ? static_cast<unsigned>(abv.second.stride)
                                       : stride_from_accessor(abv.first.component_type, abv.first.type);
     };
-    const std::array<const qhenki::gfx::Buffer*, 3> skybox_vbs = {&m_skybox_buffer, &m_skybox_buffer, &m_skybox_buffer};
-    const std::array skybox_vb_offsets = {vb_offset(m_skybox_mesh.position),
-                                          vb_offset(m_skybox_mesh.normal),
-                                          vb_offset(m_skybox_mesh.texcoord)};
-    const std::array skybox_vb_lengths = {vb_length(m_skybox_mesh.position),
-                                          vb_length(m_skybox_mesh.normal),
-                                          vb_length(m_skybox_mesh.texcoord)};
-    const std::array skybox_vb_strides = {vb_stride(m_skybox_mesh.position),
-                                          vb_stride(m_skybox_mesh.normal),
-                                          vb_stride(m_skybox_mesh.texcoord)};
+    const std::array skybox_vbs = {&m_skybox_buffer, &m_skybox_buffer};
+    const std::array skybox_vb_offsets = {vb_offset(m_skybox_mesh.position), vb_offset(m_skybox_mesh.normal)};
+    const std::array skybox_vb_lengths = {vb_length(m_skybox_mesh.position), vb_length(m_skybox_mesh.normal)};
+    const std::array skybox_vb_strides = {vb_stride(m_skybox_mesh.position), vb_stride(m_skybox_mesh.normal)};
     m_context->bind_vertex_buffers(&cmd_list,
                                    0,
-                                   3,
+                                   2,
                                    skybox_vbs.data(),
                                    skybox_vb_lengths.data(),
                                    skybox_vb_strides.data(),

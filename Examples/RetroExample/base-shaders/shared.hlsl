@@ -10,11 +10,12 @@ cbuffer CameraBuffer : register(b0)
 
 Texture2D g_texture : register(t1);
 
+SamplerState samp : register(s0
 #ifdef DX12
-SamplerState samp : register(s0, space1);
+, space1);
 #endif
 #ifdef DX11
-SamplerState samp : register(s0);
+);
 #endif
 
 #endif // SHARED_HLSL
