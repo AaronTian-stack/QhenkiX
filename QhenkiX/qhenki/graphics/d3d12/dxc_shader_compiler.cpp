@@ -1,4 +1,5 @@
 #include "dxc_shader_compiler.h"
+#include "dxc_include_handler.h"
 
 #include <d3dcompiler.h>
 #include <cassert>
@@ -198,14 +199,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     source_buffer.Size = size;
     source_buffer.Encoding = DXC_CP_ACP;
 
-    // Create default file include handler
-    // TODO: Custom include handlers
-    ComPtr<IDxcIncludeHandler> include_handler;
-    if (FAILED(m_library->CreateDefaultIncludeHandler(&include_handler)))
-    {
-        output.error_message = "DXCShaderCompiler: Failed to create include handler";
-        return false;
-    }
+    DxcIncludeHandlerForCompile include_handler(m_library.Get(), input_path, input.includes);
 
     thread_local memory::Arena arena{4 * MEGABYTE};
     arena.reset();
@@ -320,7 +314,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     };
 
     if FAILED (m_compiler->Compile(
-                   &source_buffer, args, static_cast<UINT32>(args_idx), include_handler.Get(), IID_PPV_ARGS(&result)))
+                   &source_buffer, args, static_cast<UINT32>(args_idx), &include_handler, IID_PPV_ARGS(&result)))
     {
         output_error();
         return false;
