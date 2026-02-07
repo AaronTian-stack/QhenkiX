@@ -2,6 +2,7 @@
 #include "shared_structs.h"
 
 #include <DirectXTex.h>
+#include <Windows.h>
 
 #include <imgui/imgui.h>
 
@@ -170,13 +171,13 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
     THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
-    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(CameraMatrices),
+    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(ConstantBuffer),
                                                                       qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
                                         .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
-        THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], "Matrix Buffer"));
+        THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], "Frame Constant Buffer"));
         THROW_IF_FALSE(
             m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap, &m_matrix_descriptors[i]));
     }
@@ -258,6 +259,7 @@ void RetroExampleApp::create()
     auto& cmd_list_init = m_cmd_lists[m_frame_index];
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
+    // Load skybox.dds with DirectXTex
     qhenki::gfx::Buffer skybox_staging;
     {
         const wchar_t* skybox_path = L"assets/skybox.dds";
@@ -265,12 +267,14 @@ void RetroExampleApp::create()
         TexMetadata meta = {};
         const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
         THROW_IF_TRUE(FAILED(hr));
+        // Use sRGB format so the sampler decodes to linear when sampling (fixes dark look for sRGB assets).
+        const DXGI_FORMAT skybox_format = DirectX::IsSRGB(meta.format) ? meta.format : DirectX::MakeSRGB(meta.format);
         qhenki::gfx::TextureDesc skybox_tex_desc{
             .width = meta.width,
             .height = static_cast<uint32_t>(meta.height),
             .depth_or_array_size = static_cast<uint16_t>(meta.arraySize),
             .mip_levels = static_cast<uint16_t>(meta.mipLevels),
-            .format = meta.format,
+            .format = skybox_format,
             .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
             .initial_layout = qhenki::gfx::Layout::COPY_DEST,
         };
@@ -316,7 +320,6 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(load_shader(skybox_vs_name, qhenki::gfx::VERTEX_SHADER, &m_skybox_vertex_shader));
     THROW_IF_FALSE(load_shader(skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
 
-    // Create skybox pipeline
     D3D12_BLEND_DESC skybox_blend_desc{
         .AlphaToCoverageEnable = FALSE,
         .IndependentBlendEnable = FALSE,
@@ -365,8 +368,6 @@ void RetroExampleApp::create()
     m_camera.hierarchy.local_transform.translation = {0.f, 0.f, m_target_distance};
     m_camera.hierarchy.local_transform.look_at(XMFLOAT3{0.0f, 0.0f, 0.0f}, XMFLOAT3{0.0f, 1.0f, 0.0f});
     mark_world_dirty(&m_camera_target);
-
-    m_camera.perspective.fov = XMConvertToRadians(40);
 }
 
 void RetroExampleApp::render()
@@ -479,13 +480,14 @@ void RetroExampleApp::render()
                                                    m_camera.perspective.far_plane);
     const XMMATRIX view_proj = XMMatrixMultiply(view, proj);
 
-    CameraMatrices matrices;
-    XMStoreFloat4x4(&matrices.view_proj, XMMatrixTranspose(view_proj));
-    XMStoreFloat4x4(&matrices.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
+    ConstantBuffer cb;
+    XMStoreFloat4x4(&cb.matrices.view_proj, XMMatrixTranspose(view_proj));
+    XMStoreFloat4x4(&cb.matrices.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
+    cb.time = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
     const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
     assert(buffer_pointer);
-    memcpy(buffer_pointer, &matrices, sizeof(CameraMatrices));
+    memcpy(buffer_pointer, &cb, sizeof(ConstantBuffer));
     m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
 
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
@@ -504,7 +506,7 @@ void RetroExampleApp::render()
     m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
-    std::array clear_values = {1.f, 1.f, 1.f, 1.f};
+    std::array clear_values = {1.0f, 1.0f, 1.0f, 1.0f};
     qhenki::gfx::RenderTarget depth{
         .clear_params = {.dsv_clear_params = {1.f, 0}},
         .clear_type = qhenki::gfx::RenderTarget::DEPTH,
@@ -536,10 +538,15 @@ void RetroExampleApp::render()
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_skybox_pipeline));
     if (m_context->is_compatibility())
     {
+        std::array buffer = {&m_matrix_buffers[m_frame_index]};
         m_context->compatibility_set_constant_buffers(0,
-                                                      1,
-                                                      qhenki::util::ptr_array(m_matrix_buffers[m_frame_index]).data(),
+                                                      buffer.size(),
+                                                      buffer.data(),
                                                       qhenki::gfx::PipelineStage::VERTEX);
+        m_context->compatibility_set_constant_buffers(0,
+                                                      buffer.size(),
+                                                      buffer.data(),
+                                                      qhenki::gfx::PipelineStage::PIXEL);
         m_context->compatibility_set_textures(1,
                                               1,
                                               qhenki::util::ptr_array(m_skybox_texture_descriptor).data(),

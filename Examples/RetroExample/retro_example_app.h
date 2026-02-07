@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include "scene.h"
+#include "shared_structs.h"
 
 #include "qhenki/application.h"
 
@@ -29,6 +30,12 @@ class RetroExampleApp : public qhenki::Application
         AccessorBufferView texcoord;
         AccessorBufferView index;
         qhenki::gfx::Buffer buffer{};
+    };
+
+    struct ConstantBuffer
+    {
+        CameraMatrices matrices;
+        float time;
     };
 
     qhenki::gfx::PipelineLayout m_pipeline_layout{};

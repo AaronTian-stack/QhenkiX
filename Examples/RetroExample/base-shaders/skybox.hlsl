@@ -36,6 +36,8 @@ struct PSOutput
     float4 color : SV_Target0;
 };
 
+#define STEPPED
+
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
@@ -45,11 +47,23 @@ PSOutput ps_main(PSInput input)
     uv.x = 1.0 - (atan2(dir.z, dir.x) + PI) / (2.0 * PI);
     uv.y = 0.5 - 0.5 * dir.y;
 
-    const float tiling = 10.0;
-    float2 p = float2(uv.x * tiling, uv.y * tiling * 0.4 * scale_factor);
+    const float dot_tiling = 256.0;
 
-    const float dot_tiling = 700.0;
-    float2 dot_p = float2(uv.x * dot_tiling, uv.y * dot_tiling * 0.4 * scale_factor);
+    const float speed = 0.02;
+    const float step_size = 1 / dot_tiling;
+    const float2 raw_offset = float2(time * speed, -time * speed);
+    const float2 offset = step_size * floor(raw_offset / step_size);
+
+    float2 uv_d =
+#ifdef STEPPED
+    uv + offset;
+#else
+    uv + raw_offset;
+#endif
+
+    const float tiling = 4.0;
+    float2 p = float2(uv_d.x * tiling, uv_d.y * tiling * 0.5 * scale_factor);
+    float2 dot_p = float2(uv.x * dot_tiling, uv.y * dot_tiling * 0.5 * scale_factor);
 
     float2 cell = frac(dot_p);
     float dist = distance(cell, float2(0.5, 0.5));
@@ -59,7 +73,7 @@ PSOutput ps_main(PSInput input)
     float4 tex = g_texture.Sample(samp, p);
 
     float dist_from_mid = 2.0 * abs(uv.y - 0.5);
-    float alpha_fade = 1.0 - smoothstep(0.0, 1.0, dist_from_mid);
+    float alpha_fade = 1.0 - smoothstep(0.3, 1.0, dist_from_mid);
 
     output.color = float4(dotted * tex.rgb, tex.a * alpha_fade);
 
