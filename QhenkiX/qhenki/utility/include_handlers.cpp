@@ -1,47 +1,60 @@
 #include "qhenki/utility/include_handlers.h"
+#include "qhenki/utility/file_util.h"
 
-#include "qhenki/utility/string_util.h"
-
-#include <cassert>
 #include <filesystem>
-#include <fstream>
+
+namespace fs = std::filesystem;
+
+qhenki::gfx::MultiIncludeHandler::MultiIncludeHandler(const std::span<const std::string> include_paths,
+                                                      const std::string_view source_path)
+    : m_include_paths(include_paths),
+      m_source_path(source_path)
+{
+}
+
+qhenki::gfx::MultiIncludeHandler::MultiIncludeHandler(const std::vector<std::string>& include_paths,
+                                                      const std::string_view source_path)
+    : m_include_paths(include_paths),
+      m_source_path(source_path)
+{
+}
 
 HRESULT __stdcall qhenki::gfx::MultiIncludeHandler::Open(
     D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
 {
+    void* data = nullptr;
+    size_t size = 0;
+
+    auto try_path = [&](const fs::path& path)
+    {
+        if (!util::read_file(path.string().c_str(), &data, &size))
+        {
+            return false;
+        }
+        *ppData = data;
+        *pBytes = static_cast<UINT>(size);
+        return true;
+    };
+
+    // Resolve relative to the source file's directory first
+    if (!m_source_path.empty())
+    {
+        const fs::path source_dir = fs::path(m_source_path).parent_path();
+        if ((source_dir.has_parent_path() || !source_dir.empty()) && try_path(source_dir / pFileName))
+        {
+            return S_OK;
+        }
+    }
+
     for (const auto& dir : m_include_paths)
     {
-        if (!std::filesystem::is_directory(dir))
+        if (!fs::is_directory(dir))
         {
-            continue; // Skip if not valid directory
+            continue;
         }
-
-        std::ifstream file;
-
-        constexpr size_t path_size = 1024;
-        if (dir.size() + strlen(pFileName) + 1 < path_size)
+        if (try_path(fs::path(dir) / pFileName))
         {
-            const auto full_path = qhenki::util::format_string<path_size>("%s/%s", dir.c_str(), pFileName);
-            file.open(full_path.buffer.data(), std::ios::binary | std::ios::ate);
-        }
-        else
-        {
-            std::string full_path = dir + "/" + pFileName;
-            file.open(full_path, std::ios::binary | std::ios::ate);
-        }
-
-        if (file)
-        {
-            const std::streamsize size = file.tellg();
-            file.seekg(0, std::ios::beg);
-            char* buffer = new char[size];
-            if (file.read(buffer, size))
-            {
-                *ppData = buffer;
-                *pBytes = static_cast<UINT>(size);
-                return S_OK;
-            }
-            delete[] buffer;
+            return S_OK;
         }
     }
     return E_FAIL;
@@ -49,6 +62,6 @@ HRESULT __stdcall qhenki::gfx::MultiIncludeHandler::Open(
 
 HRESULT __stdcall qhenki::gfx::MultiIncludeHandler::Close(LPCVOID pData)
 {
-    delete[] reinterpret_cast<const char*>(pData); // Open allocates memory with new char[]
+    free(const_cast<void*>(pData));
     return S_OK;
 }
