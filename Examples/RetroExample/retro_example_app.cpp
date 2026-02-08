@@ -356,6 +356,25 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout, // Reuse existing layout (CBV + SRV + sampler)
                                               "Skybox pipeline"));
 
+    const char* cube_vs_name = use_dx11 ? "cube_vs_5_0_vs_main.dxbc" : "cube_vs_6_6_vs_main.dxil";
+    const char* cube_ps_name = use_dx11 ? "cube_ps_5_0_ps_main.dxbc" : "cube_ps_6_6_ps_main.dxil";
+    THROW_IF_FALSE(load_shader(cube_vs_name, qhenki::gfx::VERTEX_SHADER, &m_cube_vertex_shader));
+    THROW_IF_FALSE(load_shader(cube_ps_name, qhenki::gfx::PIXEL_SHADER, &m_cube_pixel_shader));
+
+    qhenki::gfx::GraphicsPipelineDesc cube_pipeline_desc = {
+        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
+        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .num_render_targets = 1,
+        .dsv_format = m_depth_format,
+        .increment_slot = false,
+    };
+    THROW_IF_FALSE(m_context->create_pipeline(cube_pipeline_desc,
+                                              &m_cube_pipeline,
+                                              m_cube_vertex_shader,
+                                              m_cube_pixel_shader,
+                                              &m_pipeline_layout,
+                                              "Cube pipeline"));
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -368,6 +387,9 @@ void RetroExampleApp::create()
     m_camera.hierarchy.local_transform.translation = {0.f, 0.f, m_target_distance};
     m_camera.hierarchy.local_transform.look_at(XMFLOAT3{0.0f, 0.0f, 0.0f}, XMFLOAT3{0.0f, 1.0f, 0.0f});
     mark_world_dirty(&m_camera_target);
+
+    link_parent_child(&m_cube_parent, &m_cube_child);
+    mark_world_dirty(&m_cube_parent);
 }
 
 void RetroExampleApp::render()
@@ -480,10 +502,33 @@ void RetroExampleApp::render()
                                                    m_camera.perspective.far_plane);
     const XMMATRIX view_proj = XMMatrixMultiply(view, proj);
 
+    const float time_sec = static_cast<float>(SDL_GetTicks()) / 1000.f;
+
+    constexpr float radius_min = 12.f;
+    constexpr float radius_max = 16.f;
+    const float radius_t = 0.5f + 0.5f * std::sin(time_sec * 0.7f);
+    const float orbit_radius = radius_min + (radius_max - radius_min) * radius_t;
+    const float orbit_angle = time_sec * 0.5f;
+    m_cube_parent.local_transform.translation.x = orbit_radius * std::cos(orbit_angle);
+    m_cube_parent.local_transform.translation.y = std::sin(time_sec * 2.f) * 6.f;
+    m_cube_parent.local_transform.translation.z = orbit_radius * std::sin(orbit_angle);
+
+    const float axis_angle = time_sec * 0.4f;
+    const float rot_angle = time_sec * 1.2f;
+    XMVECTOR rot_axis = XMVectorSet(std::sin(axis_angle), 0.6f, std::cos(axis_angle), 0.f);
+    rot_axis = XMVector3Normalize(rot_axis);
+    XMStoreFloat4(&m_cube_child.local_transform.rotation, XMQuaternionRotationAxis(rot_axis, rot_angle));
+
+    mark_world_dirty(&m_cube_parent);
+    update_world_transform(&m_cube_parent);
+
+    const XMMATRIX cube_world_mat = qhenki::math::TransformSIMD::load(m_cube_child.world_transform).to_matrix();
+
     ConstantBuffer cb;
     XMStoreFloat4x4(&cb.matrices.view_proj, XMMatrixTranspose(view_proj));
     XMStoreFloat4x4(&cb.matrices.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
-    cb.time = static_cast<float>(SDL_GetTicks()) / 1000.f;
+    XMStoreFloat4x4(&cb.cube_world, XMMatrixTranspose(cube_world_mat));
+    cb.time = time_sec;
 
     const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
     assert(buffer_pointer);
@@ -611,6 +656,8 @@ void RetroExampleApp::render()
     m_context->bind_index_buffer(&cmd_list, m_skybox_buffer, index_type, index_offset);
     m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_skybox_mesh.index.first.count), 0, 0);
 
+    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_cube_pipeline));
+    m_context->draw(&cmd_list, 36u, 0);
 
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);

@@ -6,6 +6,7 @@
 cbuffer FrameConstants : register(b0)
 {
     CameraMatrices camera_buffer;
+    float4x4 cube_world;
     float time;
 };
 

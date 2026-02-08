@@ -35,6 +35,7 @@ class RetroExampleApp : public qhenki::Application
     struct ConstantBuffer
     {
         CameraMatrices matrices;
+        XMFLOAT4X4 cube_world;
         float time;
     };
 
@@ -48,6 +49,10 @@ class RetroExampleApp : public qhenki::Application
     qhenki::gfx::GraphicsPipeline m_skybox_pipeline{};
     qhenki::gfx::Shader m_skybox_vertex_shader{};
     qhenki::gfx::Shader m_skybox_pixel_shader{};
+
+    qhenki::gfx::GraphicsPipeline m_cube_pipeline{};
+    qhenki::gfx::Shader m_cube_vertex_shader{};
+    qhenki::gfx::Shader m_cube_pixel_shader{};
 
     std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools{};
     std::array<qhenki::gfx::CommandList, m_frames_in_flight> m_cmd_lists{};
@@ -72,6 +77,9 @@ class RetroExampleApp : public qhenki::Application
     SceneObject m_camera_target{};
     PerspectiveCamera m_camera{};
     float m_target_distance = 2.0f;
+
+    SceneObject m_cube_parent{};
+    SceneObject m_cube_child{};
 
     static const DXGI_FORMAT m_depth_format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
