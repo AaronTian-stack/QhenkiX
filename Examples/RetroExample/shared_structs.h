@@ -14,6 +14,22 @@ struct CameraMatrices
     XMFLOAT4X4 inv_view_proj;
 };
 
+struct FrameConstants
+{
+    CameraMatrices camera_buffer;
+    XMFLOAT4X4 cube_world;
+    XMFLOAT3 camera_position;
+    float time;
+};
+
+static
+#ifdef __cplusplus
+    constexpr
+#else
+    const
+#endif
+    int grid_size = 10;
+
 struct Vertex
 {
     XMFLOAT3 position

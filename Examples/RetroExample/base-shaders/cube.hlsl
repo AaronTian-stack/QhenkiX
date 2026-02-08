@@ -31,8 +31,8 @@ PSInput vs_main(uint vertex_id : SV_VertexID)
     float3 xyz = n + mirror * (1.0 - 2.0 * (idx & 1)) * u + mirror * (1.0 - 2.0 * (idx >> 1)) * v;
 
     PSInput output;
-    float4 world_position = mul(float4(xyz, 1.0), cube_world);
-    output.position = mul(world_position, camera_buffer.view_proj);
+    float4 world_position = mul(float4(xyz, 1.0), frame_constants.cube_world);
+    output.position = mul(world_position, frame_constants.camera_buffer.view_proj);
 
     return output;
 }

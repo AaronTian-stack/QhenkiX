@@ -12,7 +12,7 @@ PSInput vs_main(Vertex input)
     PSInput output;
 
     float4 world_position = float4(input.position, 1.0);
-    output.position = mul(world_position, camera_buffer.view_proj);
+    output.position = mul(world_position, frame_constants.camera_buffer.view_proj);
     output.normal = input.normal;
     output.uv = input.texcoord;
 

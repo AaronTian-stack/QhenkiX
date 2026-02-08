@@ -23,7 +23,7 @@ PSInput vs_main(VertexIn input)
     float4 dir = float4(input.position, 0.0);
     dir.y *= scale_factor;
 
-    output.position = mul(dir, camera_buffer.view_proj);
+    output.position = mul(dir, frame_constants.camera_buffer.view_proj);
     output.position.z = output.position.w;
 
     output.world_pos = input.position;
@@ -51,7 +51,7 @@ PSOutput ps_main(PSInput input)
 
     const float speed = 0.02;
     const float step_size = 1 / dot_tiling;
-    const float2 raw_offset = float2(time * speed, -time * speed);
+    const float2 raw_offset = float2(frame_constants.time * speed, -frame_constants.time * speed);
     const float2 offset = step_size * floor(raw_offset / step_size);
 
     float2 uv_d =

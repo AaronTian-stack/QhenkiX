@@ -2,7 +2,6 @@
 #include "shared_structs.h"
 
 #include <DirectXTex.h>
-#include <Windows.h>
 
 #include <imgui/imgui.h>
 
@@ -26,8 +25,6 @@
 #endif
 
 #include <tiny_gltf.h>
-
-#include "qhenki/memory/arena.h"
 
 void RetroExampleApp::init_display_window(void* payload)
 {
@@ -171,7 +168,7 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
     THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
-    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(ConstantBuffer),
+    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(FrameConstants),
                                                                       qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
                                         .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
@@ -191,8 +188,8 @@ void RetroExampleApp::create()
 
     bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "assets/cylinder.glb");
     assert(model.meshes.size() == 1);
-    auto& prim = model.meshes[0].primitives[0];
     assert(model.meshes[0].primitives.size() == 1);
+    auto& prim = model.meshes[0].primitives[0];
     if (!warn.empty())
     {
         printf("Warn: %s\n", warn.c_str());
@@ -230,7 +227,7 @@ void RetroExampleApp::create()
     assert(model.buffers.size() == 1);
     auto& buffer = model.buffers[0];
     qhenki::gfx::BufferDesc desc{.size = buffer.data.size(),
-                                 .usage = qhenki::gfx::BufferUsage::VERTEX,
+                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &cylinder_CPU, "Skybox Vertex Buffer CPU"));
 
@@ -239,7 +236,7 @@ void RetroExampleApp::create()
 
     {
         void* ptr = m_context->map_buffer(cylinder_CPU);
-        assert(ptr);
+        THROW_IF_FALSE(ptr);
         memcpy(ptr, buffer.data.data(), buffer.data.size());
         m_context->unmap_buffer(cylinder_CPU);
     }
@@ -259,45 +256,87 @@ void RetroExampleApp::create()
     auto& cmd_list_init = m_cmd_lists[m_frame_index];
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
-    // Load skybox.dds with DirectXTex
-    qhenki::gfx::Buffer skybox_staging;
+    tinygltf::Model cube_model;
+    bool cube_ret = loader.LoadBinaryFromFile(&cube_model, &err, &warn, "assets/bevel_cube.glb");
+    assert(cube_model.meshes.size() == 1);
+    assert(cube_model.meshes[0].primitives.size() == 1);
+    auto& cube_prim = cube_model.meshes[0].primitives[0];
+    if (!cube_ret)
     {
-        const wchar_t* skybox_path = L"assets/skybox.dds";
-        ScratchImage scratch;
-        TexMetadata meta = {};
-        const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
-        THROW_IF_TRUE(FAILED(hr));
-        // Use sRGB format so the sampler decodes to linear when sampling (fixes dark look for sRGB assets).
-        const DXGI_FORMAT skybox_format = DirectX::IsSRGB(meta.format) ? meta.format : DirectX::MakeSRGB(meta.format);
-        qhenki::gfx::TextureDesc skybox_tex_desc{
-            .width = meta.width,
-            .height = static_cast<uint32_t>(meta.height),
-            .depth_or_array_size = static_cast<uint16_t>(meta.arraySize),
-            .mip_levels = static_cast<uint16_t>(meta.mipLevels),
-            .format = skybox_format,
-            .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
-            .initial_layout = qhenki::gfx::Layout::COPY_DEST,
-        };
-        if (m_context->create_texture(skybox_tex_desc, &m_skybox_texture, "Skybox Texture"))
-        {
-            THROW_IF_FALSE(
-                m_context->create_descriptor_shader_view(m_skybox_texture, &m_CPU_heap, &m_skybox_texture_descriptor));
-
-            if (m_context->copy_to_texture(&cmd_list_init, scratch.GetPixels(), &skybox_staging, &m_skybox_texture))
-            {
-                qhenki::gfx::ImageBarrier barrier_skybox = {
-                    .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,
-                    .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
-                    .src_access = qhenki::gfx::AccessFlags::ACCESS_COPY_DEST,
-                    .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
-                    .src_layout = qhenki::gfx::Layout::COPY_DEST,
-                    .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
-                };
-                m_context->set_barrier_resource(1, &barrier_skybox, m_skybox_texture);
-                m_context->issue_barrier(&cmd_list_init, 1, &barrier_skybox);
-            }
-        }
+        printf("Failed to parse bevel_cube.glb: %s\n", err.c_str());
     }
+    auto set_accessor_cube = [&cube_model](Mesh::AccessorBufferView* abv, const int accessor_idx)
+    {
+        const auto& accessor = cube_model.accessors[accessor_idx];
+        abv->first = {
+            .offset = accessor.byteOffset,
+            .count = accessor.count,
+            .type = accessor.type,
+            .component_type = accessor.componentType,
+        };
+        const auto& buffer_view = cube_model.bufferViews[accessor.bufferView];
+        abv->second = {
+            .offset = buffer_view.byteOffset,
+            .length = buffer_view.byteLength,
+            .stride = buffer_view.byteStride,
+        };
+    };
+    set_accessor_cube(&m_bevel_cube_mesh.position, cube_prim.attributes.at("POSITION"));
+    set_accessor_cube(&m_bevel_cube_mesh.normal, cube_prim.attributes.at("NORMAL"));
+    set_accessor_cube(&m_bevel_cube_mesh.index, cube_prim.indices);
+
+    assert(cube_model.buffers.size() == 1);
+    auto& cube_buffer = cube_model.buffers[0];
+    qhenki::gfx::BufferDesc cube_desc{
+        .size = cube_buffer.data.size(),
+        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
+    };
+    qhenki::gfx::Buffer bevel_cube_CPU;
+    THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &bevel_cube_CPU, "Bevel Cube CPU"));
+    {
+        void* ptr = m_context->map_buffer(bevel_cube_CPU);
+        THROW_IF_FALSE(ptr);
+        memcpy(ptr, cube_buffer.data.data(), cube_buffer.data.size());
+        m_context->unmap_buffer(bevel_cube_CPU);
+    }
+    cube_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
+    THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &m_bevel_cube_buffer, "Bevel Cube GPU"));
+    m_context->copy_buffer(&cmd_list_init, bevel_cube_CPU, 0, &m_bevel_cube_buffer, 0, cube_buffer.data.size());
+
+    qhenki::gfx::Buffer skybox_staging;
+
+    const wchar_t* skybox_path = L"assets/skybox.dds";
+    ScratchImage scratch;
+    TexMetadata meta = {};
+    const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
+    THROW_IF_TRUE(FAILED(hr));
+    qhenki::gfx::TextureDesc skybox_tex_desc{
+        .width = meta.width,
+        .height = static_cast<uint32_t>(meta.height),
+        .depth_or_array_size = static_cast<uint16_t>(meta.arraySize),
+        .mip_levels = static_cast<uint16_t>(meta.mipLevels),
+        .format = meta.format,
+        .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
+        .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+    };
+    THROW_IF_FALSE(m_context->create_texture(skybox_tex_desc, &m_skybox_texture, "Skybox Texture"));
+
+    THROW_IF_FALSE(
+        m_context->create_descriptor_shader_view(m_skybox_texture, &m_CPU_heap, &m_skybox_texture_descriptor));
+
+    THROW_IF_FALSE(m_context->copy_to_texture(&cmd_list_init, scratch.GetPixels(), &skybox_staging, &m_skybox_texture));
+
+    qhenki::gfx::ImageBarrier barrier_skybox = {
+        .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,
+        .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
+        .src_access = qhenki::gfx::AccessFlags::ACCESS_COPY_DEST,
+        .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
+        .src_layout = qhenki::gfx::Layout::COPY_DEST,
+        .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
+    };
+    m_context->set_barrier_resource(1, &barrier_skybox, m_skybox_texture);
+    m_context->issue_barrier(&cmd_list_init, 1, &barrier_skybox);
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list_init));
     auto current_fence_value = ++m_fence_frame_ready_val[m_frame_index];
@@ -362,11 +401,10 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(load_shader(cube_ps_name, qhenki::gfx::PIXEL_SHADER, &m_cube_pixel_shader));
 
     qhenki::gfx::GraphicsPipelineDesc cube_pipeline_desc = {
-        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
         .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
         .num_render_targets = 1,
         .dsv_format = m_depth_format,
-        .increment_slot = false,
+        .increment_slot = true,
     };
     THROW_IF_FALSE(m_context->create_pipeline(cube_pipeline_desc,
                                               &m_cube_pipeline,
@@ -374,6 +412,24 @@ void RetroExampleApp::create()
                                               m_cube_pixel_shader,
                                               &m_pipeline_layout,
                                               "Cube pipeline"));
+
+    const char* bevel_vs_name = use_dx11 ? "cube_instanced_vs_5_0_vs_main.dxbc" : "cube_instanced_vs_6_6_vs_main.dxil";
+    const char* bevel_ps_name = use_dx11 ? "cube_instanced_ps_5_0_ps_main.dxbc" : "cube_instanced_ps_6_6_ps_main.dxil";
+    THROW_IF_FALSE(load_shader(bevel_vs_name, qhenki::gfx::VERTEX_SHADER, &m_bevel_cube_vertex_shader));
+    THROW_IF_FALSE(load_shader(bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
+    qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
+        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
+        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .num_render_targets = 1,
+        .dsv_format = m_depth_format,
+        .increment_slot = true,
+    };
+    THROW_IF_FALSE(m_context->create_pipeline(bevel_pipeline_desc,
+                                              &m_bevel_cube_pipeline,
+                                              m_bevel_cube_vertex_shader,
+                                              m_bevel_cube_pixel_shader,
+                                              &m_pipeline_layout,
+                                              "Bevel cube instanced pipeline"));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -509,8 +565,8 @@ void RetroExampleApp::render()
 
     const float time_sec = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
-    constexpr float radius_min = 12.f;
-    constexpr float radius_max = 16.f;
+    constexpr float radius_min = 8.f;
+    constexpr float radius_max = 12.f;
     const float radius_t = 0.5f + 0.5f * std::sin(time_sec * 0.7f);
     const float orbit_radius = radius_min + (radius_max - radius_min) * radius_t;
     const float orbit_angle = time_sec * 0.5f;
@@ -523,6 +579,8 @@ void RetroExampleApp::render()
     XMVECTOR rot_axis = XMVectorSet(std::sin(axis_angle), 0.6f, std::cos(axis_angle), 0.f);
     rot_axis = XMVector3Normalize(rot_axis);
     XMStoreFloat4(&m_cube_child.local_transform.rotation, XMQuaternionRotationAxis(rot_axis, rot_angle));
+
+    m_cube_child.local_transform.scale = {0.8f, 0.8f, 0.8f};
 
     const float cam_y_angle = time_sec * 0.5f;
     m_cube_camera.hierarchy.local_transform.translation.x = 6.f * std::sin(cam_y_angle);
@@ -547,15 +605,16 @@ void RetroExampleApp::render()
                                                    active_camera.perspective.far_plane);
     const XMMATRIX view_proj = XMMatrixMultiply(view, proj);
 
-    ConstantBuffer cb;
-    XMStoreFloat4x4(&cb.matrices.view_proj, XMMatrixTranspose(view_proj));
-    XMStoreFloat4x4(&cb.matrices.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
+    FrameConstants cb;
+    XMStoreFloat4x4(&cb.camera_buffer.view_proj, XMMatrixTranspose(view_proj));
+    XMStoreFloat4x4(&cb.camera_buffer.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
     XMStoreFloat4x4(&cb.cube_world, XMMatrixTranspose(cube_world_mat));
+    cb.camera_position = active_camera.hierarchy.world_transform.translation;
     cb.time = time_sec;
 
     const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
     assert(buffer_pointer);
-    memcpy(buffer_pointer, &cb, sizeof(ConstantBuffer));
+    memcpy(buffer_pointer, &cb, sizeof(FrameConstants));
     m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
 
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
@@ -638,13 +697,13 @@ void RetroExampleApp::render()
         descriptor = {.heap = &m_sampler_heap, .offset = 0};
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
     }
-    auto stride_from_accessor = [](int component_type, int type) -> unsigned
+    auto stride_from_accessor = [](const int component_type, const int type)
     {
-        unsigned comp_size = (component_type == TINYGLTF_PARAMETER_TYPE_FLOAT)          ? 4u
-                           : (component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT) ? 2u
-                           : (component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)   ? 4u
-                                                                                        : 4u;
-        unsigned comp_count = (type == TINYGLTF_TYPE_SCALAR) ? 1u : (type == TINYGLTF_TYPE_VEC2) ? 2u : 3u;
+        const unsigned comp_size = component_type == TINYGLTF_PARAMETER_TYPE_FLOAT            ? 4u
+                                 : (component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT) ? 2u
+                                 : (component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)   ? 4u
+                                                                                              : 4u;
+        const unsigned comp_count = type == TINYGLTF_TYPE_SCALAR ? 1u : type == TINYGLTF_TYPE_VEC2 ? 2u : 3u;
         return comp_size * comp_count;
     };
     auto vb_offset = [](const Mesh::AccessorBufferView& abv) -> unsigned
@@ -677,10 +736,27 @@ void RetroExampleApp::render()
                               ? qhenki::gfx::IndexType::UINT16
                               : qhenki::gfx::IndexType::UINT32;
     m_context->bind_index_buffer(&cmd_list, m_skybox_buffer, index_type, index_offset);
-    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_skybox_mesh.index.first.count), 0, 0);
+    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_skybox_mesh.index.first.count), 1, 0, 0, 0);
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_cube_pipeline));
     m_context->draw(&cmd_list, 36u, 0);
+
+    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_bevel_cube_pipeline));
+    const std::array bevel_vbs = {&m_bevel_cube_buffer, &m_bevel_cube_buffer};
+    const std::array bevel_vb_offsets = {vb_offset(m_bevel_cube_mesh.position), vb_offset(m_bevel_cube_mesh.normal)};
+    const std::array bevel_vb_lengths = {vb_length(m_bevel_cube_mesh.position), vb_length(m_bevel_cube_mesh.normal)};
+    const std::array bevel_vb_strides = {vb_stride(m_bevel_cube_mesh.position), vb_stride(m_bevel_cube_mesh.normal)};
+    m_context->bind_vertex_buffers(
+        &cmd_list, 0, 2, bevel_vbs.data(), bevel_vb_lengths.data(), bevel_vb_strides.data(), bevel_vb_offsets.data());
+    const unsigned bevel_index_offset = static_cast<unsigned>(m_bevel_cube_mesh.index.second.offset +
+                                                              m_bevel_cube_mesh.index.first.offset);
+    const auto bevel_index_type = m_bevel_cube_mesh.index.first.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+                                    ? qhenki::gfx::IndexType::UINT16
+                                    : qhenki::gfx::IndexType::UINT32;
+    m_context->bind_index_buffer(&cmd_list, m_bevel_cube_buffer, bevel_index_type, bevel_index_offset);
+    constexpr unsigned bevel_instance_count = grid_size * grid_size;
+    m_context->draw_indexed(
+        &cmd_list, static_cast<unsigned>(m_bevel_cube_mesh.index.first.count), bevel_instance_count, 0, 0, 0);
 
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);

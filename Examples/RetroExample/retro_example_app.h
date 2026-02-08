@@ -32,13 +32,6 @@ class RetroExampleApp : public qhenki::Application
         qhenki::gfx::Buffer buffer{};
     };
 
-    struct ConstantBuffer
-    {
-        CameraMatrices matrices;
-        XMFLOAT4X4 cube_world;
-        float time;
-    };
-
     qhenki::gfx::PipelineLayout m_pipeline_layout{};
     qhenki::gfx::GraphicsPipeline m_pipeline{};
     qhenki::gfx::Shader m_vertex_shader{};
@@ -54,10 +47,17 @@ class RetroExampleApp : public qhenki::Application
     qhenki::gfx::Shader m_cube_vertex_shader{};
     qhenki::gfx::Shader m_cube_pixel_shader{};
 
+    qhenki::gfx::GraphicsPipeline m_bevel_cube_pipeline{};
+    qhenki::gfx::Shader m_bevel_cube_vertex_shader{};
+    qhenki::gfx::Shader m_bevel_cube_pixel_shader{};
+
     std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools{};
     std::array<qhenki::gfx::CommandList, m_frames_in_flight> m_cmd_lists{};
 
     Mesh m_skybox_mesh;
+
+    Mesh m_bevel_cube_mesh;
+    qhenki::gfx::Buffer m_bevel_cube_buffer{};
 
     std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
     std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};

@@ -3,11 +3,9 @@
 
 #include "shared_structs.h"
 
-cbuffer FrameConstants : register(b0)
+cbuffer FrameConstantBuffer : register(b0)
 {
-    CameraMatrices camera_buffer;
-    float4x4 cube_world;
-    float time;
+    FrameConstants frame_constants;
 };
 
 Texture2D g_texture : register(t1);
