@@ -134,8 +134,10 @@ public:
     void draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) override;
     void draw_indexed(CommandList* cmd_list,
                       uint32_t index_count,
+                      uint32_t instance_count,
                       uint32_t start_index_offset,
-                      int32_t base_vertex_offset) override;
+                      int32_t base_vertex_offset,
+                      uint32_t instance_offset) override;
 
     void submit_command_lists(const SubmitInfo& submit_info, Queue* queue) override;
 

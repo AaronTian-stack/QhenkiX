@@ -828,7 +828,7 @@ void gltfViewerApp::render()
                     }
 
                     // Draw
-                    m_context->draw_indexed(&cmd_list, index_accessor.count, 0, 0);
+                    m_context->draw_indexed(&cmd_list, index_accessor.count, 1, 0, 0, 0);
                 }
             }
         }

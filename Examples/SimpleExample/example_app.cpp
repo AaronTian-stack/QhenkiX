@@ -346,7 +346,7 @@ void ExampleApp::render()
     m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, &unsigned_size, &stride, &offset);
     m_context->bind_index_buffer(&cmd_list, m_index_buffer, qhenki::gfx::IndexType::UINT32, 0);
 
-    m_context->draw_indexed(&cmd_list, 3, 0, 0);
+    m_context->draw_indexed(&cmd_list, 3, 1, 0, 0, 0);
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_present = {

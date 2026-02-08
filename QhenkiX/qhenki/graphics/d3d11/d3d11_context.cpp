@@ -1114,10 +1114,13 @@ void D3D11Context::draw(CommandList* cmd_list, const uint32_t vertex_count, cons
 
 void D3D11Context::draw_indexed(CommandList* cmd_list,
                                 const uint32_t index_count,
-                                uint32_t start_index_offset,
-                                int32_t base_vertex_offset)
+                                const uint32_t instance_count,
+                                const uint32_t start_index_offset,
+                                const int32_t base_vertex_offset,
+                                const uint32_t instance_offset)
 {
-    m_device_context->DrawIndexed(index_count, start_index_offset, base_vertex_offset);
+    m_device_context->DrawIndexedInstanced(
+        index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
 void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
