@@ -11,6 +11,7 @@ struct Node
 {
     SceneObject* parent = nullptr;
     SceneObject* first_child_ptr = nullptr;
+    SceneObject* next_sibling_ptr = nullptr;
 };
 
 // Atomic unit of scene

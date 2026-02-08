@@ -389,6 +389,10 @@ void RetroExampleApp::create()
     mark_world_dirty(&m_camera_target);
 
     link_parent_child(&m_cube_parent, &m_cube_child);
+    link_parent_child(&m_cube_parent, &m_cube_camera.hierarchy);
+    m_cube_camera.perspective.fov = m_camera.perspective.fov;
+    m_cube_camera.perspective.near_plane = m_camera.perspective.near_plane;
+    m_cube_camera.perspective.far_plane = m_camera.perspective.far_plane;
     mark_world_dirty(&m_cube_parent);
 }
 
@@ -443,11 +447,22 @@ void RetroExampleApp::render()
 
     m_camera.perspective.viewport_width = static_cast<float>(dim.x);
     m_camera.perspective.viewport_height = static_cast<float>(dim.y);
+    m_cube_camera.perspective.viewport_width = static_cast<float>(dim.x);
+    m_cube_camera.perspective.viewport_height = static_cast<float>(dim.y);
+    {
+        static bool r_was_down = false;
+        const bool r_down = m_input_manager.is_key_down(SDL_SCANCODE_R);
+        if (r_down && !r_was_down)
+        {
+            m_active_camera_index = (m_active_camera_index + 1) % 2;
+        }
+        r_was_down = r_down;
+    }
 
     update_world_transform(&m_camera.hierarchy);
 
     const bool left = m_input_manager.is_mouse_button_down(SDL_BUTTON_LEFT);
-    if (ImGuiIO& io = ImGui::GetIO(); !io.WantCaptureMouse)
+    if (m_active_camera_index == 0 && !ImGui::GetIO().WantCaptureMouse)
     {
         auto speed = 0.01f;
         const auto delta = m_input_manager.get_mouse_delta();
@@ -492,16 +507,6 @@ void RetroExampleApp::render()
     }
     update_world_transform(&m_camera.hierarchy);
 
-    const XMMATRIX view =
-        XMMatrixInverse(nullptr, qhenki::math::TransformSIMD::load(m_camera.hierarchy.world_transform).to_matrix());
-
-    const XMMATRIX proj = XMMatrixPerspectiveFovLH(m_camera.perspective.fov,
-                                                   m_camera.perspective.viewport_width /
-                                                       m_camera.perspective.viewport_height,
-                                                   m_camera.perspective.near_plane,
-                                                   m_camera.perspective.far_plane);
-    const XMMATRIX view_proj = XMMatrixMultiply(view, proj);
-
     const float time_sec = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
     constexpr float radius_min = 12.f;
@@ -519,10 +524,28 @@ void RetroExampleApp::render()
     rot_axis = XMVector3Normalize(rot_axis);
     XMStoreFloat4(&m_cube_child.local_transform.rotation, XMQuaternionRotationAxis(rot_axis, rot_angle));
 
+    const float cam_y_angle = time_sec * 0.5f;
+    m_cube_camera.hierarchy.local_transform.translation.x = 6.f * std::sin(cam_y_angle);
+    m_cube_camera.hierarchy.local_transform.translation.y = 2.f;
+    m_cube_camera.hierarchy.local_transform.translation.z = 6.f * std::cos(cam_y_angle);
+    m_cube_camera.hierarchy.local_transform.scale = qhenki::math::Transform::identity_scale();
+    m_cube_camera.hierarchy.local_transform.look_at(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f));
+
     mark_world_dirty(&m_cube_parent);
     update_world_transform(&m_cube_parent);
 
     const XMMATRIX cube_world_mat = qhenki::math::TransformSIMD::load(m_cube_child.world_transform).to_matrix();
+
+    const PerspectiveCamera& active_camera = m_active_camera_index == 0 ? m_camera : m_cube_camera;
+    const XMMATRIX view =
+        XMMatrixInverse(nullptr,
+                        qhenki::math::TransformSIMD::load(active_camera.hierarchy.world_transform).to_matrix());
+    const XMMATRIX proj = XMMatrixPerspectiveFovLH(active_camera.perspective.fov,
+                                                   active_camera.perspective.viewport_width /
+                                                       active_camera.perspective.viewport_height,
+                                                   active_camera.perspective.near_plane,
+                                                   active_camera.perspective.far_plane);
+    const XMMATRIX view_proj = XMMatrixMultiply(view, proj);
 
     ConstantBuffer cb;
     XMStoreFloat4x4(&cb.matrices.view_proj, XMMatrixTranspose(view_proj));

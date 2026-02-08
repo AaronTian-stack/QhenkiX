@@ -80,6 +80,9 @@ class RetroExampleApp : public qhenki::Application
 
     SceneObject m_cube_parent{};
     SceneObject m_cube_child{};
+    PerspectiveCamera m_cube_camera{};
+
+    int m_active_camera_index = 0; // 0 = main camera, 1 = cube camera
 
     static const DXGI_FORMAT m_depth_format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
