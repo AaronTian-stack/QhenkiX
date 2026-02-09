@@ -73,8 +73,6 @@ void RetroExampleApp::create()
 {
     const bool use_dx11 = m_context->is_compatibility();
     const char* subdir = use_dx11 ? "dx11" : "dx12";
-    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.dxbc" : "base_vs_6_6_vs_main.dxil";
-    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.dxbc" : "base_ps_6_6_ps_main.dxil";
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
@@ -89,9 +87,6 @@ void RetroExampleApp::create()
         const std::unique_ptr<std::byte, void (*)(void*)> data(static_cast<std::byte*>(raw), free);
         return m_context->create_shader(data.get(), size, type, out);
     };
-
-    THROW_IF_FALSE(load_shader(vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
-    THROW_IF_FALSE(load_shader(ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
 
     qhenki::gfx::LayoutBinding b1{
         .binding = 0,
@@ -140,16 +135,6 @@ void RetroExampleApp::create()
         .descriptor_count = 16,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap, "Sampler heap"));
-
-    qhenki::gfx::GraphicsPipelineDesc pipeline_desc = {
-        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
-        .num_render_targets = 1,
-        .dsv_format = m_depth_format,
-        .increment_slot = false,
-    };
-    THROW_IF_FALSE(m_context->create_pipeline(
-        pipeline_desc, &m_pipeline, m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "Skybox pipeline"));
 
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
@@ -401,6 +386,7 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(load_shader(cube_ps_name, qhenki::gfx::PIXEL_SHADER, &m_cube_pixel_shader));
 
     qhenki::gfx::GraphicsPipelineDesc cube_pipeline_desc = {
+        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
         .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
         .num_render_targets = 1,
         .dsv_format = m_depth_format,
@@ -420,6 +406,11 @@ void RetroExampleApp::create()
     qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
         .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rasterizer_state =
+            qhenki::gfx::RasterizerDesc{
+                .cull_mode = D3D12_CULL_MODE_BACK,
+                .front_counter_clockwise = false,
+            },
         .num_render_targets = 1,
         .dsv_format = m_depth_format,
         .increment_slot = true,

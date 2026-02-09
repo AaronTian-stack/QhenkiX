@@ -33,9 +33,6 @@ class RetroExampleApp : public qhenki::Application
     };
 
     qhenki::gfx::PipelineLayout m_pipeline_layout{};
-    qhenki::gfx::GraphicsPipeline m_pipeline{};
-    qhenki::gfx::Shader m_vertex_shader{};
-    qhenki::gfx::Shader m_pixel_shader{};
 
     qhenki::gfx::Buffer m_skybox_buffer{};
 
