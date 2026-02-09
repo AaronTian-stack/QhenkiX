@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d11.h>
 #include <d3d11shader.h>
@@ -34,7 +34,8 @@ public:
                                                                         ID3DBlob* vertex_shader_blob);
 
     static std::vector<D3D11_INPUT_ELEMENT_DESC> create_input_layout_desc(ID3D11ShaderReflection* vs_reflection,
-                                                                          bool increment_slot);
+                                                                          bool increment_slot,
+                                                                          unsigned* out_builtins);
 
     /**
      * @brief Creates an input layout using shader reflection.
