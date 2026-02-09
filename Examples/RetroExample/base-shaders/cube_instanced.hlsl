@@ -11,35 +11,15 @@ struct PSInput
 {
     float4 position : SV_Position;
     float3 world_pos : POSITION0;
+    float3 world_pos_no_y : POSITION1;
     float3 normal : NORMAL0;
     float3 instance_color : COLOR0;
+    float is_mostly_metal : TEXCOORD0;
 };
 
 float hash(float3 p)
 {
     return frac(sin(dot(p, float3(127.1, 311.7, 74.7))) * 43758.5453);
-}
-
-// Adapted from https://www.shadertoy.com/view/4dS3Wd
-float value_noise_3d(float3 p)
-{
-    float3 i = floor(p);
-    float3 f = frac(p);
-    f = f * f * (3.0 - 2.0 * f);
-
-    float n000 = hash(i);
-    float n100 = hash(i + float3(1, 0, 0));
-    float n010 = hash(i + float3(0, 1, 0));
-    float n110 = hash(i + float3(1, 1, 0));
-    float n001 = hash(i + float3(0, 0, 1));
-    float n101 = hash(i + float3(1, 0, 1));
-    float n011 = hash(i + float3(0, 1, 1));
-    float n111 = hash(i + float3(1, 1, 1));
-
-    return lerp(
-        lerp(lerp(n000, n100, f.x), lerp(n010, n110, f.x), f.y),
-        lerp(lerp(n001, n101, f.x), lerp(n011, n111, f.x), f.y),
-        f.z);
 }
 
 static const float grid_spacing = 3.0;
@@ -82,11 +62,14 @@ PSInput vs_main(VertexIn input, uint instance_id : SV_InstanceID)
     float dist = length(instance_offset - cube_position);
     float influence = 1.0 - smoothstep(0.0, influence_radius, dist);
     float vertical_offset = vertical_scale * influence;
-    float3 world_pos = input.position + instance_offset + float3(0.0, vertical_offset, 0.0);
+    float3 no_y = input.position + instance_offset;
+    float3 world_pos = no_y + float3(0.0, vertical_offset, 0.0);
     output.position = mul(float4(world_pos, 1.0), frame_constants.camera_buffer.view_proj);
     output.world_pos = world_pos;
+    output.world_pos_no_y = no_y;
     output.normal = normalize(input.normal);
     output.instance_color = palette[hash_to_index(row, col)] / 255.0;
+    output.is_mostly_metal = (hash(float3(row, col, 0.0)) > 0.5) ? 1.0 : 0.0;
     return output;
 }
 
@@ -95,10 +78,9 @@ struct PSOutput
     float4 color : SV_Target0;
 };
 
-static const float light_intensity = 16.0;
 static const float light_radius_sq = 32.0;
 static const float3 ambient_color = float3(0.25, 0.28, 0.35);
-static const float ambient_strength = 1.2;
+static const float ambient_strength = 0.6;
 
 PSOutput ps_main(PSInput input)
 {
@@ -116,11 +98,9 @@ PSOutput ps_main(PSInput input)
     float attenuation = light_intensity / (1.0 + dist_sq / light_radius_sq);
     float illuminance = NdotL * attenuation;
 
-    float n0 = value_noise_3d(input.world_pos * 0.2);
-    float n1 = value_noise_3d(input.world_pos * 0.2 + float3(17.3, 31.7, 11.1));
-    float roughness = 0.15 + 0.7 * n0;
-    float metallic = pow(abs(n1), 0.55);
-    float ao = 0.4 + 0.6 * value_noise_3d(input.world_pos * 0.3 + float3(0, 0, 7.0));
+    float roughness = lerp(0.9, 0.2, input.is_mostly_metal);
+    float metallic = lerp(0.1, 0.9, input.is_mostly_metal);
+    float ao = 0.2;
 
     Material material;
     material.albedo = input.instance_color;
@@ -129,8 +109,7 @@ PSOutput ps_main(PSInput input)
     material.ao = ao;
     material.f0 = lerp(float3(0.04, 0.04, 0.04), material.albedo, metallic);
 
-    float3 light_color = float3(1.0, 0.98, 0.95);
-    float3 pbr_color = BRDF_CALCULATE(material, illuminance, light_color, n, L, view_dir);
+    float3 pbr_color = BRDF_CALCULATE(material, illuminance, light_color.rgb, n, L, view_dir);
 
     float3 ambient = ambient_color * ambient_strength * material.albedo * material.ao;
     output.color = float4(pbr_color + ambient, 1.0);

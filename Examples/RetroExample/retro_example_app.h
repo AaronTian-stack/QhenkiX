@@ -48,6 +48,16 @@ class RetroExampleApp : public qhenki::Application
     qhenki::gfx::Shader m_bevel_cube_vertex_shader{};
     qhenki::gfx::Shader m_bevel_cube_pixel_shader{};
 
+    qhenki::gfx::GraphicsPipeline m_blit_copy_pipeline{};
+    qhenki::gfx::GraphicsPipeline m_blit_luminance_pipeline{};
+    qhenki::gfx::GraphicsPipeline m_blit_bloom_1d_horizontal_pipeline{};
+    qhenki::gfx::GraphicsPipeline m_blit_bloom_1d_vertical_pipeline{};
+    qhenki::gfx::Shader m_blit_vertex_shader{};
+    qhenki::gfx::Shader m_blit_copy_pixel_shader{};
+    qhenki::gfx::Shader m_blit_luminance_pixel_shader{};
+    qhenki::gfx::Shader m_blit_bloom_1d_horizontal_pixel_shader{};
+    qhenki::gfx::Shader m_blit_bloom_1d_vertical_pixel_shader{};
+
     std::array<qhenki::gfx::CommandPool, m_frames_in_flight> m_cmd_pools{};
     std::array<qhenki::gfx::CommandList, m_frames_in_flight> m_cmd_lists{};
 
@@ -62,9 +72,21 @@ class RetroExampleApp : public qhenki::Application
     qhenki::gfx::Descriptor m_skybox_texture_descriptor{};
     qhenki::gfx::Texture m_skybox_texture{};
     qhenki::gfx::Descriptor m_sampler_descriptor{};
+    qhenki::gfx::Descriptor m_sampler_linear_descriptor{};
 
     qhenki::gfx::Texture m_depth_buffer{};
     qhenki::gfx::Descriptor m_depth_buffer_descriptor{};
+
+    struct TextureDescriptor
+    {
+        qhenki::gfx::Texture tex;
+        qhenki::gfx::Descriptor rt_descriptor;
+        qhenki::gfx::Descriptor srv_descriptor;
+    };
+
+    TextureDescriptor m_offscreen_texture{};
+    std::array<TextureDescriptor, 2> m_bloom_textures{};
+    unsigned m_starting_bloom_index = 0;
 
     qhenki::gfx::DescriptorHeap m_CPU_heap{};
     qhenki::gfx::DescriptorHeap m_GPU_heap{};
@@ -83,6 +105,7 @@ class RetroExampleApp : public qhenki::Application
 
     int m_active_camera_index = 0; // 0 = main camera, 1 = cube camera, 2 = orbit camera
 
+    static const DXGI_FORMAT m_offscreen_rt_format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     static const DXGI_FORMAT m_depth_format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 protected:

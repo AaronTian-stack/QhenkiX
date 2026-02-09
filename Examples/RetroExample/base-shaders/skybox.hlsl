@@ -73,7 +73,7 @@ PSOutput ps_main(PSInput input)
     float4 tex = g_texture.Sample(samp, p);
 
     float dist_from_mid = 2.0 * abs(uv.y - 0.5);
-    float alpha_fade = 1.0 - smoothstep(0.3, 1.0, dist_from_mid);
+    float alpha_fade = 1.0 - smoothstep(0.5, 1.0, dist_from_mid);
 
     output.color = float4(dotted * tex.rgb, tex.a * alpha_fade);
 

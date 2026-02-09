@@ -45,6 +45,6 @@ struct PSOutput
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
-    output.color = float4(light_color, 1.0);
+    output.color = light_color;
     return output;
 }

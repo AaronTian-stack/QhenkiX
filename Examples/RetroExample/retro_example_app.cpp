@@ -8,6 +8,7 @@
 #include <qhenki/utility/file_util.h>
 #include <qhenki/utility/general_util.h>
 #include <qhenki/utility/math_util.h>
+#include <qhenki/utility/shader_blob.h>
 #include <qhenki/utility/string_util.h>
 
 #include <array>
@@ -95,17 +96,18 @@ void RetroExampleApp::create()
     };
     qhenki::gfx::LayoutBinding b2{
         .binding = 1,
-        .count = 1,
+        .count = 2,
         .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
     };
     qhenki::gfx::LayoutBinding b3{
         .binding = 0,
-        .count = 1,
+        .count = 2,
         .type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
     };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
-    layout_desc.spaces[0] = {b1, b2};
-    layout_desc.spaces[1] = {b3};
+    layout_desc.spaces[0] = {b1}; // CBV
+    layout_desc.spaces[1] = {b2}; // SRV
+    layout_desc.spaces[2] = {b3}; // Samplers
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
@@ -141,17 +143,6 @@ void RetroExampleApp::create()
         THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], m_graphics_queue));
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
     }
-
-    const auto display_size = m_window.get_display_size();
-    qhenki::gfx::TextureDesc depth_desc{
-        .width = display_size.x,
-        .height = display_size.y,
-        .format = m_depth_format,
-        .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
-        .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
-    };
-    THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
-    THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
     qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(FrameConstants),
                                                                       qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
@@ -235,6 +226,16 @@ void RetroExampleApp::create()
         .address_mode_w = qhenki::gfx::AddressMode::WRAP,
     };
     THROW_IF_FALSE(m_context->create_descriptor(sampler_desc, &m_sampler_heap, &m_sampler_descriptor));
+
+    qhenki::gfx::SamplerDesc sampler_linear_desc{
+        .min_filter = qhenki::gfx::Filter::LINEAR,
+        .mag_filter = qhenki::gfx::Filter::LINEAR,
+        .mip_filter = qhenki::gfx::Filter::LINEAR,
+        .address_mode_u = qhenki::gfx::AddressMode::CLAMP,
+        .address_mode_v = qhenki::gfx::AddressMode::CLAMP,
+        .address_mode_w = qhenki::gfx::AddressMode::CLAMP,
+    };
+    THROW_IF_FALSE(m_context->create_descriptor(sampler_linear_desc, &m_sampler_heap, &m_sampler_linear_descriptor));
 
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
@@ -368,7 +369,7 @@ void RetroExampleApp::create()
     qhenki::gfx::GraphicsPipelineDesc skybox_pipeline_desc = {
         .blend_desc = skybox_blend_desc,
         .depth_stencil_state = skybox_depth_desc,
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rtv_formats = {m_offscreen_rt_format},
         .num_render_targets = 1,
         .dsv_format = m_depth_format,
         .increment_slot = false,
@@ -387,7 +388,7 @@ void RetroExampleApp::create()
 
     qhenki::gfx::GraphicsPipelineDesc cube_pipeline_desc = {
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rtv_formats = {m_offscreen_rt_format},
         .num_render_targets = 1,
         .dsv_format = m_depth_format,
         .increment_slot = true,
@@ -405,7 +406,7 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(load_shader(bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
     qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rtv_formats = {m_offscreen_rt_format},
         .rasterizer_state =
             qhenki::gfx::RasterizerDesc{
                 .cull_mode = D3D12_CULL_MODE_BACK,
@@ -421,6 +422,75 @@ void RetroExampleApp::create()
                                               m_bevel_cube_pixel_shader,
                                               &m_pipeline_layout,
                                               "Bevel cube instanced pipeline"));
+
+    const char* blit_vs_name = use_dx11 ? "fullscreen_triangle_vs_5_0_vs_main.dxbc"
+                                        : "fullscreen_triangle_vs_6_6_vs_main.dxil";
+    const char* blit_copy_ps_name = use_dx11 ? "blit_copy_ps_5_0_ps_main.dxbc" : "blit_copy_ps_6_6_ps_main.dxil";
+    const char* blit_lum_ps_name = use_dx11 ? "blit_luminance_ps_5_0_ps_main.dxbc"
+                                            : "blit_luminance_ps_6_6_ps_main.dxil";
+    const char* blit_bloom_blob_name = use_dx11 ? "blit_bloom_1d_ps_5_0_ps_main.dxbc_blob"
+                                                : "blit_bloom_1d_ps_6_6_ps_main.dxil_blob";
+    THROW_IF_FALSE(load_shader(blit_vs_name, qhenki::gfx::VERTEX_SHADER, &m_blit_vertex_shader));
+    THROW_IF_FALSE(load_shader(blit_copy_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_copy_pixel_shader));
+    THROW_IF_FALSE(load_shader(blit_lum_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_luminance_pixel_shader));
+    {
+        const auto path = qhenki::util::format_string("compiled-shaders/%s/%s", subdir, blit_bloom_blob_name);
+        void* raw = nullptr;
+        size_t blob_size = 0;
+        THROW_IF_FALSE(qhenki::util::read_file(path.buffer.data(), &raw, &blob_size));
+        const std::unique_ptr<std::byte, void (*)(void*)> blob_data(static_cast<std::byte*>(raw), free);
+        const char* horizontal_defines[] = {"BLUR_HORIZONTAL=1"};
+        const char* vertical_defines[] = {"BLUR_HORIZONTAL=0"};
+        void* shader_ptr = nullptr;
+        size_t shader_size = 0;
+        THROW_IF_FALSE(qhenki::util::find_permutation_in_blob(
+            blob_data.get(), blob_size, horizontal_defines, 1, &shader_ptr, &shader_size));
+        THROW_IF_FALSE(m_context->create_shader(
+            shader_ptr, shader_size, qhenki::gfx::PIXEL_SHADER, &m_blit_bloom_1d_horizontal_pixel_shader));
+        THROW_IF_FALSE(qhenki::util::find_permutation_in_blob(
+            blob_data.get(), blob_size, vertical_defines, 1, &shader_ptr, &shader_size));
+        THROW_IF_FALSE(m_context->create_shader(
+            shader_ptr, shader_size, qhenki::gfx::PIXEL_SHADER, &m_blit_bloom_1d_vertical_pixel_shader));
+    }
+
+    qhenki::gfx::GraphicsPipelineDesc blit_pipeline_desc = {
+        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
+        .rtv_formats = {m_offscreen_rt_format},
+        .num_render_targets = 1,
+        .dsv_format = DXGI_FORMAT_UNKNOWN,
+        .increment_slot = true,
+    };
+    qhenki::gfx::GraphicsPipelineDesc blit_copy_pipeline_desc = {
+        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
+        .rtv_formats = {m_swapchain.desc.format},
+        .num_render_targets = 1,
+        .dsv_format = DXGI_FORMAT_UNKNOWN,
+        .increment_slot = true,
+    };
+    THROW_IF_FALSE(m_context->create_pipeline(blit_copy_pipeline_desc,
+                                              &m_blit_copy_pipeline,
+                                              m_blit_vertex_shader,
+                                              m_blit_copy_pixel_shader,
+                                              &m_pipeline_layout,
+                                              "Blit copy pipeline"));
+    THROW_IF_FALSE(m_context->create_pipeline(blit_pipeline_desc,
+                                              &m_blit_luminance_pipeline,
+                                              m_blit_vertex_shader,
+                                              m_blit_luminance_pixel_shader,
+                                              &m_pipeline_layout,
+                                              "Blit luminance pipeline"));
+    THROW_IF_FALSE(m_context->create_pipeline(blit_pipeline_desc,
+                                              &m_blit_bloom_1d_horizontal_pipeline,
+                                              m_blit_vertex_shader,
+                                              m_blit_bloom_1d_horizontal_pixel_shader,
+                                              &m_pipeline_layout,
+                                              "Blit bloom 1D horizontal pipeline"));
+    THROW_IF_FALSE(m_context->create_pipeline(blit_pipeline_desc,
+                                              &m_blit_bloom_1d_vertical_pipeline,
+                                              m_blit_vertex_shader,
+                                              m_blit_bloom_1d_vertical_pixel_shader,
+                                              &m_pipeline_layout,
+                                              "Blit bloom 1D vertical pipeline"));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -490,9 +560,9 @@ void RetroExampleApp::render()
 
             ImGui::PlotLines(
                 "##plot", ordered_times, max_frames, 0, "", 0.f, 0.05f, ImVec2(ImGui::GetContentRegionAvail().x, 40));
-        }
 
-        ImGui::End();
+            ImGui::End();
+        }
     }
 
     const auto dim = this->m_window.get_display_size();
@@ -580,7 +650,7 @@ void RetroExampleApp::render()
 
     m_cube_child.local_transform.scale = {0.8f, 0.8f, 0.8f};
 
-    const float cam_y_angle = time_sec * 0.5f;
+    const float cam_y_angle = time_sec * 0.2f;
     m_cube_camera.hierarchy.local_transform.translation.x = 6.f * std::sin(cam_y_angle);
     m_cube_camera.hierarchy.local_transform.translation.y = 2.f;
     m_cube_camera.hierarchy.local_transform.translation.z = 6.f * std::cos(cam_y_angle);
@@ -631,24 +701,17 @@ void RetroExampleApp::render()
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
     auto& cmd_list = m_cmd_lists[m_frame_index];
 
-    qhenki::gfx::ImageBarrier barrier_render = {
-        .src_stage = qhenki::gfx::SyncStage::SYNC_DRAW,
-        .dst_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
-        .src_access = qhenki::gfx::AccessFlags::ACCESS_COMMON,
-        .dst_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
-        .src_layout = qhenki::gfx::Layout::PRESENT,
-        .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
+    qhenki::gfx::RenderTarget color{
+        .clear_params = {.clear_color_value = {1.f, 1.f, 1.f, 0.f}},
+        .clear_type = qhenki::gfx::RenderTarget::COLOR,
+        .descriptor = m_offscreen_texture.rt_descriptor,
     };
-    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
-    m_context->issue_barrier(&cmd_list, 1, &barrier_render);
-
-    std::array clear_values = {1.0f, 1.0f, 1.0f, 1.0f};
     qhenki::gfx::RenderTarget depth{
         .clear_params = {.dsv_clear_params = {1.f, 0}},
         .clear_type = qhenki::gfx::RenderTarget::DEPTH,
         .descriptor = m_depth_buffer_descriptor,
     };
-    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), &depth, m_frame_index);
+    m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(color).data(), &depth);
 
     const D3D12_VIEWPORT viewport{
         .TopLeftX = 0,
@@ -672,6 +735,7 @@ void RetroExampleApp::render()
     m_context->set_descriptor_heap(&cmd_list, m_GPU_heap, m_sampler_heap);
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_skybox_pipeline));
+    size_t gpu_descriptor_heap_index = 0;
     if (m_context->is_compatibility())
     {
         std::array buffer = {&m_matrix_buffers[m_frame_index]};
@@ -688,23 +752,24 @@ void RetroExampleApp::render()
                                               qhenki::util::ptr_array(m_skybox_texture_descriptor).data(),
                                               qhenki::gfx::ACCESS_SHADER_RESOURCE,
                                               qhenki::gfx::PipelineStage::PIXEL);
-        m_context->compatibility_set_samplers(0,
-                                              1,
-                                              qhenki::util::ptr_array(m_sampler_descriptor).data(),
-                                              qhenki::gfx::PipelineStage::PIXEL);
+        m_context->compatibility_set_samplers(
+            0,
+            2,
+            qhenki::util::ptr_array(m_sampler_descriptor, m_sampler_linear_descriptor).data(),
+            qhenki::gfx::PipelineStage::PIXEL);
     }
     else
     {
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 0};
+        qhenki::gfx::Descriptor cbv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index++};
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], cbv_descriptor));
+        m_context->set_descriptor_table(&cmd_list, 0, cbv_descriptor);
 
-        m_context->set_descriptor_table(&cmd_list, 0, descriptor);
+        qhenki::gfx::Descriptor srv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index++};
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_skybox_texture_descriptor, srv_descriptor));
+        m_context->set_descriptor_table(&cmd_list, 1, srv_descriptor);
 
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], descriptor));
-        descriptor.offset = 1;
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_skybox_texture_descriptor, descriptor));
-
-        descriptor = {.heap = &m_sampler_heap, .offset = 0};
-        m_context->set_descriptor_table(&cmd_list, 1, descriptor);
+        qhenki::gfx::Descriptor sampler_descriptor{.heap = &m_sampler_heap, .offset = 0};
+        m_context->set_descriptor_table(&cmd_list, 2, sampler_descriptor);
     }
     auto stride_from_accessor = [](const int component_type, const int type)
     {
@@ -767,10 +832,190 @@ void RetroExampleApp::render()
     m_context->draw_indexed(
         &cmd_list, static_cast<unsigned>(m_bevel_cube_mesh.index.first.count), bevel_instance_count, 0, 0, 0);
 
+    qhenki::gfx::ImageBarrier rt_to_srv{
+        .src_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
+        .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
+        .src_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
+        .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
+        .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
+        .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
+    };
+    m_context->set_barrier_resource(1, &rt_to_srv, m_offscreen_texture.tex);
+    m_context->issue_barrier(&cmd_list, 1, &rt_to_srv);
+
+    qhenki::gfx::RenderTarget blit_target{
+        .clear_params = {.clear_color_value = {0.f, 0.f, 0.f, 0.f}},
+        .clear_type = qhenki::gfx::RenderTarget::COLOR,
+        .descriptor = m_bloom_textures[m_starting_bloom_index].rt_descriptor,
+    };
+    m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target).data(), nullptr);
+    const unsigned bloom_w = m_bloom_textures.front().tex.desc.width;
+    const unsigned bloom_h = m_bloom_textures.front().tex.desc.height;
+    const D3D12_VIEWPORT bloom_viewport{
+        .TopLeftX = 0,
+        .TopLeftY = 0,
+        .Width = static_cast<float>(bloom_w),
+        .Height = static_cast<float>(bloom_h),
+        .MinDepth = 0.0f,
+        .MaxDepth = 1.0f,
+    };
+    const D3D12_RECT bloom_scissor{
+        .left = 0,
+        .top = 0,
+        .right = static_cast<LONG>(bloom_w),
+        .bottom = static_cast<LONG>(bloom_h),
+    };
+    m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
+    m_context->set_scissor_rects(&cmd_list, 1, &bloom_scissor);
+
+    // Pick out bright pixels into low resolution FB
+    m_context->bind_pipeline(&cmd_list, m_blit_luminance_pipeline);
+    if (m_context->is_compatibility())
+    {
+        m_context->compatibility_set_textures(1,
+                                              1,
+                                              qhenki::util::ptr_array(m_offscreen_texture.srv_descriptor).data(),
+                                              qhenki::gfx::ACCESS_SHADER_RESOURCE,
+                                              qhenki::gfx::PipelineStage::PIXEL);
+    }
+    else
+    {
+        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index++};
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_offscreen_texture.srv_descriptor, descriptor));
+        m_context->set_descriptor_table(&cmd_list, 1, descriptor);
+    }
+
+    m_context->draw(&cmd_list, 3, 0);
+
+    // Start blur passes
+    size_t blur_srv_start = gpu_descriptor_heap_index;
+    if (!m_context->is_compatibility())
+    {
+        gpu_descriptor_heap_index += 2;
+        THROW_IF_FALSE(m_bloom_textures[1].srv_descriptor.offset - m_bloom_textures[0].srv_descriptor.offset == 1);
+        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = blur_srv_start};
+        THROW_IF_FALSE(m_context->copy_descriptors(2, m_bloom_textures[0].srv_descriptor, descriptor));
+    }
+    constexpr unsigned BLUR_PASSES = 4;
+    const unsigned iterations = BLUR_PASSES * 2;
+    for (unsigned i = 0; i <= iterations; i++)
+    {
+        // RT -> SRV, SRV -> RT, and if on last include Present -> RT for final composition
+        std::array<qhenki::gfx::ImageBarrier, 3> swap_barriers;
+        // RT -> SRV
+        swap_barriers[0] = {
+            .src_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
+            .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
+            .src_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
+            .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
+            .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
+            .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
+        };
+        auto& bloom0 = m_bloom_textures[m_starting_bloom_index];
+        m_context->set_barrier_resource(1, &swap_barriers[0], bloom0.tex);
+        // SRV -> RT
+        swap_barriers[1] = {
+            .src_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
+            .dst_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
+            .src_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
+            .dst_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
+            .src_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
+            .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
+        };
+        auto& bloom1 = m_bloom_textures[1 - m_starting_bloom_index];
+        m_context->set_barrier_resource(1, &swap_barriers[1], bloom1.tex);
+        // Present -> RT
+        swap_barriers[2] = {
+            .src_stage = qhenki::gfx::SyncStage::SYNC_DRAW,
+            .dst_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
+            .src_access = qhenki::gfx::AccessFlags::ACCESS_COMMON,
+            .dst_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
+            .src_layout = qhenki::gfx::Layout::PRESENT,
+            .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
+        };
+        m_context->set_barrier_resource(1, &swap_barriers[2], m_swapchain, m_frame_index);
+
+        m_starting_bloom_index = (m_starting_bloom_index + 1) % m_bloom_textures.size();
+
+        if (i == iterations)
+        {
+            m_context->issue_barrier(&cmd_list, 3, swap_barriers.data());
+            break;
+        }
+        m_context->issue_barrier(&cmd_list, 2, swap_barriers.data());
+
+        qhenki::gfx::RenderTarget blit_target_blur{
+            .clear_params = {.clear_color_value = {0.f, 0.f, 0.f, 0.f}},
+            .clear_type = qhenki::gfx::RenderTarget::COLOR,
+            .descriptor = bloom1.rt_descriptor,
+        };
+        m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target_blur).data(), nullptr);
+        m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
+        m_context->set_scissor_rects(&cmd_list, 1, &bloom_scissor);
+
+        const bool horizontal = i % 2 == 0;
+        m_context->bind_pipeline(&cmd_list,
+                                 horizontal ? m_blit_bloom_1d_horizontal_pipeline : m_blit_bloom_1d_vertical_pipeline);
+
+        if (m_context->is_compatibility())
+        {
+            m_context->compatibility_set_textures(
+                1,
+                2,
+                qhenki::util::ptr_array(bloom0.srv_descriptor, bloom0.srv_descriptor).data(),
+                qhenki::gfx::ACCESS_SHADER_RESOURCE,
+                qhenki::gfx::PipelineStage::PIXEL);
+        }
+        else
+        {
+            m_context->set_descriptor_table(
+                &cmd_list,
+                1,
+                qhenki::gfx::Descriptor{.heap = &m_GPU_heap, .offset = blur_srv_start + (1 - m_starting_bloom_index)});
+        }
+
+        m_context->draw(&cmd_list, 3, 0);
+    }
+
+    // Composite image into swapchain backbuffer
+    std::array clear_values = {0.f, 0.f, 0.f, 1.f};
+    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), nullptr, m_frame_index);
+    m_context->set_viewports(&cmd_list, 1, &viewport);
+    m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
+    m_context->bind_pipeline(&cmd_list, m_blit_copy_pipeline);
+    auto& final_bloom = m_bloom_textures[1 - m_starting_bloom_index];
+    if (m_context->is_compatibility())
+    {
+        m_context->compatibility_set_textures(
+            1,
+            2,
+            qhenki::util::ptr_array(m_offscreen_texture.srv_descriptor, final_bloom.srv_descriptor).data(),
+            qhenki::gfx::ACCESS_SHADER_RESOURCE,
+            qhenki::gfx::PipelineStage::PIXEL);
+    }
+    else
+    {
+        auto composite_start = gpu_descriptor_heap_index;
+        THROW_IF_FALSE(m_context->copy_descriptors(1,
+                                                   m_offscreen_texture.srv_descriptor,
+                                                   qhenki::gfx::Descriptor{.heap = &m_GPU_heap,
+                                                                           .offset = gpu_descriptor_heap_index++}));
+        THROW_IF_FALSE(m_context->copy_descriptors(1,
+                                                   final_bloom.srv_descriptor,
+                                                   qhenki::gfx::Descriptor{.heap = &m_GPU_heap,
+                                                                           .offset = gpu_descriptor_heap_index++}));
+        m_context->set_descriptor_table(&cmd_list,
+                                        1,
+                                        qhenki::gfx::Descriptor{.heap = &m_GPU_heap, .offset = composite_start});
+    }
+    m_context->draw(&cmd_list, 3, 0);
+
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);
 
-    qhenki::gfx::ImageBarrier barrier_present = {
+    std::array<qhenki::gfx::ImageBarrier, 2> end_barriers;
+    // RT -> Present for swapchain
+    end_barriers[0] = {
         .src_stage = qhenki::gfx::SyncStage::SYNC_DRAW,
         .dst_stage = qhenki::gfx::SyncStage::SYNC_NONE,
         .src_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
@@ -778,8 +1023,18 @@ void RetroExampleApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, m_frame_index);
-    m_context->issue_barrier(&cmd_list, 1, &barrier_present);
+    m_context->set_barrier_resource(1, &end_barriers[0], m_swapchain, m_frame_index);
+    // Offscreen back to RT
+    end_barriers[1] = {
+        .src_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
+        .dst_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
+        .src_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
+        .dst_access = qhenki::gfx::AccessFlags::ACCESS_RENDER_TARGET,
+        .src_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
+        .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
+    };
+    m_context->set_barrier_resource(1, &end_barriers[1], m_offscreen_texture.tex);
+    m_context->issue_barrier(&cmd_list, end_barriers.size(), end_barriers.data());
 
     m_context->close_command_list(&cmd_list);
 
@@ -822,6 +1077,45 @@ void RetroExampleApp::resize(int width, int height)
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
     THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
+
+    const qhenki::gfx::TextureDesc offscreen_rt_desc{
+        .width = static_cast<uint64_t>(width),
+        .height = static_cast<uint32_t>(height),
+        .format = m_offscreen_rt_format,
+        .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
+        .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
+        .is_render_target = true,
+    };
+    THROW_IF_FALSE(m_context->create_texture(offscreen_rt_desc, &m_offscreen_texture.tex, "Offscreen RT"));
+    THROW_IF_FALSE(m_context->create_descriptor_render_target(m_offscreen_texture.tex,
+                                                              &m_rtv_heap,
+                                                              &m_offscreen_texture.rt_descriptor));
+    THROW_IF_FALSE(m_context->create_descriptor_shader_view(m_offscreen_texture.tex,
+                                                            &m_CPU_heap,
+                                                            &m_offscreen_texture.srv_descriptor));
+
+    qhenki::gfx::TextureDesc blit_rt_desc{
+        .width = static_cast<uint64_t>(width / 4),
+        .height = static_cast<uint32_t>(height / 4),
+        .format = m_offscreen_rt_format,
+        .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
+        .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
+        .is_render_target = true,
+    };
+    for (unsigned i = 0; i < m_bloom_textures.size(); i++)
+    {
+        blit_rt_desc.initial_layout = i == m_starting_bloom_index ? qhenki::gfx::Layout::RENDER_TARGET
+                                                                  : qhenki::gfx::Layout::SHADER_RESOURCE;
+        THROW_IF_FALSE(m_context->create_texture(blit_rt_desc,
+                                                 &m_bloom_textures[i].tex,
+                                                 qhenki::util::format_string("Bloom RT %u", i).buffer.data()));
+        THROW_IF_FALSE(m_context->create_descriptor_render_target(m_bloom_textures[i].tex,
+                                                                  &m_rtv_heap,
+                                                                  &m_bloom_textures[i].rt_descriptor));
+        THROW_IF_FALSE(m_context->create_descriptor_shader_view(m_bloom_textures[i].tex,
+                                                                &m_CPU_heap,
+                                                                &m_bloom_textures[i].srv_descriptor));
+    }
 }
 
 void RetroExampleApp::destroy()
