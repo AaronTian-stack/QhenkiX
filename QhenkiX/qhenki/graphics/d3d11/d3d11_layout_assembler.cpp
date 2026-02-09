@@ -99,7 +99,7 @@ std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layo
 }
 
 std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_desc(
-    ID3D11ShaderReflection* vs_reflection, const bool increment_slot)
+    ID3D11ShaderReflection* vs_reflection, const bool increment_slot, unsigned* out_builtins)
 {
     assert(vs_reflection);
 
@@ -125,6 +125,7 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         if (param_desc.SystemValueType == D3D_NAME_VERTEX_ID || param_desc.SystemValueType == D3D_NAME_PRIMITIVE_ID ||
             param_desc.SystemValueType == D3D_NAME_INSTANCE_ID)
         {
+            ++*out_builtins;
             continue;
         }
 
@@ -222,7 +223,7 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
 
 ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11Device* const device,
                                                                         ID3DBlob* const vertex_shader_blob,
-                                                                        bool increment_slot)
+                                                                        const bool increment_slot)
 {
     ComPtr<ID3D11ShaderReflection> vs_shader_reflection;
     if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(),
@@ -240,13 +241,15 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11De
         return nullptr;
     }
 
-    std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc = create_input_layout_desc(vs_shader_reflection.Get(),
-                                                                                       increment_slot);
+    unsigned builtins = 0;
+    std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc =
+        create_input_layout_desc(vs_shader_reflection.Get(), increment_slot, &builtins);
 
-    if (input_layout_desc.empty())
+    if (input_layout_desc.empty() && builtins == 0)
     {
         return nullptr;
     }
+
 
     std::scoped_lock lock(m_layout_mutex);
     find_layout(input_layout_desc)

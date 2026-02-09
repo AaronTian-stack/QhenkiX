@@ -874,17 +874,8 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
         }
 
         const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
-
-        D3D11_BOX box{
-            .left = 0,
-            .top = 0,
-            .front = 0,
-            .right = mip_width,
-            .bottom = mip_height,
-            .back = mip_depth,
-        };
-
-        m_device_context->UpdateSubresource(resource, subresource, &box, src, row_pitch, slice_pitch);
+        m_device_context->UpdateSubresource(
+            resource, subresource, nullptr, src, static_cast<UINT>(row_pitch), static_cast<UINT>(slice_pitch));
 
         data_offset += slice_pitch * mip_depth;
     }
