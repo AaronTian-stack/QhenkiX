@@ -440,6 +440,11 @@ void RetroExampleApp::create()
     m_cube_camera.perspective.fov = m_camera.perspective.fov;
     m_cube_camera.perspective.near_plane = m_camera.perspective.near_plane;
     m_cube_camera.perspective.far_plane = m_camera.perspective.far_plane;
+
+    m_orbit_camera.perspective.fov = m_camera.perspective.fov;
+    m_orbit_camera.perspective.near_plane = m_camera.perspective.near_plane;
+    m_orbit_camera.perspective.far_plane = m_camera.perspective.far_plane;
+
     mark_world_dirty(&m_cube_parent);
 }
 
@@ -496,12 +501,14 @@ void RetroExampleApp::render()
     m_camera.perspective.viewport_height = static_cast<float>(dim.y);
     m_cube_camera.perspective.viewport_width = static_cast<float>(dim.x);
     m_cube_camera.perspective.viewport_height = static_cast<float>(dim.y);
+    m_orbit_camera.perspective.viewport_width = static_cast<float>(dim.x);
+    m_orbit_camera.perspective.viewport_height = static_cast<float>(dim.y);
     {
         static bool r_was_down = false;
         const bool r_down = m_input_manager.is_key_down(SDL_SCANCODE_R);
         if (r_down && !r_was_down)
         {
-            m_active_camera_index = (m_active_camera_index + 1) % 2;
+            m_active_camera_index = (m_active_camera_index + 1) % 3;
         }
         r_was_down = r_down;
     }
@@ -556,13 +563,13 @@ void RetroExampleApp::render()
 
     const float time_sec = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
-    constexpr float radius_min = 8.f;
-    constexpr float radius_max = 12.f;
+    constexpr float radius_min = 6.f;
+    constexpr float radius_max = 10.f;
     const float radius_t = 0.5f + 0.5f * std::sin(time_sec * 0.7f);
     const float orbit_radius = radius_min + (radius_max - radius_min) * radius_t;
     const float orbit_angle = time_sec * 0.5f;
     m_cube_parent.local_transform.translation.x = orbit_radius * std::cos(orbit_angle);
-    m_cube_parent.local_transform.translation.y = std::sin(time_sec * 2.f) * 6.f;
+    m_cube_parent.local_transform.translation.y = (1.2f + std::sin(time_sec * 2.f)) * 0.5f * 8.f;
     m_cube_parent.local_transform.translation.z = orbit_radius * std::sin(orbit_angle);
 
     const float axis_angle = time_sec * 0.4f;
@@ -580,12 +587,23 @@ void RetroExampleApp::render()
     m_cube_camera.hierarchy.local_transform.scale = qhenki::math::Transform::identity_scale();
     m_cube_camera.hierarchy.local_transform.look_at(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f));
 
+    constexpr float orbit_distance = 24.0f;
+    const float orbit_cam_angle = -time_sec * 0.4f;
+    m_orbit_camera.hierarchy.local_transform.translation.x = orbit_distance * std::cos(orbit_cam_angle);
+    m_orbit_camera.hierarchy.local_transform.translation.y = 8.0f;
+    m_orbit_camera.hierarchy.local_transform.translation.z = orbit_distance * std::sin(orbit_cam_angle);
+    m_orbit_camera.hierarchy.local_transform.look_at(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f));
+    mark_world_dirty(&m_orbit_camera.hierarchy);
+    update_world_transform(&m_orbit_camera.hierarchy);
+
     mark_world_dirty(&m_cube_parent);
     update_world_transform(&m_cube_parent);
 
     const XMMATRIX cube_world_mat = qhenki::math::TransformSIMD::load(m_cube_child.world_transform).to_matrix();
 
-    const PerspectiveCamera& active_camera = m_active_camera_index == 0 ? m_camera : m_cube_camera;
+    const PerspectiveCamera& active_camera = m_active_camera_index == 0
+                                               ? m_camera
+                                               : (m_active_camera_index == 1 ? m_cube_camera : m_orbit_camera);
     const XMMATRIX view =
         XMMatrixInverse(nullptr,
                         qhenki::math::TransformSIMD::load(active_camera.hierarchy.world_transform).to_matrix());

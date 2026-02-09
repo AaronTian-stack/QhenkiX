@@ -44,7 +44,7 @@ float value_noise_3d(float3 p)
 
 static const float grid_spacing = 3.0;
 static const float grid_half = (grid_size - 1) * grid_spacing * 0.5;
-static const float vertical_scale = 3.0;
+static const float vertical_scale = -3.2;
 static const float influence_radius = 10.0;
 
 static const float3 palette[] =
@@ -81,8 +81,7 @@ PSInput vs_main(VertexIn input, uint instance_id : SV_InstanceID)
     float3 cube_position = frame_constants.cube_world[3].xyz;
     float dist = length(instance_offset - cube_position);
     float influence = 1.0 - smoothstep(0.0, influence_radius, dist);
-    float height_diff = instance_offset.y - cube_position.y;
-    float vertical_offset = height_diff * vertical_scale * influence;
+    float vertical_offset = vertical_scale * influence;
     float3 world_pos = input.position + instance_offset + float3(0.0, vertical_offset, 0.0);
     output.position = mul(float4(world_pos, 1.0), frame_constants.camera_buffer.view_proj);
     output.world_pos = world_pos;
@@ -99,7 +98,7 @@ struct PSOutput
 static const float light_intensity = 16.0;
 static const float light_radius_sq = 32.0;
 static const float3 ambient_color = float3(0.25, 0.28, 0.35);
-static const float ambient_strength = 1.0;
+static const float ambient_strength = 1.2;
 
 PSOutput ps_main(PSInput input)
 {
