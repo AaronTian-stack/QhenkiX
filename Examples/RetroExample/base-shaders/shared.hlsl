@@ -18,4 +18,6 @@ SamplerState samp : register(s0
 );
 #endif
 
+static const float3 light_color = float3(1.0, 1.0, 0.9);
+
 #endif // SHARED_HLSL

@@ -1,4 +1,5 @@
 #include "shared.hlsl"
+#include "pbr.hlsl"
 
 struct VertexIn
 {
@@ -95,13 +96,44 @@ struct PSOutput
     float4 color : SV_Target0;
 };
 
+static const float light_intensity = 16.0;
+static const float light_radius_sq = 32.0;
+static const float3 ambient_color = float3(0.25, 0.28, 0.35);
+static const float ambient_strength = 1.0;
+
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
     float3 view_dir = normalize(frame_constants.camera_position - input.world_pos);
     float3 n = normalize(input.normal);
-    float NdotL = max(0.0, dot(n, view_dir));
-    float3 lit = input.instance_color * NdotL;
-    output.color = float4(lit, 1.0);
+
+    // Point light
+    float3 light_pos = frame_constants.cube_world[3].xyz;
+    float3 L = light_pos - input.world_pos;
+    float dist_sq = dot(L, L) + 1e-6;
+    float dist = sqrt(dist_sq);
+    L /= dist;
+    float NdotL = max(0.0, dot(n, L));
+    float attenuation = light_intensity / (1.0 + dist_sq / light_radius_sq);
+    float illuminance = NdotL * attenuation;
+
+    float n0 = value_noise_3d(input.world_pos * 0.2);
+    float n1 = value_noise_3d(input.world_pos * 0.2 + float3(17.3, 31.7, 11.1));
+    float roughness = 0.15 + 0.7 * n0;
+    float metallic = pow(abs(n1), 0.55);
+    float ao = 0.4 + 0.6 * value_noise_3d(input.world_pos * 0.3 + float3(0, 0, 7.0));
+
+    Material material;
+    material.albedo = input.instance_color;
+    material.metallic = metallic;
+    material.roughness = roughness;
+    material.ao = ao;
+    material.f0 = lerp(float3(0.04, 0.04, 0.04), material.albedo, metallic);
+
+    float3 light_color = float3(1.0, 0.98, 0.95);
+    float3 pbr_color = BRDF_CALCULATE(material, illuminance, light_color, n, L, view_dir);
+
+    float3 ambient = ambient_color * ambient_strength * material.albedo * material.ao;
+    output.color = float4(pbr_color + ambient, 1.0);
     return output;
 }
