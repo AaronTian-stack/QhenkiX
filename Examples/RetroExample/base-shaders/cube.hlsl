@@ -7,7 +7,7 @@ struct PSInput
 
 PSInput vs_main(uint vertex_id : SV_VertexID)
 {
-// Adapted from https://gist.github.com/rikusalminen/9393151
+    // Adapted from https://gist.github.com/rikusalminen/9393151
     uint tri = vertex_id / 3;
     uint idx = vertex_id % 3;
     uint face = tri / 2;
@@ -45,6 +45,6 @@ struct PSOutput
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
-    output.color = float4(1.0, 0.0, 0.0, 1.0);
+    output.color = float4(1.0, 1.0, 0.9, 1.0);
     return output;
 }
