@@ -37,18 +37,18 @@ constexpr uint32_t SHADER_BLOB_VERSION = 1;
  * @param out_size (out) Size of the found binary data
  * @return Whether a matching permutation was found successfully.
  */
-inline bool find_permutation_in_blob(const void* blob,
+inline bool find_permutation_in_blob(void* blob,
                                      const size_t blob_size,
                                      const char* const* defines,
                                      const uint32_t define_count,
-                                     const void** out_shader,
+                                     void** const out_shader,
                                      size_t* out_size)
 {
     if (!blob || blob_size < sizeof(ShaderBlobHeader) || !out_shader || !out_size)
     {
         return false;
     }
-    const auto* base = static_cast<const std::byte*>(blob);
+    auto* base = static_cast<std::byte*>(blob);
     const auto* end = base + blob_size;
 
     const auto* header = reinterpret_cast<const ShaderBlobHeader*>(base);
@@ -155,7 +155,7 @@ inline bool find_permutation_in_blob(const void* blob,
             return false;
         }
 
-        *out_shader = reinterpret_cast<const void*>(base + entry->offset);
+        *out_shader = reinterpret_cast<void*>(base + entry->offset);
         *out_size = static_cast<size_t>(entry->size);
 
         return true;
