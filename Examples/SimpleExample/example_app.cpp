@@ -397,7 +397,7 @@ void ExampleApp::render()
     m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
-void ExampleApp::resize(int width, int height)
+void ExampleApp::resize(unsigned width, unsigned height)
 {
 }
 
