@@ -573,15 +573,6 @@ void RetroExampleApp::render()
     m_cube_camera.perspective.viewport_height = static_cast<float>(dim.y);
     m_orbit_camera.perspective.viewport_width = static_cast<float>(dim.x);
     m_orbit_camera.perspective.viewport_height = static_cast<float>(dim.y);
-    {
-        static bool r_was_down = false;
-        const bool r_down = m_input_manager.is_key_down(SDL_SCANCODE_R);
-        if (r_down && !r_was_down)
-        {
-            m_active_camera_index = (m_active_camera_index + 1) % 3;
-        }
-        r_was_down = r_down;
-    }
 
     update_world_transform(&m_camera.hierarchy);
 
@@ -669,14 +660,74 @@ void RetroExampleApp::render()
     mark_world_dirty(&m_cube_parent);
     update_world_transform(&m_cube_parent);
 
+    static float m_camera_transition_t = -1.f;
+    static qhenki::math::Transform m_camera_transition_start;
+    {
+        static bool r_was_down = false;
+        const bool r_down = m_input_manager.is_key_down(SDL_SCANCODE_R);
+        const bool arcball_grabbing = (m_active_camera_index == 0 &&
+                                       (m_input_manager.is_mouse_button_down(SDL_BUTTON_LEFT) ||
+                                        m_input_manager.is_mouse_button_down(SDL_BUTTON_RIGHT)));
+        if (r_down && !r_was_down && !arcball_grabbing)
+        {
+            PerspectiveCamera& current = m_active_camera_index == 0
+                                           ? m_camera
+                                           : (m_active_camera_index == 1 ? m_cube_camera : m_orbit_camera);
+            if (m_camera_transition_t < 0.f)
+            {
+                m_camera_transition_start = current.hierarchy.world_transform;
+            }
+            else
+            {
+                const float blend = std::min(m_camera_transition_t, 1.f);
+                const auto& from = m_camera_transition_start;
+                const auto& to = current.hierarchy.world_transform;
+                XMStoreFloat3(&m_camera_transition_start.translation,
+                              XMVectorLerp(XMLoadFloat3(&from.translation), XMLoadFloat3(&to.translation), blend));
+                XMStoreFloat4(&m_camera_transition_start.rotation,
+                              XMQuaternionSlerp(XMLoadFloat4(&from.rotation), XMLoadFloat4(&to.rotation), blend));
+                XMStoreFloat3(&m_camera_transition_start.scale,
+                              XMVectorLerp(XMLoadFloat3(&from.scale), XMLoadFloat3(&to.scale), blend));
+            }
+            m_active_camera_index = (m_active_camera_index + 1) % 3;
+            m_camera_transition_t = 0.f;
+        }
+        r_was_down = r_down;
+    }
+
+    if (m_camera_transition_t >= 0.f)
+    {
+        m_camera_transition_t += ImGui::GetIO().DeltaTime * 2.f;
+        if (m_camera_transition_t >= 1.f)
+        {
+            m_camera_transition_t = -1.f;
+        }
+    }
+
     const XMMATRIX cube_world_mat = qhenki::math::TransformSIMD::load(m_cube_child.world_transform).to_matrix();
 
-    const PerspectiveCamera& active_camera = m_active_camera_index == 0
-                                               ? m_camera
-                                               : (m_active_camera_index == 1 ? m_cube_camera : m_orbit_camera);
-    const XMMATRIX view =
-        XMMatrixInverse(nullptr,
-                        qhenki::math::TransformSIMD::load(active_camera.hierarchy.world_transform).to_matrix());
+    const PerspectiveCamera& active_camera = m_active_camera_index == 0 ? m_camera
+                                           : m_active_camera_index == 1 ? m_cube_camera
+                                                                        : m_orbit_camera;
+
+    qhenki::math::Transform display_world;
+    if (m_camera_transition_t >= 0.f)
+    {
+        const float blend = std::min(m_camera_transition_t, 1.f);
+        const auto& from = m_camera_transition_start;
+        const auto& to = active_camera.hierarchy.world_transform;
+        XMStoreFloat3(&display_world.translation,
+                      XMVectorLerp(XMLoadFloat3(&from.translation), XMLoadFloat3(&to.translation), blend));
+        XMStoreFloat4(&display_world.rotation,
+                      XMQuaternionSlerp(XMLoadFloat4(&from.rotation), XMLoadFloat4(&to.rotation), blend));
+        XMStoreFloat3(&display_world.scale, XMVectorLerp(XMLoadFloat3(&from.scale), XMLoadFloat3(&to.scale), blend));
+    }
+    else
+    {
+        display_world = active_camera.hierarchy.world_transform;
+    }
+
+    const XMMATRIX view = XMMatrixInverse(nullptr, qhenki::math::TransformSIMD::load(display_world).to_matrix());
     const XMMATRIX proj = XMMatrixPerspectiveFovLH(active_camera.perspective.fov,
                                                    active_camera.perspective.viewport_width /
                                                        active_camera.perspective.viewport_height,
@@ -688,7 +739,7 @@ void RetroExampleApp::render()
     XMStoreFloat4x4(&cb.camera_buffer.view_proj, XMMatrixTranspose(view_proj));
     XMStoreFloat4x4(&cb.camera_buffer.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
     XMStoreFloat4x4(&cb.cube_world, XMMatrixTranspose(cube_world_mat));
-    cb.camera_position = active_camera.hierarchy.world_transform.translation;
+    cb.camera_position = display_world.translation;
     cb.time = time_sec;
 
     const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
