@@ -31,7 +31,7 @@ float4 ps_main(BlitPSInput input)
     // Adapted from https://www.shadertoy.com/view/lsKSWR
     float2 uv_m = input.uv * (1.0 - input.uv.yx);
     float vig = uv_m.x * uv_m.y * 15.0;
-    vig = pow(abs(vig), 0.1);
+    vig = pow(abs(vig), 0.15);
 
     return float4(gamma_corrected * vig, base.a);
 }
