@@ -707,7 +707,10 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     {
         bind_flags = D3D11_BIND_DEPTH_STENCIL; // Overwrite
     }
-    // TODO: could also be RT or UAV, need BindFlags
+    if (desc.is_render_target)
+    {
+        bind_flags |= D3D11_BIND_RENDER_TARGET;
+    }
 
     if (desc.dimension == TextureDimension::TEXTURE_1D)
     {
@@ -813,6 +816,29 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     heap_d3d11->shader_resource_views[offset] = std::move(view);
     descriptor->heap = heap;
     descriptor->offset = offset;
+    return true;
+}
+
+bool D3D11Context::create_descriptor_render_target(const Texture& texture,
+                                                   DescriptorHeap* const heap,
+                                                   Descriptor* const descriptor)
+{
+    assert(heap);
+    assert(descriptor);
+    const auto texture_d3d11 = to_internal(texture);
+    const auto heap_d3d11 = to_internal_rtv(*heap);
+    const auto resource = get_texture_resource(*texture_d3d11);
+    assert(resource);
+
+    ComPtr<ID3D11RenderTargetView> rtv;
+    if (FAILED(m_device->CreateRenderTargetView(resource, nullptr, rtv.ReleaseAndGetAddressOf())))
+    {
+        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture RTV\n");
+        return false;
+    }
+    heap_d3d11->push_back(std::move(rtv));
+    descriptor->heap = heap;
+    descriptor->offset = heap_d3d11->size() - 1;
     return true;
 }
 

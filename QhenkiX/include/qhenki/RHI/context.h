@@ -90,8 +90,9 @@ public:
     virtual bool create_descriptor_shader_view(const Texture& texture,
                                                DescriptorHeap* heap,
                                                Descriptor* descriptor) = 0;
-    // virtual bool create_descriptor_render_target(const Texture& texture, DescriptorHeap& heap, Descriptor*
-    // descriptor) = 0;
+    virtual bool create_descriptor_render_target(const Texture& texture,
+                                                 DescriptorHeap* heap,
+                                                 Descriptor* descriptor) = 0;
     virtual bool create_descriptor_depth_stencil(const Texture& texture,
                                                  DescriptorHeap* heap,
                                                  Descriptor* descriptor) = 0;

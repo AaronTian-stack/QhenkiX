@@ -251,7 +251,7 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     }
 
     const D3D12MA::ALLOCATOR_DESC allocator_desc{
-        .Flags = D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED,
+        .Flags = D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED,
         .pDevice = m_device.Get(),
         .pAdapter = adapter.Get(),
     };
@@ -1478,6 +1478,26 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
     return true;
 }
 
+bool D3D12Context::create_descriptor_render_target(const Texture& texture,
+                                                   DescriptorHeap* const heap,
+                                                   Descriptor* descriptor)
+{
+    assert(heap);
+    const auto texture_d3d12 = to_internal(texture);
+    const auto heap_d3d12 = to_internal(*heap);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
+    if (!allocate_arb_texture_descriptor(
+            heap, heap_d3d12, DescriptorHeapDesc::Type::RTV, descriptor, L"RTV", &cpu_handle))
+    {
+        return false;
+    }
+
+    m_device->CreateRenderTargetView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
+
+    return true;
+}
+
 bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture,
                                                    DescriptorHeap* const heap,
                                                    Descriptor* descriptor)
@@ -1900,19 +1920,15 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle;
     rtv_heap->get_CPU_descriptor(&rtv_handle, m_swapchain_descriptors[frame_index].offset);
 
-    D3D12_CPU_DESCRIPTOR_HANDLE ds_handle;
+    D3D12_CPU_DESCRIPTOR_HANDLE ds_handle{};
     const D3D12_CPU_DESCRIPTOR_HANDLE* ds_handle_ptr = nullptr;
     if (depth_stencil)
     {
-        if (!(depth_stencil->clear_type & RenderTarget::DEPTH) && !(depth_stencil->clear_type & RenderTarget::STENCIL))
-        {
-            return false;
-        }
         const auto heap = to_internal(*depth_stencil->descriptor.heap);
         heap->get_CPU_descriptor(&ds_handle, depth_stencil->descriptor.offset);
         ds_handle_ptr = &ds_handle;
-        clear_depth(command_list, ds_handle, depth_stencil);
     }
+    clear_depth(command_list, ds_handle, depth_stencil);
 
     command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, ds_handle_ptr);
 
@@ -1937,24 +1953,15 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     std::array<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> rtv_handles;
     for (unsigned i = 0; i < rt_count; i++)
     {
-        if (rts[i]->clear_type != RenderTarget::COLOR)
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: non color target passed\n");
-            return false;
-        }
         const auto& descriptor = rts[i]->descriptor;
         const auto heap = to_internal(*descriptor.heap);
         heap->get_CPU_descriptor(&rtv_handles[i], descriptor.offset);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE ds_handle;
+    D3D12_CPU_DESCRIPTOR_HANDLE ds_handle{};
     const D3D12_CPU_DESCRIPTOR_HANDLE* ds_handle_ptr = nullptr;
     if (depth_stencil)
     {
-        if (!(depth_stencil->clear_type & RenderTarget::DEPTH) && !(depth_stencil->clear_type & RenderTarget::STENCIL))
-        {
-            return false;
-        }
         const auto& descriptor = depth_stencil->descriptor;
         const auto heap = to_internal(*descriptor.heap);
         heap->get_CPU_descriptor(&ds_handle, descriptor.offset);
@@ -1963,11 +1970,17 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
 
     // TODO: Can't assume that render target descriptors are contiguous in heap so FALSE for now
     // Expose this option in interface
-    command_list->OMSetRenderTargets(rtv_handles.size(), rtv_handles.data(), FALSE, ds_handle_ptr);
+    command_list->OMSetRenderTargets(rt_count, rtv_handles.data(), FALSE, ds_handle_ptr);
 
     for (unsigned i = 0; i < rt_count; i++)
     {
-        command_list->ClearRenderTargetView(rtv_handles[i], rts[i]->clear_params.clear_color_value.data(), 0, nullptr);
+        if (rts[i]->clear_type == RenderTarget::COLOR)
+        {
+            command_list->ClearRenderTargetView(rtv_handles[i],
+                                                rts[i]->clear_params.clear_color_value.data(),
+                                                0,
+                                                nullptr);
+        }
     }
     clear_depth(command_list, ds_handle, depth_stencil);
 
