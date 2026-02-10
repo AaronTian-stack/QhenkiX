@@ -55,11 +55,16 @@ protected:
     virtual void create()
     {
     }
-    // The swapchain is automatically resized before this is called
     virtual void render()
     {
     }
-    virtual void resize(int width, int height)
+
+    /**
+     * Function called whenever window is resized. This function is also called once after create().
+     * @param width New width of the window
+     * @param height New height of the window
+     */
+    virtual void resize(unsigned width, unsigned height)
     {
     }
     virtual void destroy()
