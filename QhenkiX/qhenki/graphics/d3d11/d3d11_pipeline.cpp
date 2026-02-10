@@ -23,6 +23,10 @@ void D3D11GraphicsPipeline::bind(ID3D11DeviceContext* const context) const
     {
         context->IASetInputLayout(input_layout);
     }
+    else
+    {
+        context->IASetInputLayout(nullptr);
+    }
     if (topology)
     {
         context->IASetPrimitiveTopology(topology);
@@ -31,12 +35,24 @@ void D3D11GraphicsPipeline::bind(ID3D11DeviceContext* const context) const
     {
         context->RSSetState(rasterizer_state.Get());
     }
+    else
+    {
+        context->RSSetState(nullptr);
+    }
     if (blend_state)
     {
         context->OMSetBlendState(blend_state.Get(), nullptr, 0xffffffff);
     }
+    else
+    {
+        context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+    }
     if (depth_stencil_state)
     {
         context->OMSetDepthStencilState(depth_stencil_state.Get(), 0);
+    }
+    else
+    {
+        context->OMSetDepthStencilState(nullptr, 0);
     }
 }
