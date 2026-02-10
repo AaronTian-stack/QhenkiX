@@ -151,8 +151,10 @@ public:
     virtual void draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) = 0;
     virtual void draw_indexed(CommandList* cmd_list,
                               uint32_t index_count,
+                              uint32_t instance_count,
                               uint32_t start_index_offset,
-                              int32_t base_vertex_offset) = 0;
+                              int32_t base_vertex_offset,
+                              uint32_t instance_offset) = 0;
     // TODO: draw indirect
     // TODO: draw indirect count
 

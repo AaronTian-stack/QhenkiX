@@ -2001,7 +2001,7 @@ void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, co
     command_list->RSSetScissorRects(count, scissor_rect);
 }
 
-auto D3D12Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset) -> void
+void D3D12Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -2009,13 +2009,16 @@ auto D3D12Context::draw(CommandList* cmd_list, const uint32_t vertex_count, cons
 }
 
 void D3D12Context::draw_indexed(CommandList* cmd_list,
-                                uint32_t index_count,
-                                uint32_t start_index_offset,
-                                int32_t base_vertex_offset)
+                                const uint32_t index_count,
+                                const uint32_t instance_count,
+                                const uint32_t start_index_offset,
+                                const int32_t base_vertex_offset,
+                                const uint32_t instance_offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
-    command_list->DrawIndexedInstanced(index_count, 1, start_index_offset, base_vertex_offset, 0);
+    command_list->DrawIndexedInstanced(
+        index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
 void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
