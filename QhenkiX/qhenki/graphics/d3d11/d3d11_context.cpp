@@ -1030,12 +1030,23 @@ bool D3D11Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
+namespace
+{
+void unbind_srvs_for_render_targets(ID3D11DeviceContext* ctx)
+{
+    const std::array<ID3D11ShaderResourceView*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> null_srvs{};
+    ctx->PSSetShaderResources(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, null_srvs.data());
+    ctx->VSSetShaderResources(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, null_srvs.data());
+}
+} // namespace
+
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
                                      unsigned frame_index)
 {
+    unbind_srvs_for_render_targets(m_device_context.Get());
     const auto view = m_swapchain_view.Get();
     m_device_context->ClearRenderTargetView(view, clear_color_values);
     ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
@@ -1069,6 +1080,7 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
     }
     ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
 
+    unbind_srvs_for_render_targets(m_device_context.Get());
     m_device_context->OMSetRenderTargets(rt_count, rtvs[0], ds);
     return true;
 }
