@@ -22,7 +22,6 @@ class RetroExampleApp : public qhenki::Application
             size_t offset = 0;
             size_t length = 0;
             size_t stride = 0;
-            // int buffer_index = -1;
         };
         using AccessorBufferView = std::pair<Accessor, BufferView>;
         AccessorBufferView position;
@@ -103,7 +102,7 @@ class RetroExampleApp : public qhenki::Application
 
     PerspectiveCamera m_orbit_camera{};
 
-    int m_active_camera_index = 0; // 0 = main camera, 1 = cube camera, 2 = orbit camera
+    int m_active_camera_index = 1;
 
     static const DXGI_FORMAT m_offscreen_rt_format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     static const DXGI_FORMAT m_depth_format = DXGI_FORMAT_D24_UNORM_S8_UINT;
