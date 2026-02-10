@@ -27,5 +27,11 @@ float4 ps_main(BlitPSInput input)
     float3 combined = base.rgb + bloom.rgb;
     float3 ldr = ACESFilm(combined);
     float3 gamma_corrected = pow(ldr, 1.0 / GAMMA);
-    return float4(gamma_corrected, base.a);
+
+    // Adapted from https://www.shadertoy.com/view/lsKSWR
+    float2 uv_m = input.uv * (1.0 - input.uv.yx);
+    float vig = uv_m.x * uv_m.y * 15.0;
+    vig = pow(abs(vig), 0.1);
+
+    return float4(gamma_corrected * vig, base.a);
 }
