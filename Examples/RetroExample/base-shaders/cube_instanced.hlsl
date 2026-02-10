@@ -1,5 +1,5 @@
-#include "shared.hlsl"
 #include "pbr.hlsl"
+#include "shared.hlsl"
 
 struct VertexIn
 {
@@ -27,12 +27,11 @@ static const float grid_half = (grid_size - 1) * grid_spacing * 0.5;
 static const float vertical_scale = -3.2;
 static const float influence_radius = 10.0;
 
-static const float3 palette[] =
-{
-    float3(76, 62, 36), // Brown
-    float3(251, 185, 84), // Yellow
-    float3(144, 94, 169), // Purple
-    float3(131, 28, 93), // Dark Purple
+static const float3 palette[] = {
+    float3(76, 62, 36),    // Brown
+    float3(251, 185, 84),  // Yellow
+    float3(144, 94, 169),  // Purple
+    float3(131, 28, 93),   // Dark Purple
     float3(155, 171, 178), // Gray
 };
 static const uint palette_count = 5;
@@ -53,11 +52,7 @@ PSInput vs_main(VertexIn input, uint instance_id : SV_InstanceID)
     PSInput output;
     uint row = instance_id / grid_size;
     uint col = instance_id % grid_size;
-    float3 instance_offset = float3(
-        col * grid_spacing - grid_half,
-        0.0,
-        row * grid_spacing - grid_half
-    );
+    float3 instance_offset = float3(col * grid_spacing - grid_half, 0.0, row * grid_spacing - grid_half);
     float3 cube_position = frame_constants.cube_world[3].xyz;
     float dist = length(instance_offset - cube_position);
     float influence = 1.0 - smoothstep(0.0, influence_radius, dist);

@@ -36,17 +36,17 @@ struct Vertex
 #ifndef __cplusplus
         : POSITION
 #endif
-          ;
+        ;
     XMFLOAT3 normal
 #ifndef __cplusplus
         : COLOR0
 #endif
-          ;
+        ;
     XMFLOAT2 texcoord
 #ifndef __cplusplus
         : TEXCOORD0
 #endif
-          ;
+        ;
 };
 
 #endif // RETROEXAMPLE_SHARED_STRUCTS_H

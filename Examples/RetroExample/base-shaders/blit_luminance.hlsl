@@ -8,7 +8,8 @@ struct BlitPSInput
     float2 uv : TEXCOORD0;
 };
 
-float4 ps_main(BlitPSInput input) : SV_Target0
+float4 ps_main(BlitPSInput input)
+    : SV_Target0
 {
     float4 c = g_texture.Sample(samp_linear, input.uv);
     float L = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));

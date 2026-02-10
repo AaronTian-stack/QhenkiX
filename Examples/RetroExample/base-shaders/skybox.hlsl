@@ -56,9 +56,9 @@ PSOutput ps_main(PSInput input)
 
     float2 uv_d =
 #ifdef STEPPED
-    uv + offset;
+        uv + offset;
 #else
-    uv + raw_offset;
+        uv + raw_offset;
 #endif
 
     const float tiling = 4.0;

@@ -19,7 +19,8 @@ static float3 ACESFilm(float3 x)
 
 static const float GAMMA = 2.2;
 
-float4 ps_main(BlitPSInput input) : SV_Target0
+float4 ps_main(BlitPSInput input)
+    : SV_Target0
 {
     float4 base = g_texture.Sample(samp_linear, input.uv);
     float4 bloom = g_texture_blur.Sample(samp_linear, input.uv);

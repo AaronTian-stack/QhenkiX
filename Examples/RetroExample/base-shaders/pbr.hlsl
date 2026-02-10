@@ -42,7 +42,7 @@ float V_smith_GGX_correlated(float NdotL, float NdotV, float alpha_g)
 
 float D_GGX(float NdotH, float m)
 {
-    // Divide by PI is applied later 
+    // Divide by PI is applied later
     float m2 = m * m;
     float f = (NdotH * m2 - NdotH) * NdotH + 1.0;
     return m2 / (f * f);
@@ -78,21 +78,20 @@ struct Material
     float3 f0;
 };
 
-#define BRDF_MAKE( N, L, V )								\
-	const float3	H = normalize(L + V);			  	    \
-	const float		VdotN = abs(dot(N, V)) + 1e-5;			\
-	const float		LdotN = max(0.0, dot(L, N));  			\
-	const float		HdotV = max(0.0, dot(H, V));			\
-	const float		HdotN = max(0.0, dot(H, N)); 			\
-	const float		NdotV = VdotN;					  		\
-	const float		NdotL = LdotN;					  		\
-	const float		VdotH = HdotV;					  		\
-	const float		NdotH = HdotN;					  		\
-	const float		LdotH = HdotV;					  		\
-	const float		HdotL = LdotH;
+#define BRDF_MAKE(N, L, V)                     \
+    const float3 H = normalize(L + V);         \
+    const float VdotN = abs(dot(N, V)) + 1e-5; \
+    const float LdotN = max(0.0, dot(L, N));   \
+    const float HdotV = max(0.0, dot(H, V));   \
+    const float HdotN = max(0.0, dot(H, N));   \
+    const float NdotV = VdotN;                 \
+    const float NdotL = LdotN;                 \
+    const float VdotH = HdotV;                 \
+    const float NdotH = HdotN;                 \
+    const float LdotH = HdotV;                 \
+    const float HdotL = LdotH;
 
-#define BRDF_SPECULAR( ROUGHNESS, F0, F )					\
-	get_specular(NdotV, NdotL, LdotH, NdotH, ROUGHNESS, F0, F)
+#define BRDF_SPECULAR(ROUGHNESS, F0, F) get_specular(NdotV, NdotL, LdotH, NdotH, ROUGHNESS, F0, F)
 
 float3 BRDF_CALCULATE(Material material, float illuminance, float3 light_color, float3 N, float3 L, float3 V)
 {
