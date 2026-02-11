@@ -47,6 +47,10 @@ class RetroExampleApp : public qhenki::Application
     qhenki::gfx::Shader m_bevel_cube_vertex_shader{};
     qhenki::gfx::Shader m_bevel_cube_pixel_shader{};
 
+    qhenki::gfx::GraphicsPipeline m_stencil_cube_pipeline{};
+    qhenki::gfx::Shader m_stencil_cube_vertex_shader{};
+    qhenki::gfx::Shader m_stencil_cube_pixel_shader{};
+
     qhenki::gfx::GraphicsPipeline m_blit_copy_pipeline{};
     qhenki::gfx::GraphicsPipeline m_blit_luminance_pipeline{};
     qhenki::gfx::GraphicsPipeline m_blit_bloom_1d_horizontal_pipeline{};
@@ -62,8 +66,9 @@ class RetroExampleApp : public qhenki::Application
 
     Mesh m_skybox_mesh;
 
+    Mesh m_stencil_mesh;
+
     Mesh m_bevel_cube_mesh;
-    qhenki::gfx::Buffer m_bevel_cube_buffer{};
 
     std::array<qhenki::gfx::Descriptor, m_frames_in_flight> m_matrix_descriptors{};
     std::array<qhenki::gfx::Buffer, m_frames_in_flight> m_matrix_buffers{};
@@ -102,7 +107,7 @@ class RetroExampleApp : public qhenki::Application
 
     PerspectiveCamera m_orbit_camera{};
 
-    int m_active_camera_index = 1;
+    unsigned m_active_camera_index = 1;
 
     static const DXGI_FORMAT m_offscreen_rt_format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     static const DXGI_FORMAT m_depth_format = DXGI_FORMAT_D24_UNORM_S8_UINT;

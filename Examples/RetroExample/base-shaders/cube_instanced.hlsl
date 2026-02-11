@@ -80,8 +80,8 @@ static const float ambient_strength = 0.6;
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
-    float3 view_dir = normalize(frame_constants.camera_position - input.world_pos);
-    float3 n = normalize(input.normal);
+    float3 V = normalize(frame_constants.camera_position - input.world_pos);
+    float3 N = normalize(input.normal);
 
     // Point light
     float3 light_pos = frame_constants.cube_world[3].xyz;
@@ -89,7 +89,7 @@ PSOutput ps_main(PSInput input)
     float dist_sq = dot(L, L) + 1e-6;
     float dist = sqrt(dist_sq);
     L /= dist;
-    float NdotL = max(0.0, dot(n, L));
+    float NdotL = max(0.0, dot(N, L));
     float attenuation = light_intensity / (1.0 + dist_sq / light_radius_sq);
     float illuminance = NdotL * attenuation;
 
@@ -104,7 +104,7 @@ PSOutput ps_main(PSInput input)
     material.ao = ao;
     material.f0 = lerp(float3(0.04, 0.04, 0.04), material.albedo, metallic);
 
-    float3 pbr_color = BRDF_CALCULATE(material, illuminance, light_color.rgb, n, L, view_dir);
+    float3 pbr_color = BRDF_CALCULATE(material, illuminance, light_color.rgb, N, L, V);
 
     float3 ambient = ambient_color * ambient_strength * material.albedo * material.ao;
     output.color = float4(pbr_color + ambient, 1.0);

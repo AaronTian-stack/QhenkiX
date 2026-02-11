@@ -18,6 +18,7 @@ struct FrameConstants
 {
     CameraMatrices camera_buffer;
     XMFLOAT4X4 cube_world;
+    XMFLOAT4X4 stencil_world;
     XMFLOAT3 camera_position;
     float time;
 };

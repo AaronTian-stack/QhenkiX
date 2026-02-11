@@ -197,7 +197,6 @@ void RetroExampleApp::create()
     };
 
     set_accessor(&m_skybox_mesh.position, prim.attributes.at("POSITION"));
-    set_accessor(&m_skybox_mesh.normal, prim.attributes.at("NORMAL"));
     set_accessor(&m_skybox_mesh.index, prim.indices);
 
     assert(model.buffers.size() == 1);
@@ -241,6 +240,53 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
     auto& cmd_list_init = m_cmd_lists[m_frame_index];
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
+
+    tinygltf::Model stencil_model;
+    bool stencil_ret = loader.LoadBinaryFromFile(&stencil_model, &err, &warn, "assets/cylinder_capped.glb");
+    assert(stencil_model.meshes.size() == 1);
+    assert(stencil_model.meshes[0].primitives.size() == 1);
+    auto& stencil_prim = stencil_model.meshes[0].primitives[0];
+    if (!stencil_ret)
+    {
+        printf("Failed to parse cylinder_capped.glb: %s\n", err.c_str());
+    }
+    auto set_accessor_stencil = [&stencil_model](Mesh::AccessorBufferView* abv, const int accessor_idx)
+    {
+        const auto& accessor = stencil_model.accessors[accessor_idx];
+        abv->first = {
+            .offset = accessor.byteOffset,
+            .count = accessor.count,
+            .type = accessor.type,
+            .component_type = accessor.componentType,
+        };
+        const auto& buffer_view = stencil_model.bufferViews[accessor.bufferView];
+        abv->second = {
+            .offset = buffer_view.byteOffset,
+            .length = buffer_view.byteLength,
+            .stride = buffer_view.byteStride,
+        };
+    };
+    set_accessor_stencil(&m_stencil_mesh.position, stencil_prim.attributes.at("POSITION"));
+    set_accessor_stencil(&m_stencil_mesh.index, stencil_prim.indices);
+
+    assert(stencil_model.buffers.size() == 1);
+    auto& stencil_buffer = stencil_model.buffers[0];
+    qhenki::gfx::BufferDesc stencil_desc{
+        .size = stencil_buffer.data.size(),
+        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
+    };
+    qhenki::gfx::Buffer stencil_CPU;
+    THROW_IF_FALSE(m_context->create_buffer(stencil_desc, nullptr, &stencil_CPU, "Stencil cylinder CPU"));
+    {
+        void* ptr = m_context->map_buffer(stencil_CPU);
+        THROW_IF_FALSE(ptr);
+        memcpy(ptr, stencil_buffer.data.data(), stencil_buffer.data.size());
+        m_context->unmap_buffer(stencil_CPU);
+    }
+    stencil_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
+    THROW_IF_FALSE(m_context->create_buffer(stencil_desc, nullptr, &m_stencil_mesh.buffer, "Stencil cylinder GPU"));
+    m_context->copy_buffer(&cmd_list_init, stencil_CPU, 0, &m_stencil_mesh.buffer, 0, stencil_buffer.data.size());
 
     tinygltf::Model cube_model;
     bool cube_ret = loader.LoadBinaryFromFile(&cube_model, &err, &warn, "assets/bevel_cube.glb");
@@ -287,8 +333,8 @@ void RetroExampleApp::create()
         m_context->unmap_buffer(bevel_cube_CPU);
     }
     cube_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &m_bevel_cube_buffer, "Bevel Cube GPU"));
-    m_context->copy_buffer(&cmd_list_init, bevel_cube_CPU, 0, &m_bevel_cube_buffer, 0, cube_buffer.data.size());
+    THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &m_bevel_cube_mesh.buffer, "Bevel Cube GPU"));
+    m_context->copy_buffer(&cmd_list_init, bevel_cube_CPU, 0, &m_bevel_cube_mesh.buffer, 0, cube_buffer.data.size());
 
     qhenki::gfx::Buffer skybox_staging;
 
@@ -378,7 +424,7 @@ void RetroExampleApp::create()
                                               &m_skybox_pipeline,
                                               m_skybox_vertex_shader,
                                               m_skybox_pixel_shader,
-                                              &m_pipeline_layout, // Reuse existing layout (CBV + SRV + sampler)
+                                              &m_pipeline_layout,
                                               "Skybox pipeline"));
 
     const char* cube_vs_name = use_dx11 ? "cube_vs_5_0_vs_main.dxbc" : "cube_vs_6_6_vs_main.dxil";
@@ -400,12 +446,56 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Cube pipeline"));
 
-    const char* bevel_vs_name = use_dx11 ? "cube_instanced_vs_5_0_vs_main.dxbc" : "cube_instanced_vs_6_6_vs_main.dxil";
-    const char* bevel_ps_name = use_dx11 ? "cube_instanced_ps_5_0_ps_main.dxbc" : "cube_instanced_ps_6_6_ps_main.dxil";
-    THROW_IF_FALSE(load_shader(bevel_vs_name, qhenki::gfx::VERTEX_SHADER, &m_bevel_cube_vertex_shader));
-    THROW_IF_FALSE(load_shader(bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
-    qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
-        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
+    const char* stencil_vs_name = use_dx11 ? "stencil_cube_vs_5_0_vs_main.dxbc" : "stencil_cube_vs_6_6_vs_main.dxil";
+    const char* stencil_ps_name = use_dx11 ? "stencil_cube_ps_5_0_ps_main.dxbc" : "stencil_cube_ps_6_6_ps_main.dxil";
+    THROW_IF_FALSE(load_shader(stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_cube_vertex_shader));
+    THROW_IF_FALSE(load_shader(stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_cube_pixel_shader));
+
+    D3D12_BLEND_DESC stencil_blend_desc{
+        .AlphaToCoverageEnable = FALSE,
+        .IndependentBlendEnable = FALSE,
+        .RenderTarget =
+            {
+                {
+                    .BlendEnable = FALSE,
+                    .LogicOpEnable = FALSE,
+                    .SrcBlend = D3D12_BLEND_ONE,
+                    .DestBlend = D3D12_BLEND_ZERO,
+                    .BlendOp = D3D12_BLEND_OP_ADD,
+                    .SrcBlendAlpha = D3D12_BLEND_ONE,
+                    .DestBlendAlpha = D3D12_BLEND_ZERO,
+                    .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+                    .LogicOp = D3D12_LOGIC_OP_NOOP,
+                    .RenderTargetWriteMask = 0,
+                },
+            },
+    };
+
+    qhenki::gfx::GraphicsPipelineDesc stencil_pipeline_desc = {
+        .blend_desc = stencil_blend_desc,
+        .depth_stencil_state =
+            qhenki::gfx::DepthStencilDesc{
+                .front_face =
+                    {
+                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilPassOp = D3D12_STENCIL_OP_INCR_SAT,
+                        .StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS,
+                    },
+                .back_face =
+                    {
+                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilPassOp = D3D12_STENCIL_OP_INCR_SAT,
+                        .StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS,
+                    },
+                .depth_write_mask = D3D12_DEPTH_WRITE_MASK_ZERO,
+                .depth_func = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+                .stencil_read_mask = 0xFF,
+                .stencil_write_mask = 0xFF,
+                .depth_enable = true,
+                .stencil_enable = true,
+            },
         .rtv_formats = {m_offscreen_rt_format},
         .rasterizer_state =
             qhenki::gfx::RasterizerDesc{
@@ -416,6 +506,52 @@ void RetroExampleApp::create()
         .dsv_format = m_depth_format,
         .increment_slot = true,
     };
+    THROW_IF_FALSE(m_context->create_pipeline(stencil_pipeline_desc,
+                                              &m_stencil_cube_pipeline,
+                                              m_stencil_cube_vertex_shader,
+                                              m_stencil_cube_pixel_shader,
+                                              &m_pipeline_layout,
+                                              "Stencil cube pipeline"));
+
+    const char* bevel_vs_name = use_dx11 ? "cube_instanced_vs_5_0_vs_main.dxbc" : "cube_instanced_vs_6_6_vs_main.dxil";
+    const char* bevel_ps_name = use_dx11 ? "cube_instanced_ps_5_0_ps_main.dxbc" : "cube_instanced_ps_6_6_ps_main.dxil";
+    THROW_IF_FALSE(load_shader(bevel_vs_name, qhenki::gfx::VERTEX_SHADER, &m_bevel_cube_vertex_shader));
+    THROW_IF_FALSE(load_shader(bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
+    qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
+        .depth_stencil_state =
+            qhenki::gfx::DepthStencilDesc{
+                .front_face =
+                    {
+                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilPassOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilFunc = D3D12_COMPARISON_FUNC_EQUAL,
+                    },
+                .back_face =
+                    {
+                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilPassOp = D3D12_STENCIL_OP_KEEP,
+                        .StencilFunc = D3D12_COMPARISON_FUNC_EQUAL,
+                    },
+                .depth_write_mask = D3D12_DEPTH_WRITE_MASK_ALL,
+                .depth_func = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+                .stencil_read_mask = 0xFF,
+                .stencil_write_mask = 0x00,
+                .depth_enable = true,
+                .stencil_enable = true,
+            },
+        .rtv_formats = {m_offscreen_rt_format},
+        .rasterizer_state =
+            qhenki::gfx::RasterizerDesc{
+                .cull_mode = D3D12_CULL_MODE_BACK,
+                .front_counter_clockwise = false,
+            },
+        .num_render_targets = 1,
+        .dsv_format = m_depth_format,
+        .increment_slot = true,
+    };
+
     THROW_IF_FALSE(m_context->create_pipeline(bevel_pipeline_desc,
                                               &m_bevel_cube_pipeline,
                                               m_bevel_cube_vertex_shader,
@@ -700,6 +836,13 @@ void RetroExampleApp::render()
 
     const XMMATRIX cube_world_mat = qhenki::math::TransformSIMD::load(m_cube_child.world_transform).to_matrix();
 
+    const float scale = 2.f + (1.f + std::sin(-time_sec * 2.f)) * 0.5f * 1.5f;
+    const XMMATRIX stencil_world_mat =
+        XMMatrixMultiply(XMMatrixMultiply(XMMatrixIdentity(), XMMatrixScaling(scale, 1.f, scale)),
+                         XMMatrixTranslation(m_cube_parent.world_transform.translation.x,
+                                             0.0f,
+                                             m_cube_parent.world_transform.translation.z));
+
     const PerspectiveCamera& active_camera = m_active_camera_index == 0 ? m_camera
                                            : m_active_camera_index == 1 ? m_cube_camera
                                                                         : m_orbit_camera;
@@ -728,6 +871,7 @@ void RetroExampleApp::render()
     XMStoreFloat4x4(&cb.camera_buffer.view_proj, XMMatrixTranspose(view_proj));
     XMStoreFloat4x4(&cb.camera_buffer.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
     XMStoreFloat4x4(&cb.cube_world, XMMatrixTranspose(cube_world_mat));
+    XMStoreFloat4x4(&cb.stencil_world, XMMatrixTranspose(stencil_world_mat));
     cb.camera_position = display_world.translation;
     cb.time = time_sec;
 
@@ -748,7 +892,8 @@ void RetroExampleApp::render()
     };
     qhenki::gfx::RenderTarget depth{
         .clear_params = {.dsv_clear_params = {1.f, 0}},
-        .clear_type = qhenki::gfx::RenderTarget::DEPTH,
+        .clear_type = static_cast<qhenki::gfx::RenderTarget::ClearType>(qhenki::gfx::RenderTarget::DEPTH |
+                                                                        qhenki::gfx::RenderTarget::STENCIL),
         .descriptor = m_depth_buffer_descriptor,
     };
     m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(color).data(), &depth);
@@ -820,26 +965,26 @@ void RetroExampleApp::render()
         const unsigned comp_count = type == TINYGLTF_TYPE_SCALAR ? 1u : type == TINYGLTF_TYPE_VEC2 ? 2u : 3u;
         return comp_size * comp_count;
     };
-    auto vb_offset = [](const Mesh::AccessorBufferView& abv) -> unsigned
+    auto vb_offset = [](const Mesh::AccessorBufferView& abv)
     {
         return static_cast<unsigned>(abv.second.offset + abv.first.offset);
     };
-    auto vb_length = [](const Mesh::AccessorBufferView& abv) -> unsigned
+    auto vb_length = [](const Mesh::AccessorBufferView& abv)
     {
         return static_cast<unsigned>(abv.second.length);
     };
-    auto vb_stride = [&stride_from_accessor](const Mesh::AccessorBufferView& abv) -> unsigned
+    auto vb_stride = [&stride_from_accessor](const Mesh::AccessorBufferView& abv)
     {
         return abv.second.stride != 0 ? static_cast<unsigned>(abv.second.stride)
                                       : stride_from_accessor(abv.first.component_type, abv.first.type);
     };
-    const std::array skybox_vbs = {&m_skybox_buffer, &m_skybox_buffer};
-    const std::array skybox_vb_offsets = {vb_offset(m_skybox_mesh.position), vb_offset(m_skybox_mesh.normal)};
-    const std::array skybox_vb_lengths = {vb_length(m_skybox_mesh.position), vb_length(m_skybox_mesh.normal)};
-    const std::array skybox_vb_strides = {vb_stride(m_skybox_mesh.position), vb_stride(m_skybox_mesh.normal)};
+    const std::array skybox_vbs = {&m_skybox_buffer};
+    const std::array skybox_vb_offsets = {vb_offset(m_skybox_mesh.position)};
+    const std::array skybox_vb_lengths = {vb_length(m_skybox_mesh.position)};
+    const std::array skybox_vb_strides = {vb_stride(m_skybox_mesh.position)};
     m_context->bind_vertex_buffers(&cmd_list,
                                    0,
-                                   2,
+                                   skybox_vbs.size(),
                                    skybox_vbs.data(),
                                    skybox_vb_lengths.data(),
                                    skybox_vb_strides.data(),
@@ -855,19 +1000,45 @@ void RetroExampleApp::render()
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_cube_pipeline));
     m_context->draw(&cmd_list, 36u, 0);
 
-    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_bevel_cube_pipeline));
-    const std::array bevel_vbs = {&m_bevel_cube_buffer, &m_bevel_cube_buffer};
+    const std::array bevel_vbs = {&m_bevel_cube_mesh.buffer, &m_bevel_cube_mesh.buffer};
     const std::array bevel_vb_offsets = {vb_offset(m_bevel_cube_mesh.position), vb_offset(m_bevel_cube_mesh.normal)};
     const std::array bevel_vb_lengths = {vb_length(m_bevel_cube_mesh.position), vb_length(m_bevel_cube_mesh.normal)};
     const std::array bevel_vb_strides = {vb_stride(m_bevel_cube_mesh.position), vb_stride(m_bevel_cube_mesh.normal)};
-    m_context->bind_vertex_buffers(
-        &cmd_list, 0, 2, bevel_vbs.data(), bevel_vb_lengths.data(), bevel_vb_strides.data(), bevel_vb_offsets.data());
     const unsigned bevel_index_offset = static_cast<unsigned>(m_bevel_cube_mesh.index.second.offset +
                                                               m_bevel_cube_mesh.index.first.offset);
     const auto bevel_index_type = m_bevel_cube_mesh.index.first.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
                                     ? qhenki::gfx::IndexType::UINT16
                                     : qhenki::gfx::IndexType::UINT32;
-    m_context->bind_index_buffer(&cmd_list, m_bevel_cube_buffer, bevel_index_type, bevel_index_offset);
+
+    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_stencil_cube_pipeline));
+    const std::array stencil_vbs = {&m_stencil_mesh.buffer};
+    const std::array stencil_vb_offsets = {vb_offset(m_stencil_mesh.position)};
+    const std::array stencil_vb_lengths = {vb_length(m_stencil_mesh.position)};
+    const std::array stencil_vb_strides = {vb_stride(m_stencil_mesh.position)};
+    m_context->bind_vertex_buffers(&cmd_list,
+                                   0,
+                                   stencil_vbs.size(),
+                                   stencil_vbs.data(),
+                                   stencil_vb_lengths.data(),
+                                   stencil_vb_strides.data(),
+                                   stencil_vb_offsets.data());
+    const unsigned stencil_index_offset = static_cast<unsigned>(m_stencil_mesh.index.second.offset +
+                                                                m_stencil_mesh.index.first.offset);
+    const auto stencil_index_type = m_stencil_mesh.index.first.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+                                      ? qhenki::gfx::IndexType::UINT16
+                                      : qhenki::gfx::IndexType::UINT32;
+    m_context->bind_index_buffer(&cmd_list, m_stencil_mesh.buffer, stencil_index_type, stencil_index_offset);
+    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_stencil_mesh.index.first.count), 1, 0, 0, 0);
+
+    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_bevel_cube_pipeline));
+    m_context->bind_vertex_buffers(&cmd_list,
+                                   0,
+                                   bevel_vbs.size(),
+                                   bevel_vbs.data(),
+                                   bevel_vb_lengths.data(),
+                                   bevel_vb_strides.data(),
+                                   bevel_vb_offsets.data());
+    m_context->bind_index_buffer(&cmd_list, m_bevel_cube_mesh.buffer, bevel_index_type, bevel_index_offset);
     constexpr unsigned bevel_instance_count = grid_size * grid_size;
     m_context->draw_indexed(
         &cmd_list, static_cast<unsigned>(m_bevel_cube_mesh.index.first.count), bevel_instance_count, 0, 0, 0);
@@ -1105,12 +1276,12 @@ void RetroExampleApp::render()
     m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
-void RetroExampleApp::resize(unsigned width, unsigned height)
+void RetroExampleApp::resize(const unsigned width, const unsigned height)
 {
     m_context->wait_idle(&m_graphics_queue);
     const qhenki::gfx::TextureDesc depth_desc{
         .width = static_cast<uint64_t>(width),
-        .height = static_cast<uint32_t>(height),
+        .height = height,
         .format = m_depth_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
@@ -1120,7 +1291,7 @@ void RetroExampleApp::resize(unsigned width, unsigned height)
 
     const qhenki::gfx::TextureDesc offscreen_rt_desc{
         .width = static_cast<uint64_t>(width),
-        .height = static_cast<uint32_t>(height),
+        .height = height,
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
@@ -1136,7 +1307,7 @@ void RetroExampleApp::resize(unsigned width, unsigned height)
 
     qhenki::gfx::TextureDesc blit_rt_desc{
         .width = static_cast<uint64_t>(width / 4),
-        .height = static_cast<uint32_t>(height / 4),
+        .height = height / 4,
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,

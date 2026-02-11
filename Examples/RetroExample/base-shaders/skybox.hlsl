@@ -11,7 +11,6 @@ static const float PI = 3.14159265;
 struct VertexIn
 {
     float3 position : POSITION;
-    float3 normal : COLOR0;
 };
 
 static const float scale_factor = 2.0;
