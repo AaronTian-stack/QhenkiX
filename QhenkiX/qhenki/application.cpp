@@ -119,6 +119,7 @@ void Application::run(const gfx::API api,
     THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[m_frame_index]));
 
     create();
+    resize(m_window.m_display_info.width, m_window.m_display_info.height);
     // Starts the main loop
     while (!m_QUIT)
     {

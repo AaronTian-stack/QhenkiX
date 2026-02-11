@@ -247,7 +247,7 @@ void ImGUIExampleApp::render()
     m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
-void ImGUIExampleApp::resize(int width, int height)
+void ImGUIExampleApp::resize(unsigned width, unsigned height)
 {
 }
 
