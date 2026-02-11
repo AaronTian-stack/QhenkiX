@@ -78,6 +78,9 @@ public:
         return {0.f, 0.f, 0.f, 1.f};
     }
 
+    Transform lerp(const Transform& other, float t) const;
+    static Transform lerp(const Transform& t1, const Transform& t2, float t);
+
     Transform();
     Transform(const XMFLOAT3& translation);
     Transform(const XMFLOAT4& rotation, const XMFLOAT3& translation);
