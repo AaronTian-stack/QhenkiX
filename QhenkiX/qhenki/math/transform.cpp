@@ -184,6 +184,20 @@ XMVECTOR Transform::axis_z() const
     AXIS(g_XMIdentityR2, XMLoadFloat4(&rotation));
 }
 
+Transform Transform::lerp(const Transform& other, float t) const
+{
+    Transform result;
+    XMStoreFloat3(&result.scale, XMVectorLerp(XMLoadFloat3(&scale), XMLoadFloat3(&other.scale), t));
+    XMStoreFloat4(&result.rotation, XMQuaternionSlerp(XMLoadFloat4(&rotation), XMLoadFloat4(&other.rotation), t));
+    XMStoreFloat3(&result.translation, XMVectorLerp(XMLoadFloat3(&translation), XMLoadFloat3(&other.translation), t));
+    return result;
+}
+
+Transform Transform::lerp(const Transform& t1, const Transform& t2, float t)
+{
+    return t1.lerp(t2, t);
+}
+
 Transform::Transform()
     : scale(identity_scale()),
       rotation(identity_rotation()),
