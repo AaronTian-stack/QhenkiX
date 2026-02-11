@@ -680,14 +680,8 @@ void RetroExampleApp::render()
             else
             {
                 const float blend = std::min(m_camera_transition_t, 1.f);
-                const auto& from = m_camera_transition_start;
-                const auto& to = current.hierarchy.world_transform;
-                XMStoreFloat3(&m_camera_transition_start.translation,
-                              XMVectorLerp(XMLoadFloat3(&from.translation), XMLoadFloat3(&to.translation), blend));
-                XMStoreFloat4(&m_camera_transition_start.rotation,
-                              XMQuaternionSlerp(XMLoadFloat4(&from.rotation), XMLoadFloat4(&to.rotation), blend));
-                XMStoreFloat3(&m_camera_transition_start.scale,
-                              XMVectorLerp(XMLoadFloat3(&from.scale), XMLoadFloat3(&to.scale), blend));
+                m_camera_transition_start =
+                    qhenki::math::Transform::lerp(m_camera_transition_start, current.hierarchy.world_transform, blend);
             }
             m_active_camera_index = (m_active_camera_index + 1) % 3;
             m_camera_transition_t = 0.f;
@@ -714,13 +708,8 @@ void RetroExampleApp::render()
     if (m_camera_transition_t >= 0.f)
     {
         const float blend = std::min(m_camera_transition_t, 1.f);
-        const auto& from = m_camera_transition_start;
-        const auto& to = active_camera.hierarchy.world_transform;
-        XMStoreFloat3(&display_world.translation,
-                      XMVectorLerp(XMLoadFloat3(&from.translation), XMLoadFloat3(&to.translation), blend));
-        XMStoreFloat4(&display_world.rotation,
-                      XMQuaternionSlerp(XMLoadFloat4(&from.rotation), XMLoadFloat4(&to.rotation), blend));
-        XMStoreFloat3(&display_world.scale, XMVectorLerp(XMLoadFloat3(&from.scale), XMLoadFloat3(&to.scale), blend));
+        display_world =
+            qhenki::math::Transform::lerp(m_camera_transition_start, active_camera.hierarchy.world_transform, blend);
     }
     else
     {
@@ -1116,7 +1105,7 @@ void RetroExampleApp::render()
     m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
-void RetroExampleApp::resize(int width, int height)
+void RetroExampleApp::resize(unsigned width, unsigned height)
 {
     m_context->wait_idle(&m_graphics_queue);
     const qhenki::gfx::TextureDesc depth_desc{

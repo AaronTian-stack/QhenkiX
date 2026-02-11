@@ -111,7 +111,7 @@ protected:
     void init_display_window(void* payload) override;
     void create() override;
     void render() override;
-    void resize(int width, int height) override;
+    void resize(unsigned width, unsigned height) override;
     void destroy() override;
 
 public:
