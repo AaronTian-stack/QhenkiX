@@ -28,6 +28,6 @@ class ImGUIExampleApp : public qhenki::Application
 protected:
     void create() override;
     void render() override;
-    void resize(int width, int height) override;
+    void resize(unsigned width, unsigned height) override;
     void destroy() override;
 };

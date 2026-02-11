@@ -193,18 +193,6 @@ void gltfViewerApp::create()
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
     }
 
-    // Depth buffer
-    const auto display_size = m_window.get_display_size();
-    qhenki::gfx::TextureDesc depth_desc{
-        .width = display_size.x,
-        .height = display_size.y,
-        .format = DXGI_FORMAT_D32_FLOAT,
-        .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
-        .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
-    };
-    THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
-    THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
-
     // Make 2 matrix constant buffers for double buffering
     qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(CameraData),
                                                                       qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
@@ -888,13 +876,12 @@ void gltfViewerApp::render()
     m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
 }
 
-void gltfViewerApp::resize(const int width, const int height)
+void gltfViewerApp::resize(const unsigned width, const unsigned height)
 {
     m_context->wait_idle(&m_graphics_queue);
-    // Recreate the depth buffer
     const qhenki::gfx::TextureDesc depth_desc{
         .width = static_cast<uint64_t>(width),
-        .height = static_cast<uint32_t>(height),
+        .height = height,
         .format = DXGI_FORMAT_D32_FLOAT,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
