@@ -446,10 +446,10 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Cube pipeline"));
 
-    const char* stencil_vs_name = use_dx11 ? "stencil_cube_vs_5_0_vs_main.dxbc" : "stencil_cube_vs_6_6_vs_main.dxil";
-    const char* stencil_ps_name = use_dx11 ? "stencil_cube_ps_5_0_ps_main.dxbc" : "stencil_cube_ps_6_6_ps_main.dxil";
-    THROW_IF_FALSE(load_shader(stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_cube_vertex_shader));
-    THROW_IF_FALSE(load_shader(stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_cube_pixel_shader));
+    const char* stencil_vs_name = use_dx11 ? "stencil_vs_5_0_vs_main.dxbc" : "stencil_cube_vs_6_6_vs_main.dxil";
+    const char* stencil_ps_name = use_dx11 ? "stencil_ps_5_0_ps_main.dxbc" : "stencil_cube_ps_6_6_ps_main.dxil";
+    THROW_IF_FALSE(load_shader(stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_vertex_shader));
+    THROW_IF_FALSE(load_shader(stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_pixel_shader));
 
     D3D12_BLEND_DESC stencil_blend_desc{
         .AlphaToCoverageEnable = FALSE,
@@ -507,9 +507,9 @@ void RetroExampleApp::create()
         .increment_slot = true,
     };
     THROW_IF_FALSE(m_context->create_pipeline(stencil_pipeline_desc,
-                                              &m_stencil_cube_pipeline,
-                                              m_stencil_cube_vertex_shader,
-                                              m_stencil_cube_pixel_shader,
+                                              &m_stencil_pipeline,
+                                              m_stencil_vertex_shader,
+                                              m_stencil_pixel_shader,
                                               &m_pipeline_layout,
                                               "Stencil cube pipeline"));
 
@@ -1010,7 +1010,7 @@ void RetroExampleApp::render()
                                     ? qhenki::gfx::IndexType::UINT16
                                     : qhenki::gfx::IndexType::UINT32;
 
-    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_stencil_cube_pipeline));
+    THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_stencil_pipeline));
     const std::array stencil_vbs = {&m_stencil_mesh.buffer};
     const std::array stencil_vb_offsets = {vb_offset(m_stencil_mesh.position)};
     const std::array stencil_vb_lengths = {vb_length(m_stencil_mesh.position)};

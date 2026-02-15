@@ -47,9 +47,9 @@ class RetroExampleApp : public qhenki::Application
     qhenki::gfx::Shader m_bevel_cube_vertex_shader{};
     qhenki::gfx::Shader m_bevel_cube_pixel_shader{};
 
-    qhenki::gfx::GraphicsPipeline m_stencil_cube_pipeline{};
-    qhenki::gfx::Shader m_stencil_cube_vertex_shader{};
-    qhenki::gfx::Shader m_stencil_cube_pixel_shader{};
+    qhenki::gfx::GraphicsPipeline m_stencil_pipeline{};
+    qhenki::gfx::Shader m_stencil_vertex_shader{};
+    qhenki::gfx::Shader m_stencil_pixel_shader{};
 
     qhenki::gfx::GraphicsPipeline m_blit_copy_pipeline{};
     qhenki::gfx::GraphicsPipeline m_blit_luminance_pipeline{};
