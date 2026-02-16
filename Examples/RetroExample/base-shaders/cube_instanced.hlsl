@@ -27,11 +27,12 @@ static const float grid_half = (grid_size - 1) * grid_spacing * 0.5;
 static const float vertical_scale = -3.2;
 static const float influence_radius = 10.0;
 
-static const float3 palette[] = {
-    float3(76, 62, 36),    // Brown
-    float3(251, 185, 84),  // Yellow
-    float3(144, 94, 169),  // Purple
-    float3(131, 28, 93),   // Dark Purple
+static const float3 palette[] =
+{
+    float3(76, 62, 36), // Brown
+    float3(251, 185, 84), // Yellow
+    float3(144, 94, 169), // Purple
+    float3(131, 28, 93), // Dark Purple
     float3(155, 171, 178), // Gray
 };
 static const uint palette_count = 5;
@@ -68,18 +69,12 @@ PSInput vs_main(VertexIn input, uint instance_id : SV_InstanceID)
     return output;
 }
 
-struct PSOutput
-{
-    float4 color : SV_Target0;
-};
-
 static const float light_radius_sq = 32.0;
 static const float3 ambient_color = float3(0.25, 0.28, 0.35);
 static const float ambient_strength = 0.6;
 
-PSOutput ps_main(PSInput input)
+float4 ps_main(PSInput input) : SV_Target0
 {
-    PSOutput output;
     float3 V = normalize(frame_constants.camera_position - input.world_pos);
     float3 N = normalize(input.normal);
 
@@ -107,6 +102,5 @@ PSOutput ps_main(PSInput input)
     float3 pbr_color = BRDF_CALCULATE(material, illuminance, light_color.rgb, N, L, V);
 
     float3 ambient = ambient_color * ambient_strength * material.albedo * material.ao;
-    output.color = float4(pbr_color + ambient, 1.0);
-    return output;
+    return float4(pbr_color + ambient, 1.0);
 }

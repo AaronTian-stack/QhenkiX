@@ -2,13 +2,13 @@
 
 static const float luminance_threshold = 0.25;
 
-struct BlitPSInput
+struct PSInput
 {
     float4 position : SV_Position;
     float2 uv : TEXCOORD0;
 };
 
-float4 ps_main(BlitPSInput input)
+float4 ps_main(PSInput input)
     : SV_Target0
 {
     float4 c = g_texture.Sample(samp_linear, input.uv);

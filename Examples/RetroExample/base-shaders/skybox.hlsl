@@ -7,40 +7,27 @@ struct PSInput
 };
 
 static const float PI = 3.14159265;
-
-struct VertexIn
-{
-    float3 position : POSITION;
-};
-
 static const float scale_factor = 2.0;
 
-PSInput vs_main(VertexIn input)
+PSInput vs_main(float3 position : POSITION)
 {
     PSInput output;
 
-    float4 dir = float4(input.position, 0.0);
+    float4 dir = float4(position, 0.0);
     dir.y *= scale_factor;
 
     output.position = mul(dir, frame_constants.camera_buffer.view_proj);
     output.position.z = output.position.w;
 
-    output.world_pos = input.position;
+    output.world_pos = position;
 
     return output;
 }
 
-struct PSOutput
-{
-    float4 color : SV_Target0;
-};
-
 #define STEPPED
 
-PSOutput ps_main(PSInput input)
+float4 ps_main(PSInput input) : SV_Target0
 {
-    PSOutput output;
-
     float3 dir = normalize(input.world_pos);
     float2 uv;
     uv.x = 1.0 - (atan2(dir.z, dir.x) + PI) / (2.0 * PI);
@@ -74,7 +61,5 @@ PSOutput ps_main(PSInput input)
     float dist_from_mid = 2.0 * abs(uv.y - 0.5);
     float alpha_fade = 1.0 - smoothstep(0.5, 1.0, dist_from_mid);
 
-    output.color = float4(dotted * tex.rgb, tex.a * alpha_fade);
-
-    return output;
+    return float4(dotted * tex.rgb, tex.a * alpha_fade);
 }
