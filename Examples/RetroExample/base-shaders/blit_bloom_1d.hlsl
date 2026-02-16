@@ -6,8 +6,8 @@ struct PSInput
     float2 uv : TEXCOORD0;
 };
 
-static const float bilinear_offsets[5] = { -3.229, -1.385, 0.0, 1.385, 3.229 };
-static const float bilinear_weights[5] = { 0.0702, 0.3161, 0.2270, 0.3161, 0.0702 };
+static const float bilinear_offsets[5] = {-3.229, -1.385, 0.0, 1.385, 3.229};
+static const float bilinear_weights[5] = {0.0702, 0.3161, 0.2270, 0.3161, 0.0702};
 
 void pixel(float2 loc, float weight, inout float3 sum_color, inout float sum_a)
 {
@@ -35,8 +35,7 @@ float4 ps_main(PSInput input)
     float3 sum_color = float3(0.0, 0.0, 0.0);
     float sum_a = 0.0;
 
-    [unroll]
-    for (int i = 0; i < 5; i++)
+    [unroll] for (int i = 0; i < 5; i++)
     {
         float offset = bilinear_offsets[i];
         float2 s = float2(tc.x + offset * step_uv * h_step, tc.y + offset * step_uv * v_step);

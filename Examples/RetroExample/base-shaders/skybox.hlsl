@@ -26,7 +26,8 @@ PSInput vs_main(float3 position : POSITION)
 
 #define STEPPED
 
-float4 ps_main(PSInput input) : SV_Target0
+float4 ps_main(PSInput input)
+    : SV_Target0
 {
     float3 dir = normalize(input.world_pos);
     float2 uv;

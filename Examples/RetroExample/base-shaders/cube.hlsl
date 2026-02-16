@@ -1,6 +1,7 @@
 #include "shared.hlsl"
 
-float4 vs_main(uint vertex_id : SV_VertexID) : SV_Position
+float4 vs_main(uint vertex_id : SV_VertexID)
+    : SV_Position
 {
     // Adapted from https://gist.github.com/rikusalminen/9393151
     uint tri = vertex_id / 3;
@@ -29,7 +30,8 @@ float4 vs_main(uint vertex_id : SV_VertexID) : SV_Position
     return mul(world_position, frame_constants.camera_buffer.view_proj);
 }
 
-float4 ps_main() : SV_TARGET0
+float4 ps_main()
+    : SV_TARGET0
 {
     return light_color;
 }
