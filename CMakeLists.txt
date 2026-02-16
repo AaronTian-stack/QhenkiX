@@ -13,6 +13,7 @@ set(SDL3_VERSION "3.2.28")
 option(BUILD_GLTF_VIEWER "Build gltfViewer example" ON)
 option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)
 option(BUILD_SIMPLE_EXAMPLE "Build SimpleExample" ON)
+option(BUILD_RETRO_EXAMPLE "Build RetroExample" ON)
 
 set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib (CI only)")
 set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe (CI only)")
@@ -53,4 +54,8 @@ endif()
 
 if(BUILD_SIMPLE_EXAMPLE)
     add_subdirectory(Examples/SimpleExample)
+endif()
+
+if(BUILD_RETRO_EXAMPLE)
+    add_subdirectory(Examples/RetroExample)
 endif()
