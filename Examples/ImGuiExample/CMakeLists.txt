@@ -28,7 +28,7 @@ if(MSVC)
 endif()
 
 target_include_directories(ImGuiExample PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${REPO_ROOT}/Examples/include
     ${REPO_ROOT}/QhenkiX/include
 )
 

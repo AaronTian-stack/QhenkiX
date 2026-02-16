@@ -1,32 +1,27 @@
-#include <iostream>
-#include <string>
+#include <cstdio>
+#include <argparse/argparse.hpp>
 #include "example_app.h"
 
 int main(int argc, char* argv[])
 {
-    auto api = qhenki::gfx::API::D3D12;
+    argparse::ArgumentParser program("SimpleExample");
 
-    for (int i = 1; i < argc; i++)
+    auto& api_group = program.add_mutually_exclusive_group();
+    api_group.add_argument("-dx11").flag().help("use DirectX 11");
+    api_group.add_argument("-dx12").flag().help("use DirectX 12");
+
+    try
     {
-        if (std::string(argv[i]) == "-api" && i + 1 < argc)
-        {
-            const int api_value = std::atoi(argv[i + 1]);
-            if (api_value == 0)
-            {
-                api = qhenki::gfx::API::D3D12;
-            }
-            else if (api_value == 1)
-            {
-                api = qhenki::gfx::API::D3D11;
-            }
-            else
-            {
-                std::cerr << "Invalid API value. Use 0 for D3D12 or 1 for D3D11." << std::endl;
-                return 1;
-            }
-            i++;
-        }
+        program.parse_args(argc, argv);
     }
+    catch (const std::exception& err)
+    {
+        fprintf(stderr, "%s\n", err.what());
+        fprintf(stderr, "%s", program.help().str().c_str());
+        return 1;
+    }
+
+    const auto api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11 : qhenki::gfx::API::D3D12;
 
     // Run simple example application for the QhenkiX Game Framework.
     ExampleApp app;

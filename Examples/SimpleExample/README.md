@@ -21,6 +21,5 @@ Demonstrates basic usage of the QhenkiX library. Extends the `Application` class
 
 ## Command Line Arguments
 
-- `-api <value>` - Select graphics API:
-  - `0` - DirectX 12 (Default)
-  - `1` - DirectX 11
+- `-dx12` - Use DirectX 12 (Default)
+- `-dx11` - Use DirectX 11

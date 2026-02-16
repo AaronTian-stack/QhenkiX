@@ -37,7 +37,7 @@ endif()
 target_compile_definitions(gltfViewer PRIVATE NOMINMAX)
 
 target_include_directories(gltfViewer PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${REPO_ROOT}/Examples/include
     ${REPO_ROOT}/QhenkiX/include
 )
 

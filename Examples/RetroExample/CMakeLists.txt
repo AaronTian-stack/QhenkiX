@@ -39,8 +39,9 @@ endif()
 target_compile_definitions(RetroExample PRIVATE NOMINMAX)
 
 target_include_directories(RetroExample PRIVATE
-    ${REPO_ROOT}/QhenkiX/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${REPO_ROOT}/Examples/include
+    ${REPO_ROOT}/QhenkiX/include
 )
 
 target_link_libraries(RetroExample PRIVATE QhenkiX)
