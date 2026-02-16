@@ -1,4 +1,5 @@
 #include <cstdio>
+
 #include <argparse/argparse.hpp>
 #include "gltf_viewer_app.h"
 

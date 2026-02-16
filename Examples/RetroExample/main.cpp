@@ -1,4 +1,5 @@
 #include <cstdio>
+
 #include <argparse/argparse.hpp>
 #include "retro_example_app.h"
 
