@@ -27,9 +27,8 @@ Art in skybox is from [32rogues asset pack](https://sethbb.itch.io/32rogues).
 
 ## Command Line Arguments
 
-- `-api <value>` - Select graphics API:
-  - `0` - DirectX 12 (Default)
-  - `1` - DirectX 11
+- `-dx12` - Use DirectX 12 (Default)
+- `-dx11` - Use DirectX 11
 - `-d` `--debug` - flag to enable graphics API debug layer
 - `-t` `--tearing` - flag to enable tearing
 - `-f` `--fullscreen` - flag to enable fullscreen

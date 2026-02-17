@@ -1,3 +1,5 @@
+#include <cstdio>
+
 #include <argparse/argparse.hpp>
 #include "gltf_viewer_app.h"
 
@@ -5,7 +7,9 @@ int main(int argc, char* argv[])
 {
     argparse::ArgumentParser program("gltfViewer");
 
-    program.add_argument("-api").default_value(0).help("what graphics API to use. 0: D3D12, 1: D3D11").scan<'i', int>();
+    auto& api_group = program.add_mutually_exclusive_group();
+    api_group.add_argument("-dx11").flag().help("use DirectX 11");
+    api_group.add_argument("-dx12").flag().help("use DirectX 12");
     program.add_argument("-t", "--tearing").flag().help("enable tearing (vsync off)");
     program.add_argument("-f", "--fullscreen").flag().help("start in fullscreen mode");
 
@@ -15,18 +19,12 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& err)
     {
-        std::cerr << err.what() << std::endl;
-        std::cerr << program;
+        fprintf(stderr, "%s\n", err.what());
+        fprintf(stderr, "%s", program.help().str().c_str());
         return 1;
     }
 
-    const auto api_index = program.get<int>("-api");
-    if (api_index < 0 || api_index > 1)
-    {
-        std::cerr << "Invalid API index" << std::endl;
-        return 1;
-    }
-    const auto api = api_index == 0 ? qhenki::gfx::API::D3D12 : qhenki::gfx::API::D3D11;
+    const auto api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11 : qhenki::gfx::API::D3D12;
 
     const bool tearing = program.get<bool>("--tearing");
     const bool fullscreen = program.get<bool>("--fullscreen");

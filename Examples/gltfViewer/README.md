@@ -17,8 +17,7 @@ A more advanced example demonstrating loading and rendering of glTF 3D models.
 
 ## Command Line Arguments
 
-- `-api <value>` - Select graphics API:
-  - `0` - DirectX 12 (Default)
-  - `1` - DirectX 11
+- `-dx12` - Use DirectX 12 (Default)
+- `-dx11` - Use DirectX 11
 - `-t` `--tearing` - flag to enable tearing
 - `-f` `--fullscreen` - flag to enable fullscreen
