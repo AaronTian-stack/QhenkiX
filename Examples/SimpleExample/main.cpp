@@ -24,7 +24,6 @@ int main(int argc, char* argv[])
 
     const auto api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11 : qhenki::gfx::API::D3D12;
 
-    // Run simple example application for the QhenkiX Game Framework.
     ExampleApp app;
     app.run(api, false, nullptr, std::nullopt);
 
