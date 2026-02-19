@@ -741,7 +741,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
             .Format = desc.format,
-            .SampleDesc = {1, 0}, // TODO: sample count
+            .SampleDesc = {.Count = desc.sample_count, .Quality = 0},
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
             .CPUAccessFlags = 0,

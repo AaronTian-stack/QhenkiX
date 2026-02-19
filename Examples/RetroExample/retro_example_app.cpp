@@ -590,14 +590,12 @@ void RetroExampleApp::create()
     }
 
     qhenki::gfx::GraphicsPipelineDesc blit_pipeline_desc = {
-        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
         .rtv_formats = {m_offscreen_rt_format},
         .num_render_targets = 1,
         .dsv_format = DXGI_FORMAT_UNKNOWN,
         .increment_slot = true,
     };
     qhenki::gfx::GraphicsPipelineDesc blit_copy_pipeline_desc = {
-        .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
         .rtv_formats = {m_swapchain.desc.format},
         .num_render_targets = 1,
         .dsv_format = DXGI_FORMAT_UNKNOWN,
@@ -1285,6 +1283,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .format = m_depth_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
+        .clear_depth_value = {.depth = 1.f, .stencil = 0},
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
     THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
@@ -1296,6 +1295,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .is_render_target = true,
+        .clear_color_value = {1.f, 1.f, 1.f, 0.f},
     };
     THROW_IF_FALSE(m_context->create_texture(offscreen_rt_desc, &m_offscreen_texture.tex, "Offscreen RT"));
     THROW_IF_FALSE(m_context->create_descriptor_render_target(m_offscreen_texture.tex,
@@ -1312,6 +1312,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .is_render_target = true,
+        .clear_color_value = {0.f, 0.f, 0.f, 0.f},
     };
     for (unsigned i = 0; i < m_bloom_textures.size(); i++)
     {
