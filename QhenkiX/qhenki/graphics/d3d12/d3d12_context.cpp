@@ -1360,13 +1360,13 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         .DepthOrArraySize = desc.depth_or_array_size,
         .MipLevels = desc.mip_levels,
         .Format = desc.format,
-        .SampleDesc = // TODO: options for RT usage
-        {
-            .Count = 1,
-            .Quality = 0,
-        },
+        .SampleDesc =
+            {
+                .Count = desc.sample_count,
+                .Quality = 0,
+            },
         .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-        .Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: need to set flags for RT and UAV
+        .Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: Set flags for UAV
                                            //.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
     };
     D3D12_CLEAR_VALUE clear{
@@ -1377,14 +1377,19 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
     {
         clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-        clear.DepthStencil = {.Depth = 1.0f, .Stencil = 0};
+        clear.DepthStencil = {.Depth = desc.clear_depth_value.depth, .Stencil = desc.clear_depth_value.stencil};
         // TODO: UAV flags
     }
     else if (desc.is_render_target)
     {
         clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-        clear.Color[0] = clear.Color[1] = clear.Color[2] = clear.Color[3] = 0.0f;
+
+        static_assert(desc.clear_color_value.size() == 4);
+        for (unsigned i = 0; i < 4; i++)
+        {
+            clear.Color[i] = desc.clear_color_value[i];
+        }
     }
 
     switch (desc.dimension)
