@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 #include "barrier.h"
@@ -19,10 +19,19 @@ struct TextureDesc
     uint16_t depth_or_array_size = 1;
     uint16_t mip_levels = 1;
     DXGI_FORMAT format; // TODO: replace type
-    // uint16_t sample_count = 1;
+    uint16_t sample_count = 1;
     TextureDimension dimension;
     Layout initial_layout = Layout::COMMON;
     bool is_render_target = false;
+    union
+    {
+        std::array<float, 4> clear_color_value;
+        struct
+        {
+            float depth;
+            uint8_t stencil;
+        } clear_depth_value;
+    };
 };
 
 struct Texture
