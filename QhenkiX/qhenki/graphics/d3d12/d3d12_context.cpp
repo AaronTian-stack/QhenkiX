@@ -1385,7 +1385,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
-        static_assert(desc.clear_color_value.size() == 4);
+        static_assert(std::tuple_size_v<decltype(std::declval<TextureDesc>().clear_color_value)> == 4);
         for (unsigned i = 0; i < 4; i++)
         {
             clear.Color[i] = desc.clear_color_value[i];
