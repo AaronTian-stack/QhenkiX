@@ -14,7 +14,7 @@ option(BUILD_SIMPLE_EXAMPLE "Build SimpleExample" ON)
 option(BUILD_RETRO_EXAMPLE "Build RetroExample" ON)
 
 set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib (CI only)")
-set(QHENKIX_PREBUILT_SDL_ROOT "" CACHE PATH "Path to prebuilt SDL3 binaries directory (contains SDL3.lib and SDL3.dll)")
+set(QHENKIX_PREBUILT_SDL_ROOT "" CACHE PATH "Path to prebuilt SDL3 output")
 set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe (CI only)")
 
 set(SDL_SHARED ON CACHE BOOL "" FORCE)
@@ -29,6 +29,10 @@ set(SDL_Hidapi OFF CACHE BOOL "" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 
+# Turn off DirectXTex runtime stuff
+set(BUILD_DX11 OFF CACHE BOOL "" FORCE)
+set(BUILD_DX12 OFF CACHE BOOL "" FORCE)
+
 if(QHENKIX_PREBUILT_LIB)
     include(QhenkiX/QhenkiXDeps.cmake)
     set(DXHEADERS_INSTALL ON CACHE BOOL "" FORCE)
@@ -41,12 +45,41 @@ if(QHENKIX_PREBUILT_LIB)
     add_subdirectory(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
 
     if(QHENKIX_PREBUILT_SDL_ROOT)
-        set(_qhenkix_sdl_lib "${QHENKIX_PREBUILT_SDL_ROOT}/SDL3.lib")
-        set(_qhenkix_sdl_dll "${QHENKIX_PREBUILT_SDL_ROOT}/SDL3.dll")
+        set(_qhenkix_sdl_search_paths
+            "${QHENKIX_PREBUILT_SDL_ROOT}"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/Release"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/lib"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/Lib"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/bin"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/Bin"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/Release"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/lib"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/bin"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/Release"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/lib"
+            "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/bin"
+        )
+
+        find_file(_qhenkix_sdl_lib SDL3.lib
+            PATHS ${_qhenkix_sdl_search_paths}
+            NO_DEFAULT_PATH
+        )
+
+        find_file(_qhenkix_sdl_dll SDL3.dll
+            PATHS ${_qhenkix_sdl_search_paths}
+            NO_DEFAULT_PATH
+        )
+
         set(_qhenkix_sdl_include_dir "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/SDL/include")
-        if(NOT EXISTS "${_qhenkix_sdl_lib}" OR NOT EXISTS "${_qhenkix_sdl_dll}")
+
+        if(NOT _qhenkix_sdl_lib)
             message(FATAL_ERROR
-                "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.lib/SDL3.dll were not found."
+                "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.lib was not found. Checked: ${_qhenkix_sdl_search_paths}"
+            )
+        endif()
+        if(NOT _qhenkix_sdl_dll)
+            message(WARNING
+                "SDL3.dll was not found under '${QHENKIX_PREBUILT_SDL_ROOT}'. Proceeding with import library only; runtime deployment must provide SDL3.dll."
             )
         endif()
         if(NOT EXISTS "${_qhenkix_sdl_include_dir}/SDL3/SDL.h")
@@ -55,12 +88,20 @@ if(QHENKIX_PREBUILT_LIB)
             )
         endif()
 
-        add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
-        set_target_properties(SDL3::SDL3 PROPERTIES
-            IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
-            IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
-            INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
-        )
+        if(_qhenkix_sdl_dll)
+            add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
+            set_target_properties(SDL3::SDL3 PROPERTIES
+                IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
+                IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
+                INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
+            )
+        else()
+            add_library(SDL3::SDL3 UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(SDL3::SDL3 PROPERTIES
+                IMPORTED_LOCATION "${_qhenkix_sdl_lib}"
+                INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
+            )
+        endif()
     else()
         add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
     endif()
