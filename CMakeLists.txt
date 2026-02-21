@@ -14,6 +14,7 @@ option(BUILD_SIMPLE_EXAMPLE "Build SimpleExample" ON)
 option(BUILD_RETRO_EXAMPLE "Build RetroExample" ON)
 
 set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib (CI only)")
+set(QHENKIX_PREBUILT_SDL_ROOT "" CACHE PATH "Path to prebuilt SDL3 binaries directory (contains SDL3.lib and SDL3.dll)")
 set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe (CI only)")
 
 set(SDL_SHARED ON CACHE BOOL "" FORCE)
@@ -38,7 +39,24 @@ if(QHENKIX_PREBUILT_LIB)
     set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
     set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
     add_subdirectory(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
-    add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
+
+    if(QHENKIX_PREBUILT_SDL_ROOT)
+        set(_qhenkix_sdl_lib "${QHENKIX_PREBUILT_SDL_ROOT}/SDL3.lib")
+        set(_qhenkix_sdl_dll "${QHENKIX_PREBUILT_SDL_ROOT}/SDL3.dll")
+        if(NOT EXISTS "${_qhenkix_sdl_lib}" OR NOT EXISTS "${_qhenkix_sdl_dll}")
+            message(FATAL_ERROR
+                "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.lib/SDL3.dll were not found."
+            )
+        endif()
+
+        add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
+        set_target_properties(SDL3::SDL3 PROPERTIES
+            IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
+            IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
+        )
+    else()
+        add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
+    endif()
 
     add_library(QhenkiX STATIC IMPORTED GLOBAL)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
