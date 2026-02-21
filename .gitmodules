@@ -7,3 +7,7 @@
 [submodule "QhenkiX/external/DirectXTex"]
 	path = QhenkiX/external/DirectXTex
 	url = https://github.com/microsoft/DirectXTex.git
+[submodule "QhenkiX/external/imgui"]
+	path = QhenkiX/external/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking

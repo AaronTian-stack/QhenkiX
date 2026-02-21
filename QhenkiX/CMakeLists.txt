@@ -4,7 +4,17 @@ project(QhenkiX LANGUAGES CXX)
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
-file(GLOB IMGUI_SOURCES "${IMGUI_DIR}/*.cpp")
+set(IMGUI_SOURCES
+    "${IMGUI_DIR}/imgui.cpp"
+    "${IMGUI_DIR}/imgui_draw.cpp"
+    "${IMGUI_DIR}/imgui_tables.cpp"
+    "${IMGUI_DIR}/imgui_widgets.cpp"
+    "${IMGUI_DIR}/imgui_demo.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_win32.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_dx11.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_dx12.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
+)
 set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/application.cpp"
     "${QHENKIX_DIR}/graphics/camera.cpp"

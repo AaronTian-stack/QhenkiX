@@ -1,8 +1,8 @@
 #include "d3d12_context.h"
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_dx12.h"
-#include "imgui/imgui_impl_sdl3.h"
+#include <imgui.h>
+#include <imgui_impl_dx12.h>
+#include <imgui_impl_sdl3.h>
 
 #include <DirectXTex.h>
 
@@ -2208,7 +2208,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
     init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
     init_info.SrvDescriptorHeap = m_imgui_heap.get().Get();
 
-    struct qinfo
+    static struct qinfo
     {
         D3D12DescriptorHeap* heap;
         std::array<Descriptor, 2>* descriptors;

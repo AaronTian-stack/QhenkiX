@@ -1,8 +1,8 @@
 #include "d3d11_context.h"
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_dx11.h"
-#include "imgui/imgui_impl_sdl3.h"
+#include <imgui.h>
+#include <imgui_impl_dx11.h>
+#include <imgui_impl_sdl3.h>
 #include "qhenki/utility/string_util.h"
 
 #include <d3dcompiler.h>

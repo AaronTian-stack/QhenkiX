@@ -8,6 +8,7 @@ endif()
 set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/include"
     "${QHENKIX_SRC_DIR}/external/imgui"
+    "${QHENKIX_SRC_DIR}/external/imgui/backends"
     "${QHENKIX_SRC_DIR}/external"
     "${QHENKIX_SRC_DIR}/external/DirectXTex"
     "${QHENKIX_SRC_DIR}/external/utf8"
