@@ -5,10 +5,6 @@ if(NOT QHENKIX_SRC_DIR)
     set(QHENKIX_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}")
 endif()
 
-if(NOT SDL3_VERSION)
-    set(SDL3_VERSION "3.2.28")
-endif()
-
 set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/include"
     "${QHENKIX_SRC_DIR}/external/imgui"
@@ -17,14 +13,11 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/utf8"
     "${QHENKIX_SRC_DIR}/external/D3D12MemAlloc"
     "${QHENKIX_SRC_DIR}/external/DirectX-Headers-1.618.2/include"
-    "${QHENKIX_SRC_DIR}/external/SDL3-${SDL3_VERSION}/include"
 )
 
 if(WIN32)
     set(QHENKIX_DIRECTXTEX_LIB_RELEASE "${QHENKIX_SRC_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib")
     set(QHENKIX_DIRECTXTEX_LIB_DEBUG "${QHENKIX_SRC_DIR}/external/DirectXTex/lib/x64/Debug/DirectXTex.lib")
-    set(QHENKIX_SDL3_LIB "${QHENKIX_SRC_DIR}/external/SDL3-${SDL3_VERSION}/lib/x64/SDL3.lib")
-    
     set(QHENKIX_SYSTEM_LIBS
         d3d11
         d3d12
@@ -33,6 +26,8 @@ if(WIN32)
         dxcompiler
         winmm
     )
+else()
+    set(QHENKIX_SYSTEM_LIBS "")
 endif()
 
 # Helper function to set up DirectXTex

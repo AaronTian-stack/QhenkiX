@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(QhenkiX LANGUAGES CXX)
 
-if(NOT SDL3_VERSION)
-    set(SDL3_VERSION "3.2.28")
-endif()
-
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
@@ -143,9 +139,10 @@ if(WIN32)
     endif()
 
     qhenkix_setup_DirectXTex()
+    add_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
     target_link_libraries(${PROJECT_NAME} PUBLIC
         DirectXTex
         ${QHENKIX_SYSTEM_LIBS}
-        "${QHENKIX_SDL3_LIB}"
+        SDL3::SDL3
     )
 endif()

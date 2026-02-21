@@ -54,7 +54,7 @@ set_target_properties(RetroExample PROPERTIES
 
 add_custom_command(TARGET RetroExample POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${REPO_ROOT}/QhenkiX/external/SDL3-${SDL3_VERSION}/lib/x64/SDL3.dll"
+    $<TARGET_FILE:SDL3::SDL3>
     $<TARGET_FILE_DIR:RetroExample>
     COMMENT "Copying SDL3.dll to output directory"
 )

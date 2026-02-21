@@ -8,8 +8,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Set repo root for all subprojects
 set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 
-set(SDL3_VERSION "3.2.28")
-
 option(BUILD_GLTF_VIEWER "Build gltfViewer example" ON)
 option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)
 option(BUILD_SIMPLE_EXAMPLE "Build SimpleExample" ON)
@@ -18,20 +16,30 @@ option(BUILD_RETRO_EXAMPLE "Build RetroExample" ON)
 set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib (CI only)")
 set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe (CI only)")
 
+set(SDL_SHARED ON CACHE BOOL "" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+set(SDL_GPU OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+set(SDL_X11 ON CACHE BOOL "" FORCE)
+set(SDL_WAYLAND ON CACHE BOOL "" FORCE)
+set(SDL_Hidapi OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+
 if(QHENKIX_PREBUILT_LIB)
     include(QhenkiX/QhenkiXDeps.cmake)
-    
+    add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
+
     add_library(QhenkiX STATIC IMPORTED GLOBAL)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
     target_include_directories(QhenkiX INTERFACE ${QHENKIX_INCLUDE_DIRS})
-    
+    target_link_libraries(QhenkiX INTERFACE SDL3::SDL3)
+
     if(WIN32)
         qhenkix_setup_DirectXTex()
-        target_link_libraries(QhenkiX INTERFACE
-            DirectXTex
-            ${QHENKIX_SYSTEM_LIBS}
-            "${QHENKIX_SDL3_LIB}"
-        )
+        target_link_libraries(QhenkiX INTERFACE DirectXTex ${QHENKIX_SYSTEM_LIBS})
     endif()
 else()
     add_subdirectory(QhenkiX)

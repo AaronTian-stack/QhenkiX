@@ -1,0 +1,3 @@
+[submodule "QhenkiX/external/SDL"]
+	path = QhenkiX/external/SDL
+	url = https://github.com/libsdl-org/SDL.git
