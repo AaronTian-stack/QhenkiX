@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 3.21)
 project(QhenkiX LANGUAGES CXX)
 
+function(qhenkix_require_submodule submodule_path expected_file)
+    set(_qhenkix_expected_path "${CMAKE_CURRENT_SOURCE_DIR}/${submodule_path}/${expected_file}")
+    if(NOT EXISTS "${_qhenkix_expected_path}")
+        message(FATAL_ERROR
+            "Missing required submodule content at '${_qhenkix_expected_path}'. "
+            "Initialize submodules with: git submodule update --init --recursive"
+        )
+    endif()
+endfunction()
+
+qhenkix_require_submodule("external/imgui" "imgui.cpp")
+qhenkix_require_submodule("external/DirectX-Headers" "CMakeLists.txt")
+qhenkix_require_submodule("external/DirectXTex" "CMakeLists.txt")
+qhenkix_require_submodule("external/SDL" "CMakeLists.txt")
+
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
@@ -151,11 +166,12 @@ set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
 target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
 
+add_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
+target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
+
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
     if(MSVC)
         target_compile_options(${PROJECT_NAME} PRIVATE /MP)
     endif()
-    add_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${QHENKIX_SYSTEM_LIBS} SDL3::SDL3)
 endif()
