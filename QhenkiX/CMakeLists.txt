@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.21)
 project(QhenkiX LANGUAGES CXX)
 
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
@@ -37,7 +37,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/utility/file_util.cpp"  
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectX-Headers-1.618.2/src/dxguids.cpp"
+    "${QHENKIX_DIR}/graphics/dxguids.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
@@ -132,17 +132,20 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${QHENKIX_INCLUDE_DIRS}
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+set(DXHEADERS_INSTALL ON CACHE BOOL "" FORCE)
+set(DXHEADERS_BUILD_TEST OFF CACHE BOOL "" FORCE)
+add_subdirectory(external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
+set(directx-headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH "" FORCE)
+set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+add_subdirectory(external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
+target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
+
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
     if(MSVC)
         target_compile_options(${PROJECT_NAME} PRIVATE /MP)
     endif()
-
-    qhenkix_setup_DirectXTex()
     add_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
-    target_link_libraries(${PROJECT_NAME} PUBLIC
-        DirectXTex
-        ${QHENKIX_SYSTEM_LIBS}
-        SDL3::SDL3
-    )
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${QHENKIX_SYSTEM_LIBS} SDL3::SDL3)
 endif()

@@ -12,12 +12,10 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/DirectXTex"
     "${QHENKIX_SRC_DIR}/external/utf8"
     "${QHENKIX_SRC_DIR}/external/D3D12MemAlloc"
-    "${QHENKIX_SRC_DIR}/external/DirectX-Headers-1.618.2/include"
+    "${QHENKIX_SRC_DIR}/external/DirectX-Headers/include"
 )
 
 if(WIN32)
-    set(QHENKIX_DIRECTXTEX_LIB_RELEASE "${QHENKIX_SRC_DIR}/external/DirectXTex/lib/x64/Release/DirectXTex.lib")
-    set(QHENKIX_DIRECTXTEX_LIB_DEBUG "${QHENKIX_SRC_DIR}/external/DirectXTex/lib/x64/Debug/DirectXTex.lib")
     set(QHENKIX_SYSTEM_LIBS
         d3d11
         d3d12
@@ -29,16 +27,3 @@ if(WIN32)
 else()
     set(QHENKIX_SYSTEM_LIBS "")
 endif()
-
-# Helper function to set up DirectXTex
-function(qhenkix_setup_DirectXTex)
-    if(NOT TARGET DirectXTex)
-        add_library(DirectXTex STATIC IMPORTED)
-        set_target_properties(DirectXTex PROPERTIES
-            IMPORTED_LOCATION_RELEASE "${QHENKIX_DIRECTXTEX_LIB_RELEASE}"
-            IMPORTED_LOCATION_DEBUG "${QHENKIX_DIRECTXTEX_LIB_DEBUG}"
-            IMPORTED_LOCATION_MINSIZEREL "${QHENKIX_DIRECTXTEX_LIB_RELEASE}"
-            IMPORTED_LOCATION_RELWITHDEBINFO "${QHENKIX_DIRECTXTEX_LIB_RELEASE}"
-        )
-    endif()
-endfunction()

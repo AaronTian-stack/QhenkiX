@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.21)
 project(QhenkiX-Workspace)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/CMakeOverride.txt)
@@ -30,16 +30,22 @@ set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 
 if(QHENKIX_PREBUILT_LIB)
     include(QhenkiX/QhenkiXDeps.cmake)
+    set(DXHEADERS_INSTALL ON CACHE BOOL "" FORCE)
+    set(DXHEADERS_BUILD_TEST OFF CACHE BOOL "" FORCE)
+    add_subdirectory(QhenkiX/external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
+    set(directx-headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake" CACHE PATH "" FORCE)
+
+    set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+    add_subdirectory(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
     add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
 
     add_library(QhenkiX STATIC IMPORTED GLOBAL)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
     target_include_directories(QhenkiX INTERFACE ${QHENKIX_INCLUDE_DIRS})
-    target_link_libraries(QhenkiX INTERFACE SDL3::SDL3)
-
+    target_link_libraries(QhenkiX INTERFACE DirectXTex SDL3::SDL3)
     if(WIN32)
-        qhenkix_setup_DirectXTex()
-        target_link_libraries(QhenkiX INTERFACE DirectXTex ${QHENKIX_SYSTEM_LIBS})
+        target_link_libraries(QhenkiX INTERFACE ${QHENKIX_SYSTEM_LIBS})
     endif()
 else()
     add_subdirectory(QhenkiX)
