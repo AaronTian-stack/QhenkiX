@@ -11,3 +11,6 @@
 	path = QhenkiX/external/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "SXC/external/tbb"]
+	path = SXC/external/tbb
+	url = https://github.com/uxlfoundation/oneTBB.git
