@@ -43,9 +43,15 @@ if(QHENKIX_PREBUILT_LIB)
     if(QHENKIX_PREBUILT_SDL_ROOT)
         set(_qhenkix_sdl_lib "${QHENKIX_PREBUILT_SDL_ROOT}/SDL3.lib")
         set(_qhenkix_sdl_dll "${QHENKIX_PREBUILT_SDL_ROOT}/SDL3.dll")
+        set(_qhenkix_sdl_include_dir "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/SDL/include")
         if(NOT EXISTS "${_qhenkix_sdl_lib}" OR NOT EXISTS "${_qhenkix_sdl_dll}")
             message(FATAL_ERROR
                 "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.lib/SDL3.dll were not found."
+            )
+        endif()
+        if(NOT EXISTS "${_qhenkix_sdl_include_dir}/SDL3/SDL.h")
+            message(FATAL_ERROR
+                "Missing SDL headers at '${_qhenkix_sdl_include_dir}'. Ensure submodules are initialized with: git submodule update --init --recursive"
             )
         endif()
 
@@ -53,6 +59,7 @@ if(QHENKIX_PREBUILT_LIB)
         set_target_properties(SDL3::SDL3 PROPERTIES
             IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
             IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
         )
     else()
         add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
