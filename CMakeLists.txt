@@ -42,23 +42,23 @@ if(QHENKIX_PREBUILT_LIB)
 
     set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
     set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+    set(_qhenkix_prev_build_shared_libs "")
+    if(DEFINED BUILD_SHARED_LIBS)
+        set(_qhenkix_prev_build_shared_libs "${BUILD_SHARED_LIBS}")
+    endif()
+    set(BUILD_SHARED_LIBS OFF)
     add_subdirectory(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
+    if(_qhenkix_prev_build_shared_libs STREQUAL "")
+        unset(BUILD_SHARED_LIBS)
+    else()
+        set(BUILD_SHARED_LIBS "${_qhenkix_prev_build_shared_libs}")
+    endif()
 
     if(QHENKIX_PREBUILT_SDL_ROOT)
-        set(_qhenkix_sdl_search_paths
-            "${QHENKIX_PREBUILT_SDL_ROOT}"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/Release"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/lib"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/Lib"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/bin"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/Bin"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/Release"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/lib"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/bin"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/Release"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/lib"
-            "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/bin"
-        )
+        set(_qhenkix_sdl_search_paths)
+        foreach(_qhenkix_cfg Debug Release RelWithDebInfo MinSizeRel)
+            list(APPEND _qhenkix_sdl_search_paths "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/${_qhenkix_cfg}")
+        endforeach()
 
         find_file(_qhenkix_sdl_lib SDL3.lib
             PATHS ${_qhenkix_sdl_search_paths}
@@ -78,8 +78,8 @@ if(QHENKIX_PREBUILT_LIB)
             )
         endif()
         if(NOT _qhenkix_sdl_dll)
-            message(WARNING
-                "SDL3.dll was not found under '${QHENKIX_PREBUILT_SDL_ROOT}'. Proceeding with import library only; runtime deployment must provide SDL3.dll."
+            message(FATAL_ERROR
+                "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.dll was not found. Checked: ${_qhenkix_sdl_search_paths}"
             )
         endif()
         if(NOT EXISTS "${_qhenkix_sdl_include_dir}/SDL3/SDL.h")
@@ -88,20 +88,12 @@ if(QHENKIX_PREBUILT_LIB)
             )
         endif()
 
-        if(_qhenkix_sdl_dll)
-            add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
-            set_target_properties(SDL3::SDL3 PROPERTIES
-                IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
-                IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
-                INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
-            )
-        else()
-            add_library(SDL3::SDL3 UNKNOWN IMPORTED GLOBAL)
-            set_target_properties(SDL3::SDL3 PROPERTIES
-                IMPORTED_LOCATION "${_qhenkix_sdl_lib}"
-                INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
-            )
-        endif()
+        add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
+        set_target_properties(SDL3::SDL3 PROPERTIES
+            IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
+            IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
+        )
     else()
         add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
     endif()
