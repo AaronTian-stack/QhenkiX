@@ -48,7 +48,7 @@ if(QHENKIX_PREBUILT_LIB)
     if(QHENKIX_PREBUILT_SDL_ROOT)
         set(_qhenkix_sdl_search_paths)
         foreach(_qhenkix_cfg Debug Release RelWithDebInfo MinSizeRel)
-            list(APPEND _qhenkix_sdl_search_paths "${QHENKIX_PREBUILT_SDL_ROOT}/build/SDL/${_qhenkix_cfg}")
+            list(APPEND _qhenkix_sdl_search_paths "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/${_qhenkix_cfg}")
         endforeach()
 
         find_file(_qhenkix_sdl_lib SDL3.lib
