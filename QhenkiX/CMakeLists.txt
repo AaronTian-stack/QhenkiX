@@ -63,7 +63,6 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/utility/file_util.cpp"  
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
-    "${QHENKIX_DIR}/graphics/dxguids.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
@@ -166,6 +165,7 @@ set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
 qhenkix_add_subdirectory_with_build_shared_libs(external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
 target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
+target_link_libraries(${PROJECT_NAME} PUBLIC DirectX-Guids)
 
 add_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
 target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
