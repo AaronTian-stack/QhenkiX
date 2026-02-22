@@ -1,0 +1,15 @@
+function(qhenkix_add_subdirectory_with_build_shared_libs source_dir binary_dir build_shared_libs)
+    set(_qhenkix_prev_build_shared_libs "")
+    if(DEFINED BUILD_SHARED_LIBS)
+        set(_qhenkix_prev_build_shared_libs "${BUILD_SHARED_LIBS}")
+    endif()
+
+    set(BUILD_SHARED_LIBS "${build_shared_libs}")
+    add_subdirectory(${source_dir} ${binary_dir} ${ARGN})
+
+    if(_qhenkix_prev_build_shared_libs STREQUAL "")
+        unset(BUILD_SHARED_LIBS)
+    else()
+        set(BUILD_SHARED_LIBS "${_qhenkix_prev_build_shared_libs}")
+    endif()
+endfunction()

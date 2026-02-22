@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 project(QhenkiX LANGUAGES CXX)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ScopedBuildSharedLibs.cmake)
 
 function(qhenkix_require_submodule submodule_path expected_file)
     set(_qhenkix_expected_path "${CMAKE_CURRENT_SOURCE_DIR}/${submodule_path}/${expected_file}")
@@ -163,7 +164,7 @@ add_subdirectory(external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
 set(directx-headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH "" FORCE)
 set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
-add_subdirectory(external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
+qhenkix_add_subdirectory_with_build_shared_libs(external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
 target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
 
 add_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)

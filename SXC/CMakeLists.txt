@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(SXC LANGUAGES CXX)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../QhenkiX/cmake/ScopedBuildSharedLibs.cmake)
 
 set(SXC_TBB_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/tbb")
 if(NOT EXISTS "${SXC_TBB_SOURCE_DIR}/CMakeLists.txt")
@@ -13,17 +14,7 @@ set(TBB_TEST OFF CACHE BOOL "" FORCE)
 set(TBB_INSTALL OFF CACHE BOOL "" FORCE)
 set(TBB_VERIFY_DEPENDENCY_SIGNATURE ON CACHE BOOL "" FORCE)
 
-set(_sxc_prev_build_shared_libs "")
-if(DEFINED BUILD_SHARED_LIBS)
-    set(_sxc_prev_build_shared_libs "${BUILD_SHARED_LIBS}")
-endif()
-set(BUILD_SHARED_LIBS ON)
-add_subdirectory(${SXC_TBB_SOURCE_DIR} ${CMAKE_BINARY_DIR}/oneTBB EXCLUDE_FROM_ALL)
-if(_sxc_prev_build_shared_libs STREQUAL "")
-    unset(BUILD_SHARED_LIBS)
-else()
-    set(BUILD_SHARED_LIBS "${_sxc_prev_build_shared_libs}")
-endif()
+qhenkix_add_subdirectory_with_build_shared_libs(${SXC_TBB_SOURCE_DIR} ${CMAKE_BINARY_DIR}/oneTBB ON EXCLUDE_FROM_ALL)
 
 set(SXC_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"

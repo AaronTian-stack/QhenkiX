@@ -4,6 +4,7 @@ project(QhenkiX-Workspace)
 include(${CMAKE_CURRENT_SOURCE_DIR}/CMakeOverride.txt)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+include(${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake/ScopedBuildSharedLibs.cmake)
 
 # Set repo root for all subprojects
 set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -42,17 +43,7 @@ if(QHENKIX_PREBUILT_LIB)
 
     set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
     set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
-    set(_qhenkix_prev_build_shared_libs "")
-    if(DEFINED BUILD_SHARED_LIBS)
-        set(_qhenkix_prev_build_shared_libs "${BUILD_SHARED_LIBS}")
-    endif()
-    set(BUILD_SHARED_LIBS OFF)
-    add_subdirectory(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex)
-    if(_qhenkix_prev_build_shared_libs STREQUAL "")
-        unset(BUILD_SHARED_LIBS)
-    else()
-        set(BUILD_SHARED_LIBS "${_qhenkix_prev_build_shared_libs}")
-    endif()
+    qhenkix_add_subdirectory_with_build_shared_libs(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
 
     if(QHENKIX_PREBUILT_SDL_ROOT)
         set(_qhenkix_sdl_search_paths)
