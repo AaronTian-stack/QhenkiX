@@ -14,11 +14,12 @@ option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)
 option(BUILD_SIMPLE_EXAMPLE "Build SimpleExample" ON)
 option(BUILD_RETRO_EXAMPLE "Build RetroExample" ON)
 
-set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib (CI only)")
+# Mainly intended for CI purposes but could technically be used by users as well
+set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib")
 set(QHENKIX_PREBUILT_SDL_ROOT "" CACHE PATH "Path to prebuilt SDL3 output")
-set(QHENKIX_PREBUILT_DIRECTXTEX_LIB "" CACHE FILEPATH "Path to prebuilt DirectXTex.lib (CI only)")
-set(QHENKIX_PREBUILT_DIRECTXGUIDS_LIB "" CACHE FILEPATH "Path to prebuilt DirectX-Guids.lib (CI only)")
-set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe (CI only)")
+set(QHENKIX_PREBUILT_DIRECTXTEX_LIB "" CACHE FILEPATH "Path to prebuilt DirectXTex.lib")
+set(QHENKIX_PREBUILT_DIRECTXGUIDS_LIB "" CACHE FILEPATH "Path to prebuilt DirectX-Guids.lib")
+set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe")
 
 set(SDL_SHARED ON CACHE BOOL "" FORCE)
 set(SDL_STATIC OFF CACHE BOOL "" FORCE)

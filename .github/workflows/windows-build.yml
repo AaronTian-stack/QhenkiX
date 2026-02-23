@@ -33,7 +33,7 @@ jobs:
     - name: Build QhenkiX
       run: cmake --build build --config ${{ matrix.config }} --target QhenkiX --parallel
 
-    - name: Upload QhenkiX+SDL Artifacts
+    - name: Upload QhenkiX Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: qhenkix-prebuilt-windows-${{ matrix.config }}
@@ -68,7 +68,7 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Download QhenkiX+SDL
+    - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
         name: qhenkix-prebuilt-windows-${{ matrix.config }}
@@ -111,7 +111,7 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Download QhenkiX+SDL
+    - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
         name: qhenkix-prebuilt-windows-${{ matrix.config }}
