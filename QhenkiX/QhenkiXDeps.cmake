@@ -14,6 +14,9 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/utf8"
     "${QHENKIX_SRC_DIR}/external/D3D12MemAlloc"
     "${QHENKIX_SRC_DIR}/external/DirectX-Headers/include"
+    "${QHENKIX_SRC_DIR}/external/Vulkan-Headers/include"
+    "${QHENKIX_SRC_DIR}/external/volk"
+    "${QHENKIX_SRC_DIR}/external/vk-bootstrap/src"
 )
 
 if(WIN32)
