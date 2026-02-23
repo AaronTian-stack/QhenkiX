@@ -190,6 +190,7 @@ qhenkix_add_dependency_subdirectory(external/volk ${CMAKE_BINARY_DIR}/volk)
 set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
 set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
 qhenkix_add_dependency_subdirectory(external/vk-bootstrap ${CMAKE_BINARY_DIR}/vk-bootstrap)
+target_link_libraries(${PROJECT_NAME} PUBLIC vk-bootstrap::vk-bootstrap)
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
