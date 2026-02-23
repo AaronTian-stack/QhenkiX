@@ -14,3 +14,12 @@
 [submodule "SXC/external/tbb"]
 	path = SXC/external/tbb
 	url = https://github.com/uxlfoundation/oneTBB.git
+[submodule "QhenkiX/external/vk-bootstrap"]
+	path = QhenkiX/external/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap
+[submodule "QhenkiX/external/volk"]
+	path = QhenkiX/external/volk
+	url = https://github.com/zeux/volk
+[submodule "QhenkiX/external/Vulkan-Headers"]
+	path = QhenkiX/external/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers
