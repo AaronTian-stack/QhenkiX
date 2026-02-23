@@ -16,6 +16,9 @@ qhenkix_require_submodule("external/imgui" "imgui.cpp")
 qhenkix_require_submodule("external/DirectX-Headers" "CMakeLists.txt")
 qhenkix_require_submodule("external/DirectXTex" "CMakeLists.txt")
 qhenkix_require_submodule("external/SDL" "CMakeLists.txt")
+qhenkix_require_submodule("external/Vulkan-Headers" "CMakeLists.txt")
+qhenkix_require_submodule("external/volk" "CMakeLists.txt")
+qhenkix_require_submodule("external/vk-bootstrap" "CMakeLists.txt")
 
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
@@ -169,6 +172,20 @@ target_link_libraries(${PROJECT_NAME} PUBLIC DirectX-Guids)
 
 qhenkix_add_dependency_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
 target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
+
+set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
+
+set(VULKAN_HEADERS_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/Vulkan-Headers" CACHE PATH "" FORCE)
+set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
+set(VOLK_HEADERS_ONLY OFF CACHE BOOL "" FORCE)
+set(VOLK_PULL_IN_VULKAN ON CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/volk ${CMAKE_BINARY_DIR}/volk)
+
+set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
+set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/vk-bootstrap ${CMAKE_BINARY_DIR}/vk-bootstrap)
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
