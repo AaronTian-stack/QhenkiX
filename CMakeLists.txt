@@ -16,6 +16,8 @@ option(BUILD_RETRO_EXAMPLE "Build RetroExample" ON)
 
 set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib (CI only)")
 set(QHENKIX_PREBUILT_SDL_ROOT "" CACHE PATH "Path to prebuilt SDL3 output")
+set(QHENKIX_PREBUILT_DIRECTXTEX_LIB "" CACHE FILEPATH "Path to prebuilt DirectXTex.lib (CI only)")
+set(QHENKIX_PREBUILT_DIRECTXGUIDS_LIB "" CACHE FILEPATH "Path to prebuilt DirectX-Guids.lib (CI only)")
 set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe (CI only)")
 
 set(SDL_SHARED ON CACHE BOOL "" FORCE)
@@ -36,14 +38,38 @@ set(BUILD_DX12 OFF CACHE BOOL "" FORCE)
 
 if(QHENKIX_PREBUILT_LIB)
     include(QhenkiX/QhenkiXDeps.cmake)
-    set(DXHEADERS_INSTALL ON CACHE BOOL "" FORCE)
-    set(DXHEADERS_BUILD_TEST OFF CACHE BOOL "" FORCE)
-    add_subdirectory(QhenkiX/external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
-    set(directx-headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake" CACHE PATH "" FORCE)
+    if(QHENKIX_PREBUILT_DIRECTXTEX_LIB AND QHENKIX_PREBUILT_DIRECTXGUIDS_LIB)
+        if(NOT EXISTS "${QHENKIX_PREBUILT_DIRECTXTEX_LIB}")
+            message(FATAL_ERROR
+                "QHENKIX_PREBUILT_DIRECTXTEX_LIB is set to '${QHENKIX_PREBUILT_DIRECTXTEX_LIB}', but the file does not exist."
+            )
+        endif()
+        if(NOT EXISTS "${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}")
+            message(FATAL_ERROR
+                "QHENKIX_PREBUILT_DIRECTXGUIDS_LIB is set to '${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}', but the file does not exist."
+            )
+        endif()
 
-    set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-    set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
-    qhenkix_add_subdirectory_with_build_shared_libs(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
+        add_library(DirectX-Guids STATIC IMPORTED GLOBAL)
+        set_target_properties(DirectX-Guids PROPERTIES
+            IMPORTED_LOCATION "${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}"
+        )
+
+        add_library(DirectXTex STATIC IMPORTED GLOBAL)
+        set_target_properties(DirectXTex PROPERTIES
+            IMPORTED_LOCATION "${QHENKIX_PREBUILT_DIRECTXTEX_LIB}"
+        )
+        target_link_libraries(DirectXTex INTERFACE DirectX-Guids)
+    else()
+        set(DXHEADERS_INSTALL ON CACHE BOOL "" FORCE)
+        set(DXHEADERS_BUILD_TEST OFF CACHE BOOL "" FORCE)
+        qhenkix_add_dependency_subdirectory(QhenkiX/external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
+        set(directx-headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake" CACHE PATH "" FORCE)
+
+        set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+        set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+        qhenkix_add_subdirectory_with_build_shared_libs(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
+    endif()
 
     if(QHENKIX_PREBUILT_SDL_ROOT)
         set(_qhenkix_sdl_search_paths)
@@ -86,7 +112,7 @@ if(QHENKIX_PREBUILT_LIB)
             INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
         )
     else()
-        add_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
+        qhenkix_add_dependency_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
     endif()
 
     add_library(QhenkiX STATIC IMPORTED GLOBAL)

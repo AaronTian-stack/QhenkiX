@@ -39,6 +39,8 @@ jobs:
         name: qhenkix-prebuilt-windows-${{ matrix.config }}
         path: |
           build/QhenkiX/${{ matrix.config }}/QhenkiX.lib
+          build/lib/${{ matrix.config }}/DirectXTex.lib
+          build/DirectX-Headers/${{ matrix.config }}/DirectX-Guids.lib
           build/SDL/${{ matrix.config }}/SDL3.lib
           build/SDL/${{ matrix.config }}/SDL3.dll
         retention-days: 1
@@ -73,7 +75,7 @@ jobs:
         path: prebuilt-qhenkix/
 
     - name: Configure CMake
-      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/${{ matrix.config }}/QhenkiX.lib -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/${{ matrix.config }}/QhenkiX.lib -DQHENKIX_PREBUILT_DIRECTXTEX_LIB=${{ github.workspace }}/prebuilt-qhenkix/lib/${{ matrix.config }}/DirectXTex.lib -DQHENKIX_PREBUILT_DIRECTXGUIDS_LIB=${{ github.workspace }}/prebuilt-qhenkix/DirectX-Headers/${{ matrix.config }}/DirectX-Guids.lib -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix
 
     - name: Build SXC
       run: cmake --build build --config ${{ matrix.config }} --target SXC --parallel
@@ -122,7 +124,7 @@ jobs:
         path: prebuilt-sxc/
 
     - name: Configure CMake
-      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/${{ matrix.config }}/QhenkiX.lib -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix -DSXC_PREBUILT_EXE=${{ github.workspace }}/prebuilt-sxc/SXC.exe
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/${{ matrix.config }}/QhenkiX.lib -DQHENKIX_PREBUILT_DIRECTXTEX_LIB=${{ github.workspace }}/prebuilt-qhenkix/lib/${{ matrix.config }}/DirectXTex.lib -DQHENKIX_PREBUILT_DIRECTXGUIDS_LIB=${{ github.workspace }}/prebuilt-qhenkix/DirectX-Headers/${{ matrix.config }}/DirectX-Guids.lib -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix -DSXC_PREBUILT_EXE=${{ github.workspace }}/prebuilt-sxc/SXC.exe
 
     - name: Build ${{ matrix.example }} (${{ matrix.config }})
       run: cmake --build build --config ${{ matrix.config }} --target ${{ matrix.example }} --parallel

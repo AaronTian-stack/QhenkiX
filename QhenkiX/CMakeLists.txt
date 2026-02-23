@@ -159,7 +159,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${QHENKIX_INCLUDE_DIRS}
 
 set(DXHEADERS_INSTALL ON CACHE BOOL "" FORCE)
 set(DXHEADERS_BUILD_TEST OFF CACHE BOOL "" FORCE)
-add_subdirectory(external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
+qhenkix_add_dependency_subdirectory(external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
 set(directx-headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH "" FORCE)
 set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
@@ -167,7 +167,7 @@ qhenkix_add_subdirectory_with_build_shared_libs(external/DirectXTex ${CMAKE_BINA
 target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
 target_link_libraries(${PROJECT_NAME} PUBLIC DirectX-Guids)
 
-add_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
+qhenkix_add_dependency_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
 target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
 
 if(WIN32)

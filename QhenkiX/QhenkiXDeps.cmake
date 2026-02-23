@@ -21,6 +21,7 @@ if(WIN32)
         d3d11
         d3d12
         dxgi
+        dxguid
         d3dcompiler
         dxcompiler
         winmm
