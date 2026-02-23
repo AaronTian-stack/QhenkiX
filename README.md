@@ -31,7 +31,7 @@ See the [examples](Examples) for use cases of the library.
 
 1. Clone the repository. 
     ```bash
-    git clone https://github.com/AaronTian-stack/QhenkiX.git
+    git clone --recurse-submodules https://github.com/AaronTian-stack/QhenkiX.git
     ```
 2. Generate build files using CMake. Example:
     ```bash
@@ -70,14 +70,13 @@ QhenkiX requires several shared libraries to run. When using CMake, the examples
 
 - [`dxcompiler.dll`](QhenkiX/blob/main/QhenkiX/dxc_2024_07_31/bin/x64/dxcompiler.dll) - compile shaders
 - [`dxil.dll`](QhenkiX/blob/main/QhenkiX/dxc_2024_07_31/bin/x64/dxil.dll) - validate/sign shaders generated with DXC
-- [`SDL3.dll`](QhenkiX/blob/main/QhenkiX/SDL3-3.2.4/lib/x64/SDL3.dll) - windowing and input
 
 ## Dependencies
 
 This project relies on the following dependencies and build tools:
 
 **Build Requirements:**
-- CMake 3.18 or higher
+- CMake 3.21 or higher
 
 **Third-party Libraries:**
 - [Boost](https://github.com/boostorg/boost) - (Boost Software License 1.0)

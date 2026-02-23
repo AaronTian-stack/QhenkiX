@@ -15,6 +15,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+        fetch-depth: 0
 
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
@@ -33,8 +36,13 @@ jobs:
     - name: Upload QhenkiX Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: qhenkix-library-windows-${{ matrix.config }}
-        path: build/QhenkiX/${{ matrix.config }}/QhenkiX.lib
+        name: qhenkix-prebuilt-windows-${{ matrix.config }}
+        path: |
+          build/QhenkiX/${{ matrix.config }}/QhenkiX.lib
+          build/lib/${{ matrix.config }}/DirectXTex.lib
+          build/DirectX-Headers/${{ matrix.config }}/DirectX-Guids.lib
+          build/SDL/${{ matrix.config }}/SDL3.lib
+          build/SDL/${{ matrix.config }}/SDL3.dll
         retention-days: 1
 
   build-sxc:
@@ -48,6 +56,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+        fetch-depth: 0
 
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
@@ -60,11 +71,11 @@ jobs:
     - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
-        name: qhenkix-library-windows-${{ matrix.config }}
-        path: prebuilt/
+        name: qhenkix-prebuilt-windows-${{ matrix.config }}
+        path: prebuilt-qhenkix/
 
     - name: Configure CMake
-      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt/QhenkiX.lib
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/${{ matrix.config }}/QhenkiX.lib -DQHENKIX_PREBUILT_DIRECTXTEX_LIB=${{ github.workspace }}/prebuilt-qhenkix/lib/${{ matrix.config }}/DirectXTex.lib -DQHENKIX_PREBUILT_DIRECTXGUIDS_LIB=${{ github.workspace }}/prebuilt-qhenkix/DirectX-Headers/${{ matrix.config }}/DirectX-Guids.lib -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix
 
     - name: Build SXC
       run: cmake --build build --config ${{ matrix.config }} --target SXC --parallel
@@ -88,6 +99,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+        fetch-depth: 0
 
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
@@ -100,8 +114,8 @@ jobs:
     - name: Download QhenkiX
       uses: actions/download-artifact@v4
       with:
-        name: qhenkix-library-windows-${{ matrix.config }}
-        path: prebuilt/
+        name: qhenkix-prebuilt-windows-${{ matrix.config }}
+        path: prebuilt-qhenkix/
 
     - name: Download SXC
       uses: actions/download-artifact@v4
@@ -110,7 +124,7 @@ jobs:
         path: prebuilt-sxc/
 
     - name: Configure CMake
-      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt/QhenkiX.lib -DSXC_PREBUILT_EXE=${{ github.workspace }}/prebuilt-sxc/SXC.exe
+      run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/${{ matrix.config }}/QhenkiX.lib -DQHENKIX_PREBUILT_DIRECTXTEX_LIB=${{ github.workspace }}/prebuilt-qhenkix/lib/${{ matrix.config }}/DirectXTex.lib -DQHENKIX_PREBUILT_DIRECTXGUIDS_LIB=${{ github.workspace }}/prebuilt-qhenkix/DirectX-Headers/${{ matrix.config }}/DirectX-Guids.lib -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix -DSXC_PREBUILT_EXE=${{ github.workspace }}/prebuilt-sxc/SXC.exe
 
     - name: Build ${{ matrix.example }} (${{ matrix.config }})
       run: cmake --build build --config ${{ matrix.config }} --target ${{ matrix.example }} --parallel

@@ -1,14 +1,36 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.21)
 project(QhenkiX LANGUAGES CXX)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ScopedBuildSharedLibs.cmake)
 
-if(NOT SDL3_VERSION)
-    set(SDL3_VERSION "3.2.28")
-endif()
+function(qhenkix_require_submodule submodule_path expected_file)
+    set(_qhenkix_expected_path "${CMAKE_CURRENT_SOURCE_DIR}/${submodule_path}/${expected_file}")
+    if(NOT EXISTS "${_qhenkix_expected_path}")
+        message(FATAL_ERROR
+            "Missing required submodule content at '${_qhenkix_expected_path}'. "
+            "Initialize submodules with: git submodule update --init --recursive"
+        )
+    endif()
+endfunction()
+
+qhenkix_require_submodule("external/imgui" "imgui.cpp")
+qhenkix_require_submodule("external/DirectX-Headers" "CMakeLists.txt")
+qhenkix_require_submodule("external/DirectXTex" "CMakeLists.txt")
+qhenkix_require_submodule("external/SDL" "CMakeLists.txt")
 
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
-file(GLOB IMGUI_SOURCES "${IMGUI_DIR}/*.cpp")
+set(IMGUI_SOURCES
+    "${IMGUI_DIR}/imgui.cpp"
+    "${IMGUI_DIR}/imgui_draw.cpp"
+    "${IMGUI_DIR}/imgui_tables.cpp"
+    "${IMGUI_DIR}/imgui_widgets.cpp"
+    "${IMGUI_DIR}/imgui_demo.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_win32.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_dx11.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_dx12.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
+)
 set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/application.cpp"
     "${QHENKIX_DIR}/graphics/camera.cpp"
@@ -41,7 +63,6 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/utility/file_util.cpp"  
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/DirectX-Headers-1.618.2/src/dxguids.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
@@ -136,16 +157,22 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${QHENKIX_INCLUDE_DIRS}
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+set(DXHEADERS_INSTALL ON CACHE BOOL "" FORCE)
+set(DXHEADERS_BUILD_TEST OFF CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
+set(directx-headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH "" FORCE)
+set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+qhenkix_add_subdirectory_with_build_shared_libs(external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
+target_link_libraries(${PROJECT_NAME} PUBLIC DirectXTex)
+target_link_libraries(${PROJECT_NAME} PUBLIC DirectX-Guids)
+
+qhenkix_add_dependency_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
+target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
+
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
     if(MSVC)
         target_compile_options(${PROJECT_NAME} PRIVATE /MP)
     endif()
-
-    qhenkix_setup_DirectXTex()
-    target_link_libraries(${PROJECT_NAME} PUBLIC
-        DirectXTex
-        ${QHENKIX_SYSTEM_LIBS}
-        "${QHENKIX_SDL3_LIB}"
-    )
 endif()

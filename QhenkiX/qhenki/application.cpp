@@ -3,8 +3,8 @@
 #include "graphics/d3d11/d3d11_context.h"
 #include "graphics/d3d12/d3d12_context.h"
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_sdl3.h"
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
 #include "qhenki/display_window.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/utility/string_util.h"

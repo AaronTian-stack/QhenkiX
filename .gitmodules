@@ -1,0 +1,16 @@
+[submodule "QhenkiX/external/SDL"]
+	path = QhenkiX/external/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "QhenkiX/external/DirectX-Headers"]
+	path = QhenkiX/external/DirectX-Headers
+	url = https://github.com/microsoft/DirectX-Headers.git
+[submodule "QhenkiX/external/DirectXTex"]
+	path = QhenkiX/external/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
+[submodule "QhenkiX/external/imgui"]
+	path = QhenkiX/external/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
+[submodule "SXC/external/tbb"]
+	path = SXC/external/tbb
+	url = https://github.com/uxlfoundation/oneTBB.git
