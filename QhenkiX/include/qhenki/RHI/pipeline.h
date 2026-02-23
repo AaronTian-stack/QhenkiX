@@ -78,7 +78,7 @@ struct PushRange
 };
 
 constexpr auto INFINITE_DESCRIPTORS = 0xFFFFFFFF;
-constexpr size_t MAX_SPACES = 6; // 6 is arbitrary, defined based off Vulkan max descriptor sets
+constexpr size_t MAX_SPACES = 7; // Defined based off Vulkan max descriptor sets
 
 struct PipelineLayoutDesc
 {
