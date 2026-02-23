@@ -55,6 +55,8 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.cpp"
 
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.cpp"
+
     "${QHENKIX_DIR}/input/input_manager.cpp"
 
     "${QHENKIX_DIR}/math/transform.cpp"
@@ -85,6 +87,8 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
     "${QHENKIX_DIR}/utility/d3d_util.h"
+
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")

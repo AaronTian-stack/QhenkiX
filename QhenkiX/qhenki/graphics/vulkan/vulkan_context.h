@@ -1,62 +1,14 @@
 #pragma once
 
-#include <D3D12MemAlloc.h>
-#include <directx/d3d12shader.h>
-#include <dxcapi.h>
-#include <dxgi1_6.h>
-#include <dxgidebug.h>
-#include <wrl/client.h>
-
-#include <boost/lockfree/stack.hpp>
-
-#include "d3d12_descriptor_heap.h"
-#include "qhenki/memory/arena.h"
 #include "qhenki/RHI/context.h"
-
-using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-class D3D12Context : public Context
+class VulkanContext : public Context
 {
     struct Capabilities
     {
-        D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};     // TiledResourcesTier, ResourceBindingTier, ResourceHeapTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};   // SamplerFeedbackTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12 = {}; // Enhanced barriers
-        D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};   // VariableShadingRateTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};   // RaytracingTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};   // MeshShaderTier
-        D3D12_FEATURE_DATA_SHADER_MODEL shader_model = {}; // Shader Model
-        bool allow_tearing;
-    } m_capabilities;
-
-    ComPtr<IDXGIFactory6> m_dxgi_factory;
-
-    ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> m_dred_settings;
-    ComPtr<ID3D12Debug3> m_debug;
-    ComPtr<IDXGIDebug1> m_dxgi_debug;
-
-    ComPtr<ID3D12Device4> m_device;
-    ComPtr<D3D12MA::Allocator> m_allocator;
-
-    ComPtr<IDXGISwapChain3> m_swapchain;
-    std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers; // 2 is upper limit
-    std::array<Descriptor, 2> m_swapchain_descriptors{};       // 2 is upper limit
-
-    ComPtr<IDxcUtils> m_library;
-
-    D3D12DescriptorHeap m_imgui_heap{};              // ImGUI only
-    std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
-
-    Queue* m_swapchain_queue = nullptr;
-
-    Fence m_fence_wait_all{}; // For stalling queues
-    uint64_t m_fence_wait_all_last_signaled = 0;
-
-    static constexpr unsigned m_arena_count = 16;
-    boost::lockfree::stack<memory::Arena, boost::lockfree::capacity<m_arena_count>> m_arenas;
-
+    } m_capabilities; // TODO
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
@@ -72,7 +24,6 @@ public:
     unsigned get_swapchain_frame_index(const Swapchain& swapchain) override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
-
     bool create_pipeline(const GraphicsPipelineDesc& desc,
                          GraphicsPipeline* pipeline,
                          const Shader& vertex_shader,
@@ -87,15 +38,12 @@ public:
 
     bool set_pipeline_constant(
         CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
+    bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
 
-    bool create_descriptor_heap(const DescriptorHeapDesc& desc,
-                                DescriptorHeap* heap,
-                                const char* debug_name = nullptr) override;
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
                              const DescriptorHeap& heap,
                              const DescriptorHeap& sampler_heap) override;
-
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
 
     bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
@@ -136,8 +84,8 @@ public:
 
     bool create_queue(QueueType type, Queue* queue) override;
     bool create_command_pool(CommandPool* command_pool, const Queue& queue) override;
-    bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
+    bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool close_command_list(CommandList* cmd_list) override;
 
     bool reset_command_pool(CommandPool* command_pool) override;
@@ -147,7 +95,6 @@ public:
                            const float* clear_color_values,
                            const RenderTarget* depth_stencil,
                            unsigned frame_index) override;
-
     bool start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,
                            const RenderTarget* const* rts,
@@ -183,7 +130,7 @@ public:
     void render_imgui_draw_data(CommandList* cmd_list) override;
     void destroy_imgui() override;
 
-    // D3D12 does not implement compability functions
+    // Vulkan does not implement compability functions
     bool compatibility_set_constant_buffers(unsigned slot,
                                             unsigned count,
                                             Buffer* const* buffers,
@@ -202,16 +149,11 @@ public:
 
     bool wait_idle(Queue* queue) override;
 
-    D3D12Context() = default;
-    ~D3D12Context() override;
-    D3D12Context(const D3D12Context&) = delete;
-    D3D12Context& operator=(const D3D12Context&) = delete;
-    D3D12Context(D3D12Context&&) = delete;
-    D3D12Context& operator=(D3D12Context&&) = delete;
-
-private:
-    D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
-                                                const D3D12_SHADER_DESC& shader_desc,
-                                                bool increment_slot);
+    VulkanContext() = default;
+    ~VulkanContext() override;
+    VulkanContext(const VulkanContext&) = delete;
+    VulkanContext& operator=(const VulkanContext&) = delete;
+    VulkanContext(VulkanContext&&) = delete;
+    VulkanContext& operator=(VulkanContext&&) = delete;
 };
 } // namespace qhenki::gfx
