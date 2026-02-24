@@ -2,9 +2,11 @@
 
 #include "graphics/d3d11/d3d11_context.h"
 #include "graphics/d3d12/d3d12_context.h"
+#include "graphics/vulkan/vulkan_context.h"
 
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
+
 #include "qhenki/display_window.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/utility/string_util.h"
@@ -68,8 +70,8 @@ void Application::run(const gfx::API api,
         m_context = mkU<gfx::D3D12Context>();
         break;
     case gfx::API::Vulkan:
-    default:
-        throw std::runtime_error("API not implemented");
+        m_context = mkU<gfx::VulkanContext>();
+        break;
     }
 
     const std::string create_error = m_context->create(enable_debug_layer);

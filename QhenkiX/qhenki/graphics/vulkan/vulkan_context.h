@@ -1,5 +1,9 @@
 #pragma once
 
+#define VK_NO_PROTOTYPES
+#include <VkBootstrap.h>
+#include <vulkan/vulkan.h>
+
 #include "qhenki/RHI/context.h"
 
 namespace qhenki::gfx
@@ -9,18 +13,25 @@ class VulkanContext : public Context
     struct Capabilities
     {
     } m_capabilities; // TODO
+
+    vkb::Instance m_instance;
+    vkb::Device m_device;
+    vkb::Swapchain m_swapchain;
+
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
     bool create_swapchain(const DisplayWindow& window,
                           const SwapchainDesc& swapchain_desc,
-                          Swapchain* swapchain,
                           Queue* direct_queue,
                           unsigned* frame_index) override;
     bool resize_swapchain(
         Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) override;
     bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
-    bool present(Swapchain* swapchain, unsigned fence_count, Fence* wait_fences, unsigned swapchain_index) override;
+    bool present(const Swapchain& swapchain,
+                 unsigned fence_count,
+                 Fence* wait_fences,
+                 unsigned swapchain_index) override;
     unsigned get_swapchain_frame_index(const Swapchain& swapchain) override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
