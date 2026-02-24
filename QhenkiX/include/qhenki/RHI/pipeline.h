@@ -1,6 +1,9 @@
 #pragma once
 
 #include <directx/d3d12.h>
+#include <directx/dxgiformat.h>
+
+#include <array>
 #include <cstdint>
 #include <optional>
 
