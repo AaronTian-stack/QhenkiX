@@ -12,9 +12,10 @@
 using namespace qhenki;
 
 /**
- * This could be overridden to set up the display window with custom settings.
- * For example opening a settings window first to allow the user to select some settings.
- * Or loading resolution settings from a file.
+ * Setups up the display window with default settings. Override to customize and pass your own data in the payload
+ * parameter.For example opening a settings window first to allow the user to select some settings. Or loading
+ * resolution settings from a file.
+ * @param payload Custom data passed to the function. Needs to be cast to the correct type.
  */
 void Application::init_display_window(void* payload)
 {
@@ -102,7 +103,7 @@ void Application::run(const gfx::API api,
 
     THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain, &m_graphics_queue, &m_frame_index));
 
-    gfx::DescriptorHeapDesc rtv_heap_desc{
+    const gfx::DescriptorHeapDesc rtv_heap_desc{
         .type = gfx::DescriptorHeapDesc::Type::RTV,
         .visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
         .descriptor_count = 256, // TODO: expose max count to context
