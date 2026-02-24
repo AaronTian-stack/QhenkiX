@@ -1,24 +1,16 @@
 #pragma once
 
 #include <directx/dxgiformat.h>
-#include <smartpointer.h>
-
-#include "render_target.h"
 
 namespace qhenki::gfx
 {
 struct SwapchainDesc
 {
-    unsigned int width;
-    unsigned int height;
+    unsigned width;
+    unsigned height;
     DXGI_FORMAT format;
-    unsigned int buffer_count;
+    unsigned buffer_count;
     bool tearing;
 };
-struct Swapchain
-{
-    SwapchainDesc desc;
-    RenderTarget render_target;
-    sPtr<void> internal_state;
-};
+typedef SwapchainDesc Swapchain;
 } // namespace qhenki::gfx
