@@ -365,7 +365,6 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
                                     DescriptorHeap* const rtv_heap,
                                     unsigned& frame_index)
 {
-    assert(&swapchain);
     assert(rtv_heap);
 
     wait_idle(m_swapchain_queue);
