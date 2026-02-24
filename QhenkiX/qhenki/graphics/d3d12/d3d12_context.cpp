@@ -456,8 +456,6 @@ bool D3D12Context::present(const Swapchain& swapchain,
                            Fence* wait_fences,
                            unsigned swapchain_index)
 {
-    assert(&swapchain);
-
     std::array<memory::Arena, m_arena_count> temp_arenas;
     size_t arena_count = 0;
     m_arenas.consume_all_atomic(

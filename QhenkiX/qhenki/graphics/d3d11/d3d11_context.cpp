@@ -326,8 +326,6 @@ bool D3D11Context::present(const Swapchain& swapchain,
                            Fence* wait_fences,
                            unsigned swapchain_index)
 {
-    assert(&swapchain);
-
     UINT sync_interval = 1;
     UINT flags = 0;
 
