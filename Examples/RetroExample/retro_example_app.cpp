@@ -596,7 +596,7 @@ void RetroExampleApp::create()
         .increment_slot = true,
     };
     qhenki::gfx::GraphicsPipelineDesc blit_copy_pipeline_desc = {
-        .rtv_formats = {m_swapchain.desc.format},
+        .rtv_formats = {m_swapchain.format},
         .num_render_targets = 1,
         .dsv_format = DXGI_FORMAT_UNKNOWN,
         .increment_slot = true,
@@ -1257,7 +1257,7 @@ void RetroExampleApp::render()
     };
     m_context->submit_command_lists(info, &m_graphics_queue);
 
-    m_context->present(&m_swapchain, 0, nullptr, m_frame_index);
+    m_context->present(m_swapchain, 0, nullptr, m_frame_index);
 
     m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
 

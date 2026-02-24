@@ -245,11 +245,9 @@ bool create_swapchain_resources(ID3D11Device* device, IDXGISwapChain1* swapchain
 
 bool D3D11Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
-                                    Swapchain* const swapchain,
                                     Queue* const direct_queue,
                                     unsigned* const frame_index)
 {
-    assert(swapchain);
     if (swapchain_desc.tearing && !m_allow_tearing)
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Tearing is not supported on this system\n");
@@ -292,7 +290,6 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
         return false;
     }
 
-    swapchain->desc = swapchain_desc;
     return true;
 }
 
@@ -307,11 +304,11 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
     m_swapchain_view.Reset();
 
     UINT resize_flags = 0;
-    if (swapchain->desc.tearing && m_allow_tearing)
+    if (swapchain->tearing && m_allow_tearing)
     {
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
-    if (FAILED(m_swapchain->ResizeBuffers(0, width, height, swapchain->desc.format, resize_flags)))
+    if (FAILED(m_swapchain->ResizeBuffers(0, width, height, swapchain->format, resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to resize Swapchain buffers\n");
         return false;
@@ -324,17 +321,15 @@ bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
     return true;
 }
 
-bool D3D11Context::present(Swapchain* const swapchain,
+bool D3D11Context::present(const Swapchain& swapchain,
                            unsigned fence_count,
                            Fence* wait_fences,
                            unsigned swapchain_index)
 {
-    assert(swapchain);
-
     UINT sync_interval = 1;
     UINT flags = 0;
 
-    if (swapchain->desc.tearing && m_allow_tearing)
+    if (swapchain.tearing && m_allow_tearing)
     {
         sync_interval = 0;
         flags |= DXGI_PRESENT_ALLOW_TEARING;

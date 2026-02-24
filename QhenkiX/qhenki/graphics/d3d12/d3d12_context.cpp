@@ -287,11 +287,9 @@ bool D3D12Context::is_compatibility() const
 
 bool D3D12Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
-                                    Swapchain* const swapchain,
                                     Queue* const direct_queue,
                                     unsigned* const frame_index)
 {
-    assert(swapchain);
     assert(direct_queue);
 
     if (swapchain_desc.tearing && !m_capabilities.allow_tearing)
@@ -357,7 +355,6 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
     m_swapchain_queue = direct_queue;
     m_swapchain = std::move(swapchain3);
     m_swapchain_buffers = std::move(swapchain_buffers);
-    swapchain->desc = swapchain_desc;
     *frame_index = m_swapchain->GetCurrentBackBufferIndex();
     return true;
 }
@@ -368,7 +365,6 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
                                     DescriptorHeap* const rtv_heap,
                                     unsigned& frame_index)
 {
-    assert(swapchain);
     assert(rtv_heap);
 
     wait_idle(m_swapchain_queue);
@@ -379,20 +375,19 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
     }
 
     UINT resize_flags = 0;
-    if (swapchain->desc.tearing && m_capabilities.allow_tearing)
+    if (swapchain->tearing && m_capabilities.allow_tearing)
     {
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
 
-    if (FAILED(m_swapchain->ResizeBuffers(
-            swapchain->desc.buffer_count, width, height, swapchain->desc.format, resize_flags)))
+    if (FAILED(m_swapchain->ResizeBuffers(swapchain->buffer_count, width, height, swapchain->format, resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to resize swap chain buffers\n");
         return false;
     }
 
     // Recreate descriptors
-    for (unsigned i = 0; i < swapchain->desc.buffer_count; i++)
+    for (unsigned i = 0; i < swapchain->buffer_count; i++)
     {
         if (FAILED(m_swapchain->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers[i].ReleaseAndGetAddressOf()))))
         {
@@ -402,17 +397,17 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
     }
     const auto d3d12_heap = to_internal(*rtv_heap);
 
-    THROW_IF_TRUE(swapchain->desc.buffer_count > m_swapchain_buffers.size());
+    THROW_IF_TRUE(swapchain->buffer_count > m_swapchain_buffers.size());
 
-    for (unsigned i = 0; i < swapchain->desc.buffer_count; i++)
+    for (unsigned i = 0; i < swapchain->buffer_count; i++)
     {
         D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
         d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset);
         m_device->CreateRenderTargetView(m_swapchain_buffers[i].Get(), nullptr, rtv_cpu_handle);
     }
 
-    swapchain->desc.width = width;
-    swapchain->desc.height = height;
+    swapchain->width = width;
+    swapchain->height = height;
     frame_index = m_swapchain->GetCurrentBackBufferIndex();
 
     return true;
@@ -433,9 +428,9 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
         return false;
     }
 
-    THROW_IF_TRUE(swapchain.desc.buffer_count > m_swapchain_buffers.size());
+    THROW_IF_TRUE(swapchain.buffer_count > m_swapchain_buffers.size());
 
-    for (unsigned i = 0; i < swapchain.desc.buffer_count; i++)
+    for (unsigned i = 0; i < swapchain.buffer_count; i++)
     {
         if (d3d12_heap->allocate(&m_swapchain_descriptors[i].offset))
         {
@@ -455,13 +450,11 @@ bool D3D12Context::create_swapchain_descriptors(const Swapchain& swapchain, Desc
     return true;
 }
 
-bool D3D12Context::present(Swapchain* const swapchain,
+bool D3D12Context::present(const Swapchain& swapchain,
                            unsigned fence_count,
                            Fence* wait_fences,
                            unsigned swapchain_index)
 {
-    assert(swapchain);
-
     std::array<memory::Arena, m_arena_count> temp_arenas;
     size_t arena_count = 0;
     m_arenas.consume_all_atomic(
@@ -478,7 +471,7 @@ bool D3D12Context::present(Swapchain* const swapchain,
 
     UINT sync_interval = 1;
     UINT flags = 0;
-    if (swapchain->desc.tearing && m_capabilities.allow_tearing)
+    if (swapchain.tearing && m_capabilities.allow_tearing)
     {
         sync_interval = 0;
         flags |= DXGI_PRESENT_ALLOW_TEARING;
@@ -2192,7 +2185,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
     // Create dedicated heap for ImGUI
     const D3D12_DESCRIPTOR_HEAP_DESC desc{
         .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        .NumDescriptors = swapchain.desc.buffer_count,
+        .NumDescriptors = swapchain.buffer_count,
         .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
         .NodeMask = 0,
     };
@@ -2203,8 +2196,8 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
     ImGui_ImplDX12_InitInfo init_info = {};
     init_info.Device = m_device.Get();
     init_info.CommandQueue = queue_d3d12->Get();
-    init_info.NumFramesInFlight = swapchain.desc.buffer_count;
-    init_info.RTVFormat = swapchain.desc.format;
+    init_info.NumFramesInFlight = static_cast<unsigned>(swapchain.buffer_count);
+    init_info.RTVFormat = swapchain.format;
     init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
     init_info.SrvDescriptorHeap = m_imgui_heap.get().Get();
 
