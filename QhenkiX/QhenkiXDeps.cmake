@@ -17,6 +17,7 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/Vulkan-Headers/include"
     "${QHENKIX_SRC_DIR}/external/volk"
     "${QHENKIX_SRC_DIR}/external/vk-bootstrap/src"
+    "${QHENKIX_SRC_DIR}/external/VulkanMemAlloc"
 )
 
 if(WIN32)
