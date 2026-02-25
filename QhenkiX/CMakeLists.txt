@@ -63,6 +63,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/utility/file_util.cpp"  
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12DescriptorHelpers/RenderTargetHelper.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
