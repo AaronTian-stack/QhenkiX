@@ -31,6 +31,8 @@ class D3D12Context : public Context
         bool allow_tearing;
     } m_capabilities;
 
+    // TODO: Add limits (ie memory)
+
     ComPtr<IDXGIFactory6> m_dxgi_factory;
 
     ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> m_dred_settings;

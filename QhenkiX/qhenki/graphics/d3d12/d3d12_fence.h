@@ -5,6 +5,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+namespace qhenki::gfx
+{
 struct D3D12Fence
 {
     HANDLE event = nullptr;
@@ -17,3 +19,4 @@ struct D3D12Fence
         }
     }
 };
+}; // namespace qhenki::gfx
