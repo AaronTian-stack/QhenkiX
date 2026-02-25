@@ -964,7 +964,6 @@ void unbind_srvs_for_render_targets(ID3D11DeviceContext* ctx)
 } // namespace
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
-                                     Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
                                      unsigned frame_index)

@@ -144,7 +144,6 @@ public:
     bool reset_command_pool(CommandPool* command_pool) override;
 
     bool start_render_pass(CommandList* cmd_list,
-                           Swapchain* swapchain,
                            const float* clear_color_values,
                            const RenderTarget* depth_stencil,
                            unsigned frame_index) override;

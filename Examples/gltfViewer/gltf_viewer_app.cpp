@@ -530,7 +530,7 @@ void gltfViewerApp::render()
         //.descriptor = m_depth_buffer_descriptor,
         .texture = &m_depth_buffer,
     };
-    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), &depth, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), &depth, m_frame_index);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{

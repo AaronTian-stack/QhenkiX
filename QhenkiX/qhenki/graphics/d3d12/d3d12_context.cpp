@@ -1812,7 +1812,6 @@ void D3D12Context::clear_depth(ID3D12GraphicsCommandList7* command_list, const R
 }
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
-                                     Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
                                      const unsigned frame_index)
