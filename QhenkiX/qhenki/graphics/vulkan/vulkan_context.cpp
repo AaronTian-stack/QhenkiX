@@ -4,9 +4,14 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_vulkan.h>
 #include <volk.h>
+#include "SDL3/SDL_vulkan.h"
+#define VMA_IMPLEMENTATION
+#define VMA_VULKAN_VERSION 1004000
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#include "vk_mem_alloc.h"
 
 #include "qhenki/utility/string_util.h"
-#include "SDL3/SDL_vulkan.h"
 
 using namespace qhenki::gfx;
 
@@ -84,47 +89,22 @@ namespace
     X(DXGI_FORMAT_B4G4R4A4_UNORM, VK_FORMAT_B4G4R4A4_UNORM_PACK16)       \
     X(DXGI_FORMAT_R9G9B9E5_SHAREDEXP, VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
 
-#define DXGI_UNSUPPORTED_FORMATS(X)           \
-    X(DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM) \
-    X(DXGI_FORMAT_AYUV)                       \
-    X(DXGI_FORMAT_Y410)                       \
-    X(DXGI_FORMAT_Y416)                       \
-    X(DXGI_FORMAT_NV12)                       \
-    X(DXGI_FORMAT_P010)                       \
-    X(DXGI_FORMAT_P016)                       \
-    X(DXGI_FORMAT_420_OPAQUE)                 \
-    X(DXGI_FORMAT_YUY2)                       \
-    X(DXGI_FORMAT_Y210)                       \
-    X(DXGI_FORMAT_Y216)                       \
-    X(DXGI_FORMAT_NV11)                       \
-    X(DXGI_FORMAT_AI44)                       \
-    X(DXGI_FORMAT_IA44)                       \
-    X(DXGI_FORMAT_P8)                         \
-    X(DXGI_FORMAT_A8P8)                       \
-    X(DXGI_FORMAT_P208)                       \
-    X(DXGI_FORMAT_V208)                       \
-    X(DXGI_FORMAT_V408)
-
 VkFormat convert_format(const DXGI_FORMAT format)
 {
 #define MAP_DXGI_TO_VK(dxgi, vk) \
     case dxgi:                   \
         return vk;
-#define UNSUPPORTED_DXGI(dxgi) case dxgi:
 
     switch (format)
     {
         DXGI_VK_FORMAT_MAP(MAP_DXGI_TO_VK)
-        DXGI_UNSUPPORTED_FORMATS(UNSUPPORTED_DXGI)
     default:
         return VK_FORMAT_UNDEFINED;
     }
 
-#undef UNSUPPORTED_DXGI
 #undef MAP_DXGI_TO_VK
 }
 
-#undef DXGI_UNSUPPORTED_FORMATS
 #undef DXGI_VK_FORMAT_MAP
 } // namespace
 
@@ -196,7 +176,10 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     volkLoadInstanceOnly(m_instance.instance);
 
     // Since this is Vulkan 1.4 most of the stuff we need is core
-    std::array<const char*, 1> device_extensions{
+    std::array<const char*, 4> device_extensions{
+        VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+        VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE_9_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
     };
 
@@ -264,6 +247,32 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     m_device = dev_ret.value();
 
     volkLoadDevice(m_device.device);
+
+    VmaVulkanFunctions vulkan_functions{};
+    VmaAllocatorCreateInfo allocator_desc{
+        .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT |
+                 VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT,
+        .physicalDevice = m_device.physical_device,
+        .device = m_device.device,
+        .instance = m_instance.instance,
+        .vulkanApiVersion = VK_API_VERSION_1_4,
+    };
+
+    if (vmaImportVulkanFunctionsFromVolk(&allocator_desc, &vulkan_functions) != VK_SUCCESS)
+    {
+        return "Vulkan: Failed to import Vulkan functions for VMA from Volk";
+    }
+
+    allocator_desc.pVulkanFunctions = &vulkan_functions;
+
+    if (vmaCreateAllocator(&allocator_desc, &m_allocator) != VK_SUCCESS)
+    {
+        return "Vulkan: Failed to create VMA allocator";
+    }
+
+    VkPhysicalDeviceProperties2 device_props2{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+    device_props2.pNext = &m_capabilities.descriptor_heap_properties;
+    vkGetPhysicalDeviceProperties2(m_device.physical_device, &device_props2);
 
     return "";
 }
@@ -363,6 +372,52 @@ bool VulkanContext::set_pipeline_constant(
 
 bool VulkanContext::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name)
 {
+    const auto& heap_properties = m_capabilities.descriptor_heap_properties;
+
+    VkDeviceSize descriptor_size = 0;
+    VkDeviceSize min_size = 0;
+    if (desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
+    {
+        descriptor_size = std::max(heap_properties.bufferDescriptorSize, heap_properties.imageDescriptorSize);
+        min_size = heap_properties.minResourceHeapReservedRange;
+    }
+    else if (desc.type == DescriptorHeapDesc::Type::SAMPLER)
+    {
+        descriptor_size = heap_properties.samplerDescriptorSize;
+        min_size = heap_properties.minSamplerHeapReservedRange;
+    }
+    const auto heap_size = util::align_u(desc.descriptor_count * descriptor_size + min_size,
+                                         heap_properties.resourceHeapAlignment);
+
+    const VkBufferCreateInfo buffer_info{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = heap_size,
+        .usage = VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    };
+
+    VmaAllocationCreateInfo alloc_info{
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
+
+    // if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
+    //{
+    //     alloc_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    // }
+    //  alloc_info.preferredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    const auto result = vmaCreateBuffer(m_allocator, &buffer_info, &alloc_info, &buffer, &allocation, nullptr);
+
+    if (result != VK_SUCCESS)
+    {
+#if defined(_WIN32) || defined(_WIN64)
+        OutputDebugStringA("Qhenki Vulkan ERROR: Failed to create descriptor heap buffer\n");
+#endif
+        return false;
+    }
+
     return true;
 }
 
@@ -627,4 +682,5 @@ bool VulkanContext::wait_idle(Queue* queue)
 
 VulkanContext::~VulkanContext()
 {
+    vmaDestroyAllocator(m_allocator);
 }

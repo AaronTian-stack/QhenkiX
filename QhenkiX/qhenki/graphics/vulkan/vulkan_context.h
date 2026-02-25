@@ -1,6 +1,7 @@
 #pragma once
 
 #define VK_NO_PROTOTYPES
+#include <vk_mem_alloc.h>
 #include <VkBootstrap.h>
 #include <vulkan/vulkan.h>
 
@@ -12,11 +13,14 @@ class VulkanContext : public Context
 {
     struct Capabilities
     {
+        VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
     } m_capabilities; // TODO
 
     vkb::Instance m_instance;
     vkb::Device m_device;
     vkb::Swapchain m_swapchain;
+    VmaAllocator m_allocator = nullptr;
 
 public:
     std::string create(bool enable_debug_layer) override;

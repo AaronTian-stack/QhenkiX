@@ -89,6 +89,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/utility/d3d_util.h"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
