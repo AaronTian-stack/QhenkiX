@@ -8,6 +8,7 @@
 #include <wrl/client.h>
 
 #include <boost/lockfree/stack.hpp>
+#include <D3D12DescriptorHelpers/RenderTargetHelper.hpp>
 
 #include "d3d12_descriptor_heap.h"
 #include "qhenki/memory/arena.h"
@@ -43,12 +44,13 @@ class D3D12Context : public Context
 
     ComPtr<IDXGISwapChain3> m_swapchain;
     std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers; // 2 is upper limit
-    std::array<Descriptor, 2> m_swapchain_descriptors{};       // 2 is upper limit
 
     ComPtr<IDxcUtils> m_library;
 
     D3D12DescriptorHeap m_imgui_heap{};              // ImGUI only
     std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
+
+    RenderTargetHelper m_render_target_helper{};
 
     Queue* m_swapchain_queue = nullptr;
 
@@ -66,7 +68,6 @@ public:
                           Queue* direct_queue,
                           unsigned* frame_index) override;
     bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
-    bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
     bool present(const Swapchain& swapchain,
                  unsigned fence_count,
                  Fence* wait_fences,
@@ -213,5 +214,6 @@ private:
     D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                 const D3D12_SHADER_DESC& shader_desc,
                                                 bool increment_slot);
+    void clear_depth(ID3D12GraphicsCommandList7* command_list, const RenderTarget* depth_stencil);
 };
 } // namespace qhenki::gfx

@@ -36,7 +36,6 @@ public:
                                   Queue* direct_queue,
                                   unsigned* frame_index) = 0;
     virtual bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) = 0;
-    virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) = 0;
     virtual bool present(const Swapchain& swapchain,
                          unsigned fence_count,
                          Fence* wait_fences,

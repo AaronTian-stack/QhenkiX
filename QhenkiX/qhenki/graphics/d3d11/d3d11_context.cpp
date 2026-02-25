@@ -301,11 +301,6 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
     return create_swapchain_resources(m_device.Get(), m_swapchain.Get(), m_swapchain_view.ReleaseAndGetAddressOf());
 }
 
-bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
-{
-    return true;
-}
-
 bool D3D11Context::present(const Swapchain& swapchain,
                            unsigned fence_count,
                            Fence* wait_fences,

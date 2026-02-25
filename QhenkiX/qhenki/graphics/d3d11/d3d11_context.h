@@ -38,9 +38,7 @@ public:
                           const SwapchainDesc& swapchain_desc,
                           Queue* direct_queue,
                           unsigned* frame_index) override;
-    bool resize_swapchain(
-        Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
-    bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
+    bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
     bool present(const Swapchain& swapchain,
                  unsigned fence_count,
                  Fence* wait_fences,
