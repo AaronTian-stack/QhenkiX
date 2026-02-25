@@ -157,13 +157,6 @@ void gltfViewerApp::create()
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, "CPU heap"));
 
-    qhenki::gfx::DescriptorHeapDesc dsv_heap_desc{
-        .type = qhenki::gfx::DescriptorHeapDesc::Type::DSV,
-        .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .descriptor_count = 256,
-    };
-    THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, &m_dsv_heap, "DSV heap"));
-
     // Create Sampler Heap
     qhenki::gfx::DescriptorHeapDesc sampler_heap_desc{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::SAMPLER,
@@ -534,7 +527,8 @@ void gltfViewerApp::render()
     qhenki::gfx::RenderTarget depth{
         .clear_params = {.dsv_clear_params = {1.f, 0}},
         .clear_type = qhenki::gfx::RenderTarget::DEPTH,
-        .descriptor = m_depth_buffer_descriptor,
+        //.descriptor = m_depth_buffer_descriptor,
+        .texture = &m_depth_buffer,
     };
     m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), &depth, m_frame_index);
 
@@ -887,8 +881,6 @@ void gltfViewerApp::resize(const unsigned width, const unsigned height)
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
-    // This will recreate the descriptor in place since it already has an offset
-    THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 }
 
 void gltfViewerApp::destroy()

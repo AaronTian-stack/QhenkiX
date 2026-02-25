@@ -362,11 +362,8 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
 bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
                                     const int width,
                                     const int height,
-                                    DescriptorHeap* const rtv_heap,
                                     unsigned& frame_index)
 {
-    assert(rtv_heap);
-
     wait_idle(m_swapchain_queue);
 
     for (auto& buffer : m_swapchain_buffers)
@@ -395,14 +392,14 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
             return false;
         }
     }
-    const auto d3d12_heap = to_internal(*rtv_heap);
+    // const auto d3d12_heap = to_internal(*rtv_heap);
 
     THROW_IF_TRUE(swapchain->buffer_count > m_swapchain_buffers.size());
 
     for (unsigned i = 0; i < swapchain->buffer_count; i++)
     {
         D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
-        d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset);
+        // d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset);
         m_device->CreateRenderTargetView(m_swapchain_buffers[i].Get(), nullptr, rtv_cpu_handle);
     }
 
@@ -965,17 +962,6 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
 {
     assert(heap);
 
-    if (desc.visibility == DescriptorHeapDesc::Visibility::GPU && desc.type == DescriptorHeapDesc::Type::RTV)
-    {
-        OutputDebugStringA("Qhenki D3D12: Cannot create GPU visible RTV heap\n");
-        return false;
-    }
-    if (desc.visibility == DescriptorHeapDesc::Visibility::GPU && desc.type == DescriptorHeapDesc::Type::DSV)
-    {
-        OutputDebugStringA("Qhenki D3D12: Cannot create GPU visible DSV heap\n");
-        return false;
-    }
-
     if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
     {
         switch (m_capabilities.options.ResourceBindingTier)
@@ -1011,12 +997,6 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         break;
     case DescriptorHeapDesc::Type::SAMPLER:
         heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-        break;
-    case DescriptorHeapDesc::Type::RTV:
-        heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        break;
-    case DescriptorHeapDesc::Type::DSV:
-        heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
         break;
     default:
         OutputDebugStringA("Qhenki D3D12: Invalid descriptor heap type\n");
@@ -1476,46 +1456,6 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
     return true;
 }
 
-bool D3D12Context::create_descriptor_render_target(const Texture& texture,
-                                                   DescriptorHeap* const heap,
-                                                   Descriptor* descriptor)
-{
-    assert(heap);
-    const auto texture_d3d12 = to_internal(texture);
-    const auto heap_d3d12 = to_internal(*heap);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!allocate_arb_texture_descriptor(
-            heap, heap_d3d12, DescriptorHeapDesc::Type::RTV, descriptor, L"RTV", &cpu_handle))
-    {
-        return false;
-    }
-
-    m_device->CreateRenderTargetView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
-
-    return true;
-}
-
-bool D3D12Context::create_descriptor_depth_stencil(const Texture& texture,
-                                                   DescriptorHeap* const heap,
-                                                   Descriptor* descriptor)
-{
-    assert(heap);
-    const auto texture_d3d12 = to_internal(texture);
-    const auto heap_d3d12 = to_internal(*heap);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!allocate_arb_texture_descriptor(
-            heap, heap_d3d12, DescriptorHeapDesc::Type::DSV, descriptor, L"DSV", &cpu_handle))
-    {
-        return false;
-    }
-
-    m_device->CreateDepthStencilView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
-
-    return true;
-}
-
 bool D3D12Context::copy_to_texture(CommandList* cmd_list,
                                    const void* data,
                                    Buffer* const staging,
@@ -1922,8 +1862,8 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     const D3D12_CPU_DESCRIPTOR_HANDLE* ds_handle_ptr = nullptr;
     if (depth_stencil)
     {
-        const auto heap = to_internal(*depth_stencil->descriptor.heap);
-        heap->get_CPU_descriptor(&ds_handle, depth_stencil->descriptor.offset);
+        // const auto heap = to_internal(*depth_stencil->descriptor.heap);
+        // heap->get_CPU_descriptor(&ds_handle, depth_stencil->descriptor.offset);
         ds_handle_ptr = &ds_handle;
     }
     clear_depth(command_list, ds_handle, depth_stencil);
@@ -1951,19 +1891,19 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     std::array<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> rtv_handles;
     for (unsigned i = 0; i < rt_count; i++)
     {
-        const auto& descriptor = rts[i]->descriptor;
-        const auto heap = to_internal(*descriptor.heap);
-        heap->get_CPU_descriptor(&rtv_handles[i], descriptor.offset);
+        // const auto& descriptor = rts[i]->descriptor;
+        // const auto heap = to_internal(*descriptor.heap);
+        // heap->get_CPU_descriptor(&rtv_handles[i], descriptor.offset);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE ds_handle{};
     const D3D12_CPU_DESCRIPTOR_HANDLE* ds_handle_ptr = nullptr;
     if (depth_stencil)
     {
-        const auto& descriptor = depth_stencil->descriptor;
-        const auto heap = to_internal(*descriptor.heap);
-        heap->get_CPU_descriptor(&ds_handle, descriptor.offset);
-        ds_handle_ptr = &ds_handle;
+        // const auto& descriptor = depth_stencil->descriptor;
+        // const auto heap = to_internal(*descriptor.heap);
+        // heap->get_CPU_descriptor(&ds_handle, descriptor.offset);
+        // ds_handle_ptr = &ds_handle;
     }
 
     // TODO: Can't assume that render target descriptors are contiguous in heap so FALSE for now

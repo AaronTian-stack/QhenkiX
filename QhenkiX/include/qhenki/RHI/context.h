@@ -35,8 +35,7 @@ public:
                                   const SwapchainDesc& swapchain_desc,
                                   Queue* direct_queue,
                                   unsigned* frame_index) = 0;
-    virtual bool resize_swapchain(
-        Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) = 0;
+    virtual bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) = 0;
     virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) = 0;
     virtual bool present(const Swapchain& swapchain,
                          unsigned fence_count,
@@ -92,12 +91,6 @@ public:
     virtual bool create_descriptor_shader_view(const Texture& texture,
                                                DescriptorHeap* heap,
                                                Descriptor* descriptor) = 0;
-    virtual bool create_descriptor_render_target(const Texture& texture,
-                                                 DescriptorHeap* heap,
-                                                 Descriptor* descriptor) = 0;
-    virtual bool create_descriptor_depth_stencil(const Texture& texture,
-                                                 DescriptorHeap* heap,
-                                                 Descriptor* descriptor) = 0;
 
     /**
      * @brief Creates staging buffer with data pointer and copies it to the texture.

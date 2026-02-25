@@ -124,13 +124,6 @@ void RetroExampleApp::create()
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, "CPU heap"));
 
-    qhenki::gfx::DescriptorHeapDesc dsv_heap_desc{
-        .type = qhenki::gfx::DescriptorHeapDesc::Type::DSV,
-        .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .descriptor_count = 256,
-    };
-    THROW_IF_FALSE(m_context->create_descriptor_heap(dsv_heap_desc, &m_dsv_heap, "DSV heap"));
-
     qhenki::gfx::DescriptorHeapDesc sampler_heap_desc{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::SAMPLER,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
@@ -886,13 +879,13 @@ void RetroExampleApp::render()
     qhenki::gfx::RenderTarget color{
         .clear_params = {.clear_color_value = {1.f, 1.f, 1.f, 0.f}},
         .clear_type = qhenki::gfx::RenderTarget::COLOR,
-        .descriptor = m_offscreen_texture.rt_descriptor,
+        .texture = &m_offscreen_texture.tex,
     };
     qhenki::gfx::RenderTarget depth{
         .clear_params = {.dsv_clear_params = {1.f, 0}},
         .clear_type = static_cast<qhenki::gfx::RenderTarget::ClearType>(qhenki::gfx::RenderTarget::DEPTH |
                                                                         qhenki::gfx::RenderTarget::STENCIL),
-        .descriptor = m_depth_buffer_descriptor,
+        .texture = &m_depth_buffer,
     };
     m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(color).data(), &depth);
 
@@ -1055,7 +1048,7 @@ void RetroExampleApp::render()
     qhenki::gfx::RenderTarget blit_target{
         .clear_params = {.clear_color_value = {0.f, 0.f, 0.f, 0.f}},
         .clear_type = qhenki::gfx::RenderTarget::COLOR,
-        .descriptor = m_bloom_textures[m_starting_bloom_index].rt_descriptor,
+        .texture = &m_bloom_textures[m_starting_bloom_index].tex,
     };
     m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target).data(), nullptr);
     const unsigned bloom_w = m_bloom_textures.front().tex.desc.width;
@@ -1156,7 +1149,7 @@ void RetroExampleApp::render()
         qhenki::gfx::RenderTarget blit_target_blur{
             .clear_params = {.clear_color_value = {0.f, 0.f, 0.f, 0.f}},
             .clear_type = qhenki::gfx::RenderTarget::COLOR,
-            .descriptor = bloom1.rt_descriptor,
+            .texture = &bloom1.tex,
         };
         m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target_blur).data(), nullptr);
         m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
@@ -1286,7 +1279,6 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .clear_depth_value = {.depth = 1.f, .stencil = 0},
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
-    THROW_IF_FALSE(m_context->create_descriptor_depth_stencil(m_depth_buffer, &m_dsv_heap, &m_depth_buffer_descriptor));
 
     const qhenki::gfx::TextureDesc offscreen_rt_desc{
         .width = static_cast<uint64_t>(width),
@@ -1298,9 +1290,6 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .clear_color_value = {1.f, 1.f, 1.f, 0.f},
     };
     THROW_IF_FALSE(m_context->create_texture(offscreen_rt_desc, &m_offscreen_texture.tex, "Offscreen RT"));
-    THROW_IF_FALSE(m_context->create_descriptor_render_target(m_offscreen_texture.tex,
-                                                              &m_rtv_heap,
-                                                              &m_offscreen_texture.rt_descriptor));
     THROW_IF_FALSE(m_context->create_descriptor_shader_view(m_offscreen_texture.tex,
                                                             &m_CPU_heap,
                                                             &m_offscreen_texture.srv_descriptor));
@@ -1321,9 +1310,6 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         THROW_IF_FALSE(m_context->create_texture(blit_rt_desc,
                                                  &m_bloom_textures[i].tex,
                                                  qhenki::util::format_string("Bloom RT %u", i).buffer.data()));
-        THROW_IF_FALSE(m_context->create_descriptor_render_target(m_bloom_textures[i].tex,
-                                                                  &m_rtv_heap,
-                                                                  &m_bloom_textures[i].rt_descriptor));
         THROW_IF_FALSE(m_context->create_descriptor_shader_view(m_bloom_textures[i].tex,
                                                                 &m_CPU_heap,
                                                                 &m_bloom_textures[i].srv_descriptor));

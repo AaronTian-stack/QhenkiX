@@ -65,8 +65,7 @@ public:
                           const SwapchainDesc& swapchain_desc,
                           Queue* direct_queue,
                           unsigned* frame_index) override;
-    bool resize_swapchain(
-        Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) override;
+    bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
     bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
     bool present(const Swapchain& swapchain,
                  unsigned fence_count,
@@ -116,8 +115,6 @@ public:
 
     bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name) override;
     bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
-    bool create_descriptor_render_target(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
-    bool create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
 
