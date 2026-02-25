@@ -94,7 +94,7 @@ void ExampleApp::create()
     // A graphics queue is already given to the application by the context
 
     // Allocate Command Pool(s)/Allocator(s) from queue
-    for (int i = 0; i < m_frames_in_flight; i++)
+    for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
         THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], m_graphics_queue));
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
