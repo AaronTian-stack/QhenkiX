@@ -1075,6 +1075,22 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
     return true;
 }
 
+size_t D3D12Context::get_descriptor_size(const Descriptor::Type type) const
+{
+    D3D12_DESCRIPTOR_HEAP_TYPE t;
+    switch (type)
+    {
+    case Descriptor::BUFFER:
+    case Descriptor::TEXTURE:
+        t = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        break;
+    case Descriptor::SAMPLER:
+        t = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+        break;
+    }
+    return m_device->GetDescriptorHandleIncrementSize(t);
+}
+
 bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
     assert(buffer);

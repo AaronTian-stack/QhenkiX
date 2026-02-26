@@ -516,6 +516,11 @@ bool D3D11Context::free_descriptor(Descriptor* descriptor)
     return true;
 }
 
+size_t D3D11Context::get_descriptor_size(Descriptor::Type type) const
+{
+    return 0;
+}
+
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
     assert(buffer);

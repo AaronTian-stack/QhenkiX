@@ -68,6 +68,7 @@ public:
     virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
     virtual bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) = 0;
     virtual bool free_descriptor(Descriptor* descriptor) = 0;
+    virtual size_t get_descriptor_size(Descriptor::Type type) const = 0;
 
     virtual bool create_buffer(const BufferDesc& desc,
                                const void* data,
