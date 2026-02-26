@@ -43,9 +43,9 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.cpp"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_shader.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_shader.cpp"
 
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.cpp"
@@ -72,9 +72,11 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.h"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_shader.h"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_texture.h"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_shader.h"
+
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_fence.h"
