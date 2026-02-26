@@ -44,8 +44,7 @@ protected:
     DisplayWindow m_window;
     uPtr<gfx::Context> m_context;
     gfx::Swapchain m_swapchain{};
-    gfx::Queue m_graphics_queue{};    // A graphics queue is given to the application by default
-    gfx::DescriptorHeap m_rtv_heap{}; // Default RTV heap that also contains swapchain descriptors
+    gfx::Queue m_graphics_queue{}; // A graphics queue is given to the application by default
 
     gfx::Fence m_fence_frame_ready{};
     std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val{0, 0};

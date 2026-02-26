@@ -2,8 +2,8 @@
 
 #include <array>
 
-#include "descriptor_table.h"
 #include "qhenki/utility/math_util.h"
+#include "texture.h"
 
 namespace qhenki::gfx
 {
@@ -25,6 +25,6 @@ struct RenderTarget
         DEPTH = BIT(2),
         STENCIL = BIT(3),
     } clear_type; // Can be combined
-    Descriptor descriptor;
+    Texture* texture;
 };
 } // namespace qhenki::gfx

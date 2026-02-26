@@ -84,7 +84,6 @@ class RetroExampleApp : public qhenki::Application
     struct TextureDescriptor
     {
         qhenki::gfx::Texture tex;
-        qhenki::gfx::Descriptor rt_descriptor;
         qhenki::gfx::Descriptor srv_descriptor;
     };
 

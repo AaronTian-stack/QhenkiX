@@ -27,7 +27,6 @@ class gltfViewerApp : public qhenki::Application
     qhenki::gfx::Buffer m_model_buffer{};         // Model matrix (compatibility only)
 
     qhenki::gfx::Texture m_depth_buffer{};
-    qhenki::gfx::Descriptor m_depth_buffer_descriptor{};
 
     qhenki::gfx::DescriptorHeap m_CPU_heap{};
     qhenki::gfx::DescriptorHeap m_GPU_heap{};
