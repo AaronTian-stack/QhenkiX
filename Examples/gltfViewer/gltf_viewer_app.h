@@ -49,7 +49,10 @@ class gltfViewerApp : public qhenki::Application
     std::atomic_int m_model_index_to_load_into{0};
     std::array<GLTFModel, m_frames_in_flight> m_models{};
     tsl::robin_map<std::string, int> m_attribute_to_slot{
-        {"POSITION", 0}, {"NORMAL", 1}, {"COLOR_0", 2}, {"TEXCOORD_0", 3},
+        {"POSITION", 0},
+        {"NORMAL", 1},
+        {"COLOR_0", 2},
+        {"TEXCOORD_0", 3},
         //{"TEXCOORD_1", 4},
     };
 
