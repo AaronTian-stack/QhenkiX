@@ -278,7 +278,7 @@ void ExampleApp::render()
 
     // Clear back buffer / Start render pass
     std::array clear_values = {0.f, 0.f, 0.f, 1.f};
-    m_context->start_render_pass(&cmd_list, &m_swapchain, clear_values.data(), nullptr, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr, m_frame_index);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{

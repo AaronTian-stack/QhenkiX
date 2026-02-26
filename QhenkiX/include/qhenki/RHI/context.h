@@ -35,9 +35,7 @@ public:
                                   const SwapchainDesc& swapchain_desc,
                                   Queue* direct_queue,
                                   unsigned* frame_index) = 0;
-    virtual bool resize_swapchain(
-        Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) = 0;
-    virtual bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) = 0;
+    virtual bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) = 0;
     virtual bool present(const Swapchain& swapchain,
                          unsigned fence_count,
                          Fence* wait_fences,
@@ -92,12 +90,6 @@ public:
     virtual bool create_descriptor_shader_view(const Texture& texture,
                                                DescriptorHeap* heap,
                                                Descriptor* descriptor) = 0;
-    virtual bool create_descriptor_render_target(const Texture& texture,
-                                                 DescriptorHeap* heap,
-                                                 Descriptor* descriptor) = 0;
-    virtual bool create_descriptor_depth_stencil(const Texture& texture,
-                                                 DescriptorHeap* heap,
-                                                 Descriptor* descriptor) = 0;
 
     /**
      * @brief Creates staging buffer with data pointer and copies it to the texture.
@@ -137,8 +129,15 @@ public:
 
     virtual bool reset_command_pool(CommandPool* command_pool) = 0;
 
+    /**
+     * Starts a render pass on swap chain render target with optional depth stencil and clear color values.
+     * @param cmd_list Command list to record render pass commands on.
+     * @param clear_color_values Clear color values for render targets. If null, render targets will not be cleared.
+     * @param depth_stencil Depth stencil render target. If null, no depth stencil will be bound.
+     * @param frame_index Which swap chain buffer to use as render target.
+     * @return Whether the operation succeeded.
+     */
     virtual bool start_render_pass(CommandList* cmd_list,
-                                   Swapchain* swapchain,
                                    const float* clear_color_values,
                                    const RenderTarget* depth_stencil,
                                    unsigned frame_index) = 0;

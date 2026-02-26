@@ -12,6 +12,7 @@
 #include "d3d11_heap.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_shader.h"
+#include "d3d11_texture.h"
 #include "qhenki/application.h"
 #include "qhenki/utility/d3d_util.h"
 
@@ -54,20 +55,6 @@ D3D11_SRV_UAV_Heap* to_internal_srv_uav(const DescriptorHeap& ext)
     return d3d11_heap;
 }
 
-D3D11_RTV_Heap* to_internal_rtv(const DescriptorHeap& ext)
-{
-    const auto d3d11_heap = static_cast<D3D11_RTV_Heap*>(ext.internal_state.get());
-    assert(d3d11_heap);
-    return d3d11_heap;
-}
-
-D3D11_DSV_Heap* to_internal_dsv(const DescriptorHeap& ext)
-{
-    const auto d3d11_heap = static_cast<D3D11_DSV_Heap*>(ext.internal_state.get());
-    assert(d3d11_heap);
-    return d3d11_heap;
-}
-
 D3D11_Sampler_Heap* to_internal_sampler(const DescriptorHeap& ext)
 {
     const auto d3d11_heap = static_cast<D3D11_Sampler_Heap*>(ext.internal_state.get());
@@ -77,35 +64,52 @@ D3D11_Sampler_Heap* to_internal_sampler(const DescriptorHeap& ext)
 
 ID3D11Resource* get_texture_resource(const D3D11Texture& tex)
 {
-    if (std::holds_alternative<ComPtr<ID3D11Texture1D>>(tex))
+    const auto& texture = tex.texture;
+    if (std::holds_alternative<ComPtr<ID3D11Texture1D>>(texture))
     {
-        return std::get<ComPtr<ID3D11Texture1D>>(tex).Get();
+        return std::get<ComPtr<ID3D11Texture1D>>(texture).Get();
     }
-    if (std::holds_alternative<ComPtr<ID3D11Texture2D>>(tex))
+    if (std::holds_alternative<ComPtr<ID3D11Texture2D>>(texture))
     {
-        return std::get<ComPtr<ID3D11Texture2D>>(tex).Get();
+        return std::get<ComPtr<ID3D11Texture2D>>(texture).Get();
     }
-    if (std::holds_alternative<ComPtr<ID3D11Texture3D>>(tex))
+    if (std::holds_alternative<ComPtr<ID3D11Texture3D>>(texture))
     {
-        return std::get<ComPtr<ID3D11Texture3D>>(tex).Get();
+        return std::get<ComPtr<ID3D11Texture3D>>(texture).Get();
     }
     return nullptr;
 }
 } // namespace
 
-namespace qhenki::gfx
+bool qhenki::gfx::set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
 {
+    if (obj && debug_name)
+    {
+        return SUCCEEDED(obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(debug_name), debug_name));
+    }
+    return false;
+}
+
 ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_stencil) const
 {
     ID3D11DepthStencilView* ds = nullptr;
     if (depth_stencil)
     {
+        assert(is_depth_stencil_format(depth_stencil->texture->desc.format));
         if (depth_stencil->clear_type != RenderTarget::ClearType::NONE)
         {
-            assert(depth_stencil->descriptor.heap);
-            const auto heap = to_internal_dsv(*depth_stencil->descriptor.heap);
-            ds = heap->at(depth_stencil->descriptor.offset).Get();
-            assert(ds);
+            const auto state = to_internal(*depth_stencil->texture);
+            if (!state->dsv_view)
+            {
+                if (FAILED(m_device->CreateDepthStencilView(get_texture_resource(*state),
+                                                            nullptr,
+                                                            state->dsv_view.ReleaseAndGetAddressOf())))
+                {
+                    OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Depth Stencil View\n");
+                    return nullptr;
+                }
+            }
+            ds = state->dsv_view.Get();
 
             D3D11_CLEAR_FLAG clear = static_cast<D3D11_CLEAR_FLAG>(0);
             if (depth_stencil->clear_type & RenderTarget::ClearType::DEPTH)
@@ -124,16 +128,6 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
     }
     return ds;
 }
-
-bool set_debug_name(ID3D11DeviceChild* obj, const char* debug_name)
-{
-    if (obj && debug_name)
-    {
-        return SUCCEEDED(obj->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(debug_name), debug_name));
-    }
-    return false;
-}
-} // namespace qhenki::gfx
 
 std::string D3D11Context::create(const bool enable_debug_layer)
 {
@@ -296,7 +290,6 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
 bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
                                     const int width,
                                     const int height,
-                                    DescriptorHeap* const rtv_heap,
                                     unsigned& frame_index)
 {
     m_device_context->Flush();
@@ -314,11 +307,6 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
         return false;
     }
     return create_swapchain_resources(m_device.Get(), m_swapchain.Get(), m_swapchain_view.ReleaseAndGetAddressOf());
-}
-
-bool D3D11Context::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
-{
-    return true;
 }
 
 bool D3D11Context::present(const Swapchain& swapchain,
@@ -491,12 +479,6 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     {
     case DescriptorHeapDesc::Type::CBV_SRV_UAV:
         heap->internal_state = mkS<D3D11_SRV_UAV_Heap>();
-        break;
-    case DescriptorHeapDesc::Type::RTV:
-        heap->internal_state = mkS<D3D11_RTV_Heap>();
-        break;
-    case DescriptorHeapDesc::Type::DSV:
-        heap->internal_state = mkS<D3D11_DSV_Heap>();
         break;
     case DescriptorHeapDesc::Type::SAMPLER:
         heap->internal_state = mkS<D3D11_Sampler_Heap>();
@@ -720,9 +702,11 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .MiscFlags = 0,
         };
 
-        texture_d3d11->emplace<ComPtr<ID3D11Texture1D>>();
+        texture_d3d11->texture.emplace<ComPtr<ID3D11Texture1D>>();
         if (FAILED(m_device->CreateTexture1D(
-                &texture_desc, nullptr, std::get<ComPtr<ID3D11Texture1D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+                &texture_desc,
+                nullptr,
+                std::get<ComPtr<ID3D11Texture1D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 1D texture\n");
             return false;
@@ -743,9 +727,11 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .MiscFlags = 0, // TODO: cubemaps?
         };
 
-        texture_d3d11->emplace<ComPtr<ID3D11Texture2D>>();
+        texture_d3d11->texture.emplace<ComPtr<ID3D11Texture2D>>();
         if (FAILED(m_device->CreateTexture2D(
-                &texture_desc, nullptr, std::get<ComPtr<ID3D11Texture2D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+                &texture_desc,
+                nullptr,
+                std::get<ComPtr<ID3D11Texture2D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 2D texture\n");
             return false;
@@ -765,9 +751,11 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .MiscFlags = 0,
         };
 
-        texture_d3d11->emplace<ComPtr<ID3D11Texture3D>>();
+        texture_d3d11->texture.emplace<ComPtr<ID3D11Texture3D>>();
         if (FAILED(m_device->CreateTexture3D(
-                &texture_desc, nullptr, std::get<ComPtr<ID3D11Texture3D>>(*texture_d3d11).ReleaseAndGetAddressOf())))
+                &texture_desc,
+                nullptr,
+                std::get<ComPtr<ID3D11Texture3D>>(texture_d3d11->texture).ReleaseAndGetAddressOf())))
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create 3D texture\n");
             return false;
@@ -811,52 +799,6 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     heap_d3d11->shader_resource_views[offset] = std::move(view);
     descriptor->heap = heap;
     descriptor->offset = offset;
-    return true;
-}
-
-bool D3D11Context::create_descriptor_render_target(const Texture& texture,
-                                                   DescriptorHeap* const heap,
-                                                   Descriptor* const descriptor)
-{
-    assert(heap);
-    assert(descriptor);
-    const auto texture_d3d11 = to_internal(texture);
-    const auto heap_d3d11 = to_internal_rtv(*heap);
-    const auto resource = get_texture_resource(*texture_d3d11);
-    assert(resource);
-
-    ComPtr<ID3D11RenderTargetView> rtv;
-    if (FAILED(m_device->CreateRenderTargetView(resource, nullptr, rtv.ReleaseAndGetAddressOf())))
-    {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture RTV\n");
-        return false;
-    }
-    heap_d3d11->push_back(std::move(rtv));
-    descriptor->heap = heap;
-    descriptor->offset = heap_d3d11->size() - 1;
-    return true;
-}
-
-bool D3D11Context::create_descriptor_depth_stencil(const Texture& texture,
-                                                   DescriptorHeap* const heap,
-                                                   Descriptor* const descriptor)
-{
-    assert(heap);
-    assert(descriptor);
-    const auto texture_d3d11 = to_internal(texture);
-    const auto heap_d3d11 = to_internal_dsv(*heap);
-    const auto resource = get_texture_resource(*texture_d3d11);
-    assert(resource);
-
-    ComPtr<ID3D11DepthStencilView> dsv;
-    if (FAILED(m_device->CreateDepthStencilView(resource, nullptr, dsv.ReleaseAndGetAddressOf())))
-    {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture DSV\n");
-        return false;
-    }
-    heap_d3d11->push_back(std::move(dsv));
-    descriptor->heap = heap;
-    descriptor->offset = heap_d3d11->size() - 1;
     return true;
 }
 
@@ -1036,7 +978,6 @@ void unbind_srvs_for_render_targets(ID3D11DeviceContext* ctx)
 } // namespace
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
-                                     Swapchain* const swapchain,
                                      const float* clear_color_values,
                                      const RenderTarget* const depth_stencil,
                                      unsigned frame_index)
@@ -1064,23 +1005,34 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
     for (unsigned int i = 0; i < rt_count; i++)
     {
         assert(rts[i]);
-        const auto heap = to_internal_rtv(*rts[i]->descriptor.heap);
-        // Descriptor is used as index
-        const auto& rtv = heap->at(rts[i]->descriptor.offset);
+
+        const auto state = to_internal(*rts[i]->texture);
+
+        if (!state->rtv_view)
+        {
+            if (FAILED(m_device->CreateRenderTargetView(get_texture_resource(*state),
+                                                        nullptr,
+                                                        state->rtv_view.ReleaseAndGetAddressOf())))
+            {
+                OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create RTV for render target\n");
+                return false;
+            }
+        }
         if (rts[i]->clear_type & RenderTarget::ClearType::COLOR)
         {
-            m_device_context->ClearRenderTargetView(rtv.Get(), rts[i]->clear_params.clear_color_value.data());
+            m_device_context->ClearRenderTargetView(state->rtv_view.Get(),
+                                                    rts[i]->clear_params.clear_color_value.data());
         }
-        rtvs[i] = rtv.GetAddressOf();
+
+        rtvs[i] = state->rtv_view.GetAddressOf();
     }
     ID3D11DepthStencilView* ds = start_dsv(depth_stencil);
-
     unbind_srvs_for_render_targets(m_device_context.Get());
     m_device_context->OMSetRenderTargets(rt_count, rtvs[0], ds);
     return true;
 }
 
-void D3D11Context::set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport)
+void D3D11Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
 {
     for (unsigned int i = 0; i < count; i++)
     {

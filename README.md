@@ -89,6 +89,7 @@ This project relies on the following dependencies and build tools:
 - [Dear ImGui](https://github.com/ocornut/imgui) - (MIT License)
 - [utf8](https://github.com/nemtrif/utfcpp) - (Boost Software License 1.0)
 - [magic_enum](https://github.com/Neargye/magic_enum) - (MIT License)
+- [D3D12DescriptorHelpers](https://github.com/sawickiap/D3D12DescriptorHelpers) - (Public Domain)
 
 ## Documentation
 

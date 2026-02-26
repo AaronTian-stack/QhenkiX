@@ -8,17 +8,14 @@ struct DescriptorHeapDesc
 {
     enum class Type
     {
-        CBV_SRV_UAV, // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                     // VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-        SAMPLER,     // VK_DESCRIPTOR_TYPE_SAMPLER
-        RTV,         // VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
-        DSV,         // VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
+        CBV_SRV_UAV,
+        SAMPLER,
     } type;
     enum class Visibility
     {
         CPU,
         GPU,
-    } visibility; // RTV, DSV is CPU only
+    } visibility;
     unsigned descriptor_count;
 };
 

@@ -105,16 +105,6 @@ void Application::run(const gfx::API api,
 
     THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain, &m_graphics_queue, &m_frame_index));
 
-    const gfx::DescriptorHeapDesc rtv_heap_desc{
-        .type = gfx::DescriptorHeapDesc::Type::RTV,
-        .visibility = gfx::DescriptorHeapDesc::Visibility::CPU,
-        .descriptor_count = 256, // TODO: expose max count to context
-    };
-    THROW_IF_FALSE(m_context->create_descriptor_heap(rtv_heap_desc, &m_rtv_heap, "Swapchain RTV Heap"));
-
-    // Make swapchain RTVs (stored internally)
-    THROW_IF_FALSE(m_context->create_swapchain_descriptors(m_swapchain, &m_rtv_heap));
-
     // Create fences
     THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[m_frame_index]));
 
@@ -135,8 +125,7 @@ void Application::run(const gfx::API api,
             {
                 m_window.m_display_info.width = event.window.data1;
                 m_window.m_display_info.height = event.window.data2;
-                m_context->resize_swapchain(
-                    &m_swapchain, event.window.data1, event.window.data2, &m_rtv_heap, m_frame_index);
+                m_context->resize_swapchain(&m_swapchain, event.window.data1, event.window.data2, m_frame_index);
                 // The swapchain backbuffer index might have changed after resize to use the same index as the last
                 // present, so the last fence value is no longer valid
                 // Reset both wait values to avoid infinite wait (one of them should be decremented)
