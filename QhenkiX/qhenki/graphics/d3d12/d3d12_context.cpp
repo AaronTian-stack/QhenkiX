@@ -388,7 +388,6 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
         return false;
     }
 
-    // Recreate descriptors
     for (unsigned i = 0; i < swapchain->buffer_count; i++)
     {
         if (FAILED(m_swapchain->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers[i].ReleaseAndGetAddressOf()))))
@@ -396,16 +395,6 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
             return false;
         }
-    }
-    // const auto d3d12_heap = to_internal(*rtv_heap);
-
-    THROW_IF_TRUE(swapchain->buffer_count > m_swapchain_buffers.size());
-
-    for (unsigned i = 0; i < swapchain->buffer_count; i++)
-    {
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv_cpu_handle;
-        // d3d12_heap->get_CPU_descriptor(&rtv_cpu_handle, m_swapchain_descriptors[i].offset);
-        m_device->CreateRenderTargetView(m_swapchain_buffers[i].Get(), nullptr, rtv_cpu_handle);
     }
 
     swapchain->width = width;
