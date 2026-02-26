@@ -1233,6 +1233,8 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
     };
     m_device->CreateConstantBufferView(&desc, cpu_handle);
 
+    descriptor->type = Descriptor::BUFFER;
+
     return true;
 }
 
@@ -1266,6 +1268,8 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     };
 
     m_device->CreateShaderResourceView(buffer_d3d12->Get()->GetResource(), &desc, cpu_handle);
+
+    descriptor->type = Descriptor::BUFFER;
 
     return true;
 }
@@ -1426,6 +1430,8 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
     // TODO: View description
     m_device->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
+    descriptor->type = Descriptor::TEXTURE;
+
     return true;
 }
 
@@ -1558,6 +1564,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
 bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* const heap, Descriptor* descriptor)
 {
     const auto heap_d3d12 = to_internal(*heap);
+
     if (heap->desc.type != DescriptorHeapDesc::Type::SAMPLER)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
@@ -1571,6 +1578,7 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
             return false;
         }
     }
+
     descriptor->heap = heap;
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
     heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset);
@@ -1587,6 +1595,9 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
         .MaxLOD = desc.max_lod,
     };
     m_device->CreateSampler(&sampler_desc, cpu_handle);
+
+    descriptor->type = Descriptor::SAMPLER;
+
     return true;
 }
 

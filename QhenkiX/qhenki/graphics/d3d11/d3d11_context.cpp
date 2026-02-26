@@ -606,6 +606,7 @@ bool D3D11Context::create_descriptor_constant_view(const Buffer& buffer,
                                                    DescriptorHeap* const heap,
                                                    Descriptor* descriptor)
 {
+    // D3D11 constant buffers don't need views
     return true;
 }
 
@@ -645,8 +646,13 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
         return false;
     }
     heap_d3d11->shader_resource_views[offset] = std::move(view);
-    descriptor->heap = heap;
-    descriptor->offset = offset;
+
+    *descriptor = Descriptor{
+        .heap = heap,
+        .offset = offset,
+        .type = Descriptor::BUFFER,
+    };
+
     return true;
 }
 
@@ -802,8 +808,13 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
         return false;
     }
     heap_d3d11->shader_resource_views[offset] = std::move(view);
-    descriptor->heap = heap;
-    descriptor->offset = offset;
+
+    *descriptor = Descriptor{
+        .heap = heap,
+        .offset = offset,
+        .type = Descriptor::TEXTURE,
+    };
+
     return true;
 }
 
@@ -887,6 +898,7 @@ bool D3D11Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
     *descriptor = {
         .heap = heap,
         .offset = d3d11_heap->size() - 1,
+        .type = Descriptor::SAMPLER,
     };
 
     return true;
