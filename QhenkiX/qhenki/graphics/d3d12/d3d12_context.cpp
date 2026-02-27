@@ -919,6 +919,10 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
 {
     assert(heap);
 
+    const auto descriptor_count = desc.type == DescriptorHeapDesc::Type::SAMPLER
+                                    ? desc.size / get_descriptor_size(Descriptor::SAMPLER)
+                                    : desc.size / get_descriptor_size(Descriptor::TEXTURE);
+
     if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
     {
         switch (m_capabilities.options.ResourceBindingTier)
@@ -926,7 +930,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         case D3D12_RESOURCE_BINDING_TIER_1:
             assert(false); // Should never happen here because we require Tier 2, but limit is same as Tier 2
         case D3D12_RESOURCE_BINDING_TIER_2:
-            if (desc.descriptor_count > D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2)
+            if (descriptor_count > D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2)
             {
                 OutputDebugStringA("Qhenki D3D12: Descriptor count exceeds maximum for Resource Binding Tier\n");
                 return false;
@@ -935,7 +939,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         case D3D12_RESOURCE_BINDING_TIER_3:
             // There is no bound here for CBV/SRV/UAV
             if (desc.type == DescriptorHeapDesc::Type::SAMPLER &&
-                desc.descriptor_count > D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE)
+                descriptor_count > D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE)
             {
                 OutputDebugStringA("Qhenki D3D12: Descriptor count exceeds maximum for Resource Binding Tier\n");
                 return false;
@@ -960,7 +964,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         return false;
     }
 
-    heap_desc.NumDescriptors = desc.descriptor_count;
+    heap_desc.NumDescriptors = descriptor_count;
 
     if (desc.visibility == DescriptorHeapDesc::Visibility::CPU)
     {
@@ -980,6 +984,13 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     heap->desc = desc;
     heap->internal_state = std::move(d3d12_heap);
     return true;
+}
+
+size_t D3D12Context::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type)
+{
+    // We assume Tier 2 minimum
+    return type == DescriptorHeapDesc::Type::SAMPLER ? D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE
+                                                     : D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2;
 }
 
 void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -1024,14 +1035,13 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
     if (!heap_d3d12->get_GPU_descriptor(&gpu_handle, gpu_descriptor.offset))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU descriptor handle\n");
         return;
     }
 
     cmd_list_d3d12->Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
 }
 
-bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
+bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
     assert(src.heap);
     assert(dst.heap);
@@ -1050,13 +1060,20 @@ bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const
         return false;
     }
 
+    if (bytes % get_descriptor_size(src.type) != 0)
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Bytes must be a multiple of the descriptor size\n");
+        return false;
+    }
+
     D3D12_CPU_DESCRIPTOR_HANDLE src_cpu_handle;
     src_heap_d3d12->get_CPU_descriptor(&src_cpu_handle, src.offset);
 
     D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
     dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset);
 
-    m_device->CopyDescriptorsSimple(count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
+    const auto descriptor_count = bytes / get_descriptor_size(src.type);
+    m_device->CopyDescriptorsSimple(descriptor_count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
 
     return true;
 }
@@ -1073,6 +1090,27 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
     }
     heap_d3d12->deallocate(descriptor->offset);
     return true;
+}
+
+size_t D3D12Context::get_descriptor_size(const Descriptor::Type type) const
+{
+    D3D12_DESCRIPTOR_HEAP_TYPE t{};
+    switch (type)
+    {
+    case Descriptor::BUFFER:
+    case Descriptor::TEXTURE:
+        t = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        break;
+    case Descriptor::SAMPLER:
+        t = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+        break;
+    }
+    return m_device->GetDescriptorHandleIncrementSize(t);
+}
+
+size_t D3D12Context::get_descriptor_alignment(const Descriptor::Type type) const
+{
+    return get_descriptor_size(type);
 }
 
 bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
@@ -1217,6 +1255,8 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
     };
     m_device->CreateConstantBufferView(&desc, cpu_handle);
 
+    descriptor->type = Descriptor::BUFFER;
+
     return true;
 }
 
@@ -1250,6 +1290,8 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     };
 
     m_device->CreateShaderResourceView(buffer_d3d12->Get()->GetResource(), &desc, cpu_handle);
+
+    descriptor->type = Descriptor::BUFFER;
 
     return true;
 }
@@ -1410,6 +1452,8 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
     // TODO: View description
     m_device->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
+    descriptor->type = Descriptor::TEXTURE;
+
     return true;
 }
 
@@ -1542,6 +1586,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
 bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* const heap, Descriptor* descriptor)
 {
     const auto heap_d3d12 = to_internal(*heap);
+
     if (heap->desc.type != DescriptorHeapDesc::Type::SAMPLER)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
@@ -1555,6 +1600,7 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
             return false;
         }
     }
+
     descriptor->heap = heap;
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
     heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset);
@@ -1571,6 +1617,9 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
         .MaxLOD = desc.max_lod,
     };
     m_device->CreateSampler(&sampler_desc, cpu_handle);
+
+    descriptor->type = Descriptor::SAMPLER;
+
     return true;
 }
 
@@ -1737,6 +1786,7 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
         break;
     case COPY:
         type = D3D12_COMMAND_LIST_TYPE_COPY;
+        break;
     }
     ComPtr<ID3D12GraphicsCommandList7> d3d12_cmd_list;
     if (FAILED(m_device->CreateCommandList1(

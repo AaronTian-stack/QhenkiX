@@ -60,14 +60,17 @@ public:
     virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc,
                                         DescriptorHeap* heap,
                                         const char* debug_name = nullptr) = 0;
+    virtual size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) = 0;
     virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
     virtual void set_descriptor_heap(CommandList* cmd_list,
                                      const DescriptorHeap& heap,
                                      const DescriptorHeap& sampler_heap) = 0;
 
     virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
-    virtual bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) = 0;
+    virtual bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) = 0;
     virtual bool free_descriptor(Descriptor* descriptor) = 0;
+    virtual size_t get_descriptor_size(Descriptor::Type type) const = 0;
+    virtual size_t get_descriptor_alignment(Descriptor::Type type) const = 0;
 
     virtual bool create_buffer(const BufferDesc& desc,
                                const void* data,

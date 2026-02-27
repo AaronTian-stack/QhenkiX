@@ -35,11 +35,11 @@ public:
     bool allocate(size_t* alloc_offset);
     void deallocate(size_t alloc_offset);
 
-    // Offsets are additional to start of heap in descriptors
-    void get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_descriptors) const;
+    // Offsets are additional to start of heap in bytes
+    void get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes) const;
 
-    // Offsets are additional to start of heap in descriptors
-    bool get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, size_t offset_descriptors) const;
+    // Offsets are additional to start of heap in bytes
+    bool get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes) const;
 
     const ComPtr<ID3D12DescriptorHeap>& get() const;
 };

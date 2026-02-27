@@ -14,14 +14,20 @@ struct DescriptorTableDesc
     DescriptorHeap* heap;
 };
 
-// Creates a new descriptor in the heap, otherwise use the already existing offset to recreate the descriptor.
+// Creates a new descriptor in the heap, otherwise use the already existing offset to recreate the descriptor
 constexpr size_t CREATE_NEW_DESCRIPTOR = std::numeric_limits<size_t>::max();
 
 struct Descriptor
 {
     DescriptorHeap* heap = nullptr;
-    size_t offset =
-        CREATE_NEW_DESCRIPTOR; // Offset into heap in bytes, or offset in descriptors for compatibility mode.
+    // Offset into heap in bytes, or offset into list of views for compatibility mode
+    size_t offset = CREATE_NEW_DESCRIPTOR;
+    enum Type : uint8_t
+    {
+        BUFFER,
+        TEXTURE,
+        SAMPLER,
+    } type;
 };
 
 struct DescriptorTable

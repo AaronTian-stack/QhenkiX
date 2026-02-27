@@ -110,24 +110,27 @@ void RetroExampleApp::create()
     layout_desc.spaces[2] = {b3}; // Samplers
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
+    const auto bloated_descriptor_size = std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                  m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
+
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
-        .descriptor_count = 256,
+        .size = 256 * bloated_descriptor_size,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap, "GPU heap"));
 
     qhenki::gfx::DescriptorHeapDesc heap_desc_CPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .descriptor_count = 256,
+        .size = heap_desc_GPU.size,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, "CPU heap"));
 
     qhenki::gfx::DescriptorHeapDesc sampler_heap_desc{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::SAMPLER,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
-        .descriptor_count = 16,
+        .size = 16 * m_context->get_descriptor_size(qhenki::gfx::Descriptor::SAMPLER),
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap, "Sampler heap"));
 
@@ -912,6 +915,30 @@ void RetroExampleApp::render()
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_skybox_pipeline));
     size_t gpu_descriptor_heap_index = 0;
+
+    auto increment_gpu_descriptor_heap_index =
+        [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::Type type, const bool tight)
+    {
+        if (tight)
+        {
+            if (type == qhenki::gfx::Descriptor::SAMPLER)
+            {
+                gpu_descriptor_heap_index += m_context->get_descriptor_size(type);
+            }
+            else
+            {
+                gpu_descriptor_heap_index += std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                      m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
+            }
+        }
+        else
+        {
+            gpu_descriptor_heap_index += m_context->get_descriptor_size(type);
+            gpu_descriptor_heap_index = qhenki::util::align_u(gpu_descriptor_heap_index,
+                                                              m_context->get_descriptor_alignment(type));
+        }
+    };
+
     if (m_context->is_compatibility())
     {
         std::array buffer = {&m_matrix_buffers[m_frame_index]};
@@ -936,13 +963,19 @@ void RetroExampleApp::render()
     }
     else
     {
-        qhenki::gfx::Descriptor cbv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index++};
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], cbv_descriptor));
+        qhenki::gfx::Descriptor cbv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                   m_matrix_descriptors[m_frame_index],
+                                                   cbv_descriptor));
         m_context->set_descriptor_table(&cmd_list, 0, cbv_descriptor);
+        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::BUFFER, false);
 
-        qhenki::gfx::Descriptor srv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index++};
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_skybox_texture_descriptor, srv_descriptor));
+        qhenki::gfx::Descriptor srv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+                                                   m_skybox_texture_descriptor,
+                                                   srv_descriptor));
         m_context->set_descriptor_table(&cmd_list, 1, srv_descriptor);
+        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
 
         qhenki::gfx::Descriptor sampler_descriptor{.heap = &m_sampler_heap, .offset = 0};
         m_context->set_descriptor_table(&cmd_list, 2, sampler_descriptor);
@@ -1082,21 +1115,30 @@ void RetroExampleApp::render()
     }
     else
     {
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index++};
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_offscreen_texture.srv_descriptor, descriptor));
+        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+                                                   m_offscreen_texture.srv_descriptor,
+                                                   descriptor));
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
+        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
     }
 
     m_context->draw(&cmd_list, 3, 0);
 
     // Start blur passes
-    size_t blur_srv_start = gpu_descriptor_heap_index;
+    std::array<size_t, m_bloom_textures.size()> blur_srv_start;
     if (!m_context->is_compatibility())
     {
-        gpu_descriptor_heap_index += 2;
-        THROW_IF_FALSE(m_bloom_textures[1].srv_descriptor.offset - m_bloom_textures[0].srv_descriptor.offset == 1);
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = blur_srv_start};
-        THROW_IF_FALSE(m_context->copy_descriptors(2, m_bloom_textures[0].srv_descriptor, descriptor));
+        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
+        // TODO: Implementation will merge descriptor copies
+        for (unsigned i = 0; i < m_bloom_textures.size(); i++)
+        {
+            blur_srv_start[i] = gpu_descriptor_heap_index;
+            THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+                                                       m_bloom_textures[i].srv_descriptor,
+                                                       descriptor));
+            increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
+        }
     }
     constexpr unsigned BLUR_PASSES = 4;
     const unsigned iterations = BLUR_PASSES * 2;
@@ -1170,10 +1212,12 @@ void RetroExampleApp::render()
         }
         else
         {
-            m_context->set_descriptor_table(
-                &cmd_list,
-                1,
-                qhenki::gfx::Descriptor{.heap = &m_GPU_heap, .offset = blur_srv_start + (1 - m_starting_bloom_index)});
+            m_context->set_descriptor_table(&cmd_list,
+                                            1,
+                                            qhenki::gfx::Descriptor{
+                                                .heap = &m_GPU_heap,
+                                                .offset = blur_srv_start[1 - m_starting_bloom_index],
+                                            });
         }
 
         m_context->draw(&cmd_list, 3, 0);
@@ -1198,14 +1242,16 @@ void RetroExampleApp::render()
     else
     {
         auto composite_start = gpu_descriptor_heap_index;
-        THROW_IF_FALSE(m_context->copy_descriptors(1,
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
                                                    m_offscreen_texture.srv_descriptor,
                                                    qhenki::gfx::Descriptor{.heap = &m_GPU_heap,
-                                                                           .offset = gpu_descriptor_heap_index++}));
-        THROW_IF_FALSE(m_context->copy_descriptors(1,
+                                                                           .offset = gpu_descriptor_heap_index}));
+        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
                                                    final_bloom.srv_descriptor,
                                                    qhenki::gfx::Descriptor{.heap = &m_GPU_heap,
-                                                                           .offset = gpu_descriptor_heap_index++}));
+                                                                           .offset = gpu_descriptor_heap_index}));
+        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
         m_context->set_descriptor_table(&cmd_list,
                                         1,
                                         qhenki::gfx::Descriptor{.heap = &m_GPU_heap, .offset = composite_start});
