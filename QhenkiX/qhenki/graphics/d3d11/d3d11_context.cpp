@@ -511,7 +511,7 @@ void D3D11Context::set_descriptor_table(CommandList* cmd_list, unsigned index, c
 {
 }
 
-bool D3D11Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
+bool D3D11Context::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
     return true;
 }

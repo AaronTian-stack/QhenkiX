@@ -101,7 +101,7 @@ public:
                              const DescriptorHeap& sampler_heap) override;
 
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
-    bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
+    bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
     bool free_descriptor(Descriptor* descriptor) override;
     size_t get_descriptor_size(Descriptor::Type type) const override;
     size_t get_descriptor_alignment(Descriptor::Type type) const override;

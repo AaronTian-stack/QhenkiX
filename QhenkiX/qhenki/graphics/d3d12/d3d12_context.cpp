@@ -1041,7 +1041,7 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
     cmd_list_d3d12->Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
 }
 
-bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
+bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
     assert(src.heap);
     assert(dst.heap);
@@ -1060,13 +1060,20 @@ bool D3D12Context::copy_descriptors(unsigned count, const Descriptor& src, const
         return false;
     }
 
+    if (bytes % get_descriptor_size(src.type) != 0)
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Bytes must be a multiple of the descriptor size\n");
+        return false;
+    }
+
     D3D12_CPU_DESCRIPTOR_HANDLE src_cpu_handle;
     src_heap_d3d12->get_CPU_descriptor(&src_cpu_handle, src.offset);
 
     D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
     dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset);
 
-    m_device->CopyDescriptorsSimple(count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
+    const auto descriptor_count = bytes / get_descriptor_size(src.type);
+    m_device->CopyDescriptorsSimple(descriptor_count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
 
     return true;
 }
