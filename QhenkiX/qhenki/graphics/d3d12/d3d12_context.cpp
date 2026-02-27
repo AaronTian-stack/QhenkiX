@@ -1117,10 +1117,14 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 {
     assert(buffer);
 
+    const auto size = desc.usage & BufferUsage::CONSTANT
+                        ? util::align_u(desc.size, static_cast<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT))
+                        : desc.size;
+
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
         .Alignment = 0,
-        .Width = desc.size,
+        .Width = size,
         .Height = 1,
         .DepthOrArraySize = 1,
         .MipLevels = 1,
@@ -1196,6 +1200,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     }
 
     buffer->desc = desc;
+    buffer->desc.size = size;
     buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>(std::move(allocation));
     return true;
 }
