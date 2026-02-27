@@ -1035,7 +1035,6 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
     if (!heap_d3d12->get_GPU_descriptor(&gpu_handle, gpu_descriptor.offset))
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get GPU descriptor handle\n");
         return;
     }
 

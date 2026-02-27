@@ -42,7 +42,7 @@ bool D3D12DescriptorHeap::allocate(size_t* alloc_offset)
     return true;
 }
 
-void D3D12DescriptorHeap::deallocate(size_t alloc_offset)
+void D3D12DescriptorHeap::deallocate(const size_t alloc_offset)
 {
     if (alloc_offset == CREATE_NEW_DESCRIPTOR)
     {
@@ -53,13 +53,13 @@ void D3D12DescriptorHeap::deallocate(size_t alloc_offset)
     m_free_list.push_back(alloc_offset);
 }
 
-void D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes) const
+void D3D12DescriptorHeap::get_CPU_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE* handle, const size_t offset_bytes) const
 {
     *handle = m_heap->GetCPUDescriptorHandleForHeapStart();
     handle->ptr += offset_bytes;
 }
 
-bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, size_t offset_bytes) const
+bool D3D12DescriptorHeap::get_GPU_descriptor(D3D12_GPU_DESCRIPTOR_HANDLE* handle, const size_t offset_bytes) const
 {
     if (m_desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
