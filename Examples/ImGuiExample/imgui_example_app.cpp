@@ -77,8 +77,8 @@ void ImGUIExampleApp::create()
     qhenki::gfx::Buffer index_CPU;
 
     // Create vertex buffer
-    constexpr auto vertices = std::array{Vertex{{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-                                         Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    constexpr auto vertices = std::array{Vertex{.position = {0.0f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f}},
+                                         Vertex{.position = {0.5f, -0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}},
                                          Vertex{{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
     qhenki::gfx::BufferDesc desc{.size = vertices.size() * sizeof(Vertex),
                                  .usage = qhenki::gfx::BufferUsage::VERTEX,

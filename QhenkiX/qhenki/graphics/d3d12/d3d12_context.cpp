@@ -1779,6 +1779,7 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
         break;
     case COPY:
         type = D3D12_COMMAND_LIST_TYPE_COPY;
+        break;
     }
     ComPtr<ID3D12GraphicsCommandList7> d3d12_cmd_list;
     if (FAILED(m_device->CreateCommandList1(
