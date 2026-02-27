@@ -334,14 +334,18 @@ void ExampleApp::render()
         m_context->set_descriptor_table(&cmd_list, 0, descriptor);
 
         // Copy matrix and texture descriptors to GPU heap
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                   m_matrix_descriptors[m_frame_index],
+                                                   descriptor));
 
         descriptor.offset =
             qhenki::util::align_u(descriptor.offset +
                                       1 * m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
                                   m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::TEXTURE));
 
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_texture_descriptor, descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+                                                   m_texture_descriptor,
+                                                   descriptor));
 
         // Sampler
         descriptor = {.heap = &m_sampler_heap, .offset = 0};

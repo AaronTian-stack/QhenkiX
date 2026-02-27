@@ -575,7 +575,9 @@ void gltfViewerApp::render()
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
 
         // Copy matrix descriptors to GPU heap
-        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[m_frame_index], descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                   m_matrix_descriptors[m_frame_index],
+                                                   descriptor));
 
         // Sampler
         descriptor = {.heap = &m_sampler_heap, .offset = 0};
@@ -594,21 +596,42 @@ void gltfViewerApp::render()
             if (!m_context->is_compatibility()) // NOT compatibility
             {
                 // Start at 1
-                qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 1};
+                qhenki::gfx::Descriptor descriptor{
+                    .heap = &m_GPU_heap,
+                    .offset =
+                        qhenki::util::align_u(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                              m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::TEXTURE)),
+                };
 
                 // Make sure the order matches in the shader
 
-                THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_gltfTexture_descriptor, descriptor));
-                ++descriptor.offset;
+                THROW_IF_FALSE(
+                    m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                m_model_gltfTexture_descriptor,
+                                                descriptor));
+                descriptor.offset =
+                    qhenki::util::align_u(descriptor.offset +
+                                              m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                          m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::BUFFER));
 
-                THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_material_descriptor, descriptor));
-                ++descriptor.offset;
+                THROW_IF_FALSE(
+                    m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                m_model_material_descriptor,
+                                                descriptor));
+                descriptor.offset =
+                    qhenki::util::align_u(descriptor.offset +
+                                              m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                          m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::TEXTURE));
 
                 // TODO: check that CPU texture descriptors are contiguous, otherwise singular copy will not work
                 // Use the textures size, not descriptors because descriptors may be larger than texture count due to
                 // left over from old model
+                // TODO: Separate copies and let implementation merge
                 THROW_IF_FALSE(
-                    m_context->copy_descriptors(m_model.textures.size(), m_model_texture_descriptors[0], descriptor));
+                    m_context->copy_descriptors(m_model.textures.size() *
+                                                    m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+                                                m_model_texture_descriptors[0],
+                                                descriptor));
             }
             // Compatibility will bind per draw call because we cannot bind all textures at once
 
@@ -881,6 +904,7 @@ void gltfViewerApp::resize(const unsigned width, const unsigned height)
         .format = DXGI_FORMAT_D32_FLOAT,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
+        .clear_depth_value = {1.f, 0},
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
 }
