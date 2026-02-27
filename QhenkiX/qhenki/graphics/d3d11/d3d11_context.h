@@ -73,6 +73,7 @@ public:
     bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
     bool free_descriptor(Descriptor* descriptor) override;
     size_t get_descriptor_size(Descriptor::Type type) const override;
+    size_t get_descriptor_alignment(Descriptor::Type type) const override;
 
     bool create_buffer(const BufferDesc& desc,
                        const void* data,

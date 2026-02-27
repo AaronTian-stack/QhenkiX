@@ -526,6 +526,11 @@ size_t D3D11Context::get_descriptor_size(Descriptor::Type type) const
     return 0;
 }
 
+size_t D3D11Context::get_descriptor_alignment(Descriptor::Type type) const
+{
+    return 0;
+}
+
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
     assert(buffer);

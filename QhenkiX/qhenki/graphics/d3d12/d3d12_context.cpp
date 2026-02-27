@@ -1101,6 +1101,11 @@ size_t D3D12Context::get_descriptor_size(const Descriptor::Type type) const
     return m_device->GetDescriptorHandleIncrementSize(t);
 }
 
+size_t D3D12Context::get_descriptor_alignment(const Descriptor::Type type) const
+{
+    return get_descriptor_size(type);
+}
+
 bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
     assert(buffer);
