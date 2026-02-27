@@ -62,6 +62,7 @@ public:
         CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
 
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
+    size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) override;
     // Heaps only store views in D3D11
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,

@@ -141,11 +141,14 @@ void gltfViewerApp::create()
     });
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
+    const auto bloated_descriptor_size = std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                  m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
+
     // Create GPU heap
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
-        .descriptor_count = 256, // TODO: expose max count to context
+        .size = 256 * bloated_descriptor_size,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap, "GPU heap"));
 
@@ -153,7 +156,7 @@ void gltfViewerApp::create()
     qhenki::gfx::DescriptorHeapDesc heap_desc_CPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .descriptor_count = 256, // CPU heap has no size limit
+        .size = heap_desc_GPU.size,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, "CPU heap"));
 
@@ -161,7 +164,7 @@ void gltfViewerApp::create()
     qhenki::gfx::DescriptorHeapDesc sampler_heap_desc{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::SAMPLER,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU, // Create samplers directly on GPU heap
-        .descriptor_count = 16,                                         // TODO: expose max count to context
+        .size = 16 * m_context->get_descriptor_size(qhenki::gfx::Descriptor::SAMPLER),
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap, "Sampler heap"));
 

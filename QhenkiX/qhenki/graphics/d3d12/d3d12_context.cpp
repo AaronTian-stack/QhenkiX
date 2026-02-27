@@ -919,6 +919,10 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
 {
     assert(heap);
 
+    const auto descriptor_count = desc.type == DescriptorHeapDesc::Type::SAMPLER
+                                    ? desc.size / get_descriptor_size(Descriptor::SAMPLER)
+                                    : desc.size / get_descriptor_size(Descriptor::TEXTURE);
+
     if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
     {
         switch (m_capabilities.options.ResourceBindingTier)
@@ -926,7 +930,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         case D3D12_RESOURCE_BINDING_TIER_1:
             assert(false); // Should never happen here because we require Tier 2, but limit is same as Tier 2
         case D3D12_RESOURCE_BINDING_TIER_2:
-            if (desc.descriptor_count > D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2)
+            if (descriptor_count > D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2)
             {
                 OutputDebugStringA("Qhenki D3D12: Descriptor count exceeds maximum for Resource Binding Tier\n");
                 return false;
@@ -935,7 +939,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         case D3D12_RESOURCE_BINDING_TIER_3:
             // There is no bound here for CBV/SRV/UAV
             if (desc.type == DescriptorHeapDesc::Type::SAMPLER &&
-                desc.descriptor_count > D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE)
+                descriptor_count > D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE)
             {
                 OutputDebugStringA("Qhenki D3D12: Descriptor count exceeds maximum for Resource Binding Tier\n");
                 return false;
@@ -960,7 +964,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         return false;
     }
 
-    heap_desc.NumDescriptors = desc.descriptor_count;
+    heap_desc.NumDescriptors = descriptor_count;
 
     if (desc.visibility == DescriptorHeapDesc::Visibility::CPU)
     {
@@ -980,6 +984,13 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     heap->desc = desc;
     heap->internal_state = std::move(d3d12_heap);
     return true;
+}
+
+size_t D3D12Context::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type)
+{
+    // We assume Tier 2 minimum
+    return type == DescriptorHeapDesc::Type::SAMPLER ? D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE
+                                                     : D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2;
 }
 
 void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -1077,7 +1088,7 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
 
 size_t D3D12Context::get_descriptor_size(const Descriptor::Type type) const
 {
-    D3D12_DESCRIPTOR_HEAP_TYPE t;
+    D3D12_DESCRIPTOR_HEAP_TYPE t{};
     switch (type)
     {
     case Descriptor::BUFFER:

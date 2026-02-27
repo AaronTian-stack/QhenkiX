@@ -492,6 +492,11 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     return true;
 }
 
+size_t D3D11Context::get_descriptor_heap_max_size(DescriptorHeapDesc::Type type)
+{
+    return 0;
+}
+
 void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
 {
 }

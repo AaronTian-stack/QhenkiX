@@ -36,11 +36,14 @@ void ImGUIExampleApp::create()
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
+    const auto bloated_descriptor_size = std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
+                                                  m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
+
     // Create GPU heap
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
-        .descriptor_count = 256, // TODO: expose max count to context
+        .size = 256 * bloated_descriptor_size,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap));
 
@@ -48,7 +51,7 @@ void ImGUIExampleApp::create()
     qhenki::gfx::DescriptorHeapDesc heap_desc_CPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .descriptor_count = 256, // CPU heap has no size limit
+        .size = heap_desc_GPU.size,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap));
 
@@ -64,7 +67,7 @@ void ImGUIExampleApp::create()
     // A graphics queue is already given to the application by the context
 
     // Allocate Command Pool(s)/Allocator(s) from queue
-    for (int i = 0; i < m_frames_in_flight; i++)
+    for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
         THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], m_graphics_queue));
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
