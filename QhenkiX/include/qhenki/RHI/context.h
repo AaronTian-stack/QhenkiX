@@ -72,6 +72,16 @@ public:
     virtual size_t get_descriptor_size(Descriptor::Type type) const = 0;
     virtual size_t get_descriptor_alignment(Descriptor::Type type) const = 0;
 
+    /**
+     * Creates a buffer with specified description.
+     * @param desc Description struct for buffer to be created. The size of the buffer may be bloated to meet alignment
+     * requirements.
+     * @param data Pointer to initial data to be copied to the buffer. Only usable for CPU visible buffers.
+     * @param buffer Pointer to buffer to be created. If already initialized, the preexisting buffer will be released
+     * and then created.
+     * @param debug_name String for debug name if supported by the API.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool create_buffer(const BufferDesc& desc,
                                const void* data,
                                Buffer* buffer,
@@ -101,7 +111,7 @@ public:
      * @param data Pointer to the data to be copied.
      * @param staging Pointer to the uninitialized staging buffer.
      * @param texture Pointer to the destination texture where the data will be copied.
-     * @return true if the copy operation was successful, false otherwise.
+     * @return True if the copy operation was successful, false otherwise.
      */
     virtual bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) = 0;
 
