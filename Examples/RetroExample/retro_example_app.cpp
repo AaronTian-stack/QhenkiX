@@ -140,8 +140,7 @@ void RetroExampleApp::create()
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
     }
 
-    qhenki::gfx::BufferDesc matrix_desc{.size = qhenki::util::align_u(sizeof(FrameConstants),
-                                                                      qhenki::util::CONSTANT_BUFFER_ALIGNMENT),
+    qhenki::gfx::BufferDesc matrix_desc{.size = sizeof(FrameConstants),
                                         .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     for (unsigned i = 0; i < m_frames_in_flight; i++)
