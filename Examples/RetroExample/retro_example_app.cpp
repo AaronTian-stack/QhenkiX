@@ -1128,10 +1128,10 @@ void RetroExampleApp::render()
     std::array<size_t, m_bloom_textures.size()> blur_srv_start;
     if (!m_context->is_compatibility())
     {
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
         // TODO: Implementation will merge descriptor copies
         for (unsigned i = 0; i < m_bloom_textures.size(); i++)
         {
+            qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
             blur_srv_start[i] = gpu_descriptor_heap_index;
             THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
                                                        m_bloom_textures[i].srv_descriptor,
