@@ -1213,10 +1213,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         }
     }
 
-    if (m_debug)
-    {
-        set_debug_name(allocation->Get()->GetResource(), debug_name);
-    }
+    set_debug_name(allocation->Get()->GetResource(), debug_name);
 
     buffer->desc = desc;
     buffer->desc.size = size;
