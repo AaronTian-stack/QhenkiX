@@ -11,6 +11,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "vk_mem_alloc.h"
 #include "vulkan_descriptor_heap.h"
+#include "vulkan_texture.h"
 
 #include "qhenki/utility/string_util.h"
 
@@ -299,7 +300,6 @@ bool VulkanContext::is_compatibility() const
 
 bool VulkanContext::create_swapchain(const DisplayWindow& window,
                                      const SwapchainDesc& swapchain_desc,
-                                     Queue* direct_queue,
                                      unsigned* frame_index)
 {
     const auto status = SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface);
@@ -534,6 +534,7 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
 
     set_debug_name(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(vulkan_buffer->buffer), debug_name);
 
+    vulkan_buffer->allocator = m_allocator;
     buffer->desc = desc;
 
     return true;
@@ -556,6 +557,57 @@ void VulkanContext::copy_buffer(
 
 bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
 {
+    assert(texture);
+    if (desc.height > 1 && desc.dimension == TextureDimension::TEXTURE_1D)
+    {
+        return false;
+    }
+
+    texture->internal_state = mkS<VulkanTexture>();
+    const auto vulkan_texture = static_cast<VulkanTexture*>(texture->internal_state.get());
+
+    VkImageType image_type;
+    switch (desc.dimension)
+    {
+    case TextureDimension::TEXTURE_1D:
+        image_type = VK_IMAGE_TYPE_1D;
+        break;
+    case TextureDimension::TEXTURE_2D:
+        image_type = VK_IMAGE_TYPE_2D;
+        break;
+    case TextureDimension::TEXTURE_3D:
+        image_type = VK_IMAGE_TYPE_3D;
+        break;
+    }
+
+    assert(desc.width < std::numeric_limits<uint32_t>::max());
+
+    const auto is_3D = desc.dimension == TextureDimension::TEXTURE_3D;
+
+    // TODO: Limit sample count
+    const VkImageCreateInfo texture_info{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = image_type,
+        .format = convert_format(desc.format),
+        .extent = {static_cast<uint32_t>(desc.width), desc.height, is_3D ? desc.depth_or_array_size : 1u},
+        .mipLevels = desc.mip_levels,
+        .arrayLayers = is_3D ? 1u : desc.depth_or_array_size,
+        .samples = static_cast<VkSampleCountFlagBits>(desc.sample_count),
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, // TODO
+    };
+
+    // TODO
+
+    if (VK_FAILED(vkCreateImage(m_device, &texture_info, nullptr, &vulkan_texture->image)))
+    {
+        texture->internal_state.reset();
+        return false;
+    }
+
+    set_debug_name(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<uint64_t>(vulkan_texture->image), debug_name);
+
     return true;
 }
 
@@ -597,12 +649,7 @@ void VulkanContext::bind_index_buffer(CommandList* cmd_list, const Buffer& buffe
 {
 }
 
-bool VulkanContext::create_queue(QueueType type, Queue* queue)
-{
-    return true;
-}
-
-bool VulkanContext::create_command_pool(CommandPool* command_pool, const Queue& queue)
+bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueType queue)
 {
     return true;
 }
@@ -664,7 +711,7 @@ void VulkanContext::draw_indexed(CommandList* cmd_list,
 {
 }
 
-void VulkanContext::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
+void VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
 {
 }
 
@@ -749,7 +796,7 @@ bool VulkanContext::compatibility_set_samplers(unsigned slot,
     return false;
 }
 
-bool VulkanContext::wait_idle(Queue* queue)
+bool VulkanContext::wait_idle(const QueueType queue)
 {
     return true;
 }

@@ -4,14 +4,14 @@
 
 namespace qhenki::gfx
 {
-struct VulkanBuffer
+struct VulkanTexture
 {
-    VkBuffer buffer;
+    VkImage image;
     VmaAllocation allocation;
     VmaAllocator allocator;
-    ~VulkanBuffer()
+    ~VulkanTexture()
     {
-        vmaDestroyBuffer(allocator, buffer, allocation);
+        vmaDestroyImage(allocator, image, allocation);
     }
 };
 } // namespace qhenki::gfx

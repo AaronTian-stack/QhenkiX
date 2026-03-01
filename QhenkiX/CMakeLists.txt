@@ -95,6 +95,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
