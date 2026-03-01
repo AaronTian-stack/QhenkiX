@@ -1060,7 +1060,12 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
         return false;
     }
 
-    if (bytes % get_descriptor_size(src.type) != 0)
+    assert(get_descriptor_size(Descriptor::BUFFER) == get_descriptor_size(Descriptor::TEXTURE));
+    const auto descriptor_size = src.heap->desc.type == DescriptorHeapDesc::Type::SAMPLER
+                                   ? get_descriptor_size(Descriptor::SAMPLER)
+                                   : get_descriptor_size(Descriptor::TEXTURE);
+
+    if (bytes % descriptor_size != 0)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Bytes must be a multiple of the descriptor size\n");
         return false;
@@ -1072,7 +1077,7 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
     D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
     dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset);
 
-    const auto descriptor_count = bytes / get_descriptor_size(src.type);
+    const auto descriptor_count = bytes / descriptor_size;
     m_device->CopyDescriptorsSimple(descriptor_count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
 
     return true;
@@ -1260,8 +1265,6 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
     };
     m_device->CreateConstantBufferView(&desc, cpu_handle);
 
-    descriptor->type = Descriptor::BUFFER;
-
     return true;
 }
 
@@ -1295,8 +1298,6 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     };
 
     m_device->CreateShaderResourceView(buffer_d3d12->Get()->GetResource(), &desc, cpu_handle);
-
-    descriptor->type = Descriptor::BUFFER;
 
     return true;
 }
@@ -1456,8 +1457,6 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
 
     // TODO: View description
     m_device->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
-
-    descriptor->type = Descriptor::TEXTURE;
 
     return true;
 }
@@ -1622,8 +1621,6 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
         .MaxLOD = desc.max_lod,
     };
     m_device->CreateSampler(&sampler_desc, cpu_handle);
-
-    descriptor->type = Descriptor::SAMPLER;
 
     return true;
 }

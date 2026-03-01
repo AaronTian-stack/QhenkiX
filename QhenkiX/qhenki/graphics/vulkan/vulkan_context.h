@@ -29,9 +29,7 @@ public:
                           const SwapchainDesc& swapchain_desc,
                           Queue* direct_queue,
                           unsigned* frame_index) override;
-    bool resize_swapchain(
-        Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index) override;
-    bool create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap) override;
+    bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
     bool present(const Swapchain& swapchain,
                  unsigned fence_count,
                  Fence* wait_fences,
@@ -54,6 +52,7 @@ public:
     bool set_pipeline_constant(
         CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
+    size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
 
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
@@ -61,8 +60,10 @@ public:
                              const DescriptorHeap& sampler_heap) override;
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
 
-    bool copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst) override;
+    bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
     bool free_descriptor(Descriptor* descriptor) override;
+    size_t get_descriptor_size(Descriptor::Type type) const override;
+    size_t get_descriptor_alignment(Descriptor::Type type) const override;
 
     bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name) override;
     bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
@@ -77,8 +78,6 @@ public:
 
     bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name) override;
     bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
-    bool create_descriptor_render_target(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
-    bool create_descriptor_depth_stencil(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
 
@@ -106,7 +105,6 @@ public:
     bool reset_command_pool(CommandPool* command_pool) override;
 
     bool start_render_pass(CommandList* cmd_list,
-                           Swapchain* swapchain,
                            const float* clear_color_values,
                            const RenderTarget* depth_stencil,
                            unsigned frame_index) override;
@@ -170,5 +168,7 @@ public:
     VulkanContext& operator=(const VulkanContext&) = delete;
     VulkanContext(VulkanContext&&) = delete;
     VulkanContext& operator=(VulkanContext&&) = delete;
+
+    friend class VulkanDescriptorHeap;
 };
 } // namespace qhenki::gfx

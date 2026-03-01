@@ -209,11 +209,16 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         .multiview = VK_TRUE,
     };
 
-    VkPhysicalDeviceVulkan12Features features12{.timelineSemaphore = VK_TRUE};
+    VkPhysicalDeviceVulkan12Features features12{
+        .drawIndirectCount = VK_TRUE,
+        .descriptorIndexing = VK_TRUE,
+        .timelineSemaphore = VK_TRUE,
+    };
 
     VkPhysicalDeviceVulkan13Features features13{
         .synchronization2 = VK_TRUE,
         .dynamicRendering = VK_TRUE,
+        .maintenance4 = VK_TRUE,
     };
 
     VkPhysicalDeviceVulkan14Features features14{
@@ -311,13 +316,7 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
     return true;
 }
 
-bool VulkanContext::resize_swapchain(
-    Swapchain* swapchain, int width, int height, DescriptorHeap* rtv_heap, unsigned& frame_index)
-{
-    return true;
-}
-
-bool VulkanContext::create_swapchain_descriptors(const Swapchain& swapchain, DescriptorHeap* rtv_heap)
+bool VulkanContext::resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index)
 {
     return true;
 }
@@ -372,53 +371,18 @@ bool VulkanContext::set_pipeline_constant(
 
 bool VulkanContext::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name)
 {
-    const auto& heap_properties = m_capabilities.descriptor_heap_properties;
-
-    VkDeviceSize descriptor_size = 0;
-    VkDeviceSize min_size = 0;
-    if (desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
-    {
-        descriptor_size = std::max(heap_properties.bufferDescriptorSize, heap_properties.imageDescriptorSize);
-        min_size = heap_properties.minResourceHeapReservedRange;
-    }
-    else if (desc.type == DescriptorHeapDesc::Type::SAMPLER)
-    {
-        descriptor_size = heap_properties.samplerDescriptorSize;
-        min_size = heap_properties.minSamplerHeapReservedRange;
-    }
-    const auto heap_size = util::align_u(desc.descriptor_count * descriptor_size + min_size,
-                                         heap_properties.resourceHeapAlignment);
-
-    const VkBufferCreateInfo buffer_info{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = heap_size,
-        .usage = VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    };
-
-    VmaAllocationCreateInfo alloc_info{
-        .usage = VMA_MEMORY_USAGE_AUTO,
-    };
-
-    // if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
-    //{
-    //     alloc_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    // }
-    //  alloc_info.preferredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-    VkBuffer buffer;
-    VmaAllocation allocation;
-    const auto result = vmaCreateBuffer(m_allocator, &buffer_info, &alloc_info, &buffer, &allocation, nullptr);
-
-    if (result != VK_SUCCESS)
-    {
-#if defined(_WIN32) || defined(_WIN64)
-        OutputDebugStringA("Qhenki Vulkan ERROR: Failed to create descriptor heap buffer\n");
-#endif
-        return false;
-    }
+    heap->desc = desc;
 
     return true;
+}
+
+size_t VulkanContext::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type) const
+{
+    if (type == DescriptorHeapDesc::Type::SAMPLER)
+    {
+        return m_capabilities.descriptor_heap_properties.maxSamplerHeapSize;
+    }
+    return m_capabilities.descriptor_heap_properties.maxResourceHeapSize;
 }
 
 void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -435,7 +399,7 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list, unsigned index, 
 {
 }
 
-bool VulkanContext::copy_descriptors(unsigned count, const Descriptor& src, const Descriptor& dst)
+bool VulkanContext::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
     return true;
 }
@@ -443,6 +407,34 @@ bool VulkanContext::copy_descriptors(unsigned count, const Descriptor& src, cons
 bool VulkanContext::free_descriptor(Descriptor* descriptor)
 {
     return true;
+}
+
+size_t VulkanContext::get_descriptor_size(const Descriptor::Type type) const
+{
+    switch (type)
+    {
+    case Descriptor::BUFFER:
+        return m_capabilities.descriptor_heap_properties.bufferDescriptorSize;
+    case Descriptor::TEXTURE:
+        return m_capabilities.descriptor_heap_properties.imageDescriptorSize;
+    case Descriptor::SAMPLER:
+        return m_capabilities.descriptor_heap_properties.samplerDescriptorSize;
+    }
+    return 0;
+}
+
+size_t VulkanContext::get_descriptor_alignment(const Descriptor::Type type) const
+{
+    switch (type)
+    {
+    case Descriptor::BUFFER:
+        return m_capabilities.descriptor_heap_properties.bufferDescriptorAlignment;
+    case Descriptor::TEXTURE:
+        return m_capabilities.descriptor_heap_properties.imageDescriptorAlignment;
+    case Descriptor::SAMPLER:
+        return m_capabilities.descriptor_heap_properties.samplerDescriptorAlignment;
+    }
+    return 0;
 }
 
 bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
@@ -473,20 +465,6 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
 bool VulkanContext::create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor)
 {
     return false;
-}
-
-bool VulkanContext::create_descriptor_render_target(const Texture& texture,
-                                                    DescriptorHeap* heap,
-                                                    Descriptor* descriptor)
-{
-    return true;
-}
-
-bool VulkanContext::create_descriptor_depth_stencil(const Texture& texture,
-                                                    DescriptorHeap* heap,
-                                                    Descriptor* descriptor)
-{
-    return true;
 }
 
 bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture)
@@ -553,7 +531,6 @@ bool VulkanContext::reset_command_pool(CommandPool* command_pool)
 }
 
 bool VulkanContext::start_render_pass(CommandList* cmd_list,
-                                      Swapchain* swapchain,
                                       const float* clear_color_values,
                                       const RenderTarget* depth_stencil,
                                       unsigned frame_index)

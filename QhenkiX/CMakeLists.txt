@@ -56,6 +56,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.cpp"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.cpp"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.cpp"
 
     "${QHENKIX_DIR}/input/input_manager.cpp"
 
@@ -93,6 +94,7 @@ set(QHENKIX_PRIVATE_HEADERS
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")

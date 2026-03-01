@@ -14,7 +14,7 @@ class VulkanDescriptorHeap
 
 public:
     bool create(const DescriptorHeapDesc& desc, const VulkanContext& context);
-    bool allocate(VmaVirtualAllocation* va);
-    bool deallocate();
+    bool allocate(VmaVirtualAllocation* va, Descriptor::Type type, const VulkanContext& context) const;
+    void deallocate(VmaVirtualAllocation va) const;
 };
 } // namespace qhenki::gfx

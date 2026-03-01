@@ -1,11 +1,12 @@
 #pragma once
 
+#include <vk_mem_alloc.h>
+
 #include <limits>
 #include "descriptor_heap.h"
 
 namespace qhenki::gfx
 {
-    
 // Creates a new descriptor in the heap, otherwise use the already existing offset to recreate the descriptor
 constexpr size_t CREATE_NEW_DESCRIPTOR = std::numeric_limits<size_t>::max();
 
@@ -19,12 +20,17 @@ struct Descriptor
         BUFFER,
         TEXTURE,
         SAMPLER,
-    } type;
-};
+    };
 
-enum class BufferDescriptorType
-{
-    CBV,
-    UAV,
+    Descriptor() = default;
+
+    Descriptor(DescriptorHeap* heap, const size_t offset)
+        : heap(heap),
+          offset(offset)
+    {
+    }
+
+private:
+    VmaVirtualAllocation alloc = nullptr;
 };
 } // namespace qhenki::gfx

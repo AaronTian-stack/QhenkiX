@@ -327,7 +327,7 @@ void ExampleApp::render()
     else
     {
         // Location of start of GPU heap
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 0};
+        qhenki::gfx::Descriptor descriptor(&m_GPU_heap, 0);
 
         // Parameter 0 is table, set to start at beginning of GPU heap
         m_context->set_descriptor_table(&cmd_list, 0, descriptor);
@@ -347,7 +347,8 @@ void ExampleApp::render()
                                                    descriptor));
 
         // Sampler
-        descriptor = {.heap = &m_sampler_heap, .offset = 0};
+
+        descriptor = qhenki::gfx::Descriptor(&m_sampler_heap, 0);
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
     }
 
