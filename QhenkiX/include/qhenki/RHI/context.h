@@ -60,7 +60,7 @@ public:
     virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc,
                                         DescriptorHeap* heap,
                                         const char* debug_name = nullptr) = 0;
-    virtual size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) = 0;
+    virtual size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const = 0;
     virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
     virtual void set_descriptor_heap(CommandList* cmd_list,
                                      const DescriptorHeap& heap,

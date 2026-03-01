@@ -986,7 +986,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     return true;
 }
 
-size_t D3D12Context::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type)
+size_t D3D12Context::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type) const
 {
     // We assume Tier 2 minimum
     return type == DescriptorHeapDesc::Type::SAMPLER ? D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE
