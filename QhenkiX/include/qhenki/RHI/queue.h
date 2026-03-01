@@ -1,6 +1,4 @@
-﻿#pragma once
-
-#include <smartpointer.h>
+#pragma once
 
 namespace qhenki::gfx
 {
@@ -9,10 +7,5 @@ enum QueueType
     GRAPHICS,
     COMPUTE,
     COPY,
-};
-struct Queue
-{
-    QueueType type;
-    sPtr<void> internal_state;
 };
 } // namespace qhenki::gfx
