@@ -7,6 +7,9 @@
 
 #include "qhenki/RHI/context.h"
 
+#define VK_SUCCEEDED(result) ((result) == VK_SUCCESS)
+#define VK_FAILED(result) ((result) != VK_SUCCESS)
+
 namespace qhenki::gfx
 {
 class VulkanContext : public Context

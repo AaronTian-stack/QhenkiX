@@ -14,8 +14,6 @@
 
 #include "qhenki/utility/string_util.h"
 
-#define VK_FAILED(result) ((result) != VK_SUCCESS)
-
 using namespace qhenki::gfx;
 
 namespace

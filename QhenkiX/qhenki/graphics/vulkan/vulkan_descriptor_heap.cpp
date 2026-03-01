@@ -30,7 +30,7 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
     auto result =
         vmaCreateBuffer(context.m_allocator, &buffer_info, &alloc_info, &m_heap.buffer, &m_heap.allocation, nullptr);
 
-    if (result != VK_SUCCESS)
+    if (VK_FAILED(result))
     {
         return false;
     }
@@ -41,7 +41,7 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
 
     result = vmaCreateVirtualBlock(&block_create_info, &m_block);
 
-    return result == VK_SUCCESS;
+    return VK_SUCCEEDED(result);
 }
 
 bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va,
