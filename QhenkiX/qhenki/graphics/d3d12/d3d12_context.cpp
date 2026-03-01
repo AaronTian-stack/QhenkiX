@@ -57,13 +57,6 @@ ComPtr<ID3D12GraphicsCommandList7>* to_internal(const CommandList& ext)
     return d3d12_cmd_list;
 }
 
-ComPtr<ID3D12CommandQueue>* to_internal(const Queue& ext)
-{
-    const auto d3d12_queue = static_cast<ComPtr<ID3D12CommandQueue>*>(ext.internal_state.get());
-    assert(d3d12_queue);
-    return d3d12_queue;
-}
-
 D3D12Fence* to_internal(const Fence& ext)
 {
     const auto d3d12_fence = static_cast<D3D12Fence*>(ext.internal_state.get());
@@ -266,6 +259,32 @@ std::string D3D12Context::create(const bool enable_debug_layer)
         m_dxgi_debug->EnableLeakTrackingForThread();
     }
 
+    auto create_queue = [&](const D3D12_COMMAND_LIST_TYPE type, ComPtr<ID3D12CommandQueue>& cmd_queue)
+    {
+        D3D12_COMMAND_QUEUE_DESC queue_desc{.Type = type};
+        if (FAILED(m_device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(cmd_queue.ReleaseAndGetAddressOf()))))
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command queue\n");
+            return false;
+        }
+        return true;
+    };
+
+    if (!create_queue(D3D12_COMMAND_LIST_TYPE_DIRECT, m_graphics_queue))
+    {
+        return "D3D12: Failed to create graphics command queue";
+    }
+
+    if (!create_queue(D3D12_COMMAND_LIST_TYPE_COMPUTE, m_compute_queue))
+    {
+        return "D3D12: Failed to create compute command queue";
+    }
+
+    if (!create_queue(D3D12_COMMAND_LIST_TYPE_COPY, m_copy_queue))
+    {
+        return "D3D12: Failed to create copy command queue";
+    }
+
     if (!create_fence(&m_fence_wait_all, 0))
     {
         return "D3D12: Failed to create fence";
@@ -292,11 +311,8 @@ bool D3D12Context::is_compatibility() const
 
 bool D3D12Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
-                                    Queue* const direct_queue,
                                     unsigned* const frame_index)
 {
-    assert(direct_queue);
-
     if (swapchain_desc.tearing && !m_capabilities.allow_tearing)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Tearing is not supported on this system\n");
@@ -325,12 +341,9 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC swap_chain_fullscreen_descriptor{};
     swap_chain_fullscreen_descriptor.Windowed = true;
 
-    assert(direct_queue->type == QueueType::GRAPHICS);
-    const auto queue = to_internal(*direct_queue);
-
     const auto hwnd = window.get_hwnd();
     ComPtr<IDXGISwapChain1> swapchain1;
-    if (!hwnd || FAILED(m_dxgi_factory->CreateSwapChainForHwnd(queue->Get(), // Force flush on queue
+    if (!hwnd || FAILED(m_dxgi_factory->CreateSwapChainForHwnd(m_graphics_queue.Get(), // Force flush on queue
                                                                hwnd,
                                                                &swap_chain_descriptor,
                                                                &swap_chain_fullscreen_descriptor,
@@ -368,7 +381,6 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
         }
     }
 
-    m_swapchain_queue = direct_queue;
     *frame_index = m_swapchain->GetCurrentBackBufferIndex();
     return true;
 }
@@ -378,7 +390,7 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
                                     const int height,
                                     unsigned& frame_index)
 {
-    wait_idle(m_swapchain_queue);
+    wait_idle(GRAPHICS);
 
     for (auto& buffer : m_swapchain_buffers)
     {
@@ -1726,38 +1738,11 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer
     command_list->IASetIndexBuffer(&view);
 }
 
-bool D3D12Context::create_queue(const QueueType type, Queue* queue)
-{
-    D3D12_COMMAND_QUEUE_DESC queue_desc{};
-    switch (type)
-    {
-    case GRAPHICS:
-        queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-        break;
-    case COMPUTE:
-        queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-        break;
-    case COPY:
-        queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-        break;
-    }
-    queue->internal_state = mkS<ComPtr<ID3D12CommandQueue>>();
-    const auto command_queue = to_internal(*queue);
-    if (FAILED(m_device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(command_queue->ReleaseAndGetAddressOf()))))
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command queue\n");
-        queue->internal_state.reset();
-        return false;
-    }
-    queue->type = type;
-    return true;
-}
-
-bool D3D12Context::create_command_pool(CommandPool* command_pool, const Queue& queue)
+bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueType queue)
 {
     // Command allocator creation does not require the queue object
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-    switch (queue.type)
+    switch (queue)
     {
     case GRAPHICS:
         type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -1778,7 +1763,7 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const Queue& q
         command_pool->internal_state.reset();
         return false;
     }
-    command_pool->queue = &queue;
+    command_pool->queue_type = queue;
     return true;
 }
 
@@ -1799,7 +1784,7 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
     assert(cmd_list);
 
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-    switch (command_pool.queue->type)
+    switch (command_pool.queue_type)
     {
     case GRAPHICS:
         type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -1873,6 +1858,19 @@ void D3D12Context::clear_depth(ID3D12GraphicsCommandList7* command_list, const R
             m_render_target_helper.ClearDepthStencilView(
                 command_list, dsv_resource, nullptr, clear_flags, clear_depth_value, clear_stencil_value, 0, nullptr);
         }
+    }
+}
+
+ComPtr<ID3D12CommandQueue>& D3D12Context::get_command_queue(const QueueType queue)
+{
+    switch (queue)
+    {
+    case GRAPHICS:
+        return m_graphics_queue;
+    case COMPUTE:
+        return m_compute_queue;
+    case COPY:
+        return m_copy_queue;
     }
 }
 
@@ -1982,10 +1980,8 @@ void D3D12Context::draw_indexed(CommandList* cmd_list,
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
+void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, QueueType queue)
 {
-    const auto queue_d3d12 = to_internal(*queue);
-
     assert(submit_info.command_list_count < 16);
     std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
     for (unsigned i = 0; i < submit_info.command_list_count; i++)
@@ -1993,12 +1989,15 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* qu
         const auto cmd_list_d3d12 = to_internal(submit_info.command_lists[i]);
         cmd_list_ptrs[i] = cmd_list_d3d12->Get();
     }
-    queue_d3d12->Get()->ExecuteCommandLists(submit_info.command_list_count, cmd_list_ptrs.data());
+
+    const auto q = get_command_queue(queue);
+
+    q->ExecuteCommandLists(submit_info.command_list_count, cmd_list_ptrs.data());
 
     for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
     {
         const auto fence = to_internal(submit_info.signal_fences[i]);
-        const auto result = queue_d3d12->Get()->Signal(fence->fence.Get(), submit_info.signal_values[i]);
+        const auto result = q->Signal(fence->fence.Get(), submit_info.signal_values[i]);
         if (FAILED(result))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to signal fence\n");
@@ -2156,11 +2155,10 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
     };
     m_imgui_heap.create(m_device.Get(), desc);
 
-    const auto queue_d3d12 = to_internal(*m_swapchain_queue);
 
     ImGui_ImplDX12_InitInfo init_info = {};
     init_info.Device = m_device.Get();
-    init_info.CommandQueue = queue_d3d12->Get();
+    init_info.CommandQueue = m_graphics_queue.Get();
     init_info.NumFramesInFlight = static_cast<unsigned>(swapchain.buffer_count);
     init_info.RTVFormat = swapchain.format;
     init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
@@ -2266,15 +2264,14 @@ bool D3D12Context::compatibility_set_samplers(unsigned slot,
     return false;
 }
 
-bool D3D12Context::wait_idle(Queue* const queue)
+bool D3D12Context::wait_idle(const QueueType queue)
 {
     m_fence_wait_all_last_signaled += 1;
     auto value = m_fence_wait_all_last_signaled;
 
-    const auto queue_d3d12 = to_internal(*queue);
     const auto fence = to_internal(m_fence_wait_all);
 
-    if (FAILED(queue_d3d12->Get()->Signal(fence->fence.Get(), value)))
+    if (FAILED(get_command_queue(queue)->Signal(fence->fence.Get(), value)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to signal fence for wait idle\n");
         return false;

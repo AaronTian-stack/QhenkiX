@@ -69,7 +69,7 @@ void ImGUIExampleApp::create()
     // Allocate Command Pool(s)/Allocator(s) from queue
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
-        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], m_graphics_queue));
+        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], qhenki::gfx::GRAPHICS));
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
     }
 
@@ -115,7 +115,7 @@ void ImGUIExampleApp::create()
         .signal_values = &current_fence_value,
     };
 
-    m_context->submit_command_lists(info, &m_graphics_queue);
+    m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -228,7 +228,7 @@ void ImGUIExampleApp::render()
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
     };
-    m_context->submit_command_lists(info, &m_graphics_queue);
+    m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
     // You MUST call Present at the end of the render loop
     // TODO: change for Vulkan

@@ -239,7 +239,6 @@ bool create_swapchain_resources(ID3D11Device* device, IDXGISwapChain1* swapchain
 
 bool D3D11Context::create_swapchain(const DisplayWindow& window,
                                     const SwapchainDesc& swapchain_desc,
-                                    Queue* const direct_queue,
                                     unsigned* const frame_index)
 {
     if (swapchain_desc.tearing && !m_allow_tearing)
@@ -961,12 +960,7 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list,
     m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
 }
 
-bool D3D11Context::create_queue(const QueueType type, Queue* queue)
-{
-    return true;
-}
-
-bool D3D11Context::create_command_pool(CommandPool* command_pool, const Queue& queue)
+bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue)
 {
     return true;
 }
@@ -1097,7 +1091,7 @@ void D3D11Context::draw_indexed(CommandList* cmd_list,
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, Queue* queue)
+void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, QueueType queue)
 {
 }
 
@@ -1363,7 +1357,7 @@ bool D3D11Context::compatibility_set_samplers(const unsigned slot,
     return true;
 }
 
-bool D3D11Context::wait_idle(Queue* const queue)
+bool D3D11Context::wait_idle(QueueType queue)
 {
     auto lock = acquire_lock();
     m_device_context->Flush();
