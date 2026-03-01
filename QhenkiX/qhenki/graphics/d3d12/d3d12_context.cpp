@@ -347,19 +347,28 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
         return false;
     }
 
-    std::array<ComPtr<ID3D12Resource>, 2> swapchain_buffers{};
+    m_swapchain.Reset();
+    for (auto& buffer : m_swapchain_buffers)
+    {
+        buffer.Reset();
+    }
+    m_swapchain = swapchain3;
+
     for (unsigned i = 0; i < swapchain_desc.buffer_count; i++)
     {
-        if (FAILED(swapchain3->GetBuffer(i, IID_PPV_ARGS(swapchain_buffers[i].ReleaseAndGetAddressOf()))))
+        if (FAILED(m_swapchain->GetBuffer(i, IID_PPV_ARGS(m_swapchain_buffers[i].ReleaseAndGetAddressOf()))))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get back buffer from swap chain\n");
+            m_swapchain.Reset();
+            for (auto& buffer : m_swapchain_buffers)
+            {
+                buffer.Reset();
+            }
             return false;
         }
     }
 
     m_swapchain_queue = direct_queue;
-    m_swapchain = std::move(swapchain3);
-    m_swapchain_buffers = std::move(swapchain_buffers);
     *frame_index = m_swapchain->GetCurrentBackBufferIndex();
     return true;
 }
@@ -520,7 +529,8 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                    const char* debug_name)
 {
     assert(pipeline);
-    auto d3d12_pipeline = mkS<D3D12Pipeline>();
+    pipeline->internal_state = mkS<D3D12Pipeline>();
+    auto d3d12_pipeline = to_internal(*pipeline);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
 
@@ -556,12 +566,14 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         if (FAILED(hr))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
+            pipeline->internal_state.reset();
             return false;
         }
 
         if (FAILED(shader_reflection->GetDesc(&shader_desc)))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
+            pipeline->internal_state.reset();
             return false;
         }
 
@@ -594,6 +606,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             if (FAILED(m_device->CreateRootSignature(
                     0, rsig_ptr, rsig_size, IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
             {
+                pipeline->internal_state.reset();
                 return false;
             }
             pso_desc.pRootSignature = root_signature.Get();
@@ -708,12 +721,11 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         FAILED(hr))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create Graphics Pipeline State\n");
+        pipeline->internal_state.reset();
         return false;
     }
 
     set_debug_name(d3d12_pipeline->pipeline_state.Get(), debug_name);
-
-    pipeline->internal_state = std::move(d3d12_pipeline);
     return true;
 }
 
@@ -732,6 +744,9 @@ bool D3D12Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, PipelineLayout* const layout)
 {
     assert(layout);
+    layout->internal_state = mkS<ComPtr<ID3D12RootSignature>>();
+    const auto root_signature = to_internal(*layout);
+
     auto count_non_empty = [](const std::array<std::vector<LayoutBinding>, MAX_SPACES>& spaces)
     {
         unsigned count = 0;
@@ -862,20 +877,19 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         {
             OutputDebugStringA(static_cast<char*>(error_blob->GetBufferPointer()));
         }
+        layout->internal_state.reset();
         return false;
     }
     const void* root_sig_data = root_sig_blob->GetBufferPointer();
     const size_t root_sig_data_size = root_sig_blob->GetBufferSize();
 
-    ComPtr<ID3D12RootSignature> root_signature;
     if (FAILED(m_device->CreateRootSignature(
-            0, root_sig_data, root_sig_data_size, IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
+            0, root_sig_data, root_sig_data_size, IID_PPV_ARGS(root_signature->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create root signature\n");
+        layout->internal_state.reset();
         return false;
     }
-
-    layout->internal_state = mkS<ComPtr<ID3D12RootSignature>>(std::move(root_signature));
 
     if (use_arena)
     {
@@ -948,7 +962,8 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         }
     }
 
-    auto d3d12_heap = mkS<D3D12DescriptorHeap>();
+    heap->internal_state = mkS<D3D12DescriptorHeap>();
+    auto d3d12_heap = to_internal(*heap);
     D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
 
     switch (desc.type)
@@ -961,6 +976,7 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
         break;
     default:
         OutputDebugStringA("Qhenki D3D12: Invalid descriptor heap type\n");
+        heap->internal_state.reset();
         return false;
     }
 
@@ -977,12 +993,12 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
 
     if (!d3d12_heap->create(m_device.Get(), heap_desc))
     {
+        heap->internal_state.reset();
         return false;
     }
 
     set_debug_name(d3d12_heap->get().Get(), debug_name);
     heap->desc = desc;
-    heap->internal_state = std::move(d3d12_heap);
     return true;
 }
 
@@ -1116,6 +1132,8 @@ size_t D3D12Context::get_descriptor_alignment(const Descriptor::Type type) const
 bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
     assert(buffer);
+    buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>();
+    const auto allocation = to_internal(*buffer);
 
     const auto size = desc.usage & BufferUsage::CONSTANT
                         ? util::align_u(desc.size, static_cast<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT))
@@ -1157,7 +1175,6 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
     // Initial state is not used in D3D12
 
-    ComPtr<D3D12MA::Allocation> allocation;
     // Barrier layout is undefined for CreateResource3
     if (FAILED(m_allocator->CreateResource3(&allocation_desc,
                                             &resource_desc,
@@ -1165,14 +1182,15 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
                                             nullptr,
                                             0,
                                             nullptr,
-                                            allocation.ReleaseAndGetAddressOf(),
+                                            allocation->ReleaseAndGetAddressOf(),
                                             IID_NULL,
                                             NULL)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create buffer\n");
+        buffer->internal_state.reset();
         return false;
     }
-    const auto resource = allocation.Get()->GetResource();
+    const auto resource = allocation->Get()->GetResource();
 
     if (data)
     {
@@ -1183,6 +1201,7 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
             if (FAILED(resource->Map(0, &range, &mapped_ptr)))
             {
                 OutputDebugStringA("Qhenki D3D12 ERROR: Failed to map buffer\n");
+                buffer->internal_state.reset();
                 return false;
             }
             memcpy(mapped_ptr, data, desc.size);
@@ -1196,12 +1215,11 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
     if (m_debug)
     {
-        set_debug_name(allocation.Get()->GetResource(), debug_name);
+        set_debug_name(allocation->Get()->GetResource(), debug_name);
     }
 
     buffer->desc = desc;
     buffer->desc.size = size;
-    buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>(std::move(allocation));
     return true;
 }
 namespace
@@ -1329,7 +1347,8 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         return false;
     }
 
-    auto texture_d3d12 = mkS<D3D12Texture>();
+    texture->internal_state = mkS<D3D12Texture>();
+    auto texture_d3d12 = to_internal(*texture);
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Alignment = 0,
         .Width = desc.width,
@@ -1397,13 +1416,13 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
                                             NULL)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create texture\n");
+        texture->internal_state.reset();
         return false;
     }
 
     set_debug_name(texture_d3d12->allocation.Get()->GetResource(), debug_name);
 
     texture->desc = desc;
-    texture->internal_state = std::move(texture_d3d12);
     return true;
 }
 namespace
@@ -1725,14 +1744,15 @@ bool D3D12Context::create_queue(const QueueType type, Queue* queue)
         queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
         break;
     }
-    ComPtr<ID3D12CommandQueue> command_queue;
-    if (FAILED(m_device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(command_queue.ReleaseAndGetAddressOf()))))
+    queue->internal_state = mkS<ComPtr<ID3D12CommandQueue>>();
+    const auto command_queue = to_internal(*queue);
+    if (FAILED(m_device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(command_queue->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command queue\n");
+        queue->internal_state.reset();
         return false;
     }
     queue->type = type;
-    queue->internal_state = mkS<ComPtr<ID3D12CommandQueue>>(std::move(command_queue));
     return true;
 }
 
@@ -1753,14 +1773,15 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const Queue& q
         break;
     }
 
-    ComPtr<ID3D12CommandAllocator> command_allocator;
-    if (FAILED(m_device->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator.ReleaseAndGetAddressOf()))))
+    command_pool->internal_state = mkS<ComPtr<ID3D12CommandAllocator>>();
+    const auto command_allocator = to_internal(*command_pool);
+    if (FAILED(m_device->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command allocator\n");
+        command_pool->internal_state.reset();
         return false;
     }
     command_pool->queue = &queue;
-    command_pool->internal_state = mkS<ComPtr<ID3D12CommandAllocator>>(std::move(command_allocator));
     return true;
 }
 
@@ -1793,14 +1814,17 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
         type = D3D12_COMMAND_LIST_TYPE_COPY;
         break;
     }
-    ComPtr<ID3D12GraphicsCommandList7> d3d12_cmd_list;
+
+    cmd_list->internal_state = mkS<ComPtr<ID3D12GraphicsCommandList7>>();
+    auto d3d12_cmd_list = to_internal(*cmd_list);
     if (FAILED(m_device->CreateCommandList1(
-            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(d3d12_cmd_list.ReleaseAndGetAddressOf()))))
+            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command list\n");
+        cmd_list->internal_state.reset();
         return false;
     }
-    cmd_list->internal_state = mkS<ComPtr<ID3D12GraphicsCommandList7>>(std::move(d3d12_cmd_list));
+
     return true;
 }
 
@@ -1987,21 +2011,23 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, Queue* qu
 
 bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
 {
-    auto fence_d3d12 = mkS<D3D12Fence>();
+    fence->internal_state = mkS<D3D12Fence>();
+    auto fence_d3d12 = to_internal(*fence);
     if (FAILED(m_device->CreateFence(initial_value,
                                      D3D12_FENCE_FLAG_NONE,
                                      IID_PPV_ARGS(fence_d3d12->fence.ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create fence\n");
+        fence->internal_state.reset();
         return false;
     }
     fence_d3d12->event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!fence_d3d12->event)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create fence event\n");
+        fence->internal_state.reset();
         return false;
     }
-    fence->internal_state = std::move(fence_d3d12);
     return true;
 }
 
