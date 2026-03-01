@@ -184,8 +184,8 @@ void gltfViewerApp::create()
     // Allocate Command Pool(s)/Allocator(s) from queue
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
-        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], m_graphics_queue));
-        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools_thread[i], m_graphics_queue));
+        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], qhenki::gfx::GRAPHICS));
+        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools_thread[i], qhenki::gfx::GRAPHICS));
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
     }
 
@@ -228,7 +228,7 @@ struct ContextModel
 {
     qhenki::gfx::Context* context;
     qhenki::gfx::CommandPool* pool;
-    qhenki::gfx::Queue* queue;
+    qhenki::gfx::QueueType queue;
     size_t model_count;
     GLTFModel* models;
     std::mutex* mutex;
@@ -396,7 +396,7 @@ void gltfViewerApp::render()
                 cm = {
                     .context = m_context.get(),
                     .pool = &m_cmd_pools_thread[m_frame_index], // Needs its own command pool for async loading
-                    .queue = &m_graphics_queue,
+                    .queue = qhenki::gfx::QueueType::GRAPHICS,
                     .model_count = m_models.size(),
                     .models = m_models.data(),
                     .mutex = &m_model_mutex,
@@ -866,7 +866,7 @@ void gltfViewerApp::render()
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
     };
-    m_context->submit_command_lists(info, &m_graphics_queue);
+    m_context->submit_command_lists(info, qhenki::gfx::QueueType::GRAPHICS);
 
     // You MUST call Present at the end of the render loop
     // TODO: change for Vulkan
@@ -890,7 +890,7 @@ void gltfViewerApp::render()
 
 void gltfViewerApp::resize(const unsigned width, const unsigned height)
 {
-    m_context->wait_idle(&m_graphics_queue);
+    m_context->wait_idle(qhenki::gfx::QueueType::GRAPHICS);
     const qhenki::gfx::TextureDesc depth_desc{
         .width = static_cast<uint64_t>(width),
         .height = height,

@@ -445,7 +445,6 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
 
     assert(data.context);
     assert(data.pool);
-    assert(data.queue);
 
     std::scoped_lock lock(loading);
 

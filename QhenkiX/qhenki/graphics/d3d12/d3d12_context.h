@@ -53,7 +53,9 @@ class D3D12Context : public Context
 
     RenderTargetHelper m_render_target_helper{};
 
-    Queue* m_swapchain_queue = nullptr;
+    ComPtr<ID3D12CommandQueue> m_graphics_queue;
+    ComPtr<ID3D12CommandQueue> m_compute_queue;
+    ComPtr<ID3D12CommandQueue> m_copy_queue;
 
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
@@ -66,7 +68,6 @@ public:
     bool is_compatibility() const override;
     bool create_swapchain(const DisplayWindow& window,
                           const SwapchainDesc& swapchain_desc,
-                          Queue* direct_queue,
                           unsigned* frame_index) override;
     bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
     bool present(const Swapchain& swapchain,
@@ -138,8 +139,7 @@ public:
 
     void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) override;
 
-    bool create_queue(QueueType type, Queue* queue) override;
-    bool create_command_pool(CommandPool* command_pool, const Queue& queue) override;
+    bool create_command_pool(CommandPool* command_pool, QueueType queue) override;
     bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
     bool close_command_list(CommandList* cmd_list) override;
@@ -167,7 +167,7 @@ public:
                       int32_t base_vertex_offset,
                       uint32_t instance_offset) override;
 
-    void submit_command_lists(const SubmitInfo& submit_info, Queue* queue) override;
+    void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
     bool create_fence(Fence* fence, uint64_t initial_value) override;
     uint64_t get_fence_value(const Fence& fence) override;
@@ -203,7 +203,7 @@ public:
                                     Descriptor* const* samplers,
                                     PipelineStage stage) override;
 
-    bool wait_idle(Queue* queue) override;
+    bool wait_idle(QueueType queue) override;
 
     D3D12Context() = default;
     ~D3D12Context() override;
@@ -217,5 +217,6 @@ private:
                                                 const D3D12_SHADER_DESC& shader_desc,
                                                 bool increment_slot);
     void clear_depth(ID3D12GraphicsCommandList7* command_list, const RenderTarget* depth_stencil);
+    ComPtr<ID3D12CommandQueue>& get_command_queue(QueueType queue);
 };
 } // namespace qhenki::gfx

@@ -33,7 +33,6 @@ public:
     // Creates swapchain based off specified description
     virtual bool create_swapchain(const DisplayWindow& window,
                                   const SwapchainDesc& swapchain_desc,
-                                  Queue* direct_queue,
                                   unsigned* frame_index) = 0;
     virtual bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) = 0;
     virtual bool present(const Swapchain& swapchain,
@@ -131,8 +130,7 @@ public:
     virtual void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) = 0;
     // TODO: bind compute pipeline
 
-    virtual bool create_queue(QueueType type, Queue* queue) = 0;
-    virtual bool create_command_pool(CommandPool* command_pool, const Queue& queue) = 0;
+    virtual bool create_command_pool(CommandPool* command_pool, QueueType queue) = 0;
 
     virtual bool create_command_list(CommandList* cmd_list,
                                      const CommandPool& command_pool,
@@ -172,7 +170,7 @@ public:
     // TODO: draw indirect
     // TODO: draw indirect count
 
-    virtual void submit_command_lists(const SubmitInfo& submit_info, Queue* queue) = 0;
+    virtual void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) = 0;
 
     virtual bool create_fence(Fence* fence, uint64_t initial_value) = 0;
     // If submission is pending value may be out of date
@@ -209,7 +207,7 @@ public:
                                             Descriptor* const* samplers,
                                             PipelineStage stage) = 0;
 
-    virtual bool wait_idle(Queue* queue) = 0;
+    virtual bool wait_idle(QueueType queue) = 0;
     virtual ~Context() = default;
 };
 } // namespace qhenki::gfx

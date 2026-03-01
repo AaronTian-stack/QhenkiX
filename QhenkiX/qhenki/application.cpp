@@ -81,8 +81,6 @@ void Application::run(const gfx::API api,
         return;
     }
 
-    THROW_IF_FALSE(m_context->create_queue(qhenki::gfx::QueueType::GRAPHICS, &m_graphics_queue));
-
     if (initial_swapchain.has_value())
     {
         m_swapchain = initial_swapchain.value();
@@ -103,7 +101,7 @@ void Application::run(const gfx::API api,
         };
     }
 
-    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain, &m_graphics_queue, &m_frame_index));
+    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain, &m_frame_index));
 
     // Create fences
     THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[m_frame_index]));
@@ -145,7 +143,7 @@ void Application::run(const gfx::API api,
         m_input_manager.update(m_window.get_window()); // After all SDL events
         render();
     }
-    m_context->wait_idle(&m_graphics_queue);
+    m_context->wait_idle(gfx::QueueType::GRAPHICS);
     destroy();
 }
 

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "queue.h"
 
@@ -6,7 +6,7 @@ namespace qhenki::gfx
 {
 struct CommandPool
 {
-    const Queue* queue; // Change Queue* to const Queue*
+    QueueType queue_type;
     sPtr<void> internal_state;
 };
 } // namespace qhenki::gfx

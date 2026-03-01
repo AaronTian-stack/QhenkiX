@@ -136,7 +136,7 @@ void RetroExampleApp::create()
 
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
-        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], m_graphics_queue));
+        THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], qhenki::gfx::GRAPHICS));
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
     }
 
@@ -374,7 +374,7 @@ void RetroExampleApp::create()
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
     };
-    m_context->submit_command_lists(info_init, &m_graphics_queue);
+    m_context->submit_command_lists(info_init, qhenki::gfx::QueueType::GRAPHICS);
 
     qhenki::gfx::WaitInfo wait_info{.count = 1,
                                     .fences = &m_fence_frame_ready,
@@ -1287,7 +1287,7 @@ void RetroExampleApp::render()
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
     };
-    m_context->submit_command_lists(info, &m_graphics_queue);
+    m_context->submit_command_lists(info, qhenki::gfx::QueueType::GRAPHICS);
 
     m_context->present(m_swapchain, 0, nullptr, m_frame_index);
 
@@ -1308,7 +1308,7 @@ void RetroExampleApp::render()
 
 void RetroExampleApp::resize(const unsigned width, const unsigned height)
 {
-    m_context->wait_idle(&m_graphics_queue);
+    m_context->wait_idle(qhenki::gfx::QueueType::GRAPHICS);
     const qhenki::gfx::TextureDesc depth_desc{
         .width = static_cast<uint64_t>(width),
         .height = height,

@@ -10,7 +10,7 @@ struct ContextData
 {
     qhenki::gfx::Context* context;
     qhenki::gfx::CommandPool* pool;
-    qhenki::gfx::Queue* queue;
+    qhenki::gfx::QueueType queue;
 };
 
 class GLTFLoader
