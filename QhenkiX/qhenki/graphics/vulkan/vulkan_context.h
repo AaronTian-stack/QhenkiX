@@ -20,6 +20,7 @@ class VulkanContext : public Context
     vkb::Instance m_instance;
     vkb::Device m_device;
     vkb::Swapchain m_swapchain;
+    VkSurfaceKHR m_surface;
     VmaAllocator m_allocator = nullptr;
 
 public:
@@ -170,5 +171,8 @@ public:
     VulkanContext& operator=(VulkanContext&&) = delete;
 
     friend class VulkanDescriptorHeap;
+
+private:
+    void set_debug_name(VkObjectType type, uint64_t handle, const char* name) const;
 };
 } // namespace qhenki::gfx

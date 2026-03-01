@@ -12,9 +12,16 @@ class VulkanDescriptorHeap
     VulkanBuffer m_heap;
     VmaVirtualBlock m_block;
 
+    VulkanContext* m_context = nullptr;
+
 public:
+    VulkanDescriptorHeap() = default;
+    ~VulkanDescriptorHeap();
     bool create(const DescriptorHeapDesc& desc, const VulkanContext& context);
-    bool allocate(VmaVirtualAllocation* va, Descriptor::Type type, const VulkanContext& context) const;
+    bool allocate(VmaVirtualAllocation* va,
+                  Descriptor::Type type,
+                  const VulkanContext& context,
+                  VkDeviceSize* offset) const;
     void deallocate(VmaVirtualAllocation va) const;
 };
 } // namespace qhenki::gfx

@@ -10,8 +10,11 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "vk_mem_alloc.h"
+#include "vulkan_descriptor_heap.h"
 
 #include "qhenki/utility/string_util.h"
+
+#define VK_FAILED(result) ((result) != VK_SUCCESS)
 
 using namespace qhenki::gfx;
 
@@ -106,6 +109,14 @@ VkFormat convert_format(const DXGI_FORMAT format)
 }
 
 #undef DXGI_VK_FORMAT_MAP
+
+VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
+{
+    const auto vulkan_descriptor_heap = static_cast<VulkanDescriptorHeap*>(ext.internal_state.get());
+    assert(vulkan_descriptor_heap);
+    return vulkan_descriptor_heap;
+}
+
 } // namespace
 
 constexpr uint32_t major = 1;
@@ -113,7 +124,7 @@ constexpr uint32_t minor = 4;
 
 std::string VulkanContext::create(const bool enable_debug_layer)
 {
-    if (volkInitialize() != VK_SUCCESS)
+    if (VK_FAILED(volkInitialize()))
     {
         return "Vulkan: Failed to initialize Volk";
     }
@@ -256,21 +267,22 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     VmaVulkanFunctions vulkan_functions{};
     VmaAllocatorCreateInfo allocator_desc{
         .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT |
-                 VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT,
+                 VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT |
+                 VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
         .physicalDevice = m_device.physical_device,
         .device = m_device.device,
         .instance = m_instance.instance,
         .vulkanApiVersion = VK_API_VERSION_1_4,
     };
 
-    if (vmaImportVulkanFunctionsFromVolk(&allocator_desc, &vulkan_functions) != VK_SUCCESS)
+    if (VK_FAILED(vmaImportVulkanFunctionsFromVolk(&allocator_desc, &vulkan_functions)))
     {
         return "Vulkan: Failed to import Vulkan functions for VMA from Volk";
     }
 
     allocator_desc.pVulkanFunctions = &vulkan_functions;
 
-    if (vmaCreateAllocator(&allocator_desc, &m_allocator) != VK_SUCCESS)
+    if (VK_FAILED(vmaCreateAllocator(&allocator_desc, &m_allocator)))
     {
         return "Vulkan: Failed to create VMA allocator";
     }
@@ -292,14 +304,13 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
                                      Queue* direct_queue,
                                      unsigned* frame_index)
 {
-    VkSurfaceKHR surface;
-    const auto status = SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &surface);
+    const auto status = SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface);
     if (!status)
     {
         return false;
     }
 
-    vkb::SwapchainBuilder swapchain_builder{m_device, surface};
+    vkb::SwapchainBuilder swapchain_builder{m_device, m_surface};
 
     const VkPresentModeKHR present_mode = swapchain_desc.tearing ? VK_PRESENT_MODE_IMMEDIATE_KHR
                                                                  : VK_PRESENT_MODE_FIFO_KHR;
@@ -371,6 +382,15 @@ bool VulkanContext::set_pipeline_constant(
 
 bool VulkanContext::create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name)
 {
+    heap->internal_state = mkS<VulkanDescriptorHeap>();
+    const auto vk_heap = to_internal(*heap);
+
+    if (!vk_heap->create(desc, *this))
+    {
+        heap->internal_state.reset();
+        return false;
+    }
+
     heap->desc = desc;
 
     return true;
@@ -439,6 +459,85 @@ size_t VulkanContext::get_descriptor_alignment(const Descriptor::Type type) cons
 
 bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
+    assert(buffer);
+
+    buffer->internal_state = mkS<VulkanBuffer>();
+    const auto vulkan_buffer = static_cast<VulkanBuffer*>(buffer->internal_state.get());
+
+    VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = desc.size,
+    };
+
+    buffer_info.usage = 0;
+    if (desc.usage & BufferUsage::VERTEX)
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    }
+    if (desc.usage & BufferUsage::INDEX)
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    }
+    if (desc.usage & BufferUsage::CONSTANT)
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    }
+    // BufferUsage::SHADER doesn't have any meaning here
+    if (desc.usage & BufferUsage::UAV)
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    }
+    if (desc.usage & BufferUsage::INDIRECT)
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+    }
+    if (desc.usage & BufferUsage::COPY_SRC)
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    }
+    if (desc.usage & BufferUsage::COPY_DST)
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    }
+    assert(buffer_info.usage);
+
+    VmaAllocationCreateInfo alloc_info = {VMA_MEMORY_USAGE_UNKNOWN};
+    const auto is_cpu_visible = desc.visibility & CPU_SEQUENTIAL;
+    if (is_cpu_visible)
+    {
+        constexpr auto cpu = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        alloc_info.requiredFlags = desc.visibility & GPU ? cpu | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : cpu;
+    }
+    else
+    {
+        alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
+
+    if (VK_FAILED(vmaCreateBuffer(
+            m_allocator, &buffer_info, &alloc_info, &vulkan_buffer->buffer, &vulkan_buffer->allocation, nullptr)))
+    {
+        return false;
+    }
+
+    if (data)
+    {
+        if (is_cpu_visible)
+        {
+            void* mapped;
+            if (VK_FAILED(vmaMapMemory(m_allocator, vulkan_buffer->allocation, &mapped)))
+            {
+                buffer->internal_state.reset();
+                return false;
+            }
+            memcpy(mapped, data, desc.size);
+            vmaUnmapMemory(m_allocator, vulkan_buffer->allocation);
+        }
+    }
+
+    set_debug_name(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(vulkan_buffer->buffer), debug_name);
+
+    buffer->desc = desc;
+
     return true;
 }
 
@@ -660,4 +759,24 @@ bool VulkanContext::wait_idle(Queue* queue)
 VulkanContext::~VulkanContext()
 {
     vmaDestroyAllocator(m_allocator);
+    vkb::destroy_device(m_device);
+    if (m_surface)
+    {
+        vkb::destroy_surface(m_instance, m_surface);
+    }
+    vkb::destroy_instance(m_instance);
+}
+
+void VulkanContext::set_debug_name(const VkObjectType type, const uint64_t handle, const char* name) const
+{
+    if (vkSetDebugUtilsObjectNameEXT)
+    {
+        const VkDebugUtilsObjectNameInfoEXT name_info{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .objectType = type,
+            .objectHandle = handle,
+            .pObjectName = name,
+        };
+        vkSetDebugUtilsObjectNameEXT(m_device.device, &name_info);
+    }
 }

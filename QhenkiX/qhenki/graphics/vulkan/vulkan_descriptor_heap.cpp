@@ -2,6 +2,12 @@
 
 using namespace qhenki::gfx;
 
+VulkanDescriptorHeap::~VulkanDescriptorHeap()
+{
+    vmaDestroyVirtualBlock(m_block);
+    vmaDestroyBuffer(m_context->m_allocator, m_heap.buffer, m_heap.allocation);
+}
+
 bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanContext& context)
 {
     const auto& properties = context.m_capabilities.descriptor_heap_properties;
@@ -40,7 +46,8 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
 
 bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va,
                                     const Descriptor::Type type,
-                                    const VulkanContext& context) const
+                                    const VulkanContext& context,
+                                    VkDeviceSize* offset) const
 {
     const auto& properties = context.m_capabilities.descriptor_heap_properties;
 
@@ -64,8 +71,7 @@ bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va,
         return false;
     }
 
-    VkDeviceSize offset;
-    const auto res = vmaVirtualAllocate(m_block, &alloc_create_info, va, &offset);
+    const auto res = vmaVirtualAllocate(m_block, &alloc_create_info, va, offset);
 
     return res == VK_SUCCESS;
 }
