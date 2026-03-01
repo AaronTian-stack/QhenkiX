@@ -94,7 +94,7 @@ public:
     bool create_descriptor_heap(const DescriptorHeapDesc& desc,
                                 DescriptorHeap* heap,
                                 const char* debug_name = nullptr) override;
-    size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) override;
+    size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
                              const DescriptorHeap& heap,
