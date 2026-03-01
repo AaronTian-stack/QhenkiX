@@ -124,7 +124,7 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/RHI/command_pool.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/context.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/descriptor_heap.h"
-    "${QHENKIX_PUBLIC_DIR}/RHI/descriptor_table.h"
+    "${QHENKIX_PUBLIC_DIR}/RHI/descriptor.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/enums.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/pipeline.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/queue.h"
