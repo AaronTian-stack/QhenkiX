@@ -7,6 +7,115 @@
 namespace qhenki::gfx
 {
 
+#define SYNC_STAGE_MAP(X)                                                                                       \
+    X(SYNC_NONE, D3D12_BARRIER_SYNC_NONE)                                                                       \
+    X(SYNC_ALL, D3D12_BARRIER_SYNC_ALL)                                                                         \
+    X(SYNC_DRAW, D3D12_BARRIER_SYNC_DRAW)                                                                       \
+    X(SYNC_INDEX_INPUT, D3D12_BARRIER_SYNC_INDEX_INPUT)                                                         \
+    X(SYNC_VERTEX_SHADING, D3D12_BARRIER_SYNC_VERTEX_SHADING)                                                   \
+    X(SYNC_PIXEL_SHADING, D3D12_BARRIER_SYNC_PIXEL_SHADING)                                                     \
+    X(SYNC_DEPTH_STENCIL, D3D12_BARRIER_SYNC_DEPTH_STENCIL)                                                     \
+    X(SYNC_RENDER_TARGET, D3D12_BARRIER_SYNC_RENDER_TARGET)                                                     \
+    X(SYNC_COMPUTE_SHADING, D3D12_BARRIER_SYNC_COMPUTE_SHADING)                                                 \
+    X(SYNC_RAYTRACING, D3D12_BARRIER_SYNC_RAYTRACING)                                                           \
+    X(SYNC_COPY, D3D12_BARRIER_SYNC_COPY)                                                                       \
+    X(SYNC_RESOLVE, D3D12_BARRIER_SYNC_RESOLVE)                                                                 \
+    X(SYNC_EXECUTE_INDIRECT, D3D12_BARRIER_SYNC_EXECUTE_INDIRECT)                                               \
+    X(SYNC_PREDICATION, D3D12_BARRIER_SYNC_PREDICATION)                                                         \
+    X(SYNC_ALL_SHADING, D3D12_BARRIER_SYNC_ALL_SHADING)                                                         \
+    X(SYNC_NON_PIXEL_SHADING, D3D12_BARRIER_SYNC_NON_PIXEL_SHADING)                                             \
+    X(SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO,                                               \
+      D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO)                                 \
+    X(SYNC_CLEAR_UNORDERED_ACCESS_VIEW, D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW)                         \
+    X(SYNC_VIDEO_DECODE, D3D12_BARRIER_SYNC_VIDEO_DECODE)                                                       \
+    X(SYNC_VIDEO_PROCESS, D3D12_BARRIER_SYNC_VIDEO_PROCESS)                                                     \
+    X(SYNC_VIDEO_ENCODE, D3D12_BARRIER_SYNC_VIDEO_ENCODE)                                                       \
+    X(SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE) \
+    X(SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE)
+
+#define ACCESS_FLAGS_MAP(X)                                                                                         \
+    X(ACCESS_COMMON, D3D12_BARRIER_ACCESS_COMMON)                                                                   \
+    X(ACCESS_VERTEX_BUFFER, D3D12_BARRIER_ACCESS_VERTEX_BUFFER)                                                     \
+    X(ACCESS_UNIFORM_BUFFER, D3D12_BARRIER_ACCESS_CONSTANT_BUFFER)                                                  \
+    X(ACCESS_INDEX_BUFFER, D3D12_BARRIER_ACCESS_INDEX_BUFFER)                                                       \
+    X(ACCESS_RENDER_TARGET, D3D12_BARRIER_ACCESS_RENDER_TARGET)                                                     \
+    X(ACCESS_STORAGE_ACCESS, D3D12_BARRIER_ACCESS_UNORDERED_ACCESS)                                                 \
+    X(ACCESS_DEPTH_STENCIL_WRITE, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE)                                         \
+    X(ACCESS_DEPTH_STENCIL_READ, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ)                                           \
+    X(ACCESS_SHADER_RESOURCE, D3D12_BARRIER_ACCESS_SHADER_RESOURCE)                                                 \
+    X(ACCESS_STREAM_OUTPUT, D3D12_BARRIER_ACCESS_STREAM_OUTPUT)                                                     \
+    X(ACCESS_INDIRECT_ARGUMENT, D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT)                                             \
+    X(ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_COPY_DEST)                                                             \
+    X(ACCESS_COPY_SOURCE, D3D12_BARRIER_ACCESS_COPY_SOURCE)                                                         \
+    X(ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ, D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ)   \
+    X(ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE, D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE) \
+    X(ACCESS_SHADING_RATE_SOURCE, D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE)                                         \
+    X(ACCESS_VIDEO_DECODE_READ, D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ)                                             \
+    X(ACCESS_VIDEO_DECODE_WRITE, D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE)                                           \
+    X(ACCESS_VIDEO_PROCESS_READ, D3D12_BARRIER_ACCESS_VIDEO_PROCESS_READ)                                           \
+    X(ACCESS_VIDEO_PROCESS_WRITE, D3D12_BARRIER_ACCESS_VIDEO_PROCESS_WRITE)                                         \
+    X(ACCESS_VIDEO_ENCODE_READ, D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ)                                             \
+    X(ACCESS_VIDEO_ENCODE_WRITE, D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE)                                           \
+    X(NO_ACCESS, D3D12_BARRIER_ACCESS_NO_ACCESS)
+
+#define LAYOUT_MAP(X)                                                                      \
+    X(UNDEFINED, D3D12_BARRIER_LAYOUT_UNDEFINED)                                           \
+    X(COMMON, D3D12_BARRIER_LAYOUT_COMMON)                                                 \
+    X(PRESENT, D3D12_BARRIER_LAYOUT_PRESENT)                                               \
+    X(LAYOUT_GENERIC_READ, D3D12_BARRIER_LAYOUT_GENERIC_READ)                              \
+    X(RENDER_TARGET, D3D12_BARRIER_LAYOUT_RENDER_TARGET)                                   \
+    X(UNORDERED_ACCESS, D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS)                             \
+    X(DEPTH_STENCIL_WRITE, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE)                       \
+    X(DEPTH_STENCIL_READ, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ)                         \
+    X(SHADER_RESOURCE, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE)                               \
+    X(COPY_SOURCE, D3D12_BARRIER_LAYOUT_COPY_SOURCE)                                       \
+    X(COPY_DEST, D3D12_BARRIER_LAYOUT_COPY_DEST)                                           \
+    X(RESOLVE_SOURCE, D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE)                                 \
+    X(RESOLVE_DEST, D3D12_BARRIER_LAYOUT_RESOLVE_DEST)                                     \
+    X(SHADING_RATE_SOURCE, D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE)                       \
+    X(VIDEO_DECODE_READ, D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ)                           \
+    X(VIDEO_DECODE_WRITE, D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE)                         \
+    X(VIDEO_PROCESS_READ, D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_READ)                         \
+    X(VIDEO_PROCESS_WRITE, D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE)                       \
+    X(VIDEO_ENCODE_READ, D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ)                           \
+    X(VIDEO_ENCODE_WRITE, D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE)                         \
+    X(DIRECT_QUEUE_COMMON, D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON)                       \
+    X(DIRECT_QUEUE_GENERIC_READ, D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ)           \
+    X(DIRECT_QUEUE_UNORDERED_ACCESS, D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS)   \
+    X(DIRECT_QUEUE_SHADER_RESOURCE, D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE)     \
+    X(DIRECT_QUEUE_COPY_SOURCE, D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE)             \
+    X(DIRECT_QUEUE_COPY_DEST, D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST)                 \
+    X(COMPUTE_QUEUE_COMMON, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON)                     \
+    X(COMPUTE_QUEUE_GENERIC_READ, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ)         \
+    X(COMPUTE_QUEUE_UNORDERED_ACCESS, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS) \
+    X(COMPUTE_QUEUE_SHADER_RESOURCE, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE)   \
+    X(COMPUTE_QUEUE_COPY_SOURCE, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE)           \
+    X(COMPUTE_QUEUE_COPY_DEST, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST)
+
+#define PRIMITIVE_TOPOLOGY_MAP(X)                         \
+    X(POINT_LIST, D3D_PRIMITIVE_TOPOLOGY_POINTLIST)       \
+    X(LINE_LIST, D3D_PRIMITIVE_TOPOLOGY_LINELIST)         \
+    X(LINE_STRIP, D3D_PRIMITIVE_TOPOLOGY_LINESTRIP)       \
+    X(TRIANGLE_LIST, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) \
+    X(TRIANGLE_STRIP, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP)
+
+#define ADDRESS_MODE_MAP(X)                      \
+    X(WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP)     \
+    X(MIRROR, D3D12_TEXTURE_ADDRESS_MODE_MIRROR) \
+    X(CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP)   \
+    X(BORDER, D3D12_TEXTURE_ADDRESS_MODE_BORDER)
+
+#define COMPARISON_FUNC_MAP(X)                               \
+    X(NONE, D3D12_COMPARISON_FUNC_NONE)                      \
+    X(NEVER, D3D12_COMPARISON_FUNC_NEVER)                    \
+    X(LESS, D3D12_COMPARISON_FUNC_LESS)                      \
+    X(EQUAL, D3D12_COMPARISON_FUNC_EQUAL)                    \
+    X(LESS_OR_EQUAL, D3D12_COMPARISON_FUNC_LESS_EQUAL)       \
+    X(GREATER, D3D12_COMPARISON_FUNC_GREATER)                \
+    X(NOT_EQUAL, D3D12_COMPARISON_FUNC_NOT_EQUAL)            \
+    X(GREATER_OR_EQUAL, D3D12_COMPARISON_FUNC_GREATER_EQUAL) \
+    X(ALWAYS, D3D12_COMPARISON_FUNC_ALWAYS)
+
 std::wstring get_shader_model_wchar(const ShaderType type, const ShaderModel model)
 {
     auto sm = magic_enum::enum_name(model);
@@ -92,327 +201,63 @@ DXGI_FORMAT get_dxgi_format(const IndexType format)
 
 D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(const PrimitiveTopology topology)
 {
+#define MAP_TOPOLOGY(our, d3d)   \
+    case PrimitiveTopology::our: \
+        return d3d;
+
     switch (topology)
     {
-    case PrimitiveTopology::POINT_LIST:
-        return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
-    case PrimitiveTopology::LINE_LIST:
-        return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-    case PrimitiveTopology::LINE_STRIP:
-        return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
-    case PrimitiveTopology::TRIANGLE_LIST:
-        return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    case PrimitiveTopology::TRIANGLE_STRIP:
-        return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        PRIMITIVE_TOPOLOGY_MAP(MAP_TOPOLOGY)
+    default:
+        return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     }
-    return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
+#undef MAP_TOPOLOGY
 }
 
-D3D12_BARRIER_SYNC sync_stage(SyncStage stage)
+D3D12_BARRIER_SYNC sync_stage(const SyncStage stage)
 {
-    D3D12_BARRIER_SYNC sync = {};
+#define MAP_SYNC(our, d3d) \
+    if (stage & (our))     \
+        sync |= (d3d);
 
-    if (stage & SYNC_NONE)
-    {
-        sync |= D3D12_BARRIER_SYNC_NONE;
-    }
-    if (stage & SYNC_ALL)
-    {
-        sync |= D3D12_BARRIER_SYNC_ALL;
-    }
-    if (stage & SYNC_DRAW)
-    {
-        sync |= D3D12_BARRIER_SYNC_DRAW;
-    }
-    if (stage & SYNC_INDEX_INPUT)
-    {
-        sync |= D3D12_BARRIER_SYNC_INDEX_INPUT;
-    }
-    if (stage & SYNC_VERTEX_SHADING)
-    {
-        sync |= D3D12_BARRIER_SYNC_VERTEX_SHADING;
-    }
-    if (stage & SYNC_PIXEL_SHADING)
-    {
-        sync |= D3D12_BARRIER_SYNC_PIXEL_SHADING;
-    }
-    if (stage & SYNC_DEPTH_STENCIL)
-    {
-        sync |= D3D12_BARRIER_SYNC_DEPTH_STENCIL;
-    }
-    if (stage & SYNC_RENDER_TARGET)
-    {
-        sync |= D3D12_BARRIER_SYNC_RENDER_TARGET;
-    }
-    if (stage & SYNC_COMPUTE_SHADING)
-    {
-        sync |= D3D12_BARRIER_SYNC_COMPUTE_SHADING;
-    }
-    if (stage & SYNC_RAYTRACING)
-    {
-        sync |= D3D12_BARRIER_SYNC_RAYTRACING;
-    }
-    if (stage & SYNC_COPY)
-    {
-        sync |= D3D12_BARRIER_SYNC_COPY;
-    }
-    if (stage & SYNC_RESOLVE)
-    {
-        sync |= D3D12_BARRIER_SYNC_RESOLVE;
-    }
-    if (stage & SYNC_EXECUTE_INDIRECT)
-    {
-        sync |= D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
-    }
-    if (stage & SYNC_PREDICATION)
-    {
-        sync |= D3D12_BARRIER_SYNC_PREDICATION;
-    }
-    if (stage & SYNC_ALL_SHADING)
-    {
-        sync |= D3D12_BARRIER_SYNC_ALL_SHADING;
-    }
-    if (stage & SYNC_NON_PIXEL_SHADING)
-    {
-        sync |= D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
-    }
-    if (stage & SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO)
-    {
-        sync |= D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
-    }
-    if (stage & SYNC_CLEAR_UNORDERED_ACCESS_VIEW)
-    {
-        sync |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
-    }
-    if (stage & SYNC_VIDEO_DECODE)
-    {
-        sync |= D3D12_BARRIER_SYNC_VIDEO_DECODE;
-    }
-    if (stage & SYNC_VIDEO_PROCESS)
-    {
-        sync |= D3D12_BARRIER_SYNC_VIDEO_PROCESS;
-    }
-    if (stage & SYNC_VIDEO_ENCODE)
-    {
-        sync |= D3D12_BARRIER_SYNC_VIDEO_ENCODE;
-    }
-    if (stage & SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE)
-    {
-        sync |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-    }
-    if (stage & SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE)
-    {
-        sync |= D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
-    }
-
+    D3D12_BARRIER_SYNC sync{};
+    SYNC_STAGE_MAP(MAP_SYNC)
     return sync;
+
+#undef MAP_SYNC
 }
 
-D3D12_BARRIER_ACCESS access_flags(AccessFlags access)
+D3D12_BARRIER_ACCESS access_flags(const AccessFlags access)
 {
+#define MAP_ACCESS(our, d3d) \
+    if (access & (our))      \
+        flags |= (d3d);
+
     D3D12_BARRIER_ACCESS flags = {};
-
-    if (access & ACCESS_COMMON)
-    {
-        flags |= D3D12_BARRIER_ACCESS_COMMON;
-    }
-    if (access & ACCESS_VERTEX_BUFFER)
-    {
-        flags |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
-    }
-    if (access & ACCESS_UNIFORM_BUFFER)
-    {
-        flags |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
-    }
-    if (access & ACCESS_INDEX_BUFFER)
-    {
-        flags |= D3D12_BARRIER_ACCESS_INDEX_BUFFER;
-    }
-    if (access & ACCESS_RENDER_TARGET)
-    {
-        flags |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
-    }
-    if (access & ACCESS_STORAGE_ACCESS)
-    {
-        flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
-    }
-    if (access & ACCESS_DEPTH_STENCIL_WRITE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
-    }
-    if (access & ACCESS_DEPTH_STENCIL_READ)
-    {
-        flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
-    }
-    if (access & ACCESS_SHADER_RESOURCE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
-    }
-    if (access & ACCESS_STREAM_OUTPUT)
-    {
-        flags |= D3D12_BARRIER_ACCESS_STREAM_OUTPUT;
-    }
-    if (access & ACCESS_INDIRECT_ARGUMENT)
-    {
-        flags |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
-    }
-    if (access & ACCESS_COPY_DEST)
-    {
-        flags |= D3D12_BARRIER_ACCESS_COPY_DEST;
-    }
-    if (access & ACCESS_COPY_SOURCE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
-    }
-    if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ)
-    {
-        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
-    }
-    if (access & ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
-    }
-    if (access & ACCESS_SHADING_RATE_SOURCE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
-    }
-    if (access & ACCESS_VIDEO_DECODE_READ)
-    {
-        flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ;
-    }
-    if (access & ACCESS_VIDEO_DECODE_WRITE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE;
-    }
-    if (access & ACCESS_VIDEO_PROCESS_READ)
-    {
-        flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_READ;
-    }
-    if (access & ACCESS_VIDEO_PROCESS_WRITE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_VIDEO_PROCESS_WRITE;
-    }
-    if (access & ACCESS_VIDEO_ENCODE_READ)
-    {
-        flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ;
-    }
-    if (access & ACCESS_VIDEO_ENCODE_WRITE)
-    {
-        flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE;
-    }
-    if (access & NO_ACCESS)
-    {
-        flags |= D3D12_BARRIER_ACCESS_NO_ACCESS;
-    }
-
+    ACCESS_FLAGS_MAP(MAP_ACCESS)
     return flags;
+
+#undef MAP_ACCESS
 }
 
 D3D12_BARRIER_LAYOUT layout(Layout layout)
 {
+#define MAP_LAYOUT(our, d3d) \
+    case Layout::our:        \
+        state = (d3d);       \
+        break;
+
     D3D12_BARRIER_LAYOUT state = {};
     switch (layout)
     {
-    case Layout::UNDEFINED:
-        state = D3D12_BARRIER_LAYOUT_UNDEFINED;
-        break;
-    case Layout::COMMON:
-        state = D3D12_BARRIER_LAYOUT_COMMON;
-        break;
-    case Layout::PRESENT:
-        state = D3D12_BARRIER_LAYOUT_PRESENT;
-        break;
-    case Layout::LAYOUT_GENERIC_READ:
-        state = D3D12_BARRIER_LAYOUT_GENERIC_READ;
-        break;
-    case Layout::RENDER_TARGET:
-        state = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-        break;
-    case Layout::UNORDERED_ACCESS:
-        state = D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
-        break;
-    case Layout::DEPTH_STENCIL_WRITE:
-        state = D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
-        break;
-    case Layout::DEPTH_STENCIL_READ:
-        state = D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
-        break;
-    case Layout::SHADER_RESOURCE:
-        state = D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
-        break;
-    case Layout::COPY_SOURCE:
-        state = D3D12_BARRIER_LAYOUT_COPY_SOURCE;
-        break;
-    case Layout::COPY_DEST:
-        state = D3D12_BARRIER_LAYOUT_COPY_DEST;
-        break;
-    case Layout::RESOLVE_SOURCE:
-        state = D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE;
-        break;
-    case Layout::RESOLVE_DEST:
-        state = D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
-        break;
-    case Layout::SHADING_RATE_SOURCE:
-        state = D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE;
-        break;
-    case Layout::VIDEO_DECODE_READ:
-        state = D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ;
-        break;
-    case Layout::VIDEO_DECODE_WRITE:
-        state = D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE;
-        break;
-    case Layout::VIDEO_PROCESS_READ:
-        state = D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_READ;
-        break;
-    case Layout::VIDEO_PROCESS_WRITE:
-        state = D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE;
-        break;
-    case Layout::VIDEO_ENCODE_READ:
-        state = D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ;
-        break;
-    case Layout::VIDEO_ENCODE_WRITE:
-        state = D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE;
-        break;
-    case Layout::DIRECT_QUEUE_COMMON:
-        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON;
-        break;
-    case Layout::DIRECT_QUEUE_GENERIC_READ:
-        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ;
-        break;
-    case Layout::DIRECT_QUEUE_UNORDERED_ACCESS:
-        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS;
-        break;
-    case Layout::DIRECT_QUEUE_SHADER_RESOURCE:
-        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE;
-        break;
-    case Layout::DIRECT_QUEUE_COPY_SOURCE:
-        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE;
-        break;
-    case Layout::DIRECT_QUEUE_COPY_DEST:
-        state = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST;
-        break;
-    case Layout::COMPUTE_QUEUE_COMMON:
-        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON;
-        break;
-    case Layout::COMPUTE_QUEUE_GENERIC_READ:
-        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ;
-        break;
-    case Layout::COMPUTE_QUEUE_UNORDERED_ACCESS:
-        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS;
-        break;
-    case Layout::COMPUTE_QUEUE_SHADER_RESOURCE:
-        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE;
-        break;
-    case Layout::COMPUTE_QUEUE_COPY_SOURCE:
-        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE;
-        break;
-    case Layout::COMPUTE_QUEUE_COPY_DEST:
-        state = D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST;
-        break;
+        LAYOUT_MAP(MAP_LAYOUT)
     default:
         throw std::runtime_error("D3DHelper: Invalid layout");
     }
     return state;
+
+#undef MAP_LAYOUT
 }
 
 D3D12_FILTER filter(
@@ -455,45 +300,34 @@ D3D12_FILTER filter(
 
 D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(const AddressMode mode)
 {
+#define MAP_ADDRESS(our, d3d) \
+    case AddressMode::our:    \
+        return d3d;
+
     switch (mode)
     {
-    case AddressMode::WRAP:
-        return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    case AddressMode::MIRROR:
-        return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-    case AddressMode::CLAMP:
-        return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    case AddressMode::BORDER:
-        return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-    default:
-        throw std::runtime_error("D3DHelper: Invalid texture address mode");
+        ADDRESS_MODE_MAP(MAP_ADDRESS)
     }
+
+    return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+
+#undef MAP_ADDRESS
 }
 
 D3D12_COMPARISON_FUNC comparison_func(const ComparisonFunc func)
 {
+#define MAP_COMPARISON(our, d3d) \
+    case ComparisonFunc::our:    \
+        return d3d;
+
     switch (func)
     {
-    case ComparisonFunc::NONE:
-        return D3D12_COMPARISON_FUNC_NONE;
-    case ComparisonFunc::NEVER:
-        return D3D12_COMPARISON_FUNC_NEVER;
-    case ComparisonFunc::LESS:
-        return D3D12_COMPARISON_FUNC_LESS;
-    case ComparisonFunc::EQUAL:
-        return D3D12_COMPARISON_FUNC_EQUAL;
-    case ComparisonFunc::LESS_OR_EQUAL:
-        return D3D12_COMPARISON_FUNC_LESS_EQUAL;
-    case ComparisonFunc::GREATER:
-        return D3D12_COMPARISON_FUNC_GREATER;
-    case ComparisonFunc::NOT_EQUAL:
-        return D3D12_COMPARISON_FUNC_NOT_EQUAL;
-    case ComparisonFunc::GREATER_OR_EQUAL:
-        return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-    case ComparisonFunc::ALWAYS:
-        return D3D12_COMPARISON_FUNC_ALWAYS;
+        COMPARISON_FUNC_MAP(MAP_COMPARISON)
     }
-    return D3D12_COMPARISON_FUNC_ALWAYS;
+
+    return D3D12_COMPARISON_FUNC_NONE;
+
+#undef MAP_COMPARISON
 }
 
 bool is_depth_stencil_format(const DXGI_FORMAT format)
@@ -511,3 +345,9 @@ bool is_depth_stencil_format(const DXGI_FORMAT format)
 }
 
 } // namespace qhenki::gfx
+#undef SYNC_STAGE_MAP
+#undef ACCESS_FLAGS_MAP
+#undef LAYOUT_MAP
+#undef PRIMITIVE_TOPOLOGY_MAP
+#undef ADDRESS_MODE_MAP
+#undef COMPARISON_FUNC_MAP

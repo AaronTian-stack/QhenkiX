@@ -594,10 +594,7 @@ void gltfViewerApp::render()
             if (!m_context->is_compatibility()) // NOT compatibility
             {
                 // Start at 1
-                qhenki::gfx::Descriptor descriptor(
-                    &m_GPU_heap,
-                    qhenki::util::align_u(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                          m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::TEXTURE)));
+                qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 1};
 
                 // Make sure the order matches in the shader
 
