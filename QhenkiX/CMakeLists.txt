@@ -66,7 +66,8 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/memory/arena.cpp"
 
     "${QHENKIX_DIR}/utility/d3d_util.cpp"
-    "${QHENKIX_DIR}/utility/file_util.cpp"  
+    "${QHENKIX_DIR}/utility/file_util.cpp"
+    "${QHENKIX_DIR}/utility/vulkan_util.cpp"  
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12DescriptorHelpers/RenderTargetHelper.cpp"
@@ -96,6 +97,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
+    "${QHENKIX_DIR}/utility/vulkan_util.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
