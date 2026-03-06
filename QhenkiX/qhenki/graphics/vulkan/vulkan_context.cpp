@@ -43,10 +43,9 @@ std::string VulkanContext::create(const bool enable_debug_layer)
 
     builder.set_engine_name("QhenkiX").set_engine_version(0, 1, 0);
 
-    std::array instance_extensions = {
-        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-    };
-    builder.enable_extensions(instance_extensions);
+    uint32_t sdl_ext_count = 0;
+    const auto sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_ext_count);
+    builder.enable_extensions(sdl_ext_count, sdl_extensions);
 
     if (enable_debug_layer)
     {
