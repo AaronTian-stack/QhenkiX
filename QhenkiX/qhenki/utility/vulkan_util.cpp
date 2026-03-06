@@ -6,7 +6,7 @@ namespace qhenki::gfx
 #define SYNC_STAGE_MAP(X)                                                                                     \
     X(SYNC_NONE, VK_PIPELINE_STAGE_2_NONE)                                                                    \
     X(SYNC_ALL, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)                                                         \
-    X(SYNC_DRAW, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT)                                                       \
+    X(SYNC_DRAW, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR)                                                    \
     X(SYNC_INDEX_INPUT, VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT)                                                  \
     X(SYNC_VERTEX_SHADING, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)                                             \
     X(SYNC_PIXEL_SHADING, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT)                                            \
@@ -17,14 +17,13 @@ namespace qhenki::gfx
     X(SYNC_COPY, VK_PIPELINE_STAGE_2_TRANSFER_BIT)                                                            \
     X(SYNC_RESOLVE, VK_PIPELINE_STAGE_2_RESOLVE_BIT)                                                          \
     X(SYNC_EXECUTE_INDIRECT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT)                                           \
-    X(SYNC_PREDICATION, VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT)                                    \
     X(SYNC_ALL_SHADING, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)                                                 \
     X(SYNC_NON_PIXEL_SHADING, VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT)                              \
     X(SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO,                                             \
       VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR)                                               \
     X(SYNC_CLEAR_UNORDERED_ACCESS_VIEW, VK_PIPELINE_STAGE_2_CLEAR_BIT)                                        \
     X(SYNC_VIDEO_DECODE, VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR)                                            \
-    X(SYNC_VIDEO_PROCESS, VK_PIPELINE_STAGE_2_NONE) /* no direct Vulkan equivalent */                         \
+    X(SYNC_VIDEO_PROCESS, VK_PIPELINE_STAGE_2_NONE) /* No Vulkan equivalent TODO: Check this */               \
     X(SYNC_VIDEO_ENCODE, VK_PIPELINE_STAGE_2_VIDEO_ENCODE_BIT_KHR)                                            \
     X(SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE, VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR) \
     X(SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE, VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR)
@@ -38,10 +37,12 @@ namespace qhenki::gfx
     X(ACCESS_STORAGE_ACCESS, (VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT)) \
     X(ACCESS_DEPTH_STENCIL_WRITE, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)                          \
     X(ACCESS_DEPTH_STENCIL_READ, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT)                            \
-    X(ACCESS_SHADER_RESOURCE, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)                                         \
+    X(ACCESS_SHADER_RESOURCE, VK_ACCESS_2_SHADER_READ_BIT)                                                 \
     X(ACCESS_INDIRECT_ARGUMENT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT)                                     \
     X(ACCESS_COPY_DEST, VK_ACCESS_2_TRANSFER_WRITE_BIT)                                                    \
     X(ACCESS_COPY_SOURCE, VK_ACCESS_2_TRANSFER_READ_BIT)                                                   \
+    X(ACCESS_RESOLVE_DEST, VK_ACCESS_2_TRANSFER_WRITE_BIT)  /* TODO: Check this */                         \
+    X(ACCESS_RESOLVE_SOURCE, VK_ACCESS_2_TRANSFER_READ_BIT) /* TODO: Check this */                         \
     X(ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ, VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR)      \
     X(ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE, VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR)    \
     X(ACCESS_SHADING_RATE_SOURCE, VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR)               \
