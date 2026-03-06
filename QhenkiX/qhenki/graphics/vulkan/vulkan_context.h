@@ -26,6 +26,16 @@ class VulkanContext : public Context
     VkSurfaceKHR m_surface;
     VmaAllocator m_allocator = nullptr;
 
+    struct VulkanQueue
+    {
+        VkQueue queue = VK_NULL_HANDLE;
+        unsigned family_index = 0u;
+    };
+
+    VulkanQueue m_graphics_queue;
+    VulkanQueue m_compute_queue;
+    VulkanQueue m_transfer_queue;
+
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
@@ -172,8 +182,5 @@ public:
     VulkanContext& operator=(VulkanContext&&) = delete;
 
     friend class VulkanDescriptorHeap;
-
-private:
-    void set_debug_name(VkObjectType type, uint64_t handle, const char* name) const;
 };
 } // namespace qhenki::gfx

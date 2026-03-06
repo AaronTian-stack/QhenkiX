@@ -1737,7 +1737,6 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer
 
 bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueType queue)
 {
-    // Command allocator creation does not require the queue object
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     switch (queue)
     {
@@ -1753,8 +1752,8 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueTyp
     }
 
     command_pool->internal_state = mkS<ComPtr<ID3D12CommandAllocator>>();
-    const auto command_allocator = to_internal(*command_pool);
-    if (FAILED(m_device->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator->ReleaseAndGetAddressOf()))))
+    if (FAILED(
+            m_device->CreateCommandAllocator(type, IID_PPV_ARGS(to_internal(*command_pool)->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command allocator\n");
         command_pool->internal_state.reset();
@@ -1766,9 +1765,7 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueTyp
 
 bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
-    const auto command_allocator = to_internal(command_pool);
-    const auto d3d12_cmd_list = to_internal(*cmd_list);
-    if (FAILED(d3d12_cmd_list->Get()->Reset(command_allocator->Get(), nullptr)))
+    if (FAILED(to_internal(*cmd_list)->Get()->Reset(to_internal(command_pool)->Get(), nullptr)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reset command list");
         return false;
@@ -1795,9 +1792,8 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
     }
 
     cmd_list->internal_state = mkS<ComPtr<ID3D12GraphicsCommandList7>>();
-    auto d3d12_cmd_list = to_internal(*cmd_list);
     if (FAILED(m_device->CreateCommandList1(
-            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf()))))
+            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(to_internal(*cmd_list)->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command list\n");
         cmd_list->internal_state.reset();

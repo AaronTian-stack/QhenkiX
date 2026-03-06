@@ -27,6 +27,26 @@ VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
     return vulkan_descriptor_heap;
 }
 
+VkSemaphore* to_internal(const Fence& ext)
+{
+    const auto vulkan_semaphore = static_cast<VkSemaphore*>(ext.internal_state.get());
+    assert(vulkan_semaphore);
+    return vulkan_semaphore;
+}
+
+void set_debug_name(const VkDevice device, const VkObjectType type, const uint64_t handle, const char* name)
+{
+    if (vkSetDebugUtilsObjectNameEXT)
+    {
+        const VkDebugUtilsObjectNameInfoEXT name_info{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .objectType = type,
+            .objectHandle = handle,
+            .pObjectName = name,
+        };
+        vkSetDebugUtilsObjectNameEXT(device, &name_info);
+    }
+}
 } // namespace
 
 constexpr uint32_t major = 1;
@@ -171,6 +191,32 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     }
     m_device = dev_ret.value();
 
+    auto graphics_queue_result = m_device.get_queue_and_index(vkb::QueueType::graphics);
+    if (!graphics_queue_result)
+    {
+        return "Vulkan: Failed to get graphics queue" + graphics_queue_result.error().message();
+    }
+    auto [graphics_queue, graphics_queue_index] = graphics_queue_result.value();
+    m_graphics_queue = {graphics_queue, graphics_queue_index};
+
+    // Compute queue may equal graphics queue
+    auto compute_queue_result = m_device.get_queue_and_index(vkb::QueueType::compute);
+    if (!compute_queue_result)
+    {
+        return "Vulkan: Failed to get compute queue" + compute_queue_result.error().message();
+    }
+    auto [compute_queue, compute_queue_index] = compute_queue_result.value();
+    m_compute_queue = {compute_queue, compute_queue_index};
+
+    // Transfer queue may equal graphics or compute queue
+    auto transfer_queue_result = m_device.get_queue_and_index(vkb::QueueType::transfer);
+    if (!transfer_queue_result)
+    {
+        return "Vulkan: Failed to get transfer queue" + transfer_queue_result.error().message();
+    }
+    auto [transfer_queue, transfer_queue_index] = transfer_queue_result.value();
+    m_transfer_queue = {transfer_queue, transfer_queue_index};
+
     volkLoadDevice(m_device.device);
 
     VmaVulkanFunctions vulkan_functions{};
@@ -212,8 +258,7 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
                                      const SwapchainDesc& swapchain_desc,
                                      unsigned* frame_index)
 {
-    const auto status = SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface);
-    if (!status)
+    if (!SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface))
     {
         return false;
     }
@@ -442,7 +487,10 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
         }
     }
 
-    set_debug_name(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(vulkan_buffer->buffer), debug_name);
+    set_debug_name(m_device.device,
+                   VK_OBJECT_TYPE_BUFFER,
+                   reinterpret_cast<uint64_t>(vulkan_buffer->buffer),
+                   debug_name);
 
     vulkan_buffer->allocator = m_allocator;
     buffer->desc = desc;
@@ -494,7 +542,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
 
     const auto is_3D = desc.dimension == TextureDimension::TEXTURE_3D;
 
-    // TODO: Limit sample count
+    assert(util::is_power_of_two(desc.sample_count) && desc.sample_count <= 64);
     const VkImageCreateInfo texture_info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = image_type,
@@ -504,11 +552,10 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         .arrayLayers = is_3D ? 1u : desc.depth_or_array_size,
         .samples = static_cast<VkSampleCountFlagBits>(desc.sample_count),
         .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .sharingMode =
+            VK_SHARING_MODE_CONCURRENT, // Concurrent sharing is fine on PC and removes need to transfer ownership
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, // TODO
     };
-
-    // TODO
 
     if (VK_FAILED(vkCreateImage(m_device, &texture_info, nullptr, &vulkan_texture->image)))
     {
@@ -516,7 +563,12 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         return false;
     }
 
-    set_debug_name(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<uint64_t>(vulkan_texture->image), debug_name);
+    // TODO allocate backing memory
+
+    set_debug_name(m_device.device,
+                   VK_OBJECT_TYPE_IMAGE,
+                   reinterpret_cast<uint64_t>(vulkan_texture->image),
+                   debug_name);
 
     return true;
 }
@@ -625,19 +677,52 @@ void VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
 {
 }
 
-bool VulkanContext::create_fence(Fence* fence, uint64_t initial_value)
+bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value)
 {
+    const VkSemaphoreTypeCreateInfo type_info{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue = initial_value,
+    };
+    VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    semaphore_info.pNext = &type_info;
+
+    // TODO: Stop using RAII
+    fence->internal_state = mkS<VkSemaphore>();
+    const auto vk_fence = to_internal(*fence);
+
+    if (VK_FAILED(vkCreateSemaphore(m_device, &semaphore_info, nullptr, vk_fence)))
+    {
+        fence->internal_state.reset();
+        return false;
+    }
+
     return true;
 }
 
 uint64_t VulkanContext::get_fence_value(const Fence& fence)
 {
-    return 0;
+    uint64_t value;
+    if (VK_FAILED(vkGetSemaphoreCounterValue(m_device.device, *to_internal(fence), &value)))
+    {
+        return 0;
+    }
+    return value;
 }
 
 bool VulkanContext::wait_fences(const WaitInfo& info)
 {
-    return true;
+    std::array<VkSemaphore, 16> semaphores;
+    assert(info.count <= semaphores.size());
+    const VkSemaphoreWaitInfo wait_info{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+        .pNext = nullptr,
+        .flags = info.wait_all ? 0u : VK_SEMAPHORE_WAIT_ANY_BIT,
+        .semaphoreCount = info.count,
+        .pSemaphores = semaphores.data(),
+        .pValues = info.values,
+    };
+    return VK_FAILED(vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max()));
 }
 
 void VulkanContext::set_barrier_resource(unsigned count,
@@ -720,18 +805,4 @@ VulkanContext::~VulkanContext()
         vkb::destroy_surface(m_instance, m_surface);
     }
     vkb::destroy_instance(m_instance);
-}
-
-void VulkanContext::set_debug_name(const VkObjectType type, const uint64_t handle, const char* name) const
-{
-    if (vkSetDebugUtilsObjectNameEXT)
-    {
-        const VkDebugUtilsObjectNameInfoEXT name_info{
-            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-            .objectType = type,
-            .objectHandle = handle,
-            .pObjectName = name,
-        };
-        vkSetDebugUtilsObjectNameEXT(m_device.device, &name_info);
-    }
 }
