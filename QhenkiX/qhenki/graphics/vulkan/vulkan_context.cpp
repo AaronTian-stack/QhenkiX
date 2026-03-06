@@ -34,6 +34,20 @@ VkSemaphore* to_internal(const Fence& ext)
     return vulkan_semaphore;
 }
 
+VkCommandPool* to_internal(const CommandPool& ext)
+{
+    const auto vulkan_command_pool = static_cast<VkCommandPool*>(ext.internal_state.get());
+    assert(vulkan_command_pool);
+    return vulkan_command_pool;
+}
+
+VkCommandBuffer* to_internal(const CommandList& ext)
+{
+    const auto vulkan_command_buffer = static_cast<VkCommandBuffer*>(ext.internal_state.get());
+    assert(vulkan_command_buffer);
+    return vulkan_command_buffer;
+}
+
 void set_debug_name(const VkDevice device, const VkObjectType type, const uint64_t handle, const char* name)
 {
     if (vkSetDebugUtilsObjectNameEXT)
@@ -136,8 +150,8 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         .drawIndirectFirstInstance = VK_TRUE,
         .multiViewport = VK_TRUE,
         .samplerAnisotropy = VK_TRUE,
-        //.vertexPipelineStoresAndAtomics = VK_TRUE,
-        //.fragmentStoresAndAtomics = VK_TRUE,
+        .vertexPipelineStoresAndAtomics = VK_TRUE,
+        .fragmentStoresAndAtomics = VK_TRUE,
         .shaderStorageImageExtendedFormats = VK_TRUE,
         .shaderUniformBufferArrayDynamicIndexing = VK_TRUE,
         .shaderSampledImageArrayDynamicIndexing = VK_TRUE,
@@ -613,27 +627,94 @@ void VulkanContext::bind_index_buffer(CommandList* cmd_list, const Buffer& buffe
 
 bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueType queue)
 {
+    assert(command_pool);
+    command_pool->queue_type = queue;
+
+    uint32_t queue_index = 0;
+    switch (queue)
+    {
+    case GRAPHICS:
+        queue_index = m_graphics_queue.family_index;
+        break;
+    case COMPUTE:
+        queue_index = m_compute_queue.family_index;
+        break;
+    case COPY:
+        queue_index = m_transfer_queue.family_index;
+        break;
+    }
+
+    const VkCommandPoolCreateInfo pool_info{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+                                                     VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                                            .queueFamilyIndex = queue_index};
+
+    // TODO: Stop using RAII
+    command_pool->internal_state = mkS<VkCommandPool>();
+    const auto vk_pool = to_internal(*command_pool);
+
+    if (VK_FAILED(vkCreateCommandPool(m_device.device, &pool_info, nullptr, vk_pool)))
+    {
+        command_pool->internal_state.reset();
+        return false;
+    }
+
     return true;
 }
 
 bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
 {
+    const auto vk_pool = to_internal(command_pool);
+    VkCommandBufferAllocateInfo alloc_info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                                           .commandPool = *vk_pool,
+                                           .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                           .commandBufferCount = 1};
+
+    cmd_list->internal_state = mkS<VkCommandBuffer>();
+    const auto vk_cmd_list = to_internal(*cmd_list);
+
+    if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, vk_cmd_list)))
+    {
+        cmd_list->internal_state.reset();
+        return false;
+    }
     return true;
 }
 
 bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
+    const auto vk_cmd_list = to_internal(*cmd_list);
+
+    if (VK_FAILED(vkResetCommandBuffer(*vk_cmd_list, 0)))
+    {
+        return false;
+    }
+
+    const VkCommandBufferBeginInfo begin_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr,
+    };
+
+    if (VK_FAILED(vkBeginCommandBuffer(*vk_cmd_list, &begin_info)))
+    {
+        return false;
+    }
+
     return true;
 }
 
 bool VulkanContext::close_command_list(CommandList* cmd_list)
 {
-    return true;
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    return VK_SUCCEEDED(vkEndCommandBuffer(*vk_cmd_list));
 }
 
 bool VulkanContext::reset_command_pool(CommandPool* command_pool)
 {
-    return true;
+    const auto vk_pool = to_internal(*command_pool);
+    return VK_SUCCEEDED(vkResetCommandPool(m_device.device, *vk_pool, 0));
 }
 
 bool VulkanContext::start_render_pass(CommandList* cmd_list,
@@ -722,7 +803,7 @@ bool VulkanContext::wait_fences(const WaitInfo& info)
         .pSemaphores = semaphores.data(),
         .pValues = info.values,
     };
-    return VK_FAILED(vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max()));
+    return VK_SUCCEEDED(vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max()));
 }
 
 void VulkanContext::set_barrier_resource(unsigned count,

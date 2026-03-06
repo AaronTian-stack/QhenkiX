@@ -1775,8 +1775,6 @@ bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& 
 
 bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
 {
-    assert(cmd_list);
-
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     switch (command_pool.queue_type)
     {
@@ -1806,7 +1804,6 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
 bool D3D12Context::close_command_list(CommandList* cmd_list)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    assert(cmd_list_d3d12);
     if (FAILED(cmd_list_d3d12->Get()->Close()))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to close command list\n");
