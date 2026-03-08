@@ -213,8 +213,6 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         return "Vulkan: Failed to select physical device" + phys_ret.error().message();
     }
 
-    vkGetPhysicalDeviceProperties2(m_device.physical_device, &m_capabilities.properties);
-
     vkb::DeviceBuilder device_builder{phys_ret.value()};
     auto dev_ret = device_builder.build();
     if (!dev_ret)
@@ -274,9 +272,7 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         return "Vulkan: Failed to create VMA allocator";
     }
 
-    VkPhysicalDeviceProperties2 device_props2{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-    device_props2.pNext = &m_capabilities.descriptor_heap_properties;
-    vkGetPhysicalDeviceProperties2(m_device.physical_device, &device_props2);
+    vkGetPhysicalDeviceProperties2(m_device.physical_device, &m_capabilities.properties);
 
     return "";
 }

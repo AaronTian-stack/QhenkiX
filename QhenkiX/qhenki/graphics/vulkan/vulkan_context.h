@@ -16,7 +16,8 @@ class VulkanContext : public Context
 {
     struct Capabilities
     {
-        VkPhysicalDeviceProperties2 properties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+        VkPhysicalDeviceProperties2 properties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+                                               .pNext = &descriptor_heap_properties};
         VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
     } m_capabilities; // TODO
