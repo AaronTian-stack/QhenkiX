@@ -607,9 +607,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         return false;
     }
 
-    const VmaAllocationCreateInfo alloc_info{
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-    };
+    const VmaAllocationCreateInfo alloc_info{VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
 
     if (VK_FAILED(vmaCreateImage(
             m_allocator, &texture_info, &alloc_info, &vulkan_texture->image, &vulkan_texture->allocation, nullptr)))
