@@ -44,6 +44,9 @@ void* Arena::alloc(const size_t size, const size_t alignment)
     const auto total_size = size + padding;
     if (m_offset + total_size > m_capacity)
     {
+        // TODO: Need some growing strategy that supports contiguous memory
+        // Since separate allocs are not probably not related easiest solution would probably be a linked list of
+        // blocks. Then this failed alloc would just go into the next block.
         return nullptr;
     }
     m_offset += padding;
