@@ -744,7 +744,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         {
             if (!space.empty())
             {
-                count++;
+                ++count;
             }
         }
         return count;
@@ -753,12 +753,15 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
 
     const UINT param_count = desc->push_ranges.size() + spaces;
 
-    boost::container::small_vector<D3D12_ROOT_PARAMETER, 16> params;
+    thread_local memory::Arena arena(util::MEGABYTE);
+
+    const auto params = arena.alloc_array<D3D12_ROOT_PARAMETER>(param_count);
+    unsigned params_index = 0;
 
     for (unsigned i = 0; i < desc->push_ranges.size(); i++)
     {
         const auto& range = desc->push_ranges[i];
-        params.push_back({
+        params[params_index++] = {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
             .Constants =
                 {
@@ -767,11 +770,10 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
                     .Num32BitValues = util::ceil_div(range.size, uint32_t{4}),
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        });
+        };
     }
 
-    auto& arena = acquire_arena(m_frame_count);
-    auto ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
+    const auto ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
 
     for (unsigned i = 0; i < desc->spaces.size(); i++)
     {
@@ -805,7 +807,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             offset += binding.count;
             l_ranges[j] = range;
         }
-        params.push_back({
+        params[params_index++] = {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             .DescriptorTable =
                 {
@@ -813,14 +815,14 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
                     .pDescriptorRanges = l_ranges,
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        });
+        };
         ranges[i] = l_ranges;
     }
 
     const D3D12_ROOT_SIGNATURE_DESC root_sig_desc{
         // Default range flags
         .NumParameters = param_count,
-        .pParameters = params.data(),
+        .pParameters = params,
         .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
     };
 
@@ -836,6 +838,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             OutputDebugStringA(static_cast<char*>(error_blob->GetBufferPointer()));
         }
         layout->internal_state.reset();
+        arena.reset();
         return false;
     }
     const void* root_sig_data = root_sig_blob->GetBufferPointer();
@@ -846,9 +849,11 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create root signature\n");
         layout->internal_state.reset();
+        arena.reset();
         return false;
     }
 
+    arena.reset();
     return true;
 }
 
