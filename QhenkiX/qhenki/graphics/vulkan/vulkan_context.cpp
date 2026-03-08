@@ -699,7 +699,7 @@ bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueTy
         return false;
     }
     // TODO: Stop using RAII
-    command_pool->internal_state = mkS<VulkanCommandPool>(m_device, pool);
+    command_pool->internal_state = mkS<VulkanCommandPool>(m_device.device, pool);
 
     return true;
 }
@@ -707,9 +707,10 @@ bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueTy
 bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
 {
     const auto vk_pool = to_internal(command_pool);
-    VkCommandBufferAllocateInfo alloc_info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                                           .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                                           .commandBufferCount = 1};
+    VkCommandBufferAllocateInfo alloc_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    };
 
     auto cmd_buffer = vk_pool->create_command_buffer(alloc_info);
     if (!cmd_buffer)

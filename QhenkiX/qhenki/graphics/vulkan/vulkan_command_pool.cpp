@@ -12,6 +12,7 @@ VulkanCommandPool::VulkanCommandPool(const VkDevice device, const VkCommandPool 
 
 VulkanCommandPool::~VulkanCommandPool()
 {
+    assert(device);
     vkFreeCommandBuffers(device, command_pool, command_buffers.size(), command_buffers.data());
     if (command_pool)
     {
@@ -21,15 +22,17 @@ VulkanCommandPool::~VulkanCommandPool()
 
 VkCommandBuffer VulkanCommandPool::create_command_buffer(VkCommandBufferAllocateInfo& info)
 {
+    assert(device);
     assert(command_pool);
     info.commandPool = command_pool;
-    command_buffers.emplace_back();
-    if (vkAllocateCommandBuffers(device, &info, &command_buffers.back()) != VK_SUCCESS)
+    info.commandBufferCount = 1;
+    VkCommandBuffer buffer = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(device, &info, &buffer) != VK_SUCCESS)
     {
-        command_buffers.pop_back();
         return VK_NULL_HANDLE;
     }
-    return command_buffers.back();
+    command_buffers.push_back(buffer);
+    return buffer;
 }
 
 VkResult VulkanCommandPool::reset()
