@@ -483,6 +483,7 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
     if (VK_FAILED(vmaCreateBuffer(
             m_allocator, &buffer_info, &alloc_info, &vulkan_buffer->buffer, &vulkan_buffer->allocation, nullptr)))
     {
+        buffer->internal_state.reset();
         return false;
     }
 
@@ -577,7 +578,16 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         return false;
     }
 
-    // TODO allocate backing memory
+    const VmaAllocationCreateInfo alloc_info{
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+    };
+
+    if (VK_FAILED(vmaCreateImage(
+            m_allocator, &texture_info, &alloc_info, &vulkan_texture->image, &vulkan_texture->allocation, nullptr)))
+    {
+        texture->internal_state.reset();
+        return false;
+    }
 
     set_debug_name(m_device.device,
                    VK_OBJECT_TYPE_IMAGE,
