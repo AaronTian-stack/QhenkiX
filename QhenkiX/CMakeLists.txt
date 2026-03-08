@@ -57,6 +57,7 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.cpp"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.cpp"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_pool.cpp"
 
     "${QHENKIX_DIR}/input/input_manager.cpp"
 
@@ -96,6 +97,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_pool.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 )

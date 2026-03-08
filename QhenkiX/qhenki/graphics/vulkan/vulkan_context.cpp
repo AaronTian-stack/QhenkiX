@@ -10,6 +10,7 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "vk_mem_alloc.h"
+#include "vulkan_command_pool.h"
 #include "vulkan_descriptor_heap.h"
 #include "vulkan_texture.h"
 
@@ -49,9 +50,9 @@ VkSemaphore* to_internal(const Fence& ext)
     return vulkan_semaphore;
 }
 
-VkCommandPool* to_internal(const CommandPool& ext)
+VulkanCommandPool* to_internal(const CommandPool& ext)
 {
-    const auto vulkan_command_pool = static_cast<VkCommandPool*>(ext.internal_state.get());
+    const auto vulkan_command_pool = static_cast<VulkanCommandPool*>(ext.internal_state.get());
     assert(vulkan_command_pool);
     return vulkan_command_pool;
 }
@@ -696,15 +697,13 @@ bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueTy
                                                      VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                                             .queueFamilyIndex = queue_index};
 
-    // TODO: Stop using RAII
-    command_pool->internal_state = mkS<VkCommandPool>();
-    const auto vk_pool = to_internal(*command_pool);
-
-    if (VK_FAILED(vkCreateCommandPool(m_device.device, &pool_info, nullptr, vk_pool)))
+    VkCommandPool pool;
+    if (VK_FAILED(vkCreateCommandPool(m_device.device, &pool_info, nullptr, &pool)))
     {
-        command_pool->internal_state.reset();
         return false;
     }
+    // TODO: Stop using RAII
+    command_pool->internal_state = mkS<VulkanCommandPool>(m_device, pool);
 
     return true;
 }
@@ -713,18 +712,16 @@ bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool
 {
     const auto vk_pool = to_internal(command_pool);
     VkCommandBufferAllocateInfo alloc_info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                                           .commandPool = *vk_pool,
                                            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                                            .commandBufferCount = 1};
 
-    cmd_list->internal_state = mkS<VkCommandBuffer>();
-    const auto vk_cmd_list = to_internal(*cmd_list);
-
-    if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, vk_cmd_list)))
+    auto cmd_buffer = vk_pool->create_command_buffer(alloc_info);
+    if (!cmd_buffer)
     {
-        cmd_list->internal_state.reset();
         return false;
     }
+    cmd_list->internal_state = mkS<VkCommandBuffer>(cmd_buffer);
+
     return true;
 }
 
@@ -732,14 +729,13 @@ bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool&
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
 
-    // TODO: Allocate new command buffer
-    assert(false);
-    // if (VK_FAILED(vkResetCommandBuffer(*vk_cmd_list, 0)))
-    //{
-    //     return false;
-    // }
+    // TODO: Somehow keep same debug name
+    if (!create_command_list(cmd_list, command_pool, nullptr))
+    {
+        return false;
+    }
 
-    const VkCommandBufferBeginInfo begin_info{
+    constexpr VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext = nullptr,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
@@ -762,9 +758,8 @@ bool VulkanContext::close_command_list(CommandList* cmd_list)
 
 bool VulkanContext::reset_command_pool(CommandPool* command_pool)
 {
-    // TODO: Command pool should track the buffers allocated from it and free them all here
     const auto vk_pool = to_internal(*command_pool);
-    return VK_SUCCEEDED(vkResetCommandPool(m_device.device, *vk_pool, 0));
+    return VK_SUCCEEDED(vk_pool->reset());
 }
 
 bool VulkanContext::start_render_pass(CommandList* cmd_list,

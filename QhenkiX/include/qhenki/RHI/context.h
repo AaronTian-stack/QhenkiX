@@ -136,6 +136,15 @@ public:
 
     virtual bool create_command_pool(CommandPool* command_pool, QueueType queue) = 0;
 
+    /**
+     * Creates a command list. Thread safe only if a separate command pool is used for each thread, as modifying
+     * CommandPool internals is not thread safe.
+     * @param cmd_list Command list to be created. If already initialized, the preexisting command list will be released
+     * and then created.
+     * @param command_pool Command pool to allocate command list from.
+     * @param debug_name String for debug name if supported by the API.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool create_command_list(CommandList* cmd_list,
                                      const CommandPool& command_pool,
                                      const char* debug_name = nullptr) = 0;
