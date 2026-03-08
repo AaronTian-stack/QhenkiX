@@ -333,6 +333,7 @@ bool VulkanContext::present(const Swapchain& swapchain,
                             Fence* wait_fences,
                             unsigned swapchain_index)
 {
+    ++m_frame_count;
     return true;
 }
 
@@ -341,8 +342,26 @@ unsigned VulkanContext::get_swapchain_frame_index(const Swapchain& swapchain)
     return 0;
 }
 
-bool VulkanContext::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
+bool VulkanContext::create_shader(void* data, const size_t size, ShaderType type, Shader* shader)
 {
+    VkShaderModule shader_module;
+
+    const VkShaderModuleCreateInfo shader_module_info{
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = size,
+        .pCode = static_cast<const uint32_t*>(data),
+    };
+
+    if (VK_FAILED(vkCreateShaderModule(m_device.device, &shader_module_info, nullptr, &shader_module)))
+    {
+        return false;
+    }
+
+    *shader = {
+        .type = type,
+        .internal_state = mkS<VkShaderModule>(shader_module),
+    };
+
     return true;
 }
 
@@ -568,7 +587,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     texture->internal_state = mkS<VulkanTexture>();
     const auto vulkan_texture = static_cast<VulkanTexture*>(texture->internal_state.get());
 
-    VkImageType image_type;
+    VkImageType image_type = VK_IMAGE_TYPE_MAX_ENUM;
     switch (desc.dimension)
     {
     case TextureDimension::TEXTURE_1D:
@@ -581,6 +600,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         image_type = VK_IMAGE_TYPE_3D;
         break;
     }
+    assert(image_type < VK_IMAGE_TYPE_MAX_ENUM);
 
     assert(desc.width < std::numeric_limits<uint32_t>::max());
 
@@ -598,7 +618,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .sharingMode =
             VK_SHARING_MODE_CONCURRENT, // Concurrent sharing is fine on PC and removes need to transfer ownership
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, // TODO
+        .initialLayout = layout(desc.initial_layout),
     };
 
     if (VK_FAILED(vkCreateImage(m_device, &texture_info, nullptr, &vulkan_texture->image)))
@@ -615,6 +635,8 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         texture->internal_state.reset();
         return false;
     }
+
+    texture->desc = desc;
 
     set_debug_name(m_device.device,
                    VK_OBJECT_TYPE_IMAGE,
@@ -696,8 +718,12 @@ bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueTy
     {
         return false;
     }
+
     // TODO: Stop using RAII
-    command_pool->internal_state = mkS<VulkanCommandPool>(m_device.device, pool);
+    *command_pool = {
+        .queue_type = queue,
+        .internal_state = mkS<VulkanCommandPool>(m_device.device, pool),
+    };
 
     return true;
 }
@@ -868,7 +894,7 @@ bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value)
     fence->internal_state = mkS<VkSemaphore>();
     const auto vk_fence = to_internal(*fence);
 
-    if (VK_FAILED(vkCreateSemaphore(m_device, &semaphore_info, nullptr, vk_fence)))
+    if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, vk_fence)))
     {
         fence->internal_state.reset();
         return false;
@@ -889,14 +915,20 @@ uint64_t VulkanContext::get_fence_value(const Fence& fence)
 
 bool VulkanContext::wait_fences(const WaitInfo& info)
 {
-    std::array<VkSemaphore, 16> semaphores;
-    assert(info.count <= semaphores.size());
+    auto& arena = acquire_arena(m_frame_count);
+    const auto semaphores = arena.alloc_array<VkSemaphore>(info.count);
+
+    for (unsigned i = 0; i < info.count; i++)
+    {
+        semaphores[i] = *to_internal(info.fences[i]);
+    }
+
     const VkSemaphoreWaitInfo wait_info{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
         .pNext = nullptr,
         .flags = info.wait_all ? 0u : VK_SEMAPHORE_WAIT_ANY_BIT,
         .semaphoreCount = info.count,
-        .pSemaphores = semaphores.data(),
+        .pSemaphores = semaphores,
         .pValues = info.values,
     };
     return VK_SUCCEEDED(vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max()));

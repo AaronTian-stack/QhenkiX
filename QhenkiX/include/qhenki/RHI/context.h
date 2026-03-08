@@ -222,6 +222,9 @@ public:
 
     virtual bool wait_idle(QueueType queue) = 0;
     virtual ~Context() = default;
+
+protected:
+    unsigned m_frame_count = 0;
 };
 
 inline memory::Arena& acquire_arena(const uint64_t current_frame)

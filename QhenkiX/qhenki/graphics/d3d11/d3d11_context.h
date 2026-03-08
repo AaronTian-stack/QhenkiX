@@ -28,7 +28,6 @@ class D3D11Context : public Context
     ComPtr<ID3D11RenderTargetView> m_swapchain_view;
     ComPtr<ID3D10Multithread> m_multithread;
 
-    unsigned m_frame_index = 0;
     bool m_allow_tearing = false;
 
 public:
