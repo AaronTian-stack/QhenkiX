@@ -976,10 +976,11 @@ bool VulkanContext::wait_idle(const QueueType queue)
 VulkanContext::~VulkanContext()
 {
     vmaDestroyAllocator(m_allocator);
-    vkb::destroy_device(m_device);
+    vkb::destroy_swapchain(m_swapchain.swapchain);
     if (m_surface)
     {
         vkb::destroy_surface(m_instance, m_surface);
     }
+    vkb::destroy_device(m_device);
     vkb::destroy_instance(m_instance);
 }
