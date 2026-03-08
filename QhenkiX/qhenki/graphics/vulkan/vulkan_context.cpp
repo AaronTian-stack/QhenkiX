@@ -732,10 +732,12 @@ bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool&
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
 
-    if (VK_FAILED(vkResetCommandBuffer(*vk_cmd_list, 0)))
-    {
-        return false;
-    }
+    // TODO: Allocate new command buffer
+    assert(false);
+    // if (VK_FAILED(vkResetCommandBuffer(*vk_cmd_list, 0)))
+    //{
+    //     return false;
+    // }
 
     const VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -760,6 +762,7 @@ bool VulkanContext::close_command_list(CommandList* cmd_list)
 
 bool VulkanContext::reset_command_pool(CommandPool* command_pool)
 {
+    // TODO: Command pool should track the buffers allocated from it and free them all here
     const auto vk_pool = to_internal(*command_pool);
     return VK_SUCCEEDED(vkResetCommandPool(m_device.device, *vk_pool, 0));
 }
