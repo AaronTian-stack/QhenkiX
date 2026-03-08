@@ -14,6 +14,7 @@
 #include "descriptor_heap.h"
 #include "descriptor_table.h"
 #include "pipeline.h"
+#include "qhenki/memory/arena.h"
 #include "queue.h"
 #include "render_target.h"
 #include "sampler.h"
@@ -26,11 +27,14 @@ namespace qhenki::gfx
 class Context
 {
 public:
-    // Returns empty string on success, error message on failure
+    /**
+     * Creates the context.
+     * @param enable_debug_layer Whether to enable underlying API's debug layer.
+     * @return A string containing the error message on failure. Empty string on success.
+     */
     virtual std::string create(bool enable_debug_layer) = 0;
     virtual bool is_compatibility() const = 0;
 
-    // Creates swapchain based off specified description
     virtual bool create_swapchain(const DisplayWindow& window,
                                   const SwapchainDesc& swapchain_desc,
                                   unsigned* frame_index) = 0;
@@ -210,6 +214,19 @@ public:
     virtual bool wait_idle(QueueType queue) = 0;
     virtual ~Context() = default;
 };
+
+inline memory::Arena& acquire_arena(const uint64_t current_frame)
+{
+    thread_local memory::Arena arena(4 * util::MEGABYTE);
+    thread_local uint64_t arena_frame = 0;
+    if (arena_frame != current_frame)
+    {
+        arena_frame = current_frame;
+        arena.reset();
+    }
+    return arena;
+}
+
 } // namespace qhenki::gfx
 
 #define THROW_IF_FALSE(result)                                   \

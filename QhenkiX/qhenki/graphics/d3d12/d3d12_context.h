@@ -7,11 +7,9 @@
 #include <dxgidebug.h>
 #include <wrl/client.h>
 
-#include <boost/lockfree/stack.hpp>
 #include <D3D12DescriptorHelpers/RenderTargetHelper.hpp>
 
 #include "d3d12_descriptor_heap.h"
-#include "qhenki/memory/arena.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/RHI/descriptor_table.h"
 
@@ -59,8 +57,7 @@ class D3D12Context : public Context
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
 
-    static constexpr unsigned m_arena_count = 16;
-    boost::lockfree::stack<memory::Arena, boost::lockfree::capacity<m_arena_count>> m_arenas;
+    uint64_t m_frame_count = 0;
 
 public:
     std::string create(bool enable_debug_layer) override;

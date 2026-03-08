@@ -324,7 +324,7 @@ bool D3D11Context::present(const Swapchain& swapchain,
 
     if (SUCCEEDED(m_swapchain->Present(sync_interval, flags)))
     {
-        m_frame_index = ++m_frame_index % Application::m_frames_in_flight;
+        ++m_frame_index;
         return true;
     }
     return false;
@@ -332,7 +332,7 @@ bool D3D11Context::present(const Swapchain& swapchain,
 
 unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
 {
-    return m_frame_index;
+    return m_frame_index % Application::m_frames_in_flight;
 }
 
 bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
