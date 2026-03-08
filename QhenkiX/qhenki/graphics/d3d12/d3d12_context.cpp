@@ -1896,10 +1896,11 @@ void D3D12Context::draw_indexed(CommandList* cmd_list,
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, QueueType queue)
+void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
 {
-    assert(submit_info.command_list_count < 16);
-    std::array<ID3D12CommandList*, 16> cmd_list_ptrs;
+    auto& arena = acquire_arena(m_frame_count);
+    auto cmd_list_ptrs = arena.alloc_array<ID3D12CommandList*>(submit_info.command_list_count);
+
     for (unsigned i = 0; i < submit_info.command_list_count; i++)
     {
         const auto cmd_list_d3d12 = to_internal(submit_info.command_lists[i]);
@@ -1908,7 +1909,7 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, QueueType
 
     const auto q = get_command_queue(queue);
 
-    q->ExecuteCommandLists(submit_info.command_list_count, cmd_list_ptrs.data());
+    q->ExecuteCommandLists(submit_info.command_list_count, cmd_list_ptrs);
 
     for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
     {
@@ -1951,12 +1952,9 @@ uint64_t D3D12Context::get_fence_value(const Fence& fence)
 
 bool D3D12Context::wait_fences(const WaitInfo& info)
 {
-    std::array<HANDLE, 16> wait_handles{};
-    if (info.count > wait_handles.size())
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Too many fences");
-        return false;
-    }
+    auto& arena = acquire_arena(m_frame_count);
+    auto wait_handles = arena.alloc_array<HANDLE>(info.count);
+
     for (unsigned i = 0; i < info.count; i++)
     {
         const auto d3d12_fence = to_internal(info.fences[i]);
@@ -1967,7 +1965,7 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
         }
         wait_handles[i] = d3d12_fence->event;
     }
-    WaitForMultipleObjectsEx(info.count, wait_handles.data(), info.wait_all, info.timeout, FALSE);
+    WaitForMultipleObjectsEx(info.count, wait_handles, info.wait_all, info.timeout, FALSE);
     return true;
 }
 
