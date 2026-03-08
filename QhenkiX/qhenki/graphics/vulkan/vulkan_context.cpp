@@ -28,6 +28,13 @@ VulkanBuffer* to_internal(const Buffer& ext)
     return vulkan_buffer;
 }
 
+VulkanTexture* to_internal(const Texture& ext)
+{
+    const auto vulkan_texture = static_cast<VulkanTexture*>(ext.internal_state.get());
+    assert(vulkan_texture);
+    return vulkan_texture;
+}
+
 VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
     const auto vulkan_descriptor_heap = static_cast<VulkanDescriptorHeap*>(ext.internal_state.get());
@@ -205,13 +212,15 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         return "Vulkan: Failed to select physical device" + phys_ret.error().message();
     }
 
+    vkGetPhysicalDeviceProperties2(m_device.physical_device, &m_capabilities.properties);
+
     vkb::DeviceBuilder device_builder{phys_ret.value()};
     auto dev_ret = device_builder.build();
     if (!dev_ret)
     {
         return "Vulkan: Failed to create logical device" + dev_ret.error().message();
     }
-    m_device = dev_ret.value();
+    m_device = std::move(dev_ret.value());
 
     auto graphics_queue_result = m_device.get_queue_and_index(vkb::QueueType::graphics);
     if (!graphics_queue_result)
@@ -298,7 +307,22 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
     {
         return false;
     }
-    m_swapchain = swap_ret.value();
+    m_swapchain.swapchain = std::move(swap_ret.value());
+
+    auto swap_img = m_swapchain.swapchain.get_images();
+    if (!swap_img)
+    {
+        return false;
+    }
+    m_swapchain.images = std::move(swap_img.value());
+
+    auto swap_img_view = m_swapchain.swapchain.get_image_views();
+    if (!swap_img_view)
+    {
+        return false;
+    }
+    m_swapchain.image_views = std::move(swap_img_view.value());
+
     return true;
 }
 
@@ -743,8 +767,64 @@ bool VulkanContext::reset_command_pool(CommandPool* command_pool)
 bool VulkanContext::start_render_pass(CommandList* cmd_list,
                                       const float* clear_color_values,
                                       const RenderTarget* depth_stencil,
-                                      unsigned frame_index)
+                                      const unsigned frame_index)
 {
+    VkRenderingAttachmentInfo color_attachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = m_swapchain.image_views[frame_index],
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue =
+            {
+                .color = {clear_color_values[0], clear_color_values[1], clear_color_values[2], clear_color_values[3]},
+            },
+    };
+
+    VkRenderingAttachmentInfo depth_attachment;
+
+    const auto& swapchain = m_swapchain.swapchain;
+
+    VkExtent2D extent;
+    if (depth_stencil)
+    {
+        extent = {std::min(static_cast<uint32_t>(depth_stencil->texture->desc.width), swapchain.extent.width),
+                  std::min(depth_stencil->texture->desc.height, swapchain.extent.height)};
+
+        auto dsv = to_internal(*depth_stencil->texture);
+        const auto& clear_params = depth_stencil->clear_params.dsv_clear_params;
+        depth_attachment = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                            .imageView = VK_NULL_HANDLE, // TODO
+                            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                            .clearValue = {
+                                .depthStencil = {clear_params.clear_depth_value, clear_params.clear_stencil_value},
+                            }};
+    }
+    else
+    {
+        extent = swapchain.extent;
+    }
+
+    const VkRect2D render_area{
+        .offset = {0, 0},
+        .extent = extent,
+    };
+
+    const VkRenderingInfo rendering_info{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = render_area,
+        .layerCount = 1,
+        .viewMask = 0,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment,
+        .pDepthAttachment = depth_stencil ? &depth_attachment : nullptr,
+    };
+
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    vkCmdBeginRendering(*vk_cmd_list, &rendering_info);
+
     return true;
 }
 

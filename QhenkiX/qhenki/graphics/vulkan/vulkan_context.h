@@ -16,13 +16,20 @@ class VulkanContext : public Context
 {
     struct Capabilities
     {
+        VkPhysicalDeviceProperties2 properties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
         VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
     } m_capabilities; // TODO
 
     vkb::Instance m_instance;
     vkb::Device m_device;
-    vkb::Swapchain m_swapchain;
+    struct
+    {
+        vkb::Swapchain swapchain;
+        std::vector<VkImage> images;
+        std::vector<VkImageView> image_views;
+    } m_swapchain;
+
     VkSurfaceKHR m_surface;
     VmaAllocator m_allocator = nullptr;
 
