@@ -20,6 +20,14 @@ using namespace qhenki::gfx;
 
 namespace
 {
+
+VulkanBuffer* to_internal(const Buffer& ext)
+{
+    const auto vulkan_buffer = static_cast<VulkanBuffer*>(ext.internal_state.get());
+    assert(vulkan_buffer);
+    return vulkan_buffer;
+}
+
 VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
     const auto vulkan_descriptor_heap = static_cast<VulkanDescriptorHeap*>(ext.internal_state.get());
@@ -614,11 +622,16 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
 
 void* VulkanContext::map_buffer(const Buffer& buffer)
 {
-    return nullptr;
+    const auto vk_buffer = to_internal(buffer);
+    void* ptr;
+    vmaMapMemory(m_allocator, vk_buffer->allocation, &ptr);
+    return ptr;
 }
 
 void VulkanContext::unmap_buffer(const Buffer& buffer)
 {
+    const auto vk_buffer = to_internal(buffer);
+    vmaUnmapMemory(m_allocator, vk_buffer->allocation);
 }
 
 void VulkanContext::bind_vertex_buffers(CommandList* cmd_list,
