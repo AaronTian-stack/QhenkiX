@@ -99,6 +99,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_pool.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_root_signature.h"
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 )
 

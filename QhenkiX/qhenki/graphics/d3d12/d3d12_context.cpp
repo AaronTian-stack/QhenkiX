@@ -753,11 +753,14 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
 
     const UINT param_count = desc->push_ranges.size() + spaces;
 
+    assert(param_count <= MAX_SPACES);
+
     thread_local memory::Arena arena(util::MEGABYTE);
 
     const auto params = arena.alloc_array<D3D12_ROOT_PARAMETER>(param_count);
     unsigned params_index = 0;
 
+    unsigned size = 0;
     for (unsigned i = 0; i < desc->push_ranges.size(); i++)
     {
         const auto& range = desc->push_ranges[i];
@@ -766,11 +769,13 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             .Constants =
                 {
                     .ShaderRegister = range.binding,
-                    .RegisterSpace = 5, // TODO: Change this to not be hardcoded
-                    .Num32BitValues = util::ceil_div(range.size, uint32_t{4}),
+                    .RegisterSpace = range.space,
+                    .Num32BitValues = util::ceil_div(range.size, 4u),
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
+        size += range.size;
+        assert(size < 128);
     }
 
     const auto ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
@@ -797,7 +802,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             const auto& binding = space[j];
             // Check that this is not the last binding and not infinite register count
             assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
-            D3D12_DESCRIPTOR_RANGE range{
+            const D3D12_DESCRIPTOR_RANGE range{
                 .RangeType = binding.type,
                 .NumDescriptors = binding.count,
                 .BaseShaderRegister = binding.binding,
@@ -870,18 +875,11 @@ bool D3D12Context::set_pipeline_constant(
 {
     assert(cmd_list);
     assert(data);
-#ifdef _DEBUG
-    if (offset % 4 != 0)
-    {
-        OutputDebugStringA("Qhenki D3D12 WARNING: Offset is best as multiple of 4 bytes\n");
-    }
-    if (size % 4 != 0)
-    {
-        OutputDebugStringA("Qhenki D3D12 WARNING: Size is best as multiple of 4 bytes\n");
-    }
-#endif
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, (size + 3) / 4, data, (offset + 3) / 4);
+    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param,
+                                                         util::ceil_div(size, 4u),
+                                                         data,
+                                                         util::ceil_div(offset, 4u));
     return true;
 }
 

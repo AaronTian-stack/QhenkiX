@@ -9,9 +9,11 @@
 #define VMA_VULKAN_VERSION 1004000
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+
 #include "vk_mem_alloc.h"
 #include "vulkan_command_pool.h"
 #include "vulkan_descriptor_heap.h"
+#include "vulkan_root_signature.h"
 #include "vulkan_texture.h"
 
 #include "qhenki/utility/string_util.h"
@@ -34,6 +36,13 @@ VulkanTexture* to_internal(const Texture& ext)
     const auto vulkan_texture = static_cast<VulkanTexture*>(ext.internal_state.get());
     assert(vulkan_texture);
     return vulkan_texture;
+}
+
+VulkanRootSignature* to_internal(const PipelineLayout& ext)
+{
+    const auto vulkan_root_sig = static_cast<VulkanRootSignature*>(ext.internal_state.get());
+    assert(vulkan_root_sig);
+    return vulkan_root_sig;
 }
 
 VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
@@ -62,6 +71,13 @@ VkCommandBuffer* to_internal(const CommandList& ext)
     const auto vulkan_command_buffer = static_cast<VkCommandBuffer*>(ext.internal_state.get());
     assert(vulkan_command_buffer);
     return vulkan_command_buffer;
+}
+
+VkShaderModule* to_internal(const Shader& ext)
+{
+    const auto vulkan_shader_module = static_cast<VkShaderModule*>(ext.internal_state.get());
+    assert(vulkan_shader_module);
+    return vulkan_shader_module;
 }
 
 void set_debug_name(const VkDevice device, const VkObjectType type, const uint64_t handle, const char* name)
@@ -382,6 +398,99 @@ bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline&
 
 bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout)
 {
+    assert(layout);
+
+    assert(desc->spaces.size() + desc->push_ranges.size() <= MAX_SPACES);
+
+    constexpr VkSpirvResourceTypeFlagsEXT srv_mask = VK_SPIRV_RESOURCE_TYPE_SAMPLED_IMAGE_BIT_EXT |
+                                                     VK_SPIRV_RESOURCE_TYPE_READ_ONLY_IMAGE_BIT_EXT |
+                                                     VK_SPIRV_RESOURCE_TYPE_READ_ONLY_STORAGE_BUFFER_BIT_EXT |
+                                                     VK_SPIRV_RESOURCE_TYPE_ACCELERATION_STRUCTURE_BIT_EXT;
+    constexpr VkSpirvResourceTypeFlagsEXT sampler_mask = VK_SPIRV_RESOURCE_TYPE_SAMPLER_BIT_EXT;
+    constexpr VkSpirvResourceTypeFlagsEXT uav_mask = VK_SPIRV_RESOURCE_TYPE_READ_WRITE_IMAGE_BIT_EXT |
+                                                     VK_SPIRV_RESOURCE_TYPE_READ_WRITE_STORAGE_BUFFER_BIT_EXT;
+    constexpr VkSpirvResourceTypeFlagsEXT cbv_mask = VK_SPIRV_RESOURCE_TYPE_UNIFORM_BUFFER_BIT_EXT;
+
+    layout->internal_state = mkS<VulkanRootSignature>();
+
+    auto vk_root_signature = to_internal(*layout);
+
+    auto params = vk_root_signature->bindings;
+
+    uint32_t push_offset = 0;
+    for (unsigned i = 0; i < desc->push_ranges.size(); i++)
+    {
+        const auto& range = desc->push_ranges[i];
+        params.push_back({
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
+            .descriptorSet = range.space,
+            .bindingCount = 1,
+            .firstBinding = range.binding,
+            .resourceMask = cbv_mask,
+            .source = VK_DESCRIPTOR_MAPPING_SOURCE_PUSH_DATA_EXT,
+            .sourceData = {.pushDataOffset = push_offset},
+        });
+        push_offset += range.size;
+        assert(push_offset < 128);
+    }
+
+    for (unsigned i = 0; i < desc->spaces.size(); i++)
+    {
+        auto& space = desc->spaces[i];
+        if (space.empty())
+        {
+            continue;
+        }
+        // Sort vector of LayoutBindings by binding register
+        std::ranges::sort(space,
+                          [](const LayoutBinding& a, const LayoutBinding& b)
+                          {
+                              return a.binding < b.binding;
+                          });
+        uint32_t heap_offset = 0;
+
+        for (unsigned j = 0; j < space.size(); j++)
+        {
+            const auto& binding = space[j];
+            // Check that this is not the last binding and not infinite register count
+            assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
+
+            params.push_back({
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
+                .descriptorSet = i,
+                .bindingCount = binding.count,
+                .firstBinding = binding.binding,
+                .resourceMask = (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_SRV ? srv_mask : 0) |
+                                (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_UAV ? uav_mask : 0) |
+                                (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_CBV ? cbv_mask : 0) |
+                                (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER ? sampler_mask : 0),
+                .source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT,
+                .sourceData =
+                    {
+                        .pushIndex{
+                            .heapOffset = heap_offset,
+                            .heapIndexStride = 1, // Byte offset to determine table location
+                            // We rely on 256 byte minimum push constant size, second half is used for internal logic
+                            .pushOffset = push_offset,
+                        },
+                    },
+            });
+
+            // TODO: Proper offset based off buffer vs image
+            uint32_t descriptor_size = 0;
+            // get_descriptor_size(binding.type == );
+
+            heap_offset += binding.count * descriptor_size;
+        }
+        push_offset += sizeof(uint32_t);
+    }
+
+    vk_root_signature->layout = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT,
+        .mappingCount = static_cast<uint32_t>(params.size()),
+        .pMappings = params.data(),
+    };
+
     return true;
 }
 

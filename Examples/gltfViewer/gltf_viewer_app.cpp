@@ -138,6 +138,7 @@ void gltfViewerApp::create()
     layout_desc.push_ranges.push_back(qhenki::gfx::PushRange{
         .size = sizeof(XMFLOAT4X4) * 2 + sizeof(int),
         .binding = 0,
+        .space = 5,
     });
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
