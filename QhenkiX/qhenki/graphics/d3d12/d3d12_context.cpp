@@ -514,6 +514,10 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                    PipelineLayout* in_layout,
                                    const char* debug_name)
 {
+    if (desc.num_render_targets > MAX_RENDER_TARGETS)
+    {
+        return false;
+    }
     assert(pipeline);
     pipeline->internal_state = mkS<D3D12Pipeline>();
     auto d3d12_pipeline = to_internal(*pipeline);
@@ -694,8 +698,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     pso_desc.NumRenderTargets = desc.num_render_targets;
 
-    // TODO: MSAA support
-    pso_desc.SampleDesc.Count = 1;
+    pso_desc.SampleDesc = DXGI_SAMPLE_DESC{desc.sample_count, 0};
 
     for (unsigned i = 0; i < desc.num_render_targets; i++)
     {

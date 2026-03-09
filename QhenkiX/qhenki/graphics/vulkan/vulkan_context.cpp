@@ -49,6 +49,13 @@ VulkanRootSignature* to_internal(const PipelineLayout& ext)
     return vulkan_root_sig;
 }
 
+VkPipeline* to_internal(const GraphicsPipeline& ext)
+{
+    const auto vulkan_pipeline = static_cast<VkPipeline*>(ext.internal_state.get());
+    assert(vulkan_pipeline);
+    return vulkan_pipeline;
+}
+
 VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
     const auto vulkan_descriptor_heap = static_cast<VulkanDescriptorHeap*>(ext.internal_state.get());
@@ -294,6 +301,16 @@ std::string VulkanContext::create(const bool enable_debug_layer)
 
     vkGetPhysicalDeviceProperties2(m_device.physical_device, &m_capabilities.properties);
 
+    const auto& limits = m_capabilities.properties.properties.limits;
+    if (limits.maxPushConstantsSize < PUSH_RESERVED_START_OFFSET)
+    {
+        return "Vulkan: Device does not support required push constant size";
+    }
+    if (limits.maxColorAttachments < MAX_RENDER_TARGETS)
+    {
+        return "Vulkan: Device does not support required number of color attachments";
+    }
+
     return "";
 }
 
@@ -462,6 +479,10 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
                                     const char* debug_name)
 {
     assert(pipeline);
+    if (desc.num_render_targets > MAX_RENDER_TARGETS)
+    {
+        return false;
+    }
 
     const auto vk_vertex_shader = to_internal(vertex_shader);
     const spirv_cross::CompilerGLSL vs_reflect(vk_vertex_shader->spirv);
@@ -536,18 +557,324 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .pDynamicStates = dynamic_states.data(),
     };
 
+    const VkPrimitiveTopology primitive_topology = get_primitive_topology(desc.topology);
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = primitive_topology,
+        .primitiveRestartEnable = VK_FALSE,
+    };
+
+    auto make_vk_rasterizer_state = [](const RasterizerDesc& r)
+    {
+        VkPolygonMode polygon_mode;
+        switch (r.fill_mode)
+        {
+        case D3D12_FILL_MODE_WIREFRAME:
+            polygon_mode = VK_POLYGON_MODE_LINE;
+            break;
+        case D3D12_FILL_MODE_SOLID:
+        default:
+            polygon_mode = VK_POLYGON_MODE_FILL;
+            break;
+        }
+
+        VkCullModeFlags cull_mode;
+        switch (r.cull_mode)
+        {
+        case D3D12_CULL_MODE_FRONT:
+            cull_mode = VK_CULL_MODE_FRONT_BIT;
+            break;
+        case D3D12_CULL_MODE_BACK:
+            cull_mode = VK_CULL_MODE_BACK_BIT;
+            break;
+        case D3D12_CULL_MODE_NONE:
+        default:
+            cull_mode = VK_CULL_MODE_NONE;
+            break;
+        }
+
+        const VkPipelineRasterizationStateCreateInfo raster{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            // TODO: Clamp instead of clip?
+            .depthClampEnable = r.depth_clip_enable ? VK_FALSE : VK_TRUE,
+            .rasterizerDiscardEnable = VK_FALSE,
+            .polygonMode = polygon_mode,
+            .cullMode = cull_mode,
+            .frontFace = r.front_counter_clockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE,
+            .depthBiasEnable = r.depth_bias != 0 || r.slope_scaled_depth_bias != 0.0f ? VK_TRUE : VK_FALSE,
+            .depthBiasConstantFactor = static_cast<float>(r.depth_bias),
+            .depthBiasClamp = r.depth_bias_clamp,
+            .depthBiasSlopeFactor = r.slope_scaled_depth_bias,
+            .lineWidth = 1.0f,
+        };
+        return raster;
+    };
+
+    constexpr RasterizerDesc default_rasterizer{};
+    const auto& raster_desc = desc.rasterizer_state.value_or(default_rasterizer);
+    VkPipelineRasterizationStateCreateInfo rasterization_info = make_vk_rasterizer_state(raster_desc);
+
+    VkBool32 alpha_to_coverage = VK_FALSE;
+    if (desc.blend_desc.has_value())
+    {
+        alpha_to_coverage = desc.blend_desc->AlphaToCoverageEnable ? VK_TRUE : VK_FALSE;
+    }
+
+    // TODO: Replace with enum
+    assert(util::is_power_of_two(desc.sample_count) && desc.sample_count <= VK_SAMPLE_COUNT_64_BIT);
+    VkPipelineMultisampleStateCreateInfo multisample_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = static_cast<VkSampleCountFlagBits>(desc.sample_count),
+        .sampleShadingEnable = VK_FALSE,
+        .minSampleShading = 1.0f,
+        .pSampleMask = nullptr,
+        .alphaToCoverageEnable = alpha_to_coverage,
+        .alphaToOneEnable = VK_FALSE,
+    };
+
+    auto map_stencil_op = [](const D3D12_STENCIL_OP op)
+    {
+        switch (op)
+        {
+        case D3D12_STENCIL_OP_KEEP:
+            return VK_STENCIL_OP_KEEP;
+        case D3D12_STENCIL_OP_ZERO:
+            return VK_STENCIL_OP_ZERO;
+        case D3D12_STENCIL_OP_REPLACE:
+            return VK_STENCIL_OP_REPLACE;
+        case D3D12_STENCIL_OP_INCR_SAT:
+            return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        case D3D12_STENCIL_OP_DECR_SAT:
+            return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        case D3D12_STENCIL_OP_INVERT:
+            return VK_STENCIL_OP_INVERT;
+        case D3D12_STENCIL_OP_INCR:
+            return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        case D3D12_STENCIL_OP_DECR:
+            return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        default:
+            return VK_STENCIL_OP_KEEP;
+        }
+    };
+
+    auto map_compare_func = [](const D3D12_COMPARISON_FUNC func)
+    {
+        switch (func)
+        {
+        case D3D12_COMPARISON_FUNC_NEVER:
+            return VK_COMPARE_OP_NEVER;
+        case D3D12_COMPARISON_FUNC_LESS:
+            return VK_COMPARE_OP_LESS;
+        case D3D12_COMPARISON_FUNC_EQUAL:
+            return VK_COMPARE_OP_EQUAL;
+        case D3D12_COMPARISON_FUNC_LESS_EQUAL:
+            return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case D3D12_COMPARISON_FUNC_GREATER:
+            return VK_COMPARE_OP_GREATER;
+        case D3D12_COMPARISON_FUNC_NOT_EQUAL:
+            return VK_COMPARE_OP_NOT_EQUAL;
+        case D3D12_COMPARISON_FUNC_GREATER_EQUAL:
+            return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case D3D12_COMPARISON_FUNC_ALWAYS:
+        default:
+            return VK_COMPARE_OP_ALWAYS;
+        }
+    };
+
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_info{};
+    const bool has_depth_stencil_desc = desc.depth_stencil_state.has_value();
+    VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
+    if (desc.dsv_format != DXGI_FORMAT_UNKNOWN)
+    {
+        depth_stencil_format = convert_format(desc.dsv_format);
+    }
+
+    const bool has_depth_attachment = has_depth_stencil_desc && depth_stencil_format != VK_FORMAT_UNDEFINED &&
+                                      is_depth_stencil_format(depth_stencil_format);
+
+    if (has_depth_attachment)
+    {
+        const auto& ds = *desc.depth_stencil_state;
+
+        const auto make_stencil_state = [&](const D3D12_DEPTH_STENCILOP_DESC& op)
+        {
+            VkStencilOpState state;
+            state.failOp = map_stencil_op(op.StencilFailOp);
+            state.passOp = map_stencil_op(op.StencilPassOp);
+            state.depthFailOp = map_stencil_op(op.StencilDepthFailOp);
+            state.compareOp = map_compare_func(ds.depth_func);
+            state.compareMask = ds.stencil_read_mask;
+            state.writeMask = ds.stencil_write_mask;
+            state.reference = 0;
+            return state;
+        };
+
+        depth_stencil_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .depthTestEnable = ds.depth_enable ? VK_TRUE : VK_FALSE,
+            .depthWriteEnable = ds.depth_write_mask == D3D12_DEPTH_WRITE_MASK_ZERO ? VK_FALSE : VK_TRUE,
+            .depthCompareOp = map_compare_func(ds.depth_func),
+            .depthBoundsTestEnable = VK_FALSE,
+            .stencilTestEnable = ds.stencil_enable ? VK_TRUE : VK_FALSE,
+            .front = make_stencil_state(ds.front_face),
+            .back = make_stencil_state(ds.back_face),
+            .minDepthBounds = 0.0f,
+            .maxDepthBounds = 1.0f,
+        };
+    }
+
+    // Color blend state
+    auto map_blend_factor = [](const D3D12_BLEND b)
+    {
+        switch (b)
+        {
+        case D3D12_BLEND_ZERO:
+            return VK_BLEND_FACTOR_ZERO;
+        case D3D12_BLEND_ONE:
+            return VK_BLEND_FACTOR_ONE;
+        case D3D12_BLEND_SRC_COLOR:
+            return VK_BLEND_FACTOR_SRC_COLOR;
+        case D3D12_BLEND_INV_SRC_COLOR:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        case D3D12_BLEND_SRC_ALPHA:
+            return VK_BLEND_FACTOR_SRC_ALPHA;
+        case D3D12_BLEND_INV_SRC_ALPHA:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        case D3D12_BLEND_DEST_ALPHA:
+            return VK_BLEND_FACTOR_DST_ALPHA;
+        case D3D12_BLEND_INV_DEST_ALPHA:
+            return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        case D3D12_BLEND_DEST_COLOR:
+            return VK_BLEND_FACTOR_DST_COLOR;
+        case D3D12_BLEND_INV_DEST_COLOR:
+            return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+        case D3D12_BLEND_SRC_ALPHA_SAT:
+            return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+        case D3D12_BLEND_BLEND_FACTOR:
+            return VK_BLEND_FACTOR_CONSTANT_COLOR;
+        case D3D12_BLEND_INV_BLEND_FACTOR:
+            return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+        case D3D12_BLEND_SRC1_COLOR:
+            return VK_BLEND_FACTOR_SRC1_COLOR;
+        case D3D12_BLEND_INV_SRC1_COLOR:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+        case D3D12_BLEND_SRC1_ALPHA:
+            return VK_BLEND_FACTOR_SRC1_ALPHA;
+        case D3D12_BLEND_INV_SRC1_ALPHA:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+        default:
+            return VK_BLEND_FACTOR_ONE;
+        }
+    };
+
+    auto map_blend_op = [](const D3D12_BLEND_OP op)
+    {
+        switch (op)
+        {
+        case D3D12_BLEND_OP_ADD:
+            return VK_BLEND_OP_ADD;
+        case D3D12_BLEND_OP_SUBTRACT:
+            return VK_BLEND_OP_SUBTRACT;
+        case D3D12_BLEND_OP_REV_SUBTRACT:
+            return VK_BLEND_OP_REVERSE_SUBTRACT;
+        case D3D12_BLEND_OP_MIN:
+            return VK_BLEND_OP_MIN;
+        case D3D12_BLEND_OP_MAX:
+            return VK_BLEND_OP_MAX;
+        default:
+            return VK_BLEND_OP_ADD;
+        }
+    };
+
+    auto map_color_write_mask = [](const UINT8 mask)
+    {
+        VkColorComponentFlags flags = 0;
+        if (mask & D3D12_COLOR_WRITE_ENABLE_RED)
+        {
+            flags |= VK_COLOR_COMPONENT_R_BIT;
+        }
+        if (mask & D3D12_COLOR_WRITE_ENABLE_GREEN)
+        {
+            flags |= VK_COLOR_COMPONENT_G_BIT;
+        }
+        if (mask & D3D12_COLOR_WRITE_ENABLE_BLUE)
+        {
+            flags |= VK_COLOR_COMPONENT_B_BIT;
+        }
+        if (mask & D3D12_COLOR_WRITE_ENABLE_ALPHA)
+        {
+            flags |= VK_COLOR_COMPONENT_A_BIT;
+        }
+        return flags;
+    };
+
+    std::array<VkPipelineColorBlendAttachmentState, MAX_RENDER_TARGETS> color_attachments{};
+    for (unsigned i = 0; i < desc.num_render_targets; i++)
+    {
+        VkPipelineColorBlendAttachmentState attachment{};
+        if (desc.blend_desc.has_value())
+        {
+            const auto& rt = desc.blend_desc->RenderTarget[i];
+            attachment.blendEnable = rt.BlendEnable ? VK_TRUE : VK_FALSE;
+            attachment.srcColorBlendFactor = map_blend_factor(rt.SrcBlend);
+            attachment.dstColorBlendFactor = map_blend_factor(rt.DestBlend);
+            attachment.colorBlendOp = map_blend_op(rt.BlendOp);
+            attachment.srcAlphaBlendFactor = map_blend_factor(rt.SrcBlendAlpha);
+            attachment.dstAlphaBlendFactor = map_blend_factor(rt.DestBlendAlpha);
+            attachment.alphaBlendOp = map_blend_op(rt.BlendOpAlpha);
+            attachment.colorWriteMask = map_color_write_mask(rt.RenderTargetWriteMask);
+        }
+        else
+        {
+            attachment.blendEnable = VK_FALSE;
+            attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+            attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            attachment.colorBlendOp = VK_BLEND_OP_ADD;
+            attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+            attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+                                        VK_COLOR_COMPONENT_A_BIT;
+        }
+
+        color_attachments[i] = attachment;
+    }
+
+    VkPipelineColorBlendStateCreateInfo color_blend_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .attachmentCount = desc.num_render_targets,
+        .pAttachments = color_attachments.data(),
+    };
+
+    std::array<VkFormat, 8> color_formats{};
+    for (unsigned i = 0; i < desc.num_render_targets; i++)
+    {
+        color_formats[i] = convert_format(desc.rtv_formats[i]);
+    }
+
+    VkPipelineRenderingCreateInfo rendering_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+        .colorAttachmentCount = desc.num_render_targets,
+        .pColorAttachmentFormats = desc.num_render_targets ? color_formats.data() : nullptr,
+        .depthAttachmentFormat = has_depth_attachment ? depth_stencil_format : VK_FORMAT_UNDEFINED,
+        .stencilAttachmentFormat = has_depth_attachment && desc.depth_stencil_state->stencil_enable
+                                     ? depth_stencil_format
+                                     : VK_FORMAT_UNDEFINED,
+    };
+
     VkGraphicsPipelineCreateInfo pipeline_info{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = nullptr, // TODO
+        .pNext = &rendering_info,
         .stageCount = shader_stages.size(),
         .pStages = shader_stages.data(),
         .pVertexInputState = &vertex_input_info,
-        .pInputAssemblyState = nullptr, // TODO
+        .pInputAssemblyState = &input_assembly_info,
         .pViewportState = &viewport_state_info,
-        .pRasterizationState = nullptr, // TODO
-        .pMultisampleState = nullptr,   // TODO
-        .pDepthStencilState = nullptr,  // TODO
-        .pColorBlendState = nullptr,    // TODO
+        .pRasterizationState = &rasterization_info,
+        .pMultisampleState = &multisample_info,
+        .pDepthStencilState = has_depth_attachment ? &depth_stencil_info : nullptr,
+        .pColorBlendState = &color_blend_info,
         .pDynamicState = &dynamic_state_info,
     };
 
@@ -557,6 +884,8 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
+    pipeline->internal_state = mkS<VkPipeline>(vk_pipeline);
+
     set_debug_name(m_device.device, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(vk_pipeline), debug_name);
 
     return true;
@@ -564,6 +893,9 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
 
 bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline)
 {
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_pipeline = to_internal(pipeline);
+    vkCmdBindPipeline(*vk_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, *vk_pipeline);
     return true;
 }
 

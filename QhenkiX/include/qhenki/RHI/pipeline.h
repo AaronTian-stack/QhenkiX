@@ -23,7 +23,6 @@ struct RasterizerDesc
     bool depth_clip_enable = true;
     // Always uses alpha MSAA
     // No AA lines
-    // No forced Sample Count
     // TODO: Conservative Rasterization?
 };
 
@@ -46,14 +45,16 @@ struct InputLayoutDesc
     D3D12_INPUT_ELEMENT_DESC* elements;
 };
 
+constexpr unsigned MAX_RENDER_TARGETS = 8u;
+
 struct GraphicsPipelineDesc
 {
     std::optional<D3D12_BLEND_DESC> blend_desc;
     std::optional<DepthStencilDesc> depth_stencil_state;
-    std::array<DXGI_FORMAT, 8> rtv_formats{};
+    std::array<DXGI_FORMAT, MAX_RENDER_TARGETS> rtv_formats{};
     std::optional<RasterizerDesc> rasterizer_state;
     std::optional<InputLayoutDesc> input_layout;
-    std::optional<DXGI_SAMPLE_DESC> multisample_desc;
+    unsigned sample_count = 1;
     unsigned num_render_targets = 0;
     DXGI_FORMAT dsv_format{};
     PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
