@@ -210,7 +210,7 @@ public:
 private:
     D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                 const D3D12_SHADER_DESC& shader_desc,
-                                                bool increment_slot);
+                                                bool increment_slot) const;
     void clear_depth(ID3D12GraphicsCommandList7* command_list, const RenderTarget* depth_stencil);
     ComPtr<ID3D12CommandQueue>& get_command_queue(QueueType queue);
 };

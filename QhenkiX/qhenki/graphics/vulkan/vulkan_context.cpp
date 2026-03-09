@@ -19,6 +19,8 @@
 #include "qhenki/utility/string_util.h"
 #include "qhenki/utility/vulkan_util.h"
 
+constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
+
 using namespace qhenki::gfx;
 
 namespace
@@ -401,6 +403,8 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
     assert(layout);
 
     assert(desc->spaces.size() + desc->push_ranges.size() <= MAX_SPACES);
+    // This should never fire since we target Vulkan 1.4
+    assert(m_capabilities.descriptor_heap_properties.maxPushDataSize >= 256);
 
     constexpr VkSpirvResourceTypeFlagsEXT srv_mask = VK_SPIRV_RESOURCE_TYPE_SAMPLED_IMAGE_BIT_EXT |
                                                      VK_SPIRV_RESOURCE_TYPE_READ_ONLY_IMAGE_BIT_EXT |
@@ -413,7 +417,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
 
     layout->internal_state = mkS<VulkanRootSignature>();
 
-    auto vk_root_signature = to_internal(*layout);
+    const auto vk_root_signature = to_internal(*layout);
 
     auto params = vk_root_signature->bindings;
 
@@ -431,8 +435,10 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             .sourceData = {.pushDataOffset = push_offset},
         });
         push_offset += range.size;
-        assert(push_offset < 128);
+        assert(push_offset < PUSH_RESERVED_START_OFFSET);
     }
+
+    push_offset = PUSH_RESERVED_START_OFFSET;
 
     for (unsigned i = 0; i < desc->spaces.size(); i++)
     {
@@ -493,7 +499,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                             .heapOffset = heap_offset,
                             // We rely on 256 byte minimum push constant size, second half is used for internal logic
                             .pushOffset = push_offset,
-                            .heapIndexStride = 1, // Byte offset to determine table location
+                            .heapIndexStride = 1, // Byte scaling for pushOffset
                         },
                     },
             });
@@ -501,6 +507,8 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             heap_offset += binding.count * descriptor_size;
         }
         push_offset += sizeof(uint32_t);
+
+        assert(push_offset < m_capabilities.descriptor_heap_properties.maxPushDataSize);
     }
 
     vk_root_signature->layout = {
@@ -514,11 +522,20 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
 
 void VulkanContext::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
 {
+    // TODO: Delete this function and have it happen in pipeline binding for D3D12
 }
 
 bool VulkanContext::set_pipeline_constant(
-    CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data)
+    CommandList* cmd_list, unsigned param, const uint32_t offset, const unsigned size, void* data)
 {
+    assert(size % 4u == 0);
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+                                           .offset = 0 + offset, // TODO: Use param to calculate offset
+                                           .data = {.address = data, .size = size}};
+    assert(push_data_info.offset % 4u == 0);
+    vkCmdPushDataEXT(*vk_cmd_list, &push_data_info);
+
     return true;
 }
 
@@ -605,8 +622,16 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     vkCmdBindSamplerHeapEXT(*vk_cmd_list, &sampler_bind_heap_info);
 }
 
-void VulkanContext::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
+void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
 {
+    const auto vk_cmd_list = to_internal(*cmd_list);
+
+    uint32_t data = 0;
+    const VkPushDataInfoEXT push_data_info{
+        .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+        .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET + index * sizeof(size_t)), // Implies max 16 params
+        .data = {.address = &gpu_descriptor.offset, .size = sizeof(size_t)}};
+    vkCmdPushDataEXT(*vk_cmd_list, &push_data_info);
 }
 
 bool VulkanContext::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)

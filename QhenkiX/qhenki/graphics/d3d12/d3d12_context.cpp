@@ -473,7 +473,7 @@ bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType
 
 D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                           const D3D12_SHADER_DESC& shader_desc,
-                                                          const bool increment_slot)
+                                                          const bool increment_slot) const
 {
     assert(shader_reflection);
 
