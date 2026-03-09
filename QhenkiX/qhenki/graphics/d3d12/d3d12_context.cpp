@@ -496,15 +496,11 @@ D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection
                 .SemanticIndex = signature_parameter_desc.SemanticIndex,
                 .Format = DXCShaderCompiler::mask_to_format(signature_parameter_desc.Mask,
                                                             signature_parameter_desc.ComponentType),
-                .InputSlot = slot,
+                .InputSlot = increment_slot ? slot++ : 0u,
                 .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
                 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                 .InstanceDataStepRate = 0u, // TODO: Manual options for instancing
             };
-            if (increment_slot)
-            {
-                slot++;
-            }
         }
     }
 
@@ -568,8 +564,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             return false;
         }
 
-        input_layout_desc =
-            this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
+        input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
         pso_desc.VS = {.pShaderBytecode = vs12->shader_blob->GetBufferPointer(),
                        .BytecodeLength = vs12->shader_blob->GetBufferSize()};
@@ -577,8 +572,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                        .BytecodeLength = ps12->shader_blob->GetBufferSize()};
     }
 
-    pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc,
-                            .NumElements = shader_desc.InputParameters};
+    pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc, .NumElements = shader_desc.InputParameters};
 
     // Prefer root signature embedded in shader container if present
     ComPtr<ID3D12RootSignature> root_signature;

@@ -14,7 +14,10 @@
 #include "vulkan_command_pool.h"
 #include "vulkan_descriptor_heap.h"
 #include "vulkan_root_signature.h"
+#include "vulkan_shader.h"
 #include "vulkan_texture.h"
+
+#include <spirv_glsl.hpp>
 
 #include "qhenki/utility/string_util.h"
 #include "qhenki/utility/vulkan_util.h"
@@ -25,7 +28,6 @@ using namespace qhenki::gfx;
 
 namespace
 {
-
 VulkanBuffer* to_internal(const Buffer& ext)
 {
     const auto vulkan_buffer = static_cast<VulkanBuffer*>(ext.internal_state.get());
@@ -75,11 +77,11 @@ VkCommandBuffer* to_internal(const CommandList& ext)
     return vulkan_command_buffer;
 }
 
-VkShaderModule* to_internal(const Shader& ext)
+VulkanShader* to_internal(const Shader& ext)
 {
-    const auto vulkan_shader_module = static_cast<VkShaderModule*>(ext.internal_state.get());
-    assert(vulkan_shader_module);
-    return vulkan_shader_module;
+    const auto vulkan_shader = static_cast<VulkanShader*>(ext.internal_state.get());
+    assert(vulkan_shader);
+    return vulkan_shader;
 }
 
 void set_debug_name(const VkDevice device, const VkObjectType type, const uint64_t handle, const char* name)
@@ -360,28 +362,97 @@ unsigned VulkanContext::get_swapchain_frame_index(const Swapchain& swapchain)
     return 0;
 }
 
-bool VulkanContext::create_shader(void* data, const size_t size, ShaderType type, Shader* shader)
+bool VulkanContext::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
 {
-    VkShaderModule shader_module;
+    assert(shader);
+
+    auto state = mkS<VulkanShader>();
+    state->spirv.resize(size / sizeof(uint32_t));
+    memcpy(state->spirv.data(), data, size);
 
     const VkShaderModuleCreateInfo shader_module_info{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = size,
-        .pCode = static_cast<const uint32_t*>(data),
+        .pCode = state->spirv.data(),
     };
 
-    if (VK_FAILED(vkCreateShaderModule(m_device.device, &shader_module_info, nullptr, &shader_module)))
+    if (VK_FAILED(vkCreateShaderModule(m_device.device, &shader_module_info, nullptr, &state->module)))
     {
+        state.reset();
         return false;
     }
 
-    *shader = {
-        .type = type,
-        .internal_state = mkS<VkShaderModule>(shader_module),
-    };
+    shader->type = type;
+    shader->internal_state = std::move(state);
 
     return true;
 }
+
+namespace
+{
+VkFormat vertex_attribute_format_from_spirv_type(const spirv_cross::SPIRType& type)
+{
+    using Base = spirv_cross::SPIRType::BaseType;
+
+    const auto components = type.vecsize;
+    if (type.columns != 1 || components == 0 || components > 4)
+    {
+        return VK_FORMAT_UNDEFINED;
+    }
+
+    switch (type.basetype)
+    {
+    case Base::Float:
+        switch (components)
+        {
+        case 1:
+            return VK_FORMAT_R32_SFLOAT;
+        case 2:
+            return VK_FORMAT_R32G32_SFLOAT;
+        case 3:
+            return VK_FORMAT_R32G32B32_SFLOAT;
+        case 4:
+            return VK_FORMAT_R32G32B32A32_SFLOAT;
+        }
+        break;
+    case Base::Int:
+        switch (components)
+        {
+        case 1:
+            return VK_FORMAT_R32_SINT;
+        case 2:
+            return VK_FORMAT_R32G32_SINT;
+        case 3:
+            return VK_FORMAT_R32G32B32_SINT;
+        case 4:
+            return VK_FORMAT_R32G32B32A32_SINT;
+        }
+        break;
+    case Base::UInt:
+        switch (components)
+        {
+        case 1:
+            return VK_FORMAT_R32_UINT;
+        case 2:
+            return VK_FORMAT_R32G32_UINT;
+        case 3:
+            return VK_FORMAT_R32G32B32_UINT;
+        case 4:
+            return VK_FORMAT_R32G32B32A32_UINT;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return VK_FORMAT_UNDEFINED;
+}
+
+uint32_t vertex_attribute_size_from_spirv_type(const spirv_cross::SPIRType& type)
+{
+    return type.width / 8u * type.vecsize;
+}
+} // namespace
 
 bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
                                     GraphicsPipeline* pipeline,
@@ -390,6 +461,104 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
                                     PipelineLayout* in_layout,
                                     const char* debug_name)
 {
+    assert(pipeline);
+
+    const auto vk_vertex_shader = to_internal(vertex_shader);
+    const spirv_cross::CompilerGLSL vs_reflect(vk_vertex_shader->spirv);
+    spirv_cross::ShaderResources resources = vs_reflect.get_shader_resources();
+
+    const auto vs_entry_name = vs_reflect.get_entry_points_and_stages()[0].name;
+
+    thread_local memory::Arena arena(util::MEGABYTE);
+    arena.reset();
+
+    const auto input_bindings = arena.alloc_array<VkVertexInputAttributeDescription>(resources.stage_inputs.size());
+
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < resources.stage_inputs.size(); i++)
+    {
+        const auto& input = resources.stage_inputs[i];
+        const auto& type = vs_reflect.get_type(input.type_id);
+        const auto format = vertex_attribute_format_from_spirv_type(type);
+        if (format == VK_FORMAT_UNDEFINED)
+        {
+            return false;
+        }
+        input_bindings[i] = {
+            .location = vs_reflect.get_decoration(input.id, spv::DecorationLocation),
+            .binding = desc.increment_slot ? i : 0u,
+            .format = format,
+            .offset = offset,
+        };
+        offset += vertex_attribute_size_from_spirv_type(type);
+    }
+
+    const auto ps_vk_pixel_shader = to_internal(pixel_shader);
+    const spirv_cross::CompilerGLSL ps_reflect(ps_vk_pixel_shader->spirv);
+    const auto ps_entry_name = ps_reflect.get_entry_points_and_stages()[0].name;
+
+    std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages;
+    shader_stages[0] = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = vk_vertex_shader->module,
+        .pName = vs_entry_name.c_str(),
+    };
+    shader_stages[1] = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .module = ps_vk_pixel_shader->module,
+        .pName = ps_entry_name.c_str(),
+    };
+
+    VkPipelineVertexInputStateCreateInfo vertex_input_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(resources.stage_inputs.size()),
+        .pVertexAttributeDescriptions = input_bindings,
+    };
+
+    // We require multi-viewport device feature
+    VkPipelineViewportStateCreateInfo viewport_state_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = m_capabilities.properties.properties.limits.maxViewports,
+        .scissorCount = m_capabilities.properties.properties.limits.maxViewports,
+    };
+
+    std::array dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
+        VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE,
+    };
+    VkPipelineDynamicStateCreateInfo dynamic_state_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = dynamic_states.size(),
+        .pDynamicStates = dynamic_states.data(),
+    };
+
+    VkGraphicsPipelineCreateInfo pipeline_info{
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext = nullptr, // TODO
+        .stageCount = shader_stages.size(),
+        .pStages = shader_stages.data(),
+        .pVertexInputState = &vertex_input_info,
+        .pInputAssemblyState = nullptr, // TODO
+        .pViewportState = &viewport_state_info,
+        .pRasterizationState = nullptr, // TODO
+        .pMultisampleState = nullptr,   // TODO
+        .pDepthStencilState = nullptr,  // TODO
+        .pColorBlendState = nullptr,    // TODO
+        .pDynamicState = &dynamic_state_info,
+    };
+
+    VkPipeline vk_pipeline;
+    if (VK_FAILED(vkCreateGraphicsPipelines(m_device.device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &vk_pipeline)))
+    {
+        return false;
+    }
+
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(vk_pipeline), debug_name);
+
     return true;
 }
 
