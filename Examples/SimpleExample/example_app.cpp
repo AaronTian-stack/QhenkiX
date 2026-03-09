@@ -39,19 +39,19 @@ void ExampleApp::create()
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::CBV,
         };
     qhenki::gfx::LayoutBinding b2 // SRV for texture
         {
             .binding = 1, // TODO: figure out how to handle this for Vulkan
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
         };
     qhenki::gfx::LayoutBinding b3 // Sampler for texture
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SAMPLER,
         };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     layout_desc.spaces[0] = {b1, b2};

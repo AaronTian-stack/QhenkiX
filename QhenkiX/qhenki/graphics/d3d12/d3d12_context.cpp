@@ -802,8 +802,28 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             const auto& binding = space[j];
             // Check that this is not the last binding and not infinite register count
             assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
+
+            D3D12_DESCRIPTOR_RANGE_TYPE type;
+            switch (binding.type)
+            {
+            case LayoutBinding::RangeType::SRV_BUFFER:
+            case LayoutBinding::RangeType::SRV_TEXTURE:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+                break;
+            case LayoutBinding::RangeType::UAV_BUFFER:
+            case LayoutBinding::RangeType::UAV_TEXTURE:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+                break;
+            case LayoutBinding::RangeType::CBV:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+                break;
+            case LayoutBinding::RangeType::SAMPLER:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+                break;
+            }
+
             const D3D12_DESCRIPTOR_RANGE range{
-                .RangeType = binding.type,
+                .RangeType = type,
                 .NumDescriptors = binding.count,
                 .BaseShaderRegister = binding.binding,
                 .RegisterSpace = i,

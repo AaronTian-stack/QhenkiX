@@ -92,17 +92,17 @@ void RetroExampleApp::create()
     qhenki::gfx::LayoutBinding b1{
         .binding = 0,
         .count = 1,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+        .type = qhenki::gfx::LayoutBinding::RangeType::CBV,
     };
     qhenki::gfx::LayoutBinding b2{
         .binding = 1,
         .count = 2,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
     };
     qhenki::gfx::LayoutBinding b3{
         .binding = 0,
         .count = 2,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+        .type = qhenki::gfx::LayoutBinding::RangeType::SAMPLER,
     };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     layout_desc.spaces[0] = {b1}; // CBV

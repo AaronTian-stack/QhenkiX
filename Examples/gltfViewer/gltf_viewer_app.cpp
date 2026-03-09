@@ -113,24 +113,24 @@ void gltfViewerApp::create()
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::CBV,
         };
     qhenki::gfx::LayoutBinding material{
         .binding = 1,
         .count = 1,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .type = qhenki::gfx::LayoutBinding::RangeType::SRV_BUFFER,
     };
     qhenki::gfx::LayoutBinding textures // SRV for texture
         {
-            .binding = 2, // TODO: figure out how to handle this for Vulkan
+            .binding = 2,
             .count = 1000,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
         };
     qhenki::gfx::LayoutBinding samplers // Sampler for texture
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SAMPLER,
         };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     layout_desc.spaces[0] = {camera, material, textures};

@@ -424,8 +424,8 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
         params.push_back({
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
             .descriptorSet = range.space,
-            .bindingCount = 1,
             .firstBinding = range.binding,
+            .bindingCount = 1,
             .resourceMask = cbv_mask,
             .source = VK_DESCRIPTOR_MAPPING_SOURCE_PUSH_DATA_EXT,
             .sourceData = {.pushDataOffset = push_offset},
@@ -455,30 +455,48 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             // Check that this is not the last binding and not infinite register count
             assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
 
+            VkSpirvResourceTypeFlagsEXT mask = 0;
+            uint32_t descriptor_size = get_descriptor_size(Descriptor::Type::BUFFER);
+            switch (binding.type)
+            {
+            case LayoutBinding::RangeType::SRV_BUFFER:
+            case LayoutBinding::RangeType::SRV_TEXTURE:
+                mask = srv_mask;
+                descriptor_size = get_descriptor_size(Descriptor::Type::TEXTURE);
+                break;
+            case LayoutBinding::RangeType::UAV_BUFFER:
+            case LayoutBinding::RangeType::UAV_TEXTURE:
+                mask = uav_mask;
+                descriptor_size = get_descriptor_size(Descriptor::Type::TEXTURE);
+                break;
+            case LayoutBinding::RangeType::CBV:
+                mask = cbv_mask;
+                break;
+            case LayoutBinding::RangeType::SAMPLER:
+                mask = sampler_mask;
+                descriptor_size = get_descriptor_size(Descriptor::Type::SAMPLER);
+                break;
+            }
+            assert(mask);
+            assert(descriptor_size);
+
             params.push_back({
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
                 .descriptorSet = i,
-                .bindingCount = binding.count,
                 .firstBinding = binding.binding,
-                .resourceMask = (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_SRV ? srv_mask : 0) |
-                                (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_UAV ? uav_mask : 0) |
-                                (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_CBV ? cbv_mask : 0) |
-                                (binding.type == D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER ? sampler_mask : 0),
+                .bindingCount = binding.count,
+                .resourceMask = mask,
                 .source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT,
                 .sourceData =
                     {
                         .pushIndex{
                             .heapOffset = heap_offset,
-                            .heapIndexStride = 1, // Byte offset to determine table location
                             // We rely on 256 byte minimum push constant size, second half is used for internal logic
                             .pushOffset = push_offset,
+                            .heapIndexStride = 1, // Byte offset to determine table location
                         },
                     },
             });
-
-            // TODO: Proper offset based off buffer vs image
-            uint32_t descriptor_size = 0;
-            // get_descriptor_size(binding.type == );
 
             heap_offset += binding.count * descriptor_size;
         }

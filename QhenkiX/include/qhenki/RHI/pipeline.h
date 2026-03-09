@@ -69,8 +69,15 @@ struct LayoutBinding
 {
     uint32_t binding;
     uint32_t count;
-    D3D12_DESCRIPTOR_RANGE_TYPE type;
-    // TODO: stage flags
+    enum class RangeType : uint8_t
+    {
+        SRV_BUFFER,
+        SRV_TEXTURE,
+        UAV_BUFFER,
+        UAV_TEXTURE,
+        CBV,
+        SAMPLER,
+    } type;
 };
 
 struct PushRange
