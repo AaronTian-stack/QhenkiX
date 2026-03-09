@@ -499,7 +499,7 @@ D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection
                 .InputSlot = slot,
                 .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
                 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                .InstanceDataStepRate = 0u, // TODO: manual options for instancing
+                .InstanceDataStepRate = 0u, // TODO: Manual options for instancing
             };
             if (increment_slot)
             {
@@ -528,6 +528,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     ComPtr<ID3D12ShaderReflection> shader_reflection;
     D3D12_SHADER_DESC shader_desc{};
+    D3D12_INPUT_ELEMENT_DESC* input_layout_desc = nullptr;
     // SM >= 6.0
     {
         vs12 = static_cast<DXCShaderOutput*>(vertex_shader.internal_state.get());
@@ -567,7 +568,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             return false;
         }
 
-        d3d12_pipeline->input_layout_desc =
+        input_layout_desc =
             this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
         pso_desc.VS = {.pShaderBytecode = vs12->shader_blob->GetBufferPointer(),
@@ -576,7 +577,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                        .BytecodeLength = ps12->shader_blob->GetBufferSize()};
     }
 
-    pso_desc.InputLayout = {.pInputElementDescs = d3d12_pipeline->input_layout_desc,
+    pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc,
                             .NumElements = shader_desc.InputParameters};
 
     // Prefer root signature embedded in shader container if present
@@ -1886,6 +1887,7 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
 
 void D3D12Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
 {
+    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->Get();
     command_list->RSSetViewports(count, viewport);
@@ -1893,6 +1895,7 @@ void D3D12Context::set_viewports(CommandList* list, const unsigned count, const 
 
 void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
 {
+    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->Get();
     command_list->RSSetScissorRects(count, scissor_rect);
