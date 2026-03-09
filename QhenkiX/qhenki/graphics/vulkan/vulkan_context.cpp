@@ -425,6 +425,11 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
     for (unsigned i = 0; i < desc->push_ranges.size(); i++)
     {
         const auto& range = desc->push_ranges[i];
+        if (range.size % 4u != 0)
+        {
+            params.clear();
+            return false;
+        }
         params.push_back({
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
             .descriptorSet = range.space,
@@ -434,7 +439,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             .source = VK_DESCRIPTOR_MAPPING_SOURCE_PUSH_DATA_EXT,
             .sourceData = {.pushDataOffset = push_offset},
         });
-        push_offset += range.size;
+        push_offset += util::ceil_div(range.size, 4u);
         assert(push_offset < PUSH_RESERVED_START_OFFSET);
     }
 
@@ -528,7 +533,15 @@ void VulkanContext::bind_pipeline_layout(CommandList* cmd_list, const PipelineLa
 bool VulkanContext::set_pipeline_constant(
     CommandList* cmd_list, unsigned param, const uint32_t offset, const unsigned size, void* data)
 {
-    assert(size % 4u == 0);
+    if (offset % 4u != 0)
+    {
+        return false;
+    }
+    if (size % 4u != 0)
+    {
+        return false;
+    }
+
     const auto vk_cmd_list = to_internal(*cmd_list);
     const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
                                            .offset = 0 + offset, // TODO: Use param to calculate offset

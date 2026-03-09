@@ -756,6 +756,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     assert(param_count <= MAX_SPACES);
 
     thread_local memory::Arena arena(util::MEGABYTE);
+    arena.reset();
 
     const auto params = arena.alloc_array<D3D12_ROOT_PARAMETER>(param_count);
     unsigned params_index = 0;
@@ -764,6 +765,10 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     for (unsigned i = 0; i < desc->push_ranges.size(); i++)
     {
         const auto& range = desc->push_ranges[i];
+        if (range.size % 4u != 0)
+        {
+            return false;
+        }
         params[params_index++] = {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
             .Constants =
@@ -863,7 +868,6 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             OutputDebugStringA(static_cast<char*>(error_blob->GetBufferPointer()));
         }
         layout->internal_state.reset();
-        arena.reset();
         return false;
     }
     const void* root_sig_data = root_sig_blob->GetBufferPointer();
@@ -874,11 +878,10 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create root signature\n");
         layout->internal_state.reset();
-        arena.reset();
         return false;
+        ;
     }
 
-    arena.reset();
     return true;
 }
 
@@ -893,13 +896,19 @@ void D3D12Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLay
 bool D3D12Context::set_pipeline_constant(
     CommandList* cmd_list, const unsigned param, const uint32_t offset, const unsigned size, void* data)
 {
-    assert(cmd_list);
     assert(data);
+
+    if (size % 4u != 0)
+    {
+        return false;
+    }
+    if (offset % 4u != 0)
+    {
+        return false;
+    }
+
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param,
-                                                         util::ceil_div(size, 4u),
-                                                         data,
-                                                         util::ceil_div(offset, 4u));
+    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, size, data, offset);
     return true;
 }
 
