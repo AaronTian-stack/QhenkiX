@@ -20,6 +20,7 @@
 [submodule "QhenkiX/external/volk"]
 	path = QhenkiX/external/volk
 	url = https://github.com/zeux/volk
+	branch = master
 [submodule "QhenkiX/external/Vulkan-Headers"]
 	path = QhenkiX/external/Vulkan-Headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers
