@@ -13,6 +13,7 @@ class VulkanDescriptorHeap
     VmaVirtualBlock m_block;
 
     VulkanContext* m_context = nullptr;
+    VkDeviceSize m_reserved_size = 0;
 
 public:
     VulkanDescriptorHeap() = default;
@@ -23,5 +24,7 @@ public:
                   const VulkanContext& context,
                   VkDeviceSize* offset) const;
     void deallocate(VmaVirtualAllocation va) const;
+    VkDeviceAddress get_address() const;
+    VkDeviceSize get_reserved_size() const;
 };
 } // namespace qhenki::gfx

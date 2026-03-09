@@ -549,12 +549,60 @@ size_t VulkanContext::get_descriptor_heap_max_size(const DescriptorHeapDesc::Typ
 
 void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
 {
+    const auto vk_heap = to_internal(heap);
+
+    const VkDeviceAddressRangeEXT heap_range{
+        .address = vk_heap->get_address(),
+        .size = heap.desc.size,
+    };
+
+    const VkBindHeapInfoEXT bind_heap_info{
+        .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+        .heapRange = heap_range,
+        .reservedRangeOffset = 0,
+        .reservedRangeSize = vk_heap->get_reserved_size(),
+    };
+
+    const auto vk_cmd_list = to_internal(*cmd_list);
+
+    vkCmdBindResourceHeapEXT(*vk_cmd_list, &bind_heap_info);
 }
 
 void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
                                         const DescriptorHeap& heap,
                                         const DescriptorHeap& sampler_heap)
 {
+    const auto vk_heap = to_internal(heap);
+    const auto vk_sampler_heap = to_internal(sampler_heap);
+
+    const VkDeviceAddressRangeEXT heap_range{
+        .address = vk_heap->get_address(),
+        .size = heap.desc.size,
+    };
+
+    const VkBindHeapInfoEXT bind_heap_info{
+        .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+        .heapRange = heap_range,
+        .reservedRangeOffset = 0,
+        .reservedRangeSize = vk_heap->get_reserved_size(),
+    };
+
+    const VkDeviceAddressRangeEXT sampler_heap_range{
+        .address = vk_sampler_heap->get_address(),
+        .size = sampler_heap.desc.size,
+    };
+
+    const VkBindHeapInfoEXT sampler_bind_heap_info{
+        .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+        .heapRange = sampler_heap_range,
+        .reservedRangeOffset = 0,
+        .reservedRangeSize = vk_sampler_heap->get_reserved_size(),
+    };
+
+    const auto vk_cmd_list = to_internal(*cmd_list);
+
+    vkCmdBindResourceHeapEXT(*vk_cmd_list, &bind_heap_info);
+    vkCmdBindSamplerHeapEXT(*vk_cmd_list, &sampler_bind_heap_info);
 }
 
 void VulkanContext::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
