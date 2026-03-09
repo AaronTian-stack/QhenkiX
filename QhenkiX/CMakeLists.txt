@@ -19,6 +19,7 @@ qhenkix_require_submodule("external/SDL" "CMakeLists.txt")
 qhenkix_require_submodule("external/Vulkan-Headers" "CMakeLists.txt")
 qhenkix_require_submodule("external/volk" "CMakeLists.txt")
 qhenkix_require_submodule("external/vk-bootstrap" "CMakeLists.txt")
+qhenkix_require_submodule("external/SPIRV-Cross" "CMakeLists.txt")
 
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
@@ -100,6 +101,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_pool.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_root_signature.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_shader.h"
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 )
 
@@ -203,6 +205,12 @@ set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
 set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
 qhenkix_add_dependency_subdirectory(external/vk-bootstrap ${CMAKE_BINARY_DIR}/vk-bootstrap)
 target_link_libraries(${PROJECT_NAME} PUBLIC vk-bootstrap::vk-bootstrap)
+
+set(SPIRV_CROSS_STATIC ON CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
+target_link_libraries(${PROJECT_NAME} PUBLIC spirv-cross-core spirv-cross-glsl)
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
