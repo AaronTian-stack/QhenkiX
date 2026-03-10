@@ -11,10 +11,28 @@
 
 void ImGUIExampleApp::create()
 {
-    const bool use_dx11 = m_context->is_compatibility();
-    const char* subdir = use_dx11 ? "dx11" : "dx12";
-    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.dxbc" : "base_vs_6_6_vs_main.dxil";
-    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.dxbc" : "base_ps_6_6_ps_main.dxil";
+    const auto api = get_graphics_api();
+    const bool use_dx11 = api == qhenki::gfx::API::D3D11;
+    const bool use_vulkan = api == qhenki::gfx::API::Vulkan;
+    const char* subdir = use_dx11 ? "dx11" : (use_vulkan ? "vulkan" : "dx12");
+
+    const char* vs_name = nullptr;
+    const char* ps_name = nullptr;
+    if (use_dx11)
+    {
+        vs_name = "base_vs_5_0_vs_main.dxbc";
+        ps_name = "base_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        vs_name = "base_vs_6_6_vs_main.spv";
+        ps_name = "base_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        vs_name = "base_vs_6_6_vs_main.dxil";
+        ps_name = "base_ps_6_6_ps_main.dxil";
+    }
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {

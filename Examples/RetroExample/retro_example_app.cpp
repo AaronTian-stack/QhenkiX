@@ -72,8 +72,10 @@ void RetroExampleApp::init_display_window(void* payload)
 
 void RetroExampleApp::create()
 {
-    const bool use_dx11 = m_context->is_compatibility();
-    const char* subdir = use_dx11 ? "dx11" : "dx12";
+    const auto api = get_graphics_api();
+    const bool use_dx11 = api == qhenki::gfx::API::D3D11;
+    const bool use_vulkan = api == qhenki::gfx::API::Vulkan;
+    const char* subdir = use_dx11 ? "dx11" : (use_vulkan ? "vulkan" : "dx12");
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
@@ -381,8 +383,23 @@ void RetroExampleApp::create()
                                     .values = &m_fence_frame_ready_val[m_frame_index]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info));
 
-    const char* skybox_vs_name = use_dx11 ? "skybox_vs_5_0_vs_main.dxbc" : "skybox_vs_6_6_vs_main.dxil";
-    const char* skybox_ps_name = use_dx11 ? "skybox_ps_5_0_ps_main.dxbc" : "skybox_ps_6_6_ps_main.dxil";
+    const char* skybox_vs_name = nullptr;
+    const char* skybox_ps_name = nullptr;
+    if (use_dx11)
+    {
+        skybox_vs_name = "skybox_vs_5_0_vs_main.dxbc";
+        skybox_ps_name = "skybox_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        skybox_vs_name = "skybox_vs_6_6_vs_main.spv";
+        skybox_ps_name = "skybox_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        skybox_vs_name = "skybox_vs_6_6_vs_main.dxil";
+        skybox_ps_name = "skybox_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(skybox_vs_name, qhenki::gfx::VERTEX_SHADER, &m_skybox_vertex_shader));
     THROW_IF_FALSE(load_shader(skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
 
@@ -422,8 +439,23 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Skybox pipeline"));
 
-    const char* cube_vs_name = use_dx11 ? "cube_vs_5_0_vs_main.dxbc" : "cube_vs_6_6_vs_main.dxil";
-    const char* cube_ps_name = use_dx11 ? "cube_ps_5_0_ps_main.dxbc" : "cube_ps_6_6_ps_main.dxil";
+    const char* cube_vs_name = nullptr;
+    const char* cube_ps_name = nullptr;
+    if (use_dx11)
+    {
+        cube_vs_name = "cube_vs_5_0_vs_main.dxbc";
+        cube_ps_name = "cube_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        cube_vs_name = "cube_vs_6_6_vs_main.spv";
+        cube_ps_name = "cube_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        cube_vs_name = "cube_vs_6_6_vs_main.dxil";
+        cube_ps_name = "cube_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(cube_vs_name, qhenki::gfx::VERTEX_SHADER, &m_cube_vertex_shader));
     THROW_IF_FALSE(load_shader(cube_ps_name, qhenki::gfx::PIXEL_SHADER, &m_cube_pixel_shader));
 
@@ -441,8 +473,23 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Cube pipeline"));
 
-    const char* stencil_vs_name = use_dx11 ? "stencil_vs_5_0_vs_main.dxbc" : "stencil_cube_vs_6_6_vs_main.dxil";
-    const char* stencil_ps_name = use_dx11 ? "stencil_ps_5_0_ps_main.dxbc" : "stencil_cube_ps_6_6_ps_main.dxil";
+    const char* stencil_vs_name = nullptr;
+    const char* stencil_ps_name = nullptr;
+    if (use_dx11)
+    {
+        stencil_vs_name = "stencil_vs_5_0_vs_main.dxbc";
+        stencil_ps_name = "stencil_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        stencil_vs_name = "stencil_vs_6_6_vs_main.spv";
+        stencil_ps_name = "stencil_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        stencil_vs_name = "stencil_vs_6_6_vs_main.dxil";
+        stencil_ps_name = "stencil_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_vertex_shader));
     THROW_IF_FALSE(load_shader(stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_pixel_shader));
 
@@ -508,8 +555,23 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Stencil cube pipeline"));
 
-    const char* bevel_vs_name = use_dx11 ? "cube_instanced_vs_5_0_vs_main.dxbc" : "cube_instanced_vs_6_6_vs_main.dxil";
-    const char* bevel_ps_name = use_dx11 ? "cube_instanced_ps_5_0_ps_main.dxbc" : "cube_instanced_ps_6_6_ps_main.dxil";
+    const char* bevel_vs_name = nullptr;
+    const char* bevel_ps_name = nullptr;
+    if (use_dx11)
+    {
+        bevel_vs_name = "cube_instanced_vs_5_0_vs_main.dxbc";
+        bevel_ps_name = "cube_instanced_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        bevel_vs_name = "cube_instanced_vs_6_6_vs_main.spv";
+        bevel_ps_name = "cube_instanced_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        bevel_vs_name = "cube_instanced_vs_6_6_vs_main.dxil";
+        bevel_ps_name = "cube_instanced_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(bevel_vs_name, qhenki::gfx::VERTEX_SHADER, &m_bevel_cube_vertex_shader));
     THROW_IF_FALSE(load_shader(bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
     qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
@@ -554,13 +616,31 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Bevel cube instanced pipeline"));
 
-    const char* blit_vs_name = use_dx11 ? "fullscreen_triangle_vs_5_0_vs_main.dxbc"
-                                        : "fullscreen_triangle_vs_6_6_vs_main.dxil";
-    const char* blit_copy_ps_name = use_dx11 ? "blit_copy_ps_5_0_ps_main.dxbc" : "blit_copy_ps_6_6_ps_main.dxil";
-    const char* blit_lum_ps_name = use_dx11 ? "blit_luminance_ps_5_0_ps_main.dxbc"
-                                            : "blit_luminance_ps_6_6_ps_main.dxil";
-    const char* blit_bloom_blob_name = use_dx11 ? "blit_bloom_1d_ps_5_0_ps_main.dxbc_blob"
-                                                : "blit_bloom_1d_ps_6_6_ps_main.dxil_blob";
+    const char* blit_vs_name = nullptr;
+    const char* blit_copy_ps_name = nullptr;
+    const char* blit_lum_ps_name = nullptr;
+    const char* blit_bloom_blob_name = nullptr;
+    if (use_dx11)
+    {
+        blit_vs_name = "fullscreen_triangle_vs_5_0_vs_main.dxbc";
+        blit_copy_ps_name = "blit_copy_ps_5_0_ps_main.dxbc";
+        blit_lum_ps_name = "blit_luminance_ps_5_0_ps_main.dxbc";
+        blit_bloom_blob_name = "blit_bloom_1d_ps_5_0_ps_main.dxbc_blob";
+    }
+    else if (use_vulkan)
+    {
+        blit_vs_name = "fullscreen_triangle_vs_6_6_vs_main.spv";
+        blit_copy_ps_name = "blit_copy_ps_6_6_ps_main.spv";
+        blit_lum_ps_name = "blit_luminance_ps_6_6_ps_main.spv";
+        blit_bloom_blob_name = "blit_bloom_1d_ps_6_6_ps_main.spv_blob";
+    }
+    else
+    {
+        blit_vs_name = "fullscreen_triangle_vs_6_6_vs_main.dxil";
+        blit_copy_ps_name = "blit_copy_ps_6_6_ps_main.dxil";
+        blit_lum_ps_name = "blit_luminance_ps_6_6_ps_main.dxil";
+        blit_bloom_blob_name = "blit_bloom_1d_ps_6_6_ps_main.dxil_blob";
+    }
     THROW_IF_FALSE(load_shader(blit_vs_name, qhenki::gfx::VERTEX_SHADER, &m_blit_vertex_shader));
     THROW_IF_FALSE(load_shader(blit_copy_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_copy_pixel_shader));
     THROW_IF_FALSE(load_shader(blit_lum_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_luminance_pixel_shader));
@@ -916,9 +996,9 @@ void RetroExampleApp::render()
     size_t gpu_descriptor_heap_index = 0;
 
     auto increment_gpu_descriptor_heap_index =
-        [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::Type type, const bool tight)
+        [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::Type type, const bool bloat)
     {
-        if (tight)
+        if (bloat)
         {
             if (type == qhenki::gfx::Descriptor::SAMPLER)
             {
@@ -1178,7 +1258,7 @@ void RetroExampleApp::render()
         };
         m_context->set_barrier_resource(1, &swap_barriers[2], m_swapchain, m_frame_index);
 
-        m_starting_bloom_index = (m_starting_bloom_index + 1) % m_bloom_textures.size();
+        m_starting_bloom_index = 1 - m_starting_bloom_index;
 
         if (i == iterations)
         {
