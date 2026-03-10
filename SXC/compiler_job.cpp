@@ -672,7 +672,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
 
             tbb::parallel_for(static_cast<size_t>(0),
                               input_vector->size(),
-                              [&output, compiler, input_vector, output_spirv](size_t i)
+                              [&output, compiler, input_vector, output_spirv](const size_t i)
                               {
                                   const auto& input = (*input_vector)[i];
                                   output->emplace_back();
@@ -690,7 +690,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
                                   }
                                   else
                                   {
-                                      printf("Permutation #%zu: Compiling shader: %s %s\n%s",
+                                      printf("Permutation #%zu: Compiling shader: %s %s\n%s\n",
                                              i,
                                              input.get_path().data(),
                                              tm.data(),
@@ -705,7 +705,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
     std::atomic_uint64_t failed_count{0};
     auto collect_compile_results = tbb::make_filter<PathAndOutputs, void>(
         tbb::filter_mode::parallel,
-        [&failed_count, &succeeded_count](const PathAndOutputs& pa) -> void
+        [&failed_count, &succeeded_count](const PathAndOutputs& pa)
         {
             if (pa.output)
             {
