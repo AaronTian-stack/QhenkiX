@@ -226,7 +226,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     // DXIL libraries don't require an entry point
     std::wstring w_entry_point;
-    const bool is_library = (input.shader_type == LIBRARY_SHADER);
+    const bool is_library = input.shader_type == LIBRARY_SHADER;
     if (!is_library)
     {
         args[args_idx++] = L"-E";
@@ -288,7 +288,10 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         args[args_idx++] = L"-fspv-flatten-resource-arrays";
         args[args_idx++] = L"-fspv-reflect";
         // TODO: non-zero base vertex and instance?
-        args[args_idx++] = L"-fvk-invert-y";
+        if (input.shader_type == VERTEX_SHADER)
+        {
+            args[args_idx++] = L"-fvk-invert-y";
+        }
         args[args_idx++] = L"-fvk-use-dx-layout";
         args[args_idx++] = L"-fvk-use-dx-position-w";
         args[args_idx++] = L"-fspv-target-env=vulkan1.3";
@@ -321,8 +324,18 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         }
     };
 
-    if FAILED (m_compiler->Compile(
-                   &source_buffer, args, static_cast<UINT32>(args_idx), &include_handler, IID_PPV_ARGS(&result)))
+    if (FAILED(m_compiler->Compile(&source_buffer,
+                                   args,
+                                   static_cast<UINT32>(args_idx),
+                                   &include_handler,
+                                   IID_PPV_ARGS(result.ReleaseAndGetAddressOf()))))
+    {
+        output_error();
+        return false;
+    }
+
+    HRESULT status = S_OK;
+    if (FAILED(result->GetStatus(&status)) || FAILED(status))
     {
         output_error();
         return false;
@@ -344,6 +357,8 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     output.shader_size = dxc_output->shader_blob->GetBufferSize();
     output.shader_data = dxc_output->shader_blob->GetBufferPointer();
+
+    assert(output.shader_size && output.shader_data);
 
     // Assumed to be null terminated
     const auto& pdb_path = input.pdb_path;

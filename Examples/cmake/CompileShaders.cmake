@@ -61,7 +61,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             $<$<BOOL:${EXAMPLES_FORCE_SHADER_RECOMPILE}>:-f>
         DEPENDS SXC
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        COMMENT "Compiling shaders for ${TARGET_NAME} (Vulkan/SPIR-V)..."
+        COMMENT "Compiling shaders for ${TARGET_NAME} (Vulkan)..."
     )
 
     add_custom_target(${TARGET_NAME}_CompileShaders ALL
