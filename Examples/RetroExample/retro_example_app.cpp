@@ -441,8 +441,8 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Cube pipeline"));
 
-    const char* stencil_vs_name = use_dx11 ? "stencil_vs_5_0_vs_main.dxbc" : "stencil_cube_vs_6_6_vs_main.dxil";
-    const char* stencil_ps_name = use_dx11 ? "stencil_ps_5_0_ps_main.dxbc" : "stencil_cube_ps_6_6_ps_main.dxil";
+    const char* stencil_vs_name = use_dx11 ? "stencil_vs_5_0_vs_main.dxbc" : "stencil_vs_6_6_vs_main.dxil";
+    const char* stencil_ps_name = use_dx11 ? "stencil_ps_5_0_ps_main.dxbc" : "stencil_ps_6_6_ps_main.dxil";
     THROW_IF_FALSE(load_shader(stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_vertex_shader));
     THROW_IF_FALSE(load_shader(stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_pixel_shader));
 
@@ -1125,7 +1125,7 @@ void RetroExampleApp::render()
     m_context->draw(&cmd_list, 3, 0);
 
     // Start blur passes
-    std::array<size_t, m_bloom_textures.size()> blur_srv_start;
+    std::array<size_t, BLOOM_TEXTURE_COUNT> blur_srv_start{};
     if (!m_context->is_compatibility())
     {
         // TODO: Implementation will merge descriptor copies

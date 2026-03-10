@@ -59,6 +59,7 @@ if(QHENKIX_PREBUILT_LIB)
         add_library(DirectXTex STATIC IMPORTED GLOBAL)
         set_target_properties(DirectXTex PROPERTIES
             IMPORTED_LOCATION "${QHENKIX_PREBUILT_DIRECTXTEX_LIB}"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/DirectXTex/DirectXTex"
         )
         target_link_libraries(DirectXTex INTERFACE DirectX-Guids)
     else()
