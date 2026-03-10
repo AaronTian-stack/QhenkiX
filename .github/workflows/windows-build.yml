@@ -93,7 +93,7 @@ jobs:
     needs: [build-qhenkix, build-sxc]
     strategy:
       matrix:
-        example: [SimpleExample, ImGuiExample, gltfViewer]
+        example: [SimpleExample, ImGuiExample, gltfViewer, RetroExample]
         config: [Debug, Release]
     
     steps:

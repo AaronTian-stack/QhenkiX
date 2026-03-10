@@ -6,6 +6,8 @@
 
 #include "qhenki/application.h"
 
+constexpr auto BLOOM_TEXTURE_COUNT = 2u;
+
 class RetroExampleApp : public qhenki::Application
 {
     struct Mesh
@@ -88,7 +90,7 @@ class RetroExampleApp : public qhenki::Application
     };
 
     TextureDescriptor m_offscreen_texture{};
-    std::array<TextureDescriptor, 2> m_bloom_textures{};
+    std::array<TextureDescriptor, BLOOM_TEXTURE_COUNT> m_bloom_textures{};
     unsigned m_starting_bloom_index = 0;
 
     qhenki::gfx::DescriptorHeap m_CPU_heap{};

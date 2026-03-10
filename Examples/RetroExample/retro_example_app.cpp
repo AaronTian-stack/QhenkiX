@@ -1205,7 +1205,7 @@ void RetroExampleApp::render()
     m_context->draw(&cmd_list, 3, 0);
 
     // Start blur passes
-    std::array<size_t, m_bloom_textures.size()> blur_srv_start;
+    std::array<size_t, BLOOM_TEXTURE_COUNT> blur_srv_start{};
     if (!m_context->is_compatibility())
     {
         // TODO: Implementation will merge descriptor copies
