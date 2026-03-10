@@ -645,7 +645,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
             ShaderCompiler* compiler;
             const auto& first_input = input_vector->at(0);
 
-            assert(!output_spirv && first_input.shader_model >= gfx::ShaderModel::SM_6_0);
+            assert(!(output_spirv && first_input.shader_model < gfx::ShaderModel::SM_6_0));
             if (!output_spirv && first_input.shader_model < gfx::ShaderModel::SM_6_0)
             {
 #if defined(_WIN32) || defined(_WIN64)

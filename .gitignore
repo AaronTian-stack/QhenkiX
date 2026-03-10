@@ -467,3 +467,5 @@ compile_commands.json
 *.dxbc
 *.dxil_blob
 *.dxbc_blob
+*.spv
+*.spv_blob
