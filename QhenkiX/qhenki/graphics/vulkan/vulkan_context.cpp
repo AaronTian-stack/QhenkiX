@@ -1420,8 +1420,19 @@ bool VulkanContext::bind_vertex_buffers(CommandList* cmd_list,
     return true;
 }
 
-void VulkanContext::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset)
+void VulkanContext::bind_index_buffer(CommandList* cmd_list,
+                                      const Buffer& buffer,
+                                      const IndexType format,
+                                      const uint64_t offset)
 {
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_buffer = to_internal(buffer);
+
+    vkCmdBindIndexBuffer2(*vk_cmd_list,
+                          vk_buffer->buffer,
+                          offset,
+                          buffer.desc.size,
+                          format == IndexType::UINT32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
 }
 
 bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueType queue)

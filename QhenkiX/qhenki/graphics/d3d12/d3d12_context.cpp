@@ -1670,7 +1670,10 @@ bool D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
     return true;
 }
 
-void D3D12Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset)
+void D3D12Context::bind_index_buffer(CommandList* cmd_list,
+                                     const Buffer& buffer,
+                                     const IndexType format,
+                                     uint64_t offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();

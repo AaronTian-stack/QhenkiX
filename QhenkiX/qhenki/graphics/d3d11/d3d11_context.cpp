@@ -953,9 +953,10 @@ bool D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
 void D3D11Context::bind_index_buffer(CommandList* cmd_list,
                                      const Buffer& buffer,
                                      const IndexType format,
-                                     const unsigned offset)
+                                     uint64_t offset)
 {
     const auto buffer_d3d11 = to_internal(buffer);
+    assert(offset <= std::numeric_limits<UINT>::max());
     m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
 }
 

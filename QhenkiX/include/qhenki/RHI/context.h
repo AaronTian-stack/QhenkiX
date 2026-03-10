@@ -131,8 +131,7 @@ public:
                                      const uint64_t* sizes,
                                      const uint64_t* strides,
                                      const uint64_t* offsets) = 0;
-    virtual void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) = 0;
-    // TODO: bind compute pipeline
+    virtual void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) = 0;
 
     virtual bool create_command_pool(CommandPool* command_pool, QueueType queue) = 0;
 

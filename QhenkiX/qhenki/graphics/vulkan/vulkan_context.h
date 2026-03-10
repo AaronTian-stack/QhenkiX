@@ -115,7 +115,7 @@ public:
                              const uint64_t* strides,
                              const uint64_t* offsets) override;
 
-    void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) override;
+    void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) override;
 
     bool create_command_pool(CommandPool* command_pool, QueueType queue) override;
     bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
