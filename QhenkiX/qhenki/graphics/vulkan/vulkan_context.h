@@ -107,13 +107,13 @@ public:
     void* map_buffer(const Buffer& buffer) override;
     void unmap_buffer(const Buffer& buffer) override;
 
-    void bind_vertex_buffers(CommandList* cmd_list,
+    bool bind_vertex_buffers(CommandList* cmd_list,
                              unsigned start_slot,
                              unsigned buffer_count,
                              const Buffer* const* buffers,
-                             const unsigned* sizes,
-                             const unsigned* strides,
-                             const unsigned* offsets) override;
+                             const uint64_t* sizes,
+                             const uint64_t* strides,
+                             const uint64_t* offsets) override;
 
     void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) override;
 

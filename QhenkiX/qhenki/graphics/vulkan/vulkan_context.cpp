@@ -23,6 +23,7 @@
 #include "qhenki/utility/vulkan_util.h"
 
 constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
+constexpr uint32_t MAX_VERTEX_SLOTS = 32u;
 
 using namespace qhenki::gfx;
 
@@ -309,6 +310,11 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     if (limits.maxColorAttachments < MAX_RENDER_TARGETS)
     {
         return "Vulkan: Device does not support required number of color attachments";
+    }
+    if (limits.maxVertexInputAttributes < MAX_VERTEX_SLOTS)
+    {
+        // TODO: Relax this requirement by changing to 16?
+        return "Vulkan: Device does not support required number of vertex input attributes";
     }
 
     return "";
@@ -1389,14 +1395,29 @@ void VulkanContext::unmap_buffer(const Buffer& buffer)
     vmaUnmapMemory(m_allocator, vk_buffer->allocation);
 }
 
-void VulkanContext::bind_vertex_buffers(CommandList* cmd_list,
-                                        unsigned start_slot,
-                                        unsigned buffer_count,
+bool VulkanContext::bind_vertex_buffers(CommandList* cmd_list,
+                                        const unsigned start_slot,
+                                        const unsigned buffer_count,
                                         const Buffer* const* buffers,
-                                        const unsigned* sizes,
-                                        const unsigned* strides,
-                                        const unsigned* offsets)
+                                        const uint64_t* sizes,
+                                        const uint64_t* strides,
+                                        const uint64_t* offsets)
 {
+    if (buffer_count > MAX_VERTEX_SLOTS)
+    {
+        return false;
+    }
+    const auto vk_cmd_list = to_internal(*cmd_list);
+
+    std::array<VkBuffer, MAX_VERTEX_SLOTS> vk_buffers;
+    for (unsigned i = 0; i < buffer_count; i++)
+    {
+        const auto vk_buffer = to_internal(*buffers[i]);
+        vk_buffers[i] = vk_buffer->buffer;
+    }
+
+    vkCmdBindVertexBuffers2(*vk_cmd_list, start_slot, buffer_count, vk_buffers.data(), offsets, sizes, strides);
+    return true;
 }
 
 void VulkanContext::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset)

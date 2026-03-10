@@ -921,22 +921,33 @@ void D3D11Context::unmap_buffer(const Buffer& buffer)
     m_device_context->Unmap(buffer_d3d11->Get(), 0);
 }
 
-void D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
+bool D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
                                        const unsigned start_slot,
                                        const unsigned buffer_count,
                                        const Buffer* const* buffers,
-                                       const unsigned* sizes,
-                                       const unsigned* const strides,
-                                       const unsigned* const offsets)
+                                       const uint64_t* sizes,
+                                       const uint64_t* strides,
+                                       const uint64_t* offsets)
 {
-    assert(buffer_count <= D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
-    std::array<ID3D11Buffer*, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
+    if (buffer_count > D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT)
+    {
+        return false;
+    }
+    std::array<ID3D11Buffer*, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11;
+    std::array<UINT, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_strides{};
+    std::array<UINT, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_offsets{};
     for (unsigned int i = 0; i < buffer_count; i++)
     {
         const auto buffer = to_internal(*buffers[i]);
         buffer_d3d11[i] = buffer->Get();
+        assert(strides[i] <= std::numeric_limits<UINT>::max());
+        assert(offsets[i] <= std::numeric_limits<UINT>::max());
+        buffer_strides[i] = sizes[i];
+        buffer_offsets[i] = offsets[i];
     }
-    m_device_context->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11.data(), strides, offsets);
+    m_device_context->IASetVertexBuffers(
+        start_slot, buffer_count, buffer_d3d11.data(), buffer_strides.data(), buffer_offsets.data());
+    return true;
 }
 
 void D3D11Context::bind_index_buffer(CommandList* cmd_list,

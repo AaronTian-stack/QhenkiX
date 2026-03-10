@@ -1636,15 +1636,18 @@ void D3D12Context::unmap_buffer(const Buffer& buffer)
     }
 }
 
-void D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
+bool D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
                                        const unsigned start_slot,
                                        const unsigned buffer_count,
                                        const Buffer* const* buffers,
-                                       const unsigned* sizes,
-                                       const unsigned* const strides,
-                                       const unsigned* const offsets)
+                                       const uint64_t* sizes,
+                                       const uint64_t* strides,
+                                       const uint64_t* offsets)
 {
-    assert(buffer_count <= D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
+    if (buffer_count > D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT)
+    {
+        return false;
+    }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -1654,15 +1657,17 @@ void D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
     {
         const auto allocation = to_internal(*buffers[i]);
         const auto resource = allocation->Get()->GetResource();
-
+        assert(sizes[i] <= std::numeric_limits<UINT>::max());
+        assert(strides[i] <= std::numeric_limits<UINT>::max());
         vertex_buffer_views[i] = {
             .BufferLocation = resource->GetGPUVirtualAddress() + offsets[i],
-            .SizeInBytes = sizes[i],
-            .StrideInBytes = strides[i],
+            .SizeInBytes = static_cast<UINT>(sizes[i]),
+            .StrideInBytes = static_cast<UINT>(strides[i]),
         };
     }
 
     command_list->IASetVertexBuffers(start_slot, buffer_count, vertex_buffer_views.data());
+    return true;
 }
 
 void D3D12Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset)
