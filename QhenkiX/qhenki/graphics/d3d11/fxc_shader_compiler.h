@@ -28,8 +28,7 @@ class FXCShaderCompiler : public ShaderCompiler
 {
 public:
     static bool get_compiler_path(char* buffer, size_t length);
-    bool get_compiler_path_v(char* buffer, size_t length) override;
-    bool compile(const CompilerInput& input, CompilerOutput& output) override;
+    bool compile(const CompilerInput& input, CompilerOutput& output, bool output_spirv = false) override;
 
     friend class DXCShaderCompiler;
 };

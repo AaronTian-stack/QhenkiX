@@ -5,13 +5,16 @@
 
 #include "shared_structs.h"
 
+#ifdef __spirv__
+[[vk::binding(0)]]
+#endif
 cbuffer CameraBuffer : register(b0)
 {
     CameraData camera_data;
 };
 
 // Per draw attributes
-#ifdef VULKAN
+#ifdef __spirv__
 [[vk::push_constant]]
 #endif
 cbuffer ModelBuffer
@@ -61,7 +64,13 @@ struct Texture
     int image_index;
     int sampler_index;
 };
+#ifdef __spirv__
+[[vk::binding(1)]]
+#endif
 StructuredBuffer<Texture> textures : register(t1);
+#endif
+#ifdef __spirv__
+[[vk::binding(2)]]
 #endif
 StructuredBuffer<Material> materials : register(t2);
 #ifdef DX11
@@ -72,6 +81,9 @@ Texture2D normal_tex : register(t5);
 Texture2D occlusion_tex : register(t6);
 Texture2D emissive_tex : register(t7);
 #else
+#ifdef __spirv__
+[[vk::binding(3)]]
+#endif
 Texture2D<float4> g_textures[] : register(t3);
 #endif
 
@@ -82,6 +94,9 @@ SamplerState normal_samp : register(s2);
 SamplerState occlusion_samp : register(s3);
 SamplerState emissive_samp : register(s4);
 #else
+#ifdef __spirv__
+[[vk::binding(4)]]
+#endif
 SamplerState samps[] : register(s0, space1);
 #endif
 

@@ -1,17 +1,26 @@
 #include "shared_structs.h"
 
+#ifdef __spirv__
+[[vk::binding(0)]]
+#endif
 cbuffer CameraBuffer : register(b0)
 {
     CameraMatrices camera_buffer;
 };
 
+#ifdef __spirv__
+[[vk::binding(1)]]
+#endif
 Texture2D g_texture : register(t1);
 
-#ifdef DX12
-SamplerState samp : register(s0, space1);
+#ifdef __spirv__
+[[vk::binding(2)]]
 #endif
-#ifdef DX11
-SamplerState samp : register(s0);
+SamplerState samp
+#ifdef DX12
+: register(s0, space1);
+#else
+: register(s0);
 #endif
 
 struct PSInput
