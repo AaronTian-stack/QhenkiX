@@ -1070,15 +1070,15 @@ void RetroExampleApp::render()
     };
     auto vb_offset = [](const Mesh::AccessorBufferView& abv)
     {
-        return static_cast<unsigned>(abv.second.offset + abv.first.offset);
+        return abv.second.offset + abv.first.offset;
     };
     auto vb_length = [](const Mesh::AccessorBufferView& abv)
     {
-        return static_cast<unsigned>(abv.second.length);
+        return abv.second.length;
     };
     auto vb_stride = [&stride_from_accessor](const Mesh::AccessorBufferView& abv)
     {
-        return abv.second.stride != 0 ? static_cast<unsigned>(abv.second.stride)
+        return abv.second.stride != 0 ? abv.second.stride
                                       : stride_from_accessor(abv.first.component_type, abv.first.type);
     };
     const std::array skybox_vbs = {&m_skybox_buffer};

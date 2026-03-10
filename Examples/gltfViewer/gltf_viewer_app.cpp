@@ -692,7 +692,7 @@ void gltfViewerApp::render()
 
                             assert(buffer_view.stride <= std::numeric_limits<unsigned>::max());
                             assert(accessor.offset <= std::numeric_limits<unsigned>::max());
-                            unsigned stride = buffer_view.stride;
+                            auto stride = buffer_view.stride;
                             if (stride == 0)
                             {
                                 // Tightly packed, infer stride from size of type times number of components
@@ -725,10 +725,9 @@ void gltfViewerApp::render()
                                 stride = calc_component_size(accessor.component_type) * calc_type_count(accessor.type);
                             }
 
-                            unsigned offset = accessor.offset + buffer_view.offset;
+                            auto offset = accessor.offset + buffer_view.offset;
 
-                            // TODO: assert overflow
-                            const unsigned length = buffer_view.length;
+                            const uint64_t length = buffer_view.length;
 
                             m_context->bind_vertex_buffers(&cmd_list, slot, 1, &buffer, &length, &stride, &offset);
                         }
