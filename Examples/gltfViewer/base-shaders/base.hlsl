@@ -1,8 +1,3 @@
-#ifdef __INTELLISENSE__
-// Visual Studio detects this. Makes writing shader easier
-#define DX12
-#endif
-
 #include "shared_structs.h"
 
 #ifdef __spirv__
@@ -14,9 +9,17 @@ cbuffer CameraBuffer : register(b0)
 };
 
 // Per draw attributes
+struct ModelConstants
+{
+    float4x4 model;
+    float4x4 inverse_model;
+    int material_index;
+};
+
 #ifdef __spirv__
 [[vk::push_constant]]
-#endif
+ModelConstants model_constants;
+#else
 cbuffer ModelBuffer
 #ifdef DX11
     : register(b1)
@@ -24,10 +27,9 @@ cbuffer ModelBuffer
     : register(b0, space5)
 #endif
 {
-    float4x4 model;
-    float4x4 inverse_model;
-    int material_index;
+    ModelConstants model_constants;
 };
+#endif
 
 struct Material
 {
@@ -95,7 +97,7 @@ SamplerState occlusion_samp : register(s3);
 SamplerState emissive_samp : register(s4);
 #else
 #ifdef __spirv__
-[[vk::binding(4)]]
+[[vk::binding(0, 1)]]
 #endif
 SamplerState samps[] : register(s0, space1);
 #endif
@@ -124,14 +126,14 @@ PSInput vs_main(VSInput input)
 {
     PSInput output;
 
-    float3x3 mat_n = transpose((float3x3) inverse_model);
+    float3x3 mat_n = transpose((float3x3) model_constants.inverse_model);
 
-    float4 modelPosition = mul(float4(input.position, 1.0), model);
+    float4 model_position = mul(float4(input.position, 1.0), model_constants.model);
 
-    float4 worldPosition = mul(modelPosition, camera_data.view_proj);
+    float4 world_position = mul(model_position, camera_data.view_proj);
 
-    output.sv_position = worldPosition;
-    output.position = modelPosition.xyz;
+    output.sv_position = world_position;
+    output.position = model_position.xyz;
     output.normal = mul(input.normal, mat_n);
     output.color = input.color;
     output.uv = input.uv;
@@ -153,7 +155,7 @@ void set_values(PSInput input,
                 out float AO,
                 out float3 emissive)
 {
-    Material material = materials[material_index];
+    Material material = materials[model_constants.material_index];
     albedo = material.albedo_factor;
     normal = normalize(input.normal);
     metallic_roughness = float4(1.0, material.roughness_factor, material.metallic_factor, 1.0); // roughness G, metal B

@@ -12,7 +12,7 @@ cbuffer FrameConstantBuffer : register(b0)
 };
 
 #ifdef __spirv__
-[[vk::binding(1)]]
+[[vk::binding(1, 1)]]
 #endif
 Texture2D g_texture :
 #ifdef DX12
@@ -22,7 +22,7 @@ register(t1);
 #endif
 
 #ifdef __spirv__
-[[vk::binding(2)]]
+[[vk::binding(2, 1)]]
 #endif
 Texture2D g_texture_blur :
 #ifdef DX12
@@ -32,7 +32,7 @@ register(t2);
 #endif
 
 #ifdef __spirv__
-[[vk::binding(3)]]
+[[vk::binding(0, 2)]]
 #endif
 SamplerState samp :
 #ifdef DX12
@@ -42,7 +42,7 @@ register(s0);
 #endif
 
 #ifdef __spirv__
-[[vk::binding(4)]]
+[[vk::binding(1, 2)]]
 #endif
 SamplerState samp_linear :
 #ifdef DX12

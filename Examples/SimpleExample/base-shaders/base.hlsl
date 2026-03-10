@@ -14,7 +14,7 @@ cbuffer CameraBuffer : register(b0)
 Texture2D g_texture : register(t1);
 
 #ifdef __spirv__
-[[vk::binding(2)]]
+[[vk::binding(0, 1)]]
 #endif
 SamplerState samp
 #ifdef DX12
