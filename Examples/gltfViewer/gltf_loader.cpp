@@ -373,6 +373,7 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
             .format = DXGI_FORMAT_R8G8B8A8_UNORM, // From above assumptions
             .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
             .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+            .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
         };
         context.create_texture(model->images.back().desc, &model->images.back());
         // No custom image loading just use the default stb_image implementation

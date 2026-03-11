@@ -915,6 +915,7 @@ void gltfViewerApp::resize(const unsigned width, const unsigned height)
         .format = DXGI_FORMAT_D32_FLOAT,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
+        .usage = qhenki::gfx::TextureDesc::DEPTH_STENCIL,
         .clear_depth_value = {1.f, 0},
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));

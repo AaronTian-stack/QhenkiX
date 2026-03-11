@@ -695,15 +695,35 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     assert(texture);
     auto texture_d3d11 = mkS<D3D11Texture>();
 
-    UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
-    if (is_depth_stencil_format(desc.format))
+    UINT bind_flags = 0;
+    if (desc.usage & TextureDesc::SHADER_RESOURCE)
     {
-        bind_flags = D3D11_BIND_DEPTH_STENCIL; // Overwrite
+        bind_flags |= D3D11_BIND_SHADER_RESOURCE;
     }
-    if (desc.is_render_target)
+    if (desc.usage & TextureDesc::RENDER_TARGET)
     {
         bind_flags |= D3D11_BIND_RENDER_TARGET;
     }
+    if (desc.usage & TextureDesc::UNORDERED_ACCESS)
+    {
+        bind_flags |= D3D11_BIND_UNORDERED_ACCESS;
+    }
+    if (desc.usage & TextureDesc::DEPTH_STENCIL)
+    {
+        bind_flags |= D3D11_BIND_DEPTH_STENCIL;
+    }
+    if (desc.usage & TextureDesc::VIDEO_ENCODE)
+    {
+        // VIDEO_ENCODE Requires 11.1
+        return false;
+    }
+    if (desc.usage & TextureDesc::VIDEO_DECODE)
+    {
+        // D3D11_BIND_DECODER Requires 11.1
+        return false;
+    }
+
+    assert(bind_flags);
 
     if (desc.dimension == TextureDimension::TEXTURE_1D)
     {

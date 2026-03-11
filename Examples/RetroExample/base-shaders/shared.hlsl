@@ -16,9 +16,9 @@ cbuffer FrameConstantBuffer : register(b0)
 #endif
 Texture2D g_texture :
 #ifdef DX12
-register(t1, space1);
+    register(t1, space1);
 #else
-register(t1);
+    register(t1);
 #endif
 
 #ifdef __spirv__
@@ -26,9 +26,9 @@ register(t1);
 #endif
 Texture2D g_texture_blur :
 #ifdef DX12
-register(t2, space1);
+    register(t2, space1);
 #else
-register(t2);
+    register(t2);
 #endif
 
 #ifdef __spirv__
@@ -36,9 +36,9 @@ register(t2);
 #endif
 SamplerState samp :
 #ifdef DX12
-register(s0, space2);
+    register(s0, space2);
 #else
-register(s0);
+    register(s0);
 #endif
 
 #ifdef __spirv__
@@ -46,9 +46,9 @@ register(s0);
 #endif
 SamplerState samp_linear :
 #ifdef DX12
-register(s1, space2);
+    register(s1, space2);
 #else
-register(s1);
+    register(s1);
 #endif
 
 static const float light_intensity = 2.0;

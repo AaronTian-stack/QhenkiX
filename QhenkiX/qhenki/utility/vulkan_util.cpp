@@ -54,17 +54,18 @@ namespace qhenki::gfx
     X(ACCESS_VIDEO_ENCODE_WRITE, VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR)                                   \
     X(NO_ACCESS, VK_ACCESS_2_NONE)
 
-// GENERAL will work with everything on PC so in doubt just use that
+// GENERAL will work with everything on PC
+// Prefer sync2 ATTACHMENT/READ_ONLY where appropriate
 #define LAYOUT_MAP(X)                                                                    \
     X(UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED)                                              \
     X(COMMON, VK_IMAGE_LAYOUT_GENERAL)                                                   \
     X(PRESENT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)                                          \
-    X(LAYOUT_GENERIC_READ, VK_IMAGE_LAYOUT_GENERAL)                                      \
-    X(RENDER_TARGET, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)                           \
+    X(LAYOUT_GENERIC_READ, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR)                        \
+    X(RENDER_TARGET, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR)                             \
     X(UNORDERED_ACCESS, VK_IMAGE_LAYOUT_GENERAL)                                         \
-    X(DEPTH_STENCIL_WRITE, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)             \
-    X(DEPTH_STENCIL_READ, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)               \
-    X(SHADER_RESOURCE, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)                         \
+    X(DEPTH_STENCIL_WRITE, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR)                       \
+    X(DEPTH_STENCIL_READ, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR)                         \
+    X(SHADER_RESOURCE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR)                            \
     X(COPY_SOURCE, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)                                 \
     X(COPY_DEST, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)                                   \
     X(RESOLVE_SOURCE, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)                              \
@@ -77,15 +78,15 @@ namespace qhenki::gfx
     X(VIDEO_ENCODE_READ, VK_IMAGE_LAYOUT_VIDEO_ENCODE_SRC_KHR)                           \
     X(VIDEO_ENCODE_WRITE, VK_IMAGE_LAYOUT_VIDEO_ENCODE_DST_KHR)                          \
     X(DIRECT_QUEUE_COMMON, VK_IMAGE_LAYOUT_GENERAL)                                      \
-    X(DIRECT_QUEUE_GENERIC_READ, VK_IMAGE_LAYOUT_GENERAL)                                \
+    X(DIRECT_QUEUE_GENERIC_READ, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR)                  \
     X(DIRECT_QUEUE_UNORDERED_ACCESS, VK_IMAGE_LAYOUT_GENERAL)                            \
-    X(DIRECT_QUEUE_SHADER_RESOURCE, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)            \
+    X(DIRECT_QUEUE_SHADER_RESOURCE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR)               \
     X(DIRECT_QUEUE_COPY_SOURCE, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)                    \
     X(DIRECT_QUEUE_COPY_DEST, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)                      \
     X(COMPUTE_QUEUE_COMMON, VK_IMAGE_LAYOUT_GENERAL)                                     \
-    X(COMPUTE_QUEUE_GENERIC_READ, VK_IMAGE_LAYOUT_GENERAL)                               \
+    X(COMPUTE_QUEUE_GENERIC_READ, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR)                 \
     X(COMPUTE_QUEUE_UNORDERED_ACCESS, VK_IMAGE_LAYOUT_GENERAL)                           \
-    X(COMPUTE_QUEUE_SHADER_RESOURCE, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)           \
+    X(COMPUTE_QUEUE_SHADER_RESOURCE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR)              \
     X(COMPUTE_QUEUE_COPY_SOURCE, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)                   \
     X(COMPUTE_QUEUE_COPY_DEST, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 
@@ -317,9 +318,6 @@ VkImageLayout layout(const Layout layout)
 
     switch (layout)
     {
-    case Layout::COUNT:
-        assert(false);
-        break;
         LAYOUT_MAP(MAP_LAYOUT)
     }
 

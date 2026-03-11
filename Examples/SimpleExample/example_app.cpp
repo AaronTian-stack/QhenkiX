@@ -167,6 +167,7 @@ void ExampleApp::create()
         .format = DXGI_FORMAT_R8G8B8A8_UNORM,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+        .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
     };
     THROW_IF_FALSE(m_context->create_texture(texture_desc, &m_texture, "Checkerboard Texture"));
 

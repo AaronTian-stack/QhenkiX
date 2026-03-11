@@ -1327,14 +1327,11 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         OutputDebugStringA("Qhenki D3D12 ERROR: Tried to initialize 1D texture with height > 1\n");
         return false;
     }
-    if (desc.initial_layout == Layout::COUNT)
+    if (desc.usage == TextureDesc::NONE)
     {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Initial layout cannot be COUNT\n");
         return false;
     }
 
-    texture->internal_state = mkS<D3D12Texture>();
-    const auto texture_d3d12 = to_internal(*texture);
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Alignment = 0,
         .Width = desc.width,
@@ -1348,22 +1345,30 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
                 .Quality = 0,
             },
         .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-        .Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: Set flags for UAV
-                                           //.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
+        .Flags = D3D12_RESOURCE_FLAG_NONE,
+        //.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
     };
     D3D12_CLEAR_VALUE clear{
         .Format = desc.format,
     };
     const D3D12_CLEAR_VALUE* clear_ptr = nullptr;
-    if (is_depth_stencil_format(desc.format))
+
+    if (desc.usage & TextureDesc::DEPTH_STENCIL)
     {
-        clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-        clear.DepthStencil = {.Depth = desc.clear_depth_value.depth, .Stencil = desc.clear_depth_value.stencil};
-        // TODO: UAV flags
+        if (desc.initial_layout == Layout::DEPTH_STENCIL_WRITE)
+        {
+            clear_ptr = &clear;
+            clear.DepthStencil = {.Depth = desc.clear_depth_value.depth, .Stencil = desc.clear_depth_value.stencil};
+        }
     }
-    else if (desc.is_render_target)
+    if (desc.usage & TextureDesc::RENDER_TARGET)
     {
+        if (clear_ptr)
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Texture cannot have both depth stencil and render target usage\n");
+            return false;
+        }
         clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
@@ -1372,6 +1377,10 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         {
             clear.Color[i] = desc.clear_color_value[i];
         }
+    }
+    if (desc.usage & TextureDesc::UNORDERED_ACCESS)
+    {
+        resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
 
     switch (desc.dimension)
@@ -1387,9 +1396,12 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         break;
     }
 
-    D3D12MA::ALLOCATION_DESC allocation_desc{
+    constexpr D3D12MA::ALLOCATION_DESC allocation_desc{
         .HeapType = D3D12_HEAP_TYPE_DEFAULT,
     };
+
+    texture->internal_state = mkS<D3D12Texture>();
+    const auto texture_d3d12 = to_internal(*texture);
 
     if (FAILED(m_allocator->CreateResource3(&allocation_desc,
                                             &resource_desc,
@@ -1787,7 +1799,7 @@ void D3D12Context::clear_depth(ID3D12GraphicsCommandList7* command_list, const R
 {
     if (depth_stencil)
     {
-        assert(is_depth_stencil_format(depth_stencil->texture->desc.format));
+        assert(depth_stencil->texture->desc.usage & TextureDesc::DEPTH_STENCIL);
         if (depth_stencil->clear_type != RenderTarget::NONE)
         {
             auto clear_flags = static_cast<D3D12_CLEAR_FLAGS>(0);
@@ -1868,7 +1880,7 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     std::array<ID3D12Resource*, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> d3d12_textures;
     for (unsigned i = 0; i < rt_count; i++)
     {
-        assert(rts[i]->texture->desc.is_render_target);
+        assert(rts[i]->texture->desc.usage & TextureDesc::RENDER_TARGET);
         d3d12_textures[i] = to_internal(*rts[i]->texture)->allocation.Get()->GetResource();
     }
 

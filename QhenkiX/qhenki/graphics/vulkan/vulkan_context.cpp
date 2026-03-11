@@ -1366,13 +1366,10 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     {
         return false;
     }
-    if (desc.initial_layout == Layout::COUNT)
+    if (desc.usage == TextureDesc::NONE)
     {
         return false;
     }
-
-    texture->internal_state = mkS<VulkanTexture>();
-    const auto vulkan_texture = static_cast<VulkanTexture*>(texture->internal_state.get());
 
     VkImageType image_type = VK_IMAGE_TYPE_MAX_ENUM;
     switch (desc.dimension)
@@ -1396,76 +1393,46 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     assert(util::is_power_of_two(desc.sample_count) && desc.sample_count <= 64);
     const VkFormat vk_format = convert_format(desc.format);
 
-    // TODO: Specify this upfront since can't infer next transition state
     VkImageUsageFlags usage = 0;
-    switch (desc.initial_layout)
+    if (desc.usage & TextureDesc::COPY_SOURCE)
     {
-    case Layout::COUNT:
-        assert(false);
-        break;
-    case Layout::UNDEFINED:
-    case Layout::COMMON:
-    case Layout::LAYOUT_GENERIC_READ:
-    case Layout::DIRECT_QUEUE_COMMON:
-    case Layout::DIRECT_QUEUE_GENERIC_READ:
-    case Layout::COMPUTE_QUEUE_COMMON:
-    case Layout::COMPUTE_QUEUE_GENERIC_READ:
+        usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    }
+    if (desc.usage & TextureDesc::COPY_DEST)
+    {
+        usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+    if (desc.usage & TextureDesc::SHADER_RESOURCE)
+    {
         usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        break;
-    case Layout::PRESENT:
-    case Layout::RENDER_TARGET:
-        usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        break;
-    case Layout::UNORDERED_ACCESS:
-    case Layout::DIRECT_QUEUE_UNORDERED_ACCESS:
-    case Layout::COMPUTE_QUEUE_UNORDERED_ACCESS:
+    }
+    if (desc.usage & TextureDesc::UNORDERED_ACCESS)
+    {
         usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-        break;
-    case Layout::DEPTH_STENCIL_WRITE:
-    case Layout::DEPTH_STENCIL_READ:
-        usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        break;
-    case Layout::SHADER_RESOURCE:
-    case Layout::DIRECT_QUEUE_SHADER_RESOURCE:
-    case Layout::COMPUTE_QUEUE_SHADER_RESOURCE:
-        usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        break;
-    case Layout::COPY_SOURCE:
-    case Layout::DIRECT_QUEUE_COPY_SOURCE:
-    case Layout::COMPUTE_QUEUE_COPY_SOURCE:
-        usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        break;
-    case Layout::COPY_DEST:
-    case Layout::DIRECT_QUEUE_COPY_DEST:
-    case Layout::COMPUTE_QUEUE_COPY_DEST:
-        usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        break;
-    case Layout::RESOLVE_SOURCE:
-        usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        break;
-    case Layout::RESOLVE_DEST:
-        usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        break;
-    case Layout::SHADING_RATE_SOURCE:
-        usage |= VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
-        break;
-    case Layout::VIDEO_DECODE_READ:
-    case Layout::VIDEO_DECODE_WRITE:
-    case Layout::VIDEO_PROCESS_READ:
-    case Layout::VIDEO_PROCESS_WRITE:
-    case Layout::VIDEO_ENCODE_READ:
-    case Layout::VIDEO_ENCODE_WRITE:
-        usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        break;
     }
-
-    if (is_depth_stencil_format(vk_format))
-    {
-        usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    }
-    else if (desc.is_render_target)
+    if (desc.usage & TextureDesc::RENDER_TARGET)
     {
         usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    }
+    if (desc.usage & TextureDesc::DEPTH_STENCIL)
+    {
+        usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+    if (desc.usage & TextureDesc::INPUT_ATTACHMENT)
+    {
+        usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+    }
+    if (desc.usage & TextureDesc::SHADING_RATE)
+    {
+        usage |= VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+    }
+    if (desc.usage & TextureDesc::VIDEO_DECODE)
+    {
+        usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+    }
+    if (desc.usage & TextureDesc::VIDEO_ENCODE)
+    {
+        usage |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
     }
 
     assert(usage);
@@ -1515,6 +1482,9 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     };
 
     constexpr VmaAllocationCreateInfo alloc_info{VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+
+    texture->internal_state = mkS<VulkanTexture>();
+    const auto vulkan_texture = static_cast<VulkanTexture*>(texture->internal_state.get());
 
     if (VK_FAILED(vmaCreateImage(
             m_allocator, &texture_info, &alloc_info, &vulkan_texture->image, &vulkan_texture->allocation, nullptr)))

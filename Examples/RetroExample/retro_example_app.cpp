@@ -348,6 +348,7 @@ void RetroExampleApp::create()
         .format = meta.format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+        .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
     };
     THROW_IF_FALSE(m_context->create_texture(skybox_tex_desc, &m_skybox_texture, "Skybox Texture"));
 
@@ -1393,6 +1394,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .format = m_depth_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
+        .usage = qhenki::gfx::TextureDesc::DEPTH_STENCIL,
         .clear_depth_value = {.depth = 1.f, .stencil = 0},
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
@@ -1403,7 +1405,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
-        .is_render_target = true,
+        .usage = qhenki::gfx::TextureDesc::RENDER_TARGET | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
         .clear_color_value = {1.f, 1.f, 1.f, 0.f},
     };
     THROW_IF_FALSE(m_context->create_texture(offscreen_rt_desc, &m_offscreen_texture.tex, "Offscreen RT"));
@@ -1417,7 +1419,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
-        .is_render_target = true,
+        .usage = qhenki::gfx::TextureDesc::RENDER_TARGET | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
         .clear_color_value = {0.f, 0.f, 0.f, 0.f},
     };
     for (unsigned i = 0; i < m_bloom_textures.size(); i++)

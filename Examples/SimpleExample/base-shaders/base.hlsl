@@ -18,9 +18,9 @@ Texture2D g_texture : register(t1);
 #endif
 SamplerState samp
 #ifdef DX12
-: register(s0, space1);
+    : register(s0, space1);
 #else
-: register(s0);
+    : register(s0);
 #endif
 
 struct PSInput
