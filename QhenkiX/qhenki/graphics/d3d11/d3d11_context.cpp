@@ -675,19 +675,12 @@ void D3D11Context::copy_buffer(CommandList* cmd_list,
     const auto src_d3d11 = to_internal(src);
     const auto dst_d3d11 = to_internal(*dst);
 
-    // Assume 1D for now
+    // 1D buffer
     const auto box = CD3D11_BOX(static_cast<long>(src_offset), 0, 0, static_cast<long>(src_offset + bytes), 1, 1);
 
-    // Copy entire buffer for now
-    // TODO: per subresource
-    m_device_context->CopySubresourceRegion(dst_d3d11->Get(),
-                                            0, // Dst subresource
-                                            static_cast<long>(dst_offset),
-                                            0,
-                                            0,
-                                            src_d3d11->Get(),
-                                            0, // Src subresource
-                                            &box);
+    // Buffers don't have subresources
+    m_device_context->CopySubresourceRegion(
+        dst_d3d11->Get(), 0, static_cast<long>(dst_offset), 0, 0, src_d3d11->Get(), 0, &box);
 }
 
 bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
