@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <qhenki/utility/math_util.h>
 #include "subresource.h"
 
@@ -97,9 +99,57 @@ enum class Layout
     COMPUTE_QUEUE_SHADER_RESOURCE,
     COMPUTE_QUEUE_COPY_SOURCE,
     COMPUTE_QUEUE_COPY_DEST,
+    COUNT,
 };
 
-struct ImageBarrier // VK_KHR_synchronization2
+struct LayoutSet
+{
+    uint64_t mask = 0;
+
+    constexpr bool contains(const Layout layout) const
+    {
+        return (mask & bit(layout)) != 0;
+    }
+
+    constexpr LayoutSet& operator|=(const Layout layout)
+    {
+        mask |= bit(layout);
+        return *this;
+    }
+    constexpr LayoutSet& operator|=(const LayoutSet rhs)
+    {
+        mask |= rhs.mask;
+        return *this;
+    }
+
+    friend constexpr LayoutSet operator|(LayoutSet lhs, const LayoutSet rhs)
+    {
+        lhs |= rhs;
+        return lhs;
+    }
+    friend constexpr LayoutSet operator|(LayoutSet lhs, const Layout rhs)
+    {
+        lhs |= rhs;
+        return lhs;
+    }
+    friend constexpr LayoutSet operator|(const Layout lhs, const Layout rhs)
+    {
+        LayoutSet s{};
+        s |= lhs;
+        s |= rhs;
+        return s;
+    }
+
+private:
+    static constexpr uint64_t bit(Layout layout)
+    {
+        return 1ull << static_cast<uint32_t>(layout);
+    }
+};
+
+static_assert(static_cast<uint32_t>(Layout::COUNT) <= 64);
+
+struct ImageBarrier
 {
     void* resource = nullptr;
     bool discard = false;

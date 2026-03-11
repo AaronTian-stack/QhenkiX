@@ -1327,9 +1327,14 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         OutputDebugStringA("Qhenki D3D12 ERROR: Tried to initialize 1D texture with height > 1\n");
         return false;
     }
+    if (desc.initial_layout == Layout::COUNT)
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Initial layout cannot be COUNT\n");
+        return false;
+    }
 
     texture->internal_state = mkS<D3D12Texture>();
-    auto texture_d3d12 = to_internal(*texture);
+    const auto texture_d3d12 = to_internal(*texture);
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Alignment = 0,
         .Width = desc.width,

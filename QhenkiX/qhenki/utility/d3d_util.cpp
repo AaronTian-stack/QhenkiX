@@ -245,15 +245,17 @@ D3D12_BARRIER_LAYOUT layout(const Layout layout)
 {
 #define MAP_LAYOUT(our, d3d) \
     case Layout::our:        \
-        state = (d3d);       \
-        break;
+        return d3d;
 
-    D3D12_BARRIER_LAYOUT state = {};
+    D3D12_BARRIER_LAYOUT state;
     switch (layout)
     {
+    case Layout::COUNT:
+        assert(false);
+        break;
         LAYOUT_MAP(MAP_LAYOUT)
     }
-    return state;
+    return D3D12_BARRIER_LAYOUT_UNDEFINED;
 
 #undef MAP_LAYOUT
 }

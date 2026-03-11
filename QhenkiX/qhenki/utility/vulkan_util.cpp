@@ -309,14 +309,17 @@ VkAccessFlags2 access_flags(const AccessFlags access)
 #undef MAP_ACCESS
 }
 
-VkImageLayout layout(const Layout layout_val)
+VkImageLayout layout(const Layout layout)
 {
 #define MAP_LAYOUT(our, vk) \
     case Layout::our:       \
         return vk;
 
-    switch (layout_val)
+    switch (layout)
     {
+    case Layout::COUNT:
+        assert(false);
+        break;
         LAYOUT_MAP(MAP_LAYOUT)
     }
 

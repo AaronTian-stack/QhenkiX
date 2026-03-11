@@ -9,6 +9,8 @@ struct VulkanTexture
     VkImage image;
     VmaAllocation allocation;
     VmaAllocator allocator;
+    bool has_transitioned = false;
+    VkImageLayout initial_layout;
     ~VulkanTexture()
     {
         vmaDestroyImage(allocator, image, allocation);

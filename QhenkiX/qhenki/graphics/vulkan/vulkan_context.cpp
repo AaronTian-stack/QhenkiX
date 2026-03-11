@@ -174,11 +174,13 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     volkLoadInstanceOnly(m_instance.instance);
 
     // Since this is Vulkan 1.4 most of the stuff we need is core
-    std::array<const char*, 4> device_extensions{
+    std::array<const char*, 6> device_extensions{
         VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
         VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
         VK_KHR_MAINTENANCE_9_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
+        VK_GOOGLE_HLSL_FUNCTIONALITY_1_EXTENSION_NAME,
+        VK_GOOGLE_USER_TYPE_EXTENSION_NAME,
     };
 
     vkb::PhysicalDeviceSelector selector{m_instance};
@@ -209,8 +211,32 @@ std::string VulkanContext::create(const bool enable_debug_layer)
 
     VkPhysicalDeviceVulkan12Features features12{
         .drawIndirectCount = VK_TRUE,
+        .shaderBufferInt64Atomics = VK_TRUE,
+        .shaderSharedInt64Atomics = VK_TRUE,
         .descriptorIndexing = VK_TRUE,
+        .shaderInputAttachmentArrayDynamicIndexing = VK_TRUE,
+        .shaderUniformTexelBufferArrayDynamicIndexing = VK_TRUE,
+        .shaderStorageTexelBufferArrayDynamicIndexing = VK_TRUE,
+        .shaderUniformBufferArrayNonUniformIndexing = VK_TRUE,
+        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+        .shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
+        .shaderStorageImageArrayNonUniformIndexing = VK_TRUE,
+        .shaderInputAttachmentArrayNonUniformIndexing = VK_TRUE,
+        .shaderUniformTexelBufferArrayNonUniformIndexing = VK_TRUE,
+        .shaderStorageTexelBufferArrayNonUniformIndexing = VK_TRUE,
+        .descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+        .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+        .descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
+        .descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
+        .descriptorBindingUniformTexelBufferUpdateAfterBind = VK_TRUE,
+        .descriptorBindingStorageTexelBufferUpdateAfterBind = VK_TRUE,
+        .descriptorBindingUpdateUnusedWhilePending = VK_TRUE,
+        .descriptorBindingPartiallyBound = VK_TRUE,
+        .descriptorBindingVariableDescriptorCount = VK_TRUE,
+        .runtimeDescriptorArray = VK_TRUE,
+        .scalarBlockLayout = VK_TRUE,
         .timelineSemaphore = VK_TRUE,
+        .bufferDeviceAddress = VK_TRUE,
     };
 
     VkPhysicalDeviceVulkan13Features features13{
@@ -499,7 +525,10 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     thread_local memory::Arena arena(util::MEGABYTE);
     arena.reset();
 
-    const auto input_bindings = arena.alloc_array<VkVertexInputAttributeDescription>(resources.stage_inputs.size());
+    const auto input_attributes = arena.alloc_array<VkVertexInputAttributeDescription>(resources.stage_inputs.size());
+
+    const uint32_t binding_count = desc.increment_slot ? static_cast<uint32_t>(resources.stage_inputs.size()) : 1u;
+    const auto binding_descs = arena.alloc_array<VkVertexInputBindingDescription>(binding_count);
 
     uint32_t offset = 0;
     for (uint32_t i = 0; i < resources.stage_inputs.size(); i++)
@@ -511,13 +540,39 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         {
             return false;
         }
-        input_bindings[i] = {
+
+        const uint32_t attrib_size = vertex_attribute_size_from_spirv_type(type);
+        const uint32_t binding = desc.increment_slot ? i : 0u;
+        const uint32_t attrib_offset = desc.increment_slot ? 0u : offset;
+
+        input_attributes[i] = {
             .location = vs_reflect.get_decoration(input.id, spv::DecorationLocation),
-            .binding = desc.increment_slot ? i : 0u,
+            .binding = binding,
             .format = format,
-            .offset = offset,
+            .offset = attrib_offset,
         };
-        offset += vertex_attribute_size_from_spirv_type(type);
+
+        if (desc.increment_slot)
+        {
+            binding_descs[i] = {
+                .binding = binding,
+                .stride = attrib_size,
+                .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+            };
+        }
+        else
+        {
+            offset += attrib_size;
+        }
+    }
+
+    if (!desc.increment_slot)
+    {
+        binding_descs[0] = {
+            .binding = 0,
+            .stride = offset,
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        };
     }
 
     const auto ps_vk_pixel_shader = to_internal(pixel_shader);
@@ -540,8 +595,10 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
 
     VkPipelineVertexInputStateCreateInfo vertex_input_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = binding_count,
+        .pVertexBindingDescriptions = binding_descs,
         .vertexAttributeDescriptionCount = static_cast<uint32_t>(resources.stage_inputs.size()),
-        .pVertexAttributeDescriptions = input_bindings,
+        .pVertexAttributeDescriptions = input_attributes,
     };
 
     // We require multi-viewport device feature
@@ -687,7 +744,8 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         }
     };
 
-    VkPipelineDepthStencilStateCreateInfo depth_stencil_info{};
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_info{
+        VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
     const bool has_depth_stencil_desc = desc.depth_stencil_state.has_value();
     VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
     if (desc.dsv_format != DXGI_FORMAT_UNKNOWN)
@@ -716,7 +774,6 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         };
 
         depth_stencil_info = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             .depthTestEnable = ds.depth_enable ? VK_TRUE : VK_FALSE,
             .depthWriteEnable = ds.depth_write_mask == D3D12_DEPTH_WRITE_MASK_ZERO ? VK_FALSE : VK_TRUE,
             .depthCompareOp = map_compare_func(ds.depth_func),
@@ -859,8 +916,14 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         color_formats[i] = convert_format(desc.rtv_formats[i]);
     }
 
+    VkPipelineCreateFlags2CreateInfo flags{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO,
+        .flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT,
+    };
+
     VkPipelineRenderingCreateInfo rendering_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+        .pNext = &flags,
         .colorAttachmentCount = desc.num_render_targets,
         .pColorAttachmentFormats = desc.num_render_targets ? color_formats.data() : nullptr,
         .depthAttachmentFormat = has_depth_attachment ? depth_stencil_format : VK_FORMAT_UNDEFINED,
@@ -879,7 +942,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .pViewportState = &viewport_state_info,
         .pRasterizationState = &rasterization_info,
         .pMultisampleState = &multisample_info,
-        .pDepthStencilState = has_depth_attachment ? &depth_stencil_info : nullptr,
+        .pDepthStencilState = &depth_stencil_info,
         .pColorBlendState = &color_blend_info,
         .pDynamicState = &dynamic_state_info,
     };
@@ -1303,6 +1366,10 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     {
         return false;
     }
+    if (desc.initial_layout == Layout::COUNT)
+    {
+        return false;
+    }
 
     texture->internal_state = mkS<VulkanTexture>();
     const auto vulkan_texture = static_cast<VulkanTexture*>(texture->internal_state.get());
@@ -1327,27 +1394,127 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     const auto is_3D = desc.dimension == TextureDimension::TEXTURE_3D;
 
     assert(util::is_power_of_two(desc.sample_count) && desc.sample_count <= 64);
+    const VkFormat vk_format = convert_format(desc.format);
+
+    // TODO: Specify this upfront since can't infer next transition state
+    VkImageUsageFlags usage = 0;
+    switch (desc.initial_layout)
+    {
+    case Layout::COUNT:
+        assert(false);
+        break;
+    case Layout::UNDEFINED:
+    case Layout::COMMON:
+    case Layout::LAYOUT_GENERIC_READ:
+    case Layout::DIRECT_QUEUE_COMMON:
+    case Layout::DIRECT_QUEUE_GENERIC_READ:
+    case Layout::COMPUTE_QUEUE_COMMON:
+    case Layout::COMPUTE_QUEUE_GENERIC_READ:
+        usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        break;
+    case Layout::PRESENT:
+    case Layout::RENDER_TARGET:
+        usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        break;
+    case Layout::UNORDERED_ACCESS:
+    case Layout::DIRECT_QUEUE_UNORDERED_ACCESS:
+    case Layout::COMPUTE_QUEUE_UNORDERED_ACCESS:
+        usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+        break;
+    case Layout::DEPTH_STENCIL_WRITE:
+    case Layout::DEPTH_STENCIL_READ:
+        usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        break;
+    case Layout::SHADER_RESOURCE:
+    case Layout::DIRECT_QUEUE_SHADER_RESOURCE:
+    case Layout::COMPUTE_QUEUE_SHADER_RESOURCE:
+        usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        break;
+    case Layout::COPY_SOURCE:
+    case Layout::DIRECT_QUEUE_COPY_SOURCE:
+    case Layout::COMPUTE_QUEUE_COPY_SOURCE:
+        usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        break;
+    case Layout::COPY_DEST:
+    case Layout::DIRECT_QUEUE_COPY_DEST:
+    case Layout::COMPUTE_QUEUE_COPY_DEST:
+        usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        break;
+    case Layout::RESOLVE_SOURCE:
+        usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        break;
+    case Layout::RESOLVE_DEST:
+        usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        break;
+    case Layout::SHADING_RATE_SOURCE:
+        usage |= VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+        break;
+    case Layout::VIDEO_DECODE_READ:
+    case Layout::VIDEO_DECODE_WRITE:
+    case Layout::VIDEO_PROCESS_READ:
+    case Layout::VIDEO_PROCESS_WRITE:
+    case Layout::VIDEO_ENCODE_READ:
+    case Layout::VIDEO_ENCODE_WRITE:
+        usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        break;
+    }
+
+    if (is_depth_stencil_format(vk_format))
+    {
+        usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+    else if (desc.is_render_target)
+    {
+        usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    }
+
+    assert(usage);
+
+    const std::array queue_families = {
+        m_graphics_queue.family_index,
+        m_compute_queue.family_index,
+        m_transfer_queue.family_index,
+    };
+
+    // Deduplicate queue indices
+    std::array<uint32_t, 3> unique_families{};
+    uint32_t unique_count = 0;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
+    {
+        const uint32_t idx = queue_families[i];
+        bool seen = false;
+        for (uint32_t j = 0; j < unique_count; j++)
+        {
+            if (unique_families[j] == idx)
+            {
+                seen = true;
+                break;
+            }
+        }
+        if (!seen)
+        {
+            unique_families[unique_count++] = idx;
+        }
+    }
+
     const VkImageCreateInfo texture_info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = image_type,
-        .format = convert_format(desc.format),
+        .format = vk_format,
         .extent = {static_cast<uint32_t>(desc.width), desc.height, is_3D ? desc.depth_or_array_size : 1u},
         .mipLevels = desc.mip_levels,
         .arrayLayers = is_3D ? 1u : desc.depth_or_array_size,
         .samples = static_cast<VkSampleCountFlagBits>(desc.sample_count),
         .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .sharingMode =
-            VK_SHARING_MODE_CONCURRENT, // Concurrent sharing is fine on PC and removes need to transfer ownership
-        .initialLayout = layout(desc.initial_layout),
+        .usage = usage,
+        // Concurrent sharing is fine on PC and removes need to transfer ownership
+        .sharingMode = unique_count > 1 ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = unique_count,
+        .pQueueFamilyIndices = unique_families.data(),
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    if (VK_FAILED(vkCreateImage(m_device, &texture_info, nullptr, &vulkan_texture->image)))
-    {
-        texture->internal_state.reset();
-        return false;
-    }
-
-    const VmaAllocationCreateInfo alloc_info{VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+    constexpr VmaAllocationCreateInfo alloc_info{VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
 
     if (VK_FAILED(vmaCreateImage(
             m_allocator, &texture_info, &alloc_info, &vulkan_texture->image, &vulkan_texture->allocation, nullptr)))
@@ -1356,12 +1523,16 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         return false;
     }
 
+    vulkan_texture->allocator = m_allocator;
+    // TODO: Lazily transition this when touched in command list
+    vulkan_texture->initial_layout = layout(desc.initial_layout);
     texture->desc = desc;
 
     set_debug_name(m_device.device,
                    VK_OBJECT_TYPE_IMAGE,
                    reinterpret_cast<uint64_t>(vulkan_texture->image),
                    debug_name);
+
 
     return true;
 }
