@@ -37,6 +37,7 @@ struct TextureDesc
     DXGI_FORMAT format; // TODO: replace type
     uint16_t sample_count = 1;
     TextureDimension dimension;
+    bool is_cube = false;
     Layout initial_layout = Layout::COMMON;
     Usage usage = NONE;
     union

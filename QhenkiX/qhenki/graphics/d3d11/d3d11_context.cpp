@@ -750,6 +750,15 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     }
     else if (desc.dimension == TextureDimension::TEXTURE_2D)
     {
+        UINT misc_flags = 0;
+        if (desc.is_cube)
+        {
+            // Cubemaps are 2D arrays with 6 faces per cube
+            assert(desc.width == desc.height);
+            assert(desc.depth_or_array_size % 6 == 0);
+            misc_flags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
+        }
+
         const D3D11_TEXTURE2D_DESC texture_desc{
             .Width = static_cast<UINT>(desc.width),
             .Height = static_cast<UINT>(desc.height),
@@ -760,7 +769,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
             .CPUAccessFlags = 0,
-            .MiscFlags = 0, // TODO: cubemaps?
+            .MiscFlags = misc_flags,
         };
 
         texture_d3d11->texture.emplace<ComPtr<ID3D11Texture2D>>();

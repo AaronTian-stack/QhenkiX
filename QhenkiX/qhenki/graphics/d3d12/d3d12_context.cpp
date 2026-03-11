@@ -1331,6 +1331,15 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
     {
         return false;
     }
+    if (desc.is_cube)
+    {
+        // Cubemaps must be 2D textures with square faces and array size divisible by 6
+        if (desc.dimension != TextureDimension::TEXTURE_2D || desc.width != desc.height ||
+            (desc.depth_or_array_size % 6) != 0)
+        {
+            return false;
+        }
+    }
 
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Alignment = 0,

@@ -1464,7 +1464,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         }
     }
 
-    const VkImageCreateInfo texture_info{
+    VkImageCreateInfo texture_info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = image_type,
         .format = vk_format,
@@ -1480,6 +1480,15 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         .pQueueFamilyIndices = unique_families.data(),
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
+
+    if (desc.is_cube)
+    {
+        // Cubemaps are 2D arrays with 6 faces per cube
+        assert(!is_3D);
+        assert(desc.width == desc.height);
+        assert(desc.depth_or_array_size % 6 == 0);
+        texture_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    }
 
     constexpr VmaAllocationCreateInfo alloc_info{VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
 
