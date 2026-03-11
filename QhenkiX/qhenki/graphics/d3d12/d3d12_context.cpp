@@ -1821,6 +1821,8 @@ ComPtr<ID3D12CommandQueue>& D3D12Context::get_command_queue(const QueueType queu
     case COPY:
         return m_copy_queue;
     }
+    assert(false);
+    return m_graphics_queue;
 }
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
