@@ -1,5 +1,8 @@
 #pragma once
 
+class VmaVirtualAllocation_T;
+typedef VmaVirtualAllocation_T* VmaVirtualAllocation;
+
 #include <vk_mem_alloc.h>
 
 #include <limits>
