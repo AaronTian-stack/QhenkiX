@@ -13,6 +13,11 @@ License: Public Domain
 
 HRESULT RenderTargetHelper::Init(ID3D12Device* pDevice)
 {
+    if (m_pDevice)
+    {
+        return S_OK;
+    }
+
     m_pDevice = pDevice;
     m_RTVIncrementSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
