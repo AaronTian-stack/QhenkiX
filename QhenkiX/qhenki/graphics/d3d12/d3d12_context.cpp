@@ -290,11 +290,6 @@ std::string D3D12Context::create(const bool enable_debug_layer)
         return "D3D12: Failed to create fence";
     }
 
-    if (FAILED(m_render_target_helper.Init(m_device.Get())))
-    {
-        return "D3D12: Failed to initialize RenderTargetHelper";
-    }
-
     return "";
 }
 
@@ -1803,8 +1798,33 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
+ComPtr<ID3D12CommandQueue>& D3D12Context::get_command_queue(const QueueType queue)
+{
+    switch (queue)
+    {
+    case GRAPHICS:
+        return m_graphics_queue;
+    case COMPUTE:
+        return m_compute_queue;
+    case COPY:
+        return m_copy_queue;
+    }
+    assert(false);
+    return m_graphics_queue;
+}
 
-void D3D12Context::clear_depth(ID3D12GraphicsCommandList7* command_list, const RenderTarget* const depth_stencil)
+namespace
+{
+RenderTargetHelper& get_render_target_helper(ID3D12Device* device, HRESULT* success)
+{
+    thread_local RenderTargetHelper helper;
+    *success = helper.Init(device);
+    return helper;
+}
+
+void clear_depth(ID3D12GraphicsCommandList7* command_list,
+                 const RenderTarget* const depth_stencil,
+                 RenderTargetHelper* const render_target_helper)
 {
     if (depth_stencil)
     {
@@ -1825,26 +1845,12 @@ void D3D12Context::clear_depth(ID3D12GraphicsCommandList7* command_list, const R
 
             const auto dsv_resource = to_internal(*depth_stencil->texture)->allocation.Get()->GetResource();
 
-            m_render_target_helper.ClearDepthStencilView(
+            render_target_helper->ClearDepthStencilView(
                 command_list, dsv_resource, nullptr, clear_flags, clear_depth_value, clear_stencil_value, 0, nullptr);
         }
     }
 }
-
-ComPtr<ID3D12CommandQueue>& D3D12Context::get_command_queue(const QueueType queue)
-{
-    switch (queue)
-    {
-    case GRAPHICS:
-        return m_graphics_queue;
-    case COMPUTE:
-        return m_compute_queue;
-    case COPY:
-        return m_copy_queue;
-    }
-    assert(false);
-    return m_graphics_queue;
-}
+} // namespace
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      const float* clear_color_values,
@@ -1854,19 +1860,27 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
 
+    HRESULT success;
+    auto& render_target_helper = get_render_target_helper(m_device.Get(), &success);
+    if (FAILED(success))
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to initialize render target helper\n");
+        return false;
+    }
+
     ID3D12Resource* dsv = nullptr;
     if (depth_stencil)
     {
         dsv = to_internal(*depth_stencil->texture)->allocation.Get()->GetResource();
     }
-    clear_depth(command_list, depth_stencil);
+    clear_depth(command_list, depth_stencil, &render_target_helper);
 
-    m_render_target_helper.OMSetRenderTargets(
+    render_target_helper.OMSetRenderTargets(
         command_list, 1, m_swapchain_buffers[frame_index].GetAddressOf(), nullptr, dsv, nullptr);
 
     if (clear_color_values)
     {
-        m_render_target_helper.ClearRenderTargetView(
+        render_target_helper.ClearRenderTargetView(
             command_list, m_swapchain_buffers[frame_index].Get(), nullptr, clear_color_values, 0, nullptr);
     }
 
@@ -1898,22 +1912,31 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     {
         dsv = to_internal(*depth_stencil->texture)->allocation.Get()->GetResource();
     }
-    m_render_target_helper.OMSetRenderTargets(command_list, rt_count, d3d12_textures.data(), nullptr, dsv, nullptr);
+
+    HRESULT success;
+    auto& render_target_helper = get_render_target_helper(m_device.Get(), &success);
+    if (FAILED(success))
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to initialize render target helper\n");
+        return false;
+    }
+
+    render_target_helper.OMSetRenderTargets(command_list, rt_count, d3d12_textures.data(), nullptr, dsv, nullptr);
 
     for (unsigned i = 0; i < rt_count; i++)
     {
         if (rts[i]->clear_type == RenderTarget::COLOR)
         {
             const auto d3d12_tex = to_internal(*rts[i]->texture);
-            m_render_target_helper.ClearRenderTargetView(command_list,
-                                                         d3d12_tex->allocation.Get()->GetResource(),
-                                                         nullptr,
-                                                         rts[i]->clear_params.clear_color_value.data(),
-                                                         0,
-                                                         nullptr);
+            render_target_helper.ClearRenderTargetView(command_list,
+                                                       d3d12_tex->allocation.Get()->GetResource(),
+                                                       nullptr,
+                                                       rts[i]->clear_params.clear_color_value.data(),
+                                                       0,
+                                                       nullptr);
         }
     }
-    clear_depth(command_list, depth_stencil);
+    clear_depth(command_list, depth_stencil, &render_target_helper);
 
     return true;
 }

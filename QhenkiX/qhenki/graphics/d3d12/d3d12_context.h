@@ -49,8 +49,6 @@ class D3D12Context : public Context
     D3D12DescriptorHeap m_imgui_heap{};              // ImGUI only
     std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
 
-    RenderTargetHelper m_render_target_helper{};
-
     ComPtr<ID3D12CommandQueue> m_graphics_queue;
     ComPtr<ID3D12CommandQueue> m_compute_queue;
     ComPtr<ID3D12CommandQueue> m_copy_queue;
@@ -211,7 +209,6 @@ private:
     D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                 const D3D12_SHADER_DESC& shader_desc,
                                                 bool increment_slot) const;
-    void clear_depth(ID3D12GraphicsCommandList7* command_list, const RenderTarget* depth_stencil);
     ComPtr<ID3D12CommandQueue>& get_command_queue(QueueType queue);
 };
 } // namespace qhenki::gfx
