@@ -23,7 +23,6 @@ bool D3D12DescriptorHeap::create(ID3D12Device* device, const D3D12_DESCRIPTOR_HE
 
 bool D3D12DescriptorHeap::allocate(size_t* alloc_offset)
 {
-    std::scoped_lock lock(m_mutex);
     // Check free list
     if (!m_free_list.empty())
     {
@@ -49,7 +48,6 @@ void D3D12DescriptorHeap::deallocate(const size_t alloc_offset)
         OutputDebugStringA("Qhenki D3D12 ERROR: Attempted to deallocate a descriptor that was never allocated\n");
         return;
     }
-    std::scoped_lock lock(m_mutex);
     m_free_list.push_back(alloc_offset);
 }
 
