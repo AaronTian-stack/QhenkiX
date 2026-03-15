@@ -24,6 +24,7 @@
 
 constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
 constexpr uint32_t MAX_VERTEX_SLOTS = 32u;
+constexpr uint32_t MAX_VIEWPORTS_SCISSORS = 16u;
 
 using namespace qhenki::gfx;
 
@@ -342,6 +343,10 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         // TODO: Relax this requirement by changing to 16?
         return "Vulkan: Device does not support required number of vertex input attributes";
     }
+    if (limits.maxViewports < MAX_VIEWPORTS_SCISSORS)
+    {
+        return "Vulkan: Device does not support required number of viewports";
+    }
 
     return "";
 }
@@ -604,8 +609,8 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     // We require multi-viewport device feature
     VkPipelineViewportStateCreateInfo viewport_state_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = m_capabilities.properties.properties.limits.maxViewports,
-        .scissorCount = m_capabilities.properties.properties.limits.maxViewports,
+        .viewportCount = MAX_VIEWPORTS_SCISSORS,
+        .scissorCount = MAX_VIEWPORTS_SCISSORS,
     };
 
     std::array dynamic_states = {
@@ -1866,25 +1871,56 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     return true;
 }
 
-void VulkanContext::set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport)
+void VulkanContext::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
 {
+    // D3D12_VIEWPORT == VkViewport
+    std::array<VkViewport, MAX_VIEWPORTS_SCISSORS> vk_viewports;
+    for (unsigned i = 0; i < count; i++)
+    {
+        vk_viewports[i] = {
+            .x = viewport[i].TopLeftX,
+            .y = viewport[i].TopLeftY,
+            .width = viewport[i].Width,
+            .height = viewport[i].Height,
+            .minDepth = viewport[i].MinDepth,
+            .maxDepth = viewport[i].MaxDepth,
+        };
+    }
+    const auto vk_cmd_list = to_internal(*list);
+    vkCmdSetViewport(*vk_cmd_list, 0, count, vk_viewports.data());
 }
 
-void VulkanContext::set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect)
+void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
 {
+    std::array<VkRect2D, MAX_VIEWPORTS_SCISSORS> vk_scissors;
+    for (unsigned i = 0; i < count; i++)
+    {
+        vk_scissors[i] = {
+            .offset = {scissor_rect[i].left, scissor_rect[i].top},
+            .extent = {static_cast<uint32_t>(scissor_rect[i].right - scissor_rect[i].left),
+                       static_cast<uint32_t>(scissor_rect[i].bottom - scissor_rect[i].top)},
+        };
+    }
+    const auto vk_cmd_list = to_internal(*list);
+    vkCmdSetScissor(*vk_cmd_list, 0, count, vk_scissors.data());
 }
 
-void VulkanContext::draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset)
+void VulkanContext::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    vkCmdDraw(*vk_cmd_list, vertex_count, 1, start_vertex_offset, 0);
 }
 
 void VulkanContext::draw_indexed(CommandList* cmd_list,
-                                 uint32_t index_count,
-                                 uint32_t instance_count,
-                                 uint32_t start_index_offset,
-                                 int32_t base_vertex_offset,
-                                 uint32_t instance_offset)
+                                 const uint32_t index_count,
+                                 const uint32_t instance_count,
+                                 const uint32_t start_index_offset,
+                                 const int32_t base_vertex_offset,
+                                 const uint32_t instance_offset)
 {
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    vkCmdDrawIndexed(
+        *vk_cmd_list, index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
 void VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
