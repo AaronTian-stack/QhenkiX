@@ -1280,7 +1280,6 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
     {
         buffer_info.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
-    // BufferUsage::SHADER doesn't have any meaning here
     if (desc.usage & BufferUsage::UAV)
     {
         buffer_info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;

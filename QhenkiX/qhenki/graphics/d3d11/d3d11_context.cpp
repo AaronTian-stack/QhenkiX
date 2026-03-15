@@ -567,19 +567,20 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         buffer_info.BindFlags |= D3D11_BIND_CONSTANT_BUFFER;
     }
-    if (desc.usage & BufferUsage::SHADER)
-    {
-        buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
-        buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-    }
     if (desc.usage & BufferUsage::UAV)
     {
         buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     }
     if (desc.usage & BufferUsage::INDIRECT)
     {
-        buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
+        buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: Check this
     }
+    if (buffer_info.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+    {
+        buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+        buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED | D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+    }
+
     if (desc.visibility & CPU_SEQUENTIAL)
     {
         buffer_info.Usage = D3D11_USAGE_DYNAMIC;
