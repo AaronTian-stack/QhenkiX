@@ -1679,6 +1679,119 @@ bool VulkanContext::reset_command_pool(CommandPool* command_pool)
     return VK_SUCCEEDED(vk_pool->reset());
 }
 
+struct RenderTargetState
+{
+    std::array<VkImageView, MAX_RENDER_TARGETS> color_render_targets{};
+    VkImageView depth_stencil = VK_NULL_HANDLE;
+};
+
+namespace
+{
+RenderTargetState& get_render_target_state(const RenderTarget* const* rts, const RenderTarget* depth_stencil)
+{
+    thread_local RenderTargetState state;
+    return state;
+}
+
+bool create_views(const VkDevice device,
+                  const unsigned count,
+                  const Texture* targets,
+                  const Texture* depth_stencil,
+                  RenderTargetState* state)
+{
+    const auto view_type_from_desc = [](const TextureDesc& desc)
+    {
+        const uint32_t array_layers = desc.depth_or_array_size;
+        switch (desc.dimension)
+        {
+        case TextureDimension::TEXTURE_1D:
+            return array_layers > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
+        case TextureDimension::TEXTURE_2D:
+            if (desc.is_cube)
+            {
+                return array_layers > 6 ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+            }
+            return array_layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+        case TextureDimension::TEXTURE_3D:
+            return VK_IMAGE_VIEW_TYPE_3D;
+        }
+        return VK_IMAGE_VIEW_TYPE_2D;
+    };
+
+    for (unsigned i = 0; i < count; i++)
+    {
+        assert(targets[i].desc.usage & TextureDesc::RENDER_TARGET);
+        const auto vk_texture = to_internal(targets[i]);
+        const VkImageViewCreateInfo info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = vk_texture->image,
+            .viewType = view_type_from_desc(targets[i].desc),
+            .format = convert_format(targets[i].desc.format),
+            .subresourceRange = // TODO: Specific mips
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+        if (state->color_render_targets[i])
+        {
+            vkDestroyImageView(device, state->color_render_targets[i], nullptr);
+        }
+        if (VK_FAILED(vkCreateImageView(device, &info, nullptr, &state->color_render_targets[i])))
+        {
+            return false;
+        }
+    }
+    if (depth_stencil)
+    {
+        const auto vk_texture = to_internal(*depth_stencil);
+        assert(depth_stencil->desc.usage & TextureDesc::DEPTH_STENCIL);
+
+        VkImageAspectFlags flags;
+        switch (depth_stencil->desc.format)
+        {
+        case VK_FORMAT_D24_UNORM_S8_UINT:
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:
+            flags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            break;
+        case VK_FORMAT_D16_UNORM:
+        case VK_FORMAT_D32_SFLOAT:
+        default:
+            flags = VK_IMAGE_ASPECT_DEPTH_BIT;
+            break;
+        }
+
+        const VkImageViewCreateInfo info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = vk_texture->image,
+            .viewType = view_type_from_desc(depth_stencil->desc),
+            .format = convert_format(depth_stencil->desc.format),
+            .subresourceRange = // TODO: Specific mips
+            {
+                .aspectMask = flags,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+        if (state->depth_stencil)
+        {
+            vkDestroyImageView(device, state->depth_stencil, nullptr);
+        }
+        if (VK_FAILED(vkCreateImageView(device, &info, nullptr, &state->depth_stencil)))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+} // namespace
+
 bool VulkanContext::start_render_pass(CommandList* cmd_list,
                                       const float* clear_color_values,
                                       const RenderTarget* depth_stencil,
@@ -1700,16 +1813,19 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
 
     const auto& swapchain = m_swapchain.swapchain;
 
+    auto& rt_state = get_render_target_state(nullptr, depth_stencil);
+    create_views(m_device.device, 0, nullptr, depth_stencil->texture, &rt_state);
+
     VkExtent2D extent;
     if (depth_stencil)
     {
+        assert(depth_stencil->clear_type & RenderTarget::DEPTH || depth_stencil->clear_type & RenderTarget::STENCIL);
         extent = {std::min(static_cast<uint32_t>(depth_stencil->texture->desc.width), swapchain.extent.width),
                   std::min(depth_stencil->texture->desc.height, swapchain.extent.height)};
 
-        auto dsv = to_internal(*depth_stencil->texture);
         const auto& clear_params = depth_stencil->clear_params.dsv_clear_params;
         depth_attachment = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-                            .imageView = VK_NULL_HANDLE, // TODO
+                            .imageView = rt_state.depth_stencil,
                             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
                             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
