@@ -970,7 +970,7 @@ void RetroExampleApp::render()
                                                                         qhenki::gfx::RenderTarget::STENCIL),
         .texture = &m_depth_buffer,
     };
-    m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(color).data(), &depth);
+    m_context->start_render_pass(&cmd_list, 1, &color, &depth);
 
     const D3D12_VIEWPORT viewport{
         .TopLeftX = 0,
@@ -1163,7 +1163,7 @@ void RetroExampleApp::render()
         .clear_type = qhenki::gfx::RenderTarget::COLOR,
         .texture = &m_bloom_textures[m_starting_bloom_index].tex,
     };
-    m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target).data(), nullptr);
+    m_context->start_render_pass(&cmd_list, 1, &blit_target, nullptr);
     const unsigned bloom_w = m_bloom_textures.front().tex.desc.width;
     const unsigned bloom_h = m_bloom_textures.front().tex.desc.height;
     const D3D12_VIEWPORT bloom_viewport{
@@ -1273,7 +1273,7 @@ void RetroExampleApp::render()
             .clear_type = qhenki::gfx::RenderTarget::COLOR,
             .texture = &bloom1.tex,
         };
-        m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target_blur).data(), nullptr);
+        m_context->start_render_pass(&cmd_list, 1, &blit_target_blur, nullptr);
         m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
         m_context->set_scissor_rects(&cmd_list, 1, &bloom_scissor);
 

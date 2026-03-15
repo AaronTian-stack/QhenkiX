@@ -166,7 +166,7 @@ public:
                                    unsigned frame_index) = 0;
     virtual bool start_render_pass(CommandList* cmd_list,
                                    unsigned int rt_count,
-                                   const RenderTarget* const* rts,
+                                   const RenderTarget* rts,
                                    const RenderTarget* depth_stencil) = 0;
 
     virtual void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;

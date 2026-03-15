@@ -1036,7 +1036,7 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      const unsigned rt_count,
-                                     const RenderTarget* const* rts,
+                                     const RenderTarget* rts,
                                      const RenderTarget* const depth_stencil)
 {
     std::array<ID3D11RenderTargetView* const*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> rtvs{};
@@ -1048,9 +1048,7 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
     // Clear render target views (if applicable)
     for (unsigned int i = 0; i < rt_count; i++)
     {
-        assert(rts[i]);
-
-        const auto state = to_internal(*rts[i]->texture);
+        const auto state = to_internal(*rts[i].texture);
 
         if (!state->rtv_view)
         {
@@ -1062,10 +1060,10 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
                 return false;
             }
         }
-        if (rts[i]->clear_type & RenderTarget::ClearType::COLOR)
+        if (rts[i].clear_type & RenderTarget::ClearType::COLOR)
         {
             m_device_context->ClearRenderTargetView(state->rtv_view.Get(),
-                                                    rts[i]->clear_params.clear_color_value.data());
+                                                    rts[i].clear_params.clear_color_value.data());
         }
 
         rtvs[i] = state->rtv_view.GetAddressOf();

@@ -146,7 +146,7 @@ public:
 
     bool start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,
-                           const RenderTarget* const* rts,
+                           const RenderTarget* rts,
                            const RenderTarget* depth_stencil) override;
 
     void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) override;

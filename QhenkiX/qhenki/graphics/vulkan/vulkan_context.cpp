@@ -1699,7 +1699,7 @@ RenderTargetState& get_render_target_state(const RenderTarget* const* rts, const
 
 bool create_views(const VkDevice device,
                   const unsigned count,
-                  const Texture* targets,
+                  const RenderTarget* targets,
                   const Texture* depth_stencil,
                   RenderTargetState* state)
 {
@@ -1724,13 +1724,14 @@ bool create_views(const VkDevice device,
 
     for (unsigned i = 0; i < count; i++)
     {
-        assert(targets[i].desc.usage & TextureDesc::RENDER_TARGET);
-        const auto vk_texture = to_internal(targets[i]);
+        const auto tex = targets[i].texture;
+        assert(tex->desc.usage & TextureDesc::RENDER_TARGET);
+        const auto vk_texture = to_internal(*tex);
         const VkImageViewCreateInfo info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = vk_texture->image,
-            .viewType = view_type_from_desc(targets[i].desc),
-            .format = convert_format(targets[i].desc.format),
+            .viewType = view_type_from_desc(tex->desc),
+            .format = convert_format(tex->desc.format),
             .subresourceRange = // TODO: Specific mips
             {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -1818,7 +1819,10 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     const auto& swapchain = m_swapchain.swapchain;
 
     auto& rt_state = get_render_target_state(nullptr, depth_stencil);
-    create_views(m_device.device, 0, nullptr, depth_stencil->texture, &rt_state);
+    if (VK_FAILED(create_views(m_device.device, 0, nullptr, depth_stencil->texture, &rt_state)))
+    {
+        return false;
+    }
 
     VkExtent2D extent;
     if (depth_stencil)
@@ -1864,10 +1868,77 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
 }
 
 bool VulkanContext::start_render_pass(CommandList* cmd_list,
-                                      unsigned rt_count,
-                                      const RenderTarget* const* rts,
+                                      const unsigned rt_count,
+                                      const RenderTarget* rts,
                                       const RenderTarget* depth_stencil)
 {
+    auto& rt_state = get_render_target_state(&rts, depth_stencil);
+    if (VK_FAILED(
+            create_views(m_device.device, rt_count, rts, depth_stencil ? depth_stencil->texture : nullptr, &rt_state)))
+    {
+        return false;
+    }
+
+    VkExtent2D extent{std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()};
+    std::array<VkRenderingAttachmentInfo, MAX_RENDER_TARGETS> color_attachments;
+    for (unsigned i = 0; i < rt_count; i++)
+    {
+        const auto& clear_params = rts[i].clear_params;
+        color_attachments[i] = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = rt_state.color_render_targets[i],
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue =
+                {
+                    .color = {clear_params.clear_color_value[0],
+                              clear_params.clear_color_value[1],
+                              clear_params.clear_color_value[2],
+                              clear_params.clear_color_value[3]},
+                },
+        };
+        extent = {
+            std::min(extent.width, static_cast<uint32_t>(rts[i].texture->desc.width)),
+            std::min(extent.height, static_cast<uint32_t>(rts[i].texture->desc.height)),
+        };
+    }
+
+    VkRenderingAttachmentInfo depth_attachment;
+    if (depth_stencil)
+    {
+        assert(depth_stencil->clear_type & RenderTarget::DEPTH || depth_stencil->clear_type & RenderTarget::STENCIL);
+        extent = {std::min(extent.width, static_cast<uint32_t>(depth_stencil->texture->desc.width)),
+                  std::min(extent.height, static_cast<uint32_t>(depth_stencil->texture->desc.height))};
+        const auto& clear_params = depth_stencil->clear_params.dsv_clear_params;
+        depth_attachment = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                            .imageView = rt_state.depth_stencil,
+                            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                            .clearValue = {
+                                .depthStencil = {clear_params.clear_depth_value, clear_params.clear_stencil_value},
+                            }};
+    }
+
+    const VkRect2D render_area{
+        .offset = {0, 0},
+        .extent = extent,
+    };
+
+    const VkRenderingInfo rendering_info{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = render_area,
+        .layerCount = 1,
+        .viewMask = 0,
+        .colorAttachmentCount = rt_count,
+        .pColorAttachments = color_attachments.data(),
+        .pDepthAttachment = depth_stencil ? &depth_attachment : nullptr,
+    };
+
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    vkCmdBeginRendering(*vk_cmd_list, &rendering_info);
+
     return true;
 }
 

@@ -1889,7 +1889,7 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      const unsigned rt_count,
-                                     const RenderTarget* const* rts,
+                                     const RenderTarget* rts,
                                      const RenderTarget* const depth_stencil)
 {
     if (rt_count > D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
@@ -1903,8 +1903,8 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     std::array<ID3D12Resource*, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> d3d12_textures;
     for (unsigned i = 0; i < rt_count; i++)
     {
-        assert(rts[i]->texture->desc.usage & TextureDesc::RENDER_TARGET);
-        d3d12_textures[i] = to_internal(*rts[i]->texture)->allocation.Get()->GetResource();
+        assert(rts[i].texture->desc.usage & TextureDesc::RENDER_TARGET);
+        d3d12_textures[i] = to_internal(*rts[i].texture)->allocation.Get()->GetResource();
     }
 
     ID3D12Resource* dsv = nullptr;
@@ -1925,13 +1925,13 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
 
     for (unsigned i = 0; i < rt_count; i++)
     {
-        if (rts[i]->clear_type == RenderTarget::COLOR)
+        if (rts[i].clear_type == RenderTarget::COLOR)
         {
-            const auto d3d12_tex = to_internal(*rts[i]->texture);
+            const auto d3d12_tex = to_internal(*rts[i].texture);
             render_target_helper.ClearRenderTargetView(command_list,
                                                        d3d12_tex->allocation.Get()->GetResource(),
                                                        nullptr,
-                                                       rts[i]->clear_params.clear_color_value.data(),
+                                                       rts[i].clear_params.clear_color_value.data(),
                                                        0,
                                                        nullptr);
         }
