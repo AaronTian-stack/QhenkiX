@@ -209,6 +209,6 @@ private:
     D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                 const D3D12_SHADER_DESC& shader_desc,
                                                 bool increment_slot) const;
-    ComPtr<ID3D12CommandQueue>& get_command_queue(QueueType queue);
+    ID3D12CommandQueue* get_command_queue(QueueType queue);
 };
 } // namespace qhenki::gfx

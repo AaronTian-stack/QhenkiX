@@ -1798,19 +1798,19 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
-ComPtr<ID3D12CommandQueue>& D3D12Context::get_command_queue(const QueueType queue)
+ID3D12CommandQueue* D3D12Context::get_command_queue(const QueueType queue)
 {
     switch (queue)
     {
     case GRAPHICS:
-        return m_graphics_queue;
+        return m_graphics_queue.Get();
     case COMPUTE:
-        return m_compute_queue;
+        return m_compute_queue.Get();
     case COPY:
-        return m_copy_queue;
+        return m_copy_queue.Get();
     }
     assert(false);
-    return m_graphics_queue;
+    return m_graphics_queue.Get();
 }
 
 namespace
