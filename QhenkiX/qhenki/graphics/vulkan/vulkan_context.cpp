@@ -276,31 +276,36 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     }
     m_device = std::move(dev_ret.value());
 
-    auto graphics_queue_result = m_device.get_queue_and_index(vkb::QueueType::graphics);
-    if (!graphics_queue_result)
+    auto init_queue = [this](vkb::QueueType type, VulkanQueue& out) -> std::string
     {
-        return "Vulkan: Failed to get graphics queue" + graphics_queue_result.error().message();
-    }
-    auto [graphics_queue, graphics_queue_index] = graphics_queue_result.value();
-    m_graphics_queue = {graphics_queue, graphics_queue_index};
+        auto result = m_device.get_queue_and_index(type);
+        if (!result)
+        {
+            return "Vulkan: Failed to get queue" + result.error().message();
+        }
+        auto [q, family_index] = result.value();
+        out.queue = q;
+        out.family_index = family_index;
+        const VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, &out.semaphore)))
+        {
+            return "Vulkan: Failed to create queue semaphore";
+        }
+        return {};
+    };
 
-    // Compute queue may equal graphics queue
-    auto compute_queue_result = m_device.get_queue_and_index(vkb::QueueType::compute);
-    if (!compute_queue_result)
+    if (auto err = init_queue(vkb::QueueType::graphics, m_graphics_queue); !err.empty())
     {
-        return "Vulkan: Failed to get compute queue" + compute_queue_result.error().message();
+        return err;
     }
-    auto [compute_queue, compute_queue_index] = compute_queue_result.value();
-    m_compute_queue = {compute_queue, compute_queue_index};
-
-    // Transfer queue may equal graphics or compute queue
-    auto transfer_queue_result = m_device.get_queue_and_index(vkb::QueueType::transfer);
-    if (!transfer_queue_result)
+    if (auto err = init_queue(vkb::QueueType::compute, m_compute_queue); !err.empty())
     {
-        return "Vulkan: Failed to get transfer queue" + transfer_queue_result.error().message();
+        return err;
     }
-    auto [transfer_queue, transfer_queue_index] = transfer_queue_result.value();
-    m_transfer_queue = {transfer_queue, transfer_queue_index};
+    if (auto err = init_queue(vkb::QueueType::transfer, m_transfer_queue); !err.empty())
+    {
+        return err;
+    }
 
     volkLoadDevice(m_device.device);
 
@@ -346,6 +351,30 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     if (limits.maxViewports < MAX_VIEWPORTS_SCISSORS)
     {
         return "Vulkan: Device does not support required number of viewports";
+    }
+
+    const VkSemaphoreTypeCreateInfo texture_semaphore_type{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue = 0,
+    };
+    const VkSemaphoreCreateInfo texture_semaphore_info{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &texture_semaphore_type,
+    };
+    if (VK_FAILED(vkCreateSemaphore(m_device.device, &texture_semaphore_info, nullptr, &m_texture_submit_semaphore)))
+    {
+        return "Vulkan: Failed to create texture submit timeline semaphore";
+    }
+
+    const VkCommandPoolCreateInfo texture_patch{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = m_graphics_queue.family_index,
+    };
+    if (VK_FAILED(vkCreateCommandPool(m_device.device, &texture_patch, nullptr, &m_texture_transition_pool)))
+    {
+        return "Vulkan: Failed to create texture transition command pool";
     }
 
     return "";
@@ -1214,7 +1243,6 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned i
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
 
-    uint32_t data = 0;
     const VkPushDataInfoEXT push_data_info{
         .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
         .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET + index * sizeof(size_t)), // Implies max 16 params
@@ -1507,7 +1535,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     }
 
     vulkan_texture->allocator = m_allocator;
-    // TODO: Lazily transition this when touched in command list
+    // Transitions are deferred
     vulkan_texture->initial_layout = layout(desc.initial_layout);
     texture->desc = desc;
 
@@ -1516,6 +1544,8 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
                    reinterpret_cast<uint64_t>(vulkan_texture->image),
                    debug_name);
 
+    m_texture_queue.enqueue(vulkan_texture);
+    m_texture_queue_size.fetch_add(1, std::memory_order_release);
 
     return true;
 }
@@ -1994,8 +2024,129 @@ void VulkanContext::draw_indexed(CommandList* cmd_list,
         *vk_cmd_list, index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
+bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
 {
+    // Internally ordered within the same queue so treat this as an error
+    for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
+    {
+        if (submit_info.wait_queues[i] == queue)
+        {
+            return false;
+        }
+    }
+
+    auto& arena = acquire_arena(m_frame_count);
+
+    // +1 for internal ordering
+    uint32_t additional_waits = 1;
+    const auto needs_texture_transition_patch = m_texture_queue_size.load(std::memory_order_acquire) > 0;
+    if (needs_texture_transition_patch)
+    {
+        ++additional_waits;
+    }
+
+    const uint32_t wait_size = submit_info.wait_fence_count + additional_waits;
+    const auto wait_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(wait_size);
+
+    // Try to narrow stage mask a little
+    const VkPipelineStageFlags2 stage_mask = queue == GRAPHICS ? VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+                                           : queue == COMPUTE  ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+                                           : queue == COPY     ? VK_PIPELINE_STAGE_2_COPY_BIT
+                                                               : VK_PIPELINE_STAGE_2_NONE;
+    assert(stage_mask);
+
+    for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
+    {
+        wait_semaphore_infos[i] = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = *to_internal(submit_info.wait_fences[i]),
+            .value = submit_info.wait_values[i],
+            .stageMask = stage_mask,
+        };
+    }
+    // Internal ordering wait
+    auto q = get_queue(queue);
+    wait_semaphore_infos[submit_info.wait_fence_count] = {
+
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = q.semaphore,
+        .value = q.last_signaled_fence_value,
+        .stageMask = stage_mask,
+    };
+
+    const auto cmd_buffer_infos = arena.alloc_array<VkCommandBufferSubmitInfo>(submit_info.command_list_count);
+    for (unsigned i = 0; i < submit_info.command_list_count; i++)
+    {
+        cmd_buffer_infos[i] = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = *to_internal(submit_info.command_lists[i]),
+        };
+    }
+
+    // +1 for internal ordering signal
+    const auto submit_count = submit_info.signal_fence_count + 1;
+    const auto signal_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(submit_count);
+    for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
+    {
+        signal_semaphore_infos[i] = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = *to_internal(submit_info.signal_fences[i]),
+            .value = submit_info.signal_values[i],
+            .stageMask = stage_mask,
+        };
+    }
+    signal_semaphore_infos[submit_info.signal_fence_count] = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = q.semaphore,
+        .value = ++q.last_signaled_fence_value,
+        .stageMask = stage_mask,
+    };
+
+    const VkSubmitInfo2 submit{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .waitSemaphoreInfoCount = wait_size,
+        .pWaitSemaphoreInfos = wait_semaphore_infos,
+        .commandBufferInfoCount = submit_info.command_list_count,
+        .pCommandBufferInfos = cmd_buffer_infos,
+        .signalSemaphoreInfoCount = submit_count,
+        .pSignalSemaphoreInfos = signal_semaphore_infos,
+    };
+
+    if (VK_FAILED(vkQueueSubmit2(q.queue, 1, &submit, VK_NULL_HANDLE)))
+    {
+        return false;
+    }
+
+    // Wait on texture transitions
+    if (needs_texture_transition_patch)
+    {
+        // TODO: Record command buffer
+        // Separate submission to graphics queue
+        // TODO: Revisit and evaluate performance implications
+
+
+        VkSemaphoreSubmitInfo signal_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_texture_submit_semaphore,
+            .value = ++m_texture_submit_fence_value,
+        };
+
+        const VkSubmitInfo2 patch{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .waitSemaphoreInfoCount = 0,
+            .pWaitSemaphoreInfos = nullptr,
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = nullptr, // TODO
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &signal_info,
+        };
+
+        if (VK_FAILED(vkQueueSubmit2(m_graphics_queue.queue, 1, &patch, VK_NULL_HANDLE)))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value)
@@ -2043,7 +2194,6 @@ bool VulkanContext::wait_fences(const WaitInfo& info)
 
     const VkSemaphoreWaitInfo wait_info{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-        .pNext = nullptr,
         .flags = info.wait_all ? 0u : VK_SEMAPHORE_WAIT_ANY_BIT,
         .semaphoreCount = info.count,
         .pSemaphores = semaphores,
@@ -2131,6 +2281,30 @@ VulkanContext::~VulkanContext()
     {
         vkb::destroy_surface(m_instance, m_surface);
     }
+    for (VulkanQueue* q : {&m_graphics_queue, &m_compute_queue, &m_transfer_queue})
+    {
+        if (q->semaphore != VK_NULL_HANDLE)
+        {
+            vkDestroySemaphore(m_device.device, q->semaphore, nullptr);
+            q->semaphore = VK_NULL_HANDLE;
+        }
+    }
     vkb::destroy_device(m_device);
     vkb::destroy_instance(m_instance);
+}
+
+VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
+{
+    switch (queue)
+    {
+    case GRAPHICS:
+        return m_graphics_queue;
+    case COMPUTE:
+        return m_compute_queue;
+    case COPY:
+        return m_transfer_queue;
+    default:
+        assert(false);
+        return m_graphics_queue;
+    }
 }

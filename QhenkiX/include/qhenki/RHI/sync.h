@@ -12,6 +12,5 @@ struct WaitInfo
     unsigned count;
     Fence* fences;
     uint64_t* values;
-    uint64_t timeout = std::numeric_limits<uint64_t>::max();
 };
 } // namespace qhenki::gfx

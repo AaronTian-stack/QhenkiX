@@ -136,7 +136,7 @@ public:
                       int32_t base_vertex_offset,
                       uint32_t instance_offset) override;
 
-    void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
+    bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
     bool create_fence(Fence* fence, uint64_t initial_value) override;
     uint64_t get_fence_value(const Fence& fence) override;

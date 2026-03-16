@@ -182,7 +182,7 @@ public:
     // TODO: draw indirect
     // TODO: draw indirect count
 
-    virtual void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) = 0;
+    virtual bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) = 0;
 
     virtual bool create_fence(Fence* fence, uint64_t initial_value) = 0;
     // If submission is pending value may be out of date

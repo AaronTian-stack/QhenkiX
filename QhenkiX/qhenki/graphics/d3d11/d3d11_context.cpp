@@ -1112,8 +1112,9 @@ void D3D11Context::draw_indexed(CommandList* cmd_list,
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, QueueType queue)
+bool D3D11Context::submit_command_lists(const SubmitInfo& submit_info, QueueType queue)
 {
+    return true;
 }
 
 bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value)

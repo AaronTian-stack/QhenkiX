@@ -160,7 +160,7 @@ public:
                       int32_t base_vertex_offset,
                       uint32_t instance_offset) override;
 
-    void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
+    bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
     bool create_fence(Fence* fence, uint64_t initial_value) override;
     uint64_t get_fence_value(const Fence& fence) override;
@@ -209,6 +209,6 @@ private:
     D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                 const D3D12_SHADER_DESC& shader_desc,
                                                 bool increment_slot) const;
-    ID3D12CommandQueue* get_command_queue(QueueType queue);
+    ID3D12CommandQueue* get_command_queue(QueueType queue) const;
 };
 } // namespace qhenki::gfx

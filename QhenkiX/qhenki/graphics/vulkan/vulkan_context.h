@@ -5,6 +5,7 @@
 #include <VkBootstrap.h>
 #include <vulkan/vulkan.h>
 
+#include "concurrentqueue.h"
 #include "qhenki/RHI/context.h"
 
 #define VK_SUCCEEDED(result) ((result) == VK_SUCCESS)
@@ -12,6 +13,8 @@
 
 namespace qhenki::gfx
 {
+struct VulkanTexture;
+
 class VulkanContext : public Context
 {
     struct Capabilities
@@ -38,11 +41,20 @@ class VulkanContext : public Context
     {
         VkQueue queue = VK_NULL_HANDLE;
         unsigned family_index = 0u;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        uint64_t last_signaled_fence_value = 0;
     };
 
     VulkanQueue m_graphics_queue;
     VulkanQueue m_compute_queue;
     VulkanQueue m_transfer_queue;
+
+    moodycamel::ConcurrentQueue<VulkanTexture*> m_texture_queue;
+    std::atomic_size_t m_texture_queue_size = 0;
+    VkSemaphore m_texture_submit_semaphore = VK_NULL_HANDLE;
+    uint64_t m_texture_submit_fence_value = 0;
+    VkCommandPool m_texture_transition_pool = VK_NULL_HANDLE;
+    VkCommandBuffer m_texture_transition_cmd_buffer = VK_NULL_HANDLE;
 
 public:
     std::string create(bool enable_debug_layer) override;
@@ -144,7 +156,7 @@ public:
                       int32_t base_vertex_offset,
                       uint32_t instance_offset) override;
 
-    void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
+    bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
     bool create_fence(Fence* fence, uint64_t initial_value) override;
     uint64_t get_fence_value(const Fence& fence) override;
@@ -190,5 +202,8 @@ public:
     VulkanContext& operator=(VulkanContext&&) = delete;
 
     friend class VulkanDescriptorHeap;
+
+private:
+    VulkanQueue& get_queue(QueueType queue);
 };
 } // namespace qhenki::gfx

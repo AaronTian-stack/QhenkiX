@@ -896,11 +896,12 @@ void gltfViewerApp::render()
     auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
-        qhenki::gfx::WaitInfo wait_info{.wait_all = true,
-                                        .count = 1,
-                                        .fences = &m_fence_frame_ready,
-                                        .values = &next_fence_value,
-                                        .timeout = INFINITE};
+        qhenki::gfx::WaitInfo wait_info{
+            .wait_all = true,
+            .count = 1,
+            .fences = &m_fence_frame_ready,
+            .values = &next_fence_value,
+        };
         m_context->wait_fences(wait_info);
     }
     m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;

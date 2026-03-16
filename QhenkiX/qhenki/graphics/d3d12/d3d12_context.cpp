@@ -1491,9 +1491,9 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
 
     auto& arena = acquire_arena(m_frame_count);
-    auto layouts = arena.alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
-    auto row_counts = arena.alloc_array<UINT>(num_subresources);
-    auto row_sizes = arena.alloc_array<UINT64>(num_subresources);
+    const auto layouts = arena.alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
+    const auto row_counts = arena.alloc_array<UINT>(num_subresources);
+    const auto row_sizes = arena.alloc_array<UINT64>(num_subresources);
 
     UINT64 size;
     m_device->GetCopyableFootprints(&desc, 0, num_subresources, 0, layouts, row_counts, row_sizes, &size);
@@ -1798,7 +1798,7 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
-ID3D12CommandQueue* D3D12Context::get_command_queue(const QueueType queue)
+ID3D12CommandQueue* D3D12Context::get_command_queue(const QueueType queue) const
 {
     switch (queue)
     {
@@ -1808,9 +1808,10 @@ ID3D12CommandQueue* D3D12Context::get_command_queue(const QueueType queue)
         return m_compute_queue.Get();
     case COPY:
         return m_copy_queue.Get();
+    default:
+        assert(false);
+        return nullptr;
     }
-    assert(false);
-    return m_graphics_queue.Get();
 }
 
 namespace
@@ -1977,8 +1978,28 @@ void D3D12Context::draw_indexed(CommandList* cmd_list,
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
+bool D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
 {
+    // Internally ordered within the same queue so treat this as an error
+    for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
+    {
+        if (submit_info.wait_queues[i] == queue)
+        {
+            return false;
+        }
+    }
+    for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
+    {
+        const auto fence = to_internal(submit_info.wait_fences[i]);
+        const auto result =
+            get_command_queue(submit_info.wait_queues[i])->Wait(fence->fence.Get(), submit_info.wait_values[i]);
+        if (FAILED(result))
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to wait for fence\n");
+            return false;
+        }
+    }
+
     auto& arena = acquire_arena(m_frame_count);
     auto cmd_list_ptrs = arena.alloc_array<ID3D12CommandList*>(submit_info.command_list_count);
 
@@ -1999,8 +2020,10 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const Que
         if (FAILED(result))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to signal fence\n");
+            return false;
         }
     }
+    return true;
 }
 
 bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
@@ -2046,7 +2069,7 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
         }
         wait_handles[i] = d3d12_fence->event;
     }
-    WaitForMultipleObjectsEx(info.count, wait_handles, info.wait_all, info.timeout, FALSE);
+    WaitForMultipleObjectsEx(info.count, wait_handles, info.wait_all, INFINITE, FALSE);
     return true;
 }
 
@@ -2254,8 +2277,7 @@ bool D3D12Context::wait_idle(const QueueType queue)
         return false;
     }
 
-    const WaitInfo wait_info{
-        .wait_all = true, .count = 1, .fences = &m_fence_wait_all, .values = &value, .timeout = INFINITE};
+    const WaitInfo wait_info{.wait_all = true, .count = 1, .fences = &m_fence_wait_all, .values = &value};
     return wait_fences(wait_info);
 }
 

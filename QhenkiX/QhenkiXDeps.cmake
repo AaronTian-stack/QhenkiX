@@ -19,6 +19,7 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/volk"
     "${QHENKIX_SRC_DIR}/external/vk-bootstrap/src"
     "${QHENKIX_SRC_DIR}/external/VulkanMemAlloc"
+    "${QHENKIX_SRC_DIR}/external/concurrent_queue-1.0.4"
 )
 
 if(WIN32)
