@@ -2059,12 +2059,12 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         }
         if (value >= m_texture_submit_fence_value)
         {
-            // Safe to free command buffers
-            vkResetCommandPool(m_device.device, m_texture_transition_pool, 0);
+            // Safe to free command buffers as none of them are no longer in use
             vkFreeCommandBuffers(m_device.device,
                                  m_texture_transition_pool,
                                  m_texture_transition_cmd_buffers.size(),
                                  m_texture_transition_cmd_buffers.data());
+            vkResetCommandPool(m_device.device, m_texture_transition_pool, 0);
             m_texture_transition_cmd_buffers.clear();
         }
 
@@ -2075,6 +2075,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
             .commandBufferCount = 1,
         };
         VkCommandBuffer cmd_buffer;
+        // It is safe to allocate from the pool that has pending command buffers
         if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, &cmd_buffer)))
         {
             return false;
