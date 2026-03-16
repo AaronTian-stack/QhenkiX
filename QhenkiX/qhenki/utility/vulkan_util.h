@@ -18,6 +18,7 @@ VkCompareOp comparison_func(ComparisonFunc func);
 VkFilter get_vk_filter(Filter f);
 VkSamplerMipmapMode get_vk_sampler_mipmap_mode(Filter f);
 bool is_depth_stencil_format(VkFormat format);
+VkImageAspectFlags get_image_aspect_mask(VkFormat format);
 
 VkPipelineStageFlags2 sync_stage(SyncStage stage);
 VkAccessFlags2 access_flags(AccessFlags access);

@@ -1537,6 +1537,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     vulkan_texture->allocator = m_allocator;
     // Transitions are deferred
     vulkan_texture->initial_layout = layout(desc.initial_layout);
+    vulkan_texture->aspect_mask = get_image_aspect_mask(vk_format);
     texture->desc = desc;
 
     set_debug_name(m_device.device,
@@ -2035,14 +2036,135 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         }
     }
 
-    auto& arena = acquire_arena(m_frame_count);
-
     // +1 for internal ordering
     uint32_t additional_waits = 1;
-    const auto needs_texture_transition_patch = m_texture_queue_size.load(std::memory_order_acquire) > 0;
-    if (needs_texture_transition_patch)
+    const auto number_of_textures_to_transition = m_texture_queue_size.load(std::memory_order_acquire);
+    const auto needs_transition = number_of_textures_to_transition > 0;
+    if (needs_transition)
     {
         ++additional_waits;
+    }
+
+    auto& arena = acquire_arena(m_frame_count);
+    // Wait on texture transitions
+    if (needs_transition)
+    {
+        // Separate submission to graphics queue
+        // TODO: Revisit and evaluate performance implications
+
+        uint64_t value;
+        if (VK_FAILED(vkGetSemaphoreCounterValue(m_device.device, m_texture_submit_semaphore, &value)))
+        {
+            return false;
+        }
+        if (value >= m_texture_submit_fence_value)
+        {
+            // Safe to free command buffers
+            vkResetCommandPool(m_device.device, m_texture_transition_pool, 0);
+            vkFreeCommandBuffers(m_device.device,
+                                 m_texture_transition_pool,
+                                 m_texture_transition_cmd_buffers.size(),
+                                 m_texture_transition_cmd_buffers.data());
+            m_texture_transition_cmd_buffers.clear();
+        }
+
+        const VkCommandBufferAllocateInfo alloc_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = m_texture_transition_pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+        VkCommandBuffer cmd_buffer;
+        if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, &cmd_buffer)))
+        {
+            return false;
+        }
+        m_texture_transition_cmd_buffers.push_back(cmd_buffer);
+
+        // Drain texture queue and record initial layout transitions
+        VulkanTexture** const textures = arena.alloc_array<VulkanTexture*>(number_of_textures_to_transition);
+        size_t texture_count = 0;
+        VulkanTexture* vt = nullptr;
+        // Any new textures added will be picked up later. They could not have been referenced in this submission
+        while (texture_count < number_of_textures_to_transition && m_texture_queue.try_dequeue(vt))
+        {
+            m_texture_queue_size.fetch_sub(1, std::memory_order_release);
+            textures[texture_count++] = vt;
+        }
+
+        constexpr VkCommandBufferBeginInfo begin_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        };
+        if (VK_FAILED(vkBeginCommandBuffer(cmd_buffer, &begin_info)))
+        {
+            return false;
+        }
+
+        const auto barriers = arena.alloc_array<VkImageMemoryBarrier2>(texture_count);
+        for (size_t i = 0; i < texture_count; i++)
+        {
+            VulkanTexture* const vulkan_texture = textures[i];
+            barriers[i] = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                .srcAccessMask = 0,
+                .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = vulkan_texture->initial_layout,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = vulkan_texture->image,
+                .subresourceRange =
+                    {
+                        .aspectMask = vulkan_texture->aspect_mask,
+                        .baseMipLevel = 0,
+                        .levelCount = VK_REMAINING_MIP_LEVELS,
+                        .baseArrayLayer = 0,
+                        .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                    },
+            };
+            vulkan_texture->has_transitioned = true;
+        }
+        const VkDependencyInfo dep_info{
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = static_cast<uint32_t>(texture_count),
+            .pImageMemoryBarriers = barriers,
+        };
+        vkCmdPipelineBarrier2(cmd_buffer, &dep_info);
+
+        if (VK_FAILED(vkEndCommandBuffer(cmd_buffer)))
+        {
+            return false;
+        }
+
+        const VkCommandBufferSubmitInfo cmd_buffer_submit{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = cmd_buffer,
+        };
+
+        VkSemaphoreSubmitInfo signal_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_texture_submit_semaphore,
+            .value = ++m_texture_submit_fence_value,
+            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        };
+
+        const VkSubmitInfo2 patch{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .waitSemaphoreInfoCount = 0,
+            .pWaitSemaphoreInfos = nullptr,
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &cmd_buffer_submit,
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &signal_info,
+        };
+
+        if (VK_FAILED(vkQueueSubmit2(m_graphics_queue.queue, 1, &patch, VK_NULL_HANDLE)))
+        {
+            return false;
+        }
     }
 
     const uint32_t wait_size = submit_info.wait_fence_count + additional_waits;
@@ -2067,12 +2189,20 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     // Internal ordering wait
     auto q = get_queue(queue);
     wait_semaphore_infos[submit_info.wait_fence_count] = {
-
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = q.semaphore,
         .value = q.last_signaled_fence_value,
         .stageMask = stage_mask,
     };
+    if (number_of_textures_to_transition)
+    {
+        wait_semaphore_infos[submit_info.wait_fence_count + 1] = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_texture_submit_semaphore,
+            .value = m_texture_submit_fence_value,
+            .stageMask = stage_mask,
+        };
+    }
 
     const auto cmd_buffer_infos = arena.alloc_array<VkCommandBufferSubmitInfo>(submit_info.command_list_count);
     for (unsigned i = 0; i < submit_info.command_list_count; i++)
@@ -2117,35 +2247,6 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         return false;
     }
 
-    // Wait on texture transitions
-    if (needs_texture_transition_patch)
-    {
-        // TODO: Record command buffer
-        // Separate submission to graphics queue
-        // TODO: Revisit and evaluate performance implications
-
-
-        VkSemaphoreSubmitInfo signal_info{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_texture_submit_semaphore,
-            .value = ++m_texture_submit_fence_value,
-        };
-
-        const VkSubmitInfo2 patch{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-            .waitSemaphoreInfoCount = 0,
-            .pWaitSemaphoreInfos = nullptr,
-            .commandBufferInfoCount = 1,
-            .pCommandBufferInfos = nullptr, // TODO
-            .signalSemaphoreInfoCount = 1,
-            .pSignalSemaphoreInfos = &signal_info,
-        };
-
-        if (VK_FAILED(vkQueueSubmit2(m_graphics_queue.queue, 1, &patch, VK_NULL_HANDLE)))
-        {
-            return false;
-        }
-    }
     return true;
 }
 

@@ -54,7 +54,7 @@ class VulkanContext : public Context
     VkSemaphore m_texture_submit_semaphore = VK_NULL_HANDLE;
     uint64_t m_texture_submit_fence_value = 0;
     VkCommandPool m_texture_transition_pool = VK_NULL_HANDLE;
-    VkCommandBuffer m_texture_transition_cmd_buffer = VK_NULL_HANDLE;
+    std::vector<VkCommandBuffer> m_texture_transition_cmd_buffers;
 
 public:
     std::string create(bool enable_debug_layer) override;
