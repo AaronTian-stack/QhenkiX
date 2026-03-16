@@ -158,7 +158,7 @@ public:
      * @param clear_color_values Clear color values for render targets. If null, render targets will not be cleared.
      * @param depth_stencil Depth stencil render target. If null, no depth stencil will be bound.
      * @param frame_index Which swap chain buffer to use as render target.
-     * @return Whether the operation succeeded.
+     * @return True if the operation succeeded, false otherwise.
      */
     virtual bool start_render_pass(CommandList* cmd_list,
                                    const float* clear_color_values,
@@ -182,6 +182,14 @@ public:
     // TODO: draw indirect
     // TODO: draw indirect count
 
+    /**
+     * Submits command lists to the specified queue and signals/waits on fences as specified in submit_info. Not thread
+     * safe and should only be called from main thread.
+     * @param submit_info Struct containing command lists to be submitted, fences to be signaled and waited on, and
+     * what queues to wait on for each waiting fence.
+     * @param queue Queue to submit command lists to.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) = 0;
 
     virtual bool create_fence(Fence* fence, uint64_t initial_value) = 0;
