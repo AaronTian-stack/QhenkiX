@@ -276,7 +276,27 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     }
     m_device = std::move(dev_ret.value());
 
-    auto init_queue = [this](vkb::QueueType type, VulkanQueue& out) -> std::string
+    volkLoadDevice(m_device.device);
+
+    VmaVulkanFunctions vulkan_functions{};
+    VmaAllocatorCreateInfo allocator_desc{
+        .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT |
+                 VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT |
+                 VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+        .physicalDevice = m_device.physical_device,
+        .device = m_device.device,
+        .instance = m_instance.instance,
+        .vulkanApiVersion = VK_API_VERSION_1_4,
+    };
+
+    if (VK_FAILED(vmaImportVulkanFunctionsFromVolk(&allocator_desc, &vulkan_functions)))
+    {
+        return "Vulkan: Failed to import Vulkan functions for VMA from Volk";
+    }
+
+    allocator_desc.pVulkanFunctions = &vulkan_functions;
+
+    auto init_queue = [this](const vkb::QueueType type, VulkanQueue& out) -> std::string
     {
         auto result = m_device.get_queue_and_index(type);
         if (!result)
@@ -306,26 +326,6 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     {
         return err;
     }
-
-    volkLoadDevice(m_device.device);
-
-    VmaVulkanFunctions vulkan_functions{};
-    VmaAllocatorCreateInfo allocator_desc{
-        .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT |
-                 VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT |
-                 VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
-        .physicalDevice = m_device.physical_device,
-        .device = m_device.device,
-        .instance = m_instance.instance,
-        .vulkanApiVersion = VK_API_VERSION_1_4,
-    };
-
-    if (VK_FAILED(vmaImportVulkanFunctionsFromVolk(&allocator_desc, &vulkan_functions)))
-    {
-        return "Vulkan: Failed to import Vulkan functions for VMA from Volk";
-    }
-
-    allocator_desc.pVulkanFunctions = &vulkan_functions;
 
     if (VK_FAILED(vmaCreateAllocator(&allocator_desc, &m_allocator)))
     {
