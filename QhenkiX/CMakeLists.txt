@@ -34,6 +34,7 @@ set(IMGUI_SOURCES
     "${IMGUI_DIR}/backends/imgui_impl_dx11.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_dx12.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp"
 )
 set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/application.cpp"

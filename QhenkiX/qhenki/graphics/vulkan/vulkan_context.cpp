@@ -1,6 +1,7 @@
 #include "vulkan_context.h"
 
 #define VOLK_IMPLEMENTATION
+#include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_vulkan.h>
 #include <volk.h>
@@ -2313,18 +2314,66 @@ void VulkanContext::issue_barrier(CommandList* cmd_list, unsigned count, const I
 
 void VulkanContext::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
 {
+    ImGui_ImplSDL3_InitForVulkan(window.get_window());
+
+    const VkFormat color_format = convert_format(swapchain.format);
+
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.ApiVersion = VK_API_VERSION_1_4;
+    init_info.Instance = m_instance.instance;
+    init_info.PhysicalDevice = m_device.physical_device;
+    init_info.Device = m_device.device;
+    init_info.QueueFamily = m_graphics_queue.family_index;
+    init_info.Queue = m_graphics_queue.queue;
+    init_info.DescriptorPool = VK_NULL_HANDLE;
+    init_info.DescriptorPoolSize = 1000;
+    init_info.MinImageCount = 2;
+    init_info.ImageCount = swapchain.buffer_count;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+
+    init_info.PipelineInfoMain.RenderPass = VK_NULL_HANDLE;
+    init_info.PipelineInfoMain.Subpass = 0;
+    init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.UseDynamicRendering = true;
+    init_info.PipelineInfoMain.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    init_info.PipelineInfoMain.PipelineRenderingCreateInfo.pNext = nullptr;
+    init_info.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    init_info.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats = &color_format;
+
+    init_info.PipelineInfoForViewports.RenderPass = VK_NULL_HANDLE;
+    init_info.PipelineInfoForViewports.Subpass = 0;
+    init_info.PipelineInfoForViewports.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.PipelineInfoForViewports.PipelineRenderingCreateInfo.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    init_info.PipelineInfoForViewports.PipelineRenderingCreateInfo.pNext = nullptr;
+    init_info.PipelineInfoForViewports.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    init_info.PipelineInfoForViewports.PipelineRenderingCreateInfo.pColorAttachmentFormats = &color_format;
+    init_info.PipelineInfoForViewports.SwapChainImageUsage = 0;
+
+    init_info.Allocator = nullptr;
+    init_info.CheckVkResultFn = nullptr;
+
+    ImGui_ImplVulkan_Init(&init_info);
 }
 
 void VulkanContext::start_imgui_frame()
 {
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
 }
 
 void VulkanContext::render_imgui_draw_data(CommandList* cmd_list)
 {
+    const auto vk_cmd_buffer = to_internal(*cmd_list);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *vk_cmd_buffer);
 }
 
 void VulkanContext::destroy_imgui()
 {
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
 }
 
 bool VulkanContext::compatibility_set_constant_buffers(unsigned slot,
