@@ -1538,7 +1538,6 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     vulkan_texture->allocator = m_allocator;
     // Transitions are deferred
     vulkan_texture->initial_layout = layout(desc.initial_layout);
-    vulkan_texture->aspect_mask = get_image_aspect_mask(vk_format);
     texture->desc = desc;
 
     set_debug_name(m_device.device,
@@ -1546,7 +1545,10 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
                    reinterpret_cast<uint64_t>(vulkan_texture->image),
                    debug_name);
 
-    m_texture_queue.enqueue(vulkan_texture);
+    if (!m_texture_queue.enqueue(texture))
+    {
+        return false;
+    }
 
     return true;
 }
@@ -2083,7 +2085,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         m_texture_transition_cmd_buffers.push_back(cmd_buffer);
 
         // Drain texture queue and record initial layout transitions
-        VulkanTexture** const textures = arena.alloc_array<VulkanTexture*>(number_of_textures_to_transition);
+        auto const textures = arena.alloc_array<Texture*>(number_of_textures_to_transition);
         const size_t texture_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
         assert(texture_count == number_of_textures_to_transition);
 
@@ -2099,7 +2101,8 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         const auto barriers = arena.alloc_array<VkImageMemoryBarrier2>(texture_count);
         for (size_t i = 0; i < texture_count; i++)
         {
-            VulkanTexture* const vulkan_texture = textures[i];
+            const auto texture = textures[i];
+            const auto vulkan_texture = to_internal(*texture);
             barriers[i] = {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                 .srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
@@ -2113,14 +2116,13 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
                 .image = vulkan_texture->image,
                 .subresourceRange =
                     {
-                        .aspectMask = vulkan_texture->aspect_mask,
+                        .aspectMask = get_image_aspect_mask(convert_format(texture->desc.format)),
                         .baseMipLevel = 0,
                         .levelCount = VK_REMAINING_MIP_LEVELS,
                         .baseArrayLayer = 0,
                         .layerCount = VK_REMAINING_ARRAY_LAYERS,
                     },
             };
-            vulkan_texture->has_transitioned = true;
         }
         const VkDependencyInfo dep_info{
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,

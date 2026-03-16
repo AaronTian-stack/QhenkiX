@@ -49,7 +49,7 @@ class VulkanContext : public Context
     VulkanQueue m_compute_queue;
     VulkanQueue m_transfer_queue;
 
-    moodycamel::ConcurrentQueue<VulkanTexture*> m_texture_queue;
+    moodycamel::ConcurrentQueue<Texture*> m_texture_queue;
     VkSemaphore m_texture_submit_semaphore = VK_NULL_HANDLE;
     uint64_t m_texture_submit_fence_value = 0;
     VkCommandPool m_texture_transition_pool = VK_NULL_HANDLE;
