@@ -1546,7 +1546,6 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
                    debug_name);
 
     m_texture_queue.enqueue(vulkan_texture);
-    m_texture_queue_size.fetch_add(1, std::memory_order_release);
 
     return true;
 }
@@ -2038,7 +2037,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
 
     // +1 for internal ordering
     uint32_t additional_waits = 1;
-    const auto number_of_textures_to_transition = m_texture_queue_size.load(std::memory_order_acquire);
+    const auto number_of_textures_to_transition = m_texture_queue.size_approx();
     const auto needs_transition = number_of_textures_to_transition > 0;
     if (needs_transition)
     {
@@ -2083,14 +2082,8 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
 
         // Drain texture queue and record initial layout transitions
         VulkanTexture** const textures = arena.alloc_array<VulkanTexture*>(number_of_textures_to_transition);
-        size_t texture_count = 0;
-        VulkanTexture* vt = nullptr;
-        // Any new textures added will be picked up later. They could not have been referenced in this submission
-        while (texture_count < number_of_textures_to_transition && m_texture_queue.try_dequeue(vt))
-        {
-            m_texture_queue_size.fetch_sub(1, std::memory_order_release);
-            textures[texture_count++] = vt;
-        }
+        const size_t texture_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
+        assert(texture_count == number_of_textures_to_transition);
 
         constexpr VkCommandBufferBeginInfo begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
