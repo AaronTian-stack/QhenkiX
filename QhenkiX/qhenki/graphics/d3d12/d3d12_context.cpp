@@ -1429,33 +1429,33 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
 }
 namespace
 {
-bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
-                                     D3D12DescriptorHeap* const heap_d3d12,
-                                     const DescriptorHeapDesc::Type expected_type,
-                                     Descriptor* const descriptor,
-                                     const wchar_t* message,
-                                     D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+bool allocate_texture_descriptor(DescriptorHeap* const heap,
+                                 D3D12DescriptorHeap* const d3d_heap,
+                                 const DescriptorHeapDesc::Type expected_type,
+                                 Descriptor* const descriptor,
+                                 const char* message,
+                                 D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
     assert(cpu_handle);
     if (heap->desc.type != expected_type)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type for ");
-        OutputDebugStringW(message);
+        OutputDebugStringA(message);
         OutputDebugStringA("\n");
         return false;
     }
     if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {
-        if (!heap_d3d12->allocate(&descriptor->offset))
+        if (!d3d_heap->allocate(&descriptor->offset))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
-            OutputDebugStringW(message);
+            OutputDebugStringA(message);
             OutputDebugStringA("\n");
             return false;
         }
     }
     descriptor->heap = heap;
-    heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset);
+    d3d_heap->get_CPU_descriptor(cpu_handle, descriptor->offset);
     return true;
 }
 } // namespace
@@ -1464,18 +1464,16 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
                                                  DescriptorHeap* const heap,
                                                  Descriptor* descriptor)
 {
-    assert(heap);
     const auto texture_d3d12 = to_internal(texture);
     const auto heap_d3d12 = to_internal(*heap);
 
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!allocate_arb_texture_descriptor(
-            heap, heap_d3d12, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, L"SRV", &cpu_handle))
+    if (!allocate_texture_descriptor(
+            heap, heap_d3d12, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, "SRV", &cpu_handle))
     {
         return false;
     }
 
-    // TODO: View description
     m_device->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
 
     return true;

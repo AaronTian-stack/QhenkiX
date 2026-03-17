@@ -260,6 +260,25 @@ VkCompareOp comparison_func(const ComparisonFunc func)
 #undef MAP_COMPARISON
 }
 
+VkImageViewType view_type_from_desc(const TextureDesc& desc)
+{
+    const uint32_t array_layers = desc.depth_or_array_size;
+    switch (desc.dimension)
+    {
+    case TextureDimension::TEXTURE_1D:
+        return array_layers > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
+    case TextureDimension::TEXTURE_2D:
+        if (desc.is_cube)
+        {
+            return array_layers > 6 ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+        }
+        return array_layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+    case TextureDimension::TEXTURE_3D:
+        return VK_IMAGE_VIEW_TYPE_3D;
+    }
+    return VK_IMAGE_VIEW_TYPE_2D;
+}
+
 VkFilter get_vk_filter(const Filter f)
 {
     return f == Filter::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;

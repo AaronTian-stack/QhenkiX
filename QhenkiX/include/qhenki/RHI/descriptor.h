@@ -34,6 +34,9 @@ struct Descriptor
     }
 
 private:
+    // Only used in Vulkan backend
     VmaVirtualAllocation alloc = nullptr;
+    friend class VulkanContext;
+    friend class VulkanDescriptorHeap;
 };
 } // namespace qhenki::gfx

@@ -203,6 +203,12 @@ public:
     friend class VulkanDescriptorHeap;
 
 private:
+    bool allocate_descriptor(DescriptorHeap* heap,
+                             const VulkanDescriptorHeap* vk_heap,
+                             DescriptorHeapDesc::Type heap_type,
+                             Descriptor* descriptor,
+                             Descriptor::Type descriptor_type) const;
+
     VulkanQueue& get_queue(QueueType queue);
 };
 } // namespace qhenki::gfx

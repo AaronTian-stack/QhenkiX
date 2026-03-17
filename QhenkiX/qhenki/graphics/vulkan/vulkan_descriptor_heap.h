@@ -12,19 +12,19 @@ class VulkanDescriptorHeap
     VulkanBuffer m_heap;
     VmaVirtualBlock m_block;
 
-    VulkanContext* m_context = nullptr;
+    const VulkanContext* m_context = nullptr;
     VkDeviceSize m_reserved_size = 0;
+    void* m_data = nullptr; // Persistently mapped pointer to write into CPU descriptor heaps only
 
 public:
     VulkanDescriptorHeap() = default;
     ~VulkanDescriptorHeap();
     bool create(const DescriptorHeapDesc& desc, const VulkanContext& context);
-    bool allocate(VmaVirtualAllocation* va,
-                  Descriptor::Type type,
-                  const VulkanContext& context,
-                  VkDeviceSize* offset) const;
+    bool allocate(VmaVirtualAllocation* va, Descriptor::Type type, VkDeviceSize* offset) const;
     void deallocate(VmaVirtualAllocation va) const;
-    VkDeviceAddress get_address() const;
+    void* get_cpu_pointer(size_t offset) const;
+    VkDeviceAddress get_gpu_address() const;
     VkDeviceSize get_reserved_size() const;
+    VmaVirtualAllocationInfo get_allocation_info(VmaVirtualAllocation va) const;
 };
 } // namespace qhenki::gfx

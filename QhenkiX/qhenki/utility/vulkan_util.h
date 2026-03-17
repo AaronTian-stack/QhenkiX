@@ -6,6 +6,7 @@
 #include "qhenki/RHI/barrier.h"
 #include "qhenki/RHI/enums.h"
 #include "qhenki/RHI/sampler.h"
+#include "qhenki/RHI/texture.h"
 
 namespace qhenki::gfx
 {
@@ -15,6 +16,7 @@ VkFormat get_vk_index_format(IndexType format);
 VkPrimitiveTopology get_primitive_topology(PrimitiveTopology topology);
 VkSamplerAddressMode texture_address_mode(AddressMode mode);
 VkCompareOp comparison_func(ComparisonFunc func);
+VkImageViewType view_type_from_desc(const TextureDesc& desc);
 VkFilter get_vk_filter(Filter f);
 VkSamplerMipmapMode get_vk_sampler_mipmap_mode(Filter f);
 bool is_depth_stencil_format(VkFormat format);

@@ -1187,7 +1187,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorH
     const auto vk_heap = to_internal(heap);
 
     const VkDeviceAddressRangeEXT heap_range{
-        .address = vk_heap->get_address(),
+        .address = vk_heap->get_gpu_address(),
         .size = heap.desc.size,
     };
 
@@ -1211,7 +1211,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     const auto vk_sampler_heap = to_internal(sampler_heap);
 
     const VkDeviceAddressRangeEXT heap_range{
-        .address = vk_heap->get_address(),
+        .address = vk_heap->get_gpu_address(),
         .size = heap.desc.size,
     };
 
@@ -1223,7 +1223,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     };
 
     const VkDeviceAddressRangeEXT sampler_heap_range{
-        .address = vk_sampler_heap->get_address(),
+        .address = vk_sampler_heap->get_gpu_address(),
         .size = sampler_heap.desc.size,
     };
 
@@ -1377,14 +1377,46 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
     return true;
 }
 
+bool VulkanContext::allocate_descriptor(DescriptorHeap* const heap,
+                                        const VulkanDescriptorHeap* const vk_heap,
+                                        const DescriptorHeapDesc::Type heap_type,
+                                        Descriptor* const descriptor,
+                                        const Descriptor::Type descriptor_type) const
+{
+    if (heap->desc.type != heap_type)
+    {
+        return false;
+    }
+    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+    {
+        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
+        {
+            return false;
+        }
+    }
+
+    const auto info = vk_heap->get_allocation_info(descriptor->alloc);
+    if (info.size != get_descriptor_size(descriptor_type))
+    {
+        vk_heap->deallocate(descriptor->alloc);
+        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
+        {
+            return false;
+        }
+    }
+
+    descriptor->heap = heap;
+    return true;
+}
+
 bool VulkanContext::create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    return true;
+    return false;
 }
 
 bool VulkanContext::create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    return true;
+    return false;
 }
 
 void VulkanContext::copy_buffer(
@@ -1553,7 +1585,52 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
 
 bool VulkanContext::create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    return false;
+    const auto vk_heap = to_internal(*heap);
+
+    if (!allocate_descriptor(
+            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::TEXTURE))
+    {
+        return false;
+    }
+
+    const auto vk_texture = to_internal(texture);
+
+    const VkImageViewCreateInfo view_info{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = vk_texture->image,
+        .viewType = view_type_from_desc(texture.desc),
+        .format = convert_format(texture.desc.format),
+        .subresourceRange =
+            {
+                .aspectMask = get_image_aspect_mask(convert_format(texture.desc.format)),
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+    };
+
+    VkImageDescriptorInfoEXT image_info{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT,
+        .pView = &view_info,
+    };
+
+    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+                                                    .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                                                    .data{
+                                                        .pImage = &image_info,
+                                                    }};
+
+    // Address to CPU mapped heap
+    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
+    const VkHostAddressRangeEXT range{
+        .address = address,
+        .size = get_descriptor_size(Descriptor::Type::TEXTURE),
+    };
+
+    vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range);
+
+    return true;
 }
 
 struct FormatInfo
@@ -1913,25 +1990,6 @@ bool create_views(const VkDevice device,
                   const Texture* depth_stencil,
                   RenderTargetState* state)
 {
-    const auto view_type_from_desc = [](const TextureDesc& desc)
-    {
-        const uint32_t array_layers = desc.depth_or_array_size;
-        switch (desc.dimension)
-        {
-        case TextureDimension::TEXTURE_1D:
-            return array_layers > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
-        case TextureDimension::TEXTURE_2D:
-            if (desc.is_cube)
-            {
-                return array_layers > 6 ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
-            }
-            return array_layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
-        case TextureDimension::TEXTURE_3D:
-            return VK_IMAGE_VIEW_TYPE_3D;
-        }
-        return VK_IMAGE_VIEW_TYPE_2D;
-    };
-
     for (unsigned i = 0; i < count; i++)
     {
         const auto tex = targets[i].texture;
@@ -1964,29 +2022,16 @@ bool create_views(const VkDevice device,
     {
         const auto vk_texture = to_internal(*depth_stencil);
         assert(depth_stencil->desc.usage & TextureDesc::DEPTH_STENCIL);
-
-        VkImageAspectFlags flags;
-        switch (depth_stencil->desc.format)
-        {
-        case VK_FORMAT_D24_UNORM_S8_UINT:
-        case VK_FORMAT_D32_SFLOAT_S8_UINT:
-            flags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-            break;
-        case VK_FORMAT_D16_UNORM:
-        case VK_FORMAT_D32_SFLOAT:
-        default:
-            flags = VK_IMAGE_ASPECT_DEPTH_BIT;
-            break;
-        }
+        const auto vk_format = convert_format(depth_stencil->desc.format);
 
         const VkImageViewCreateInfo info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = vk_texture->image,
             .viewType = view_type_from_desc(depth_stencil->desc),
-            .format = convert_format(depth_stencil->desc.format),
+            .format = vk_format,
             .subresourceRange = // TODO: Specific mips
             {
-                .aspectMask = flags,
+                .aspectMask = get_image_aspect_mask(vk_format),
                 .baseMipLevel = 0,
                 .levelCount = 1,
                 .baseArrayLayer = 0,

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
+
 #include "barrier.h"
 
 namespace qhenki::gfx

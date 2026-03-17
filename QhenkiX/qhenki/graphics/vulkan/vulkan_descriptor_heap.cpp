@@ -17,23 +17,36 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
 
     const auto size = desc.size + m_reserved_size;
 
-    assert(desc.type == DescriptorHeapDesc::Type::SAMPLER ? size < properties.maxSamplerHeapSize
-                                                          : size < properties.maxResourceHeapSize);
+    if (!(desc.type == DescriptorHeapDesc::Type::SAMPLER ? size < properties.maxSamplerHeapSize
+                                                         : size < properties.maxResourceHeapSize))
+    {
+        return false;
+    }
 
     const VkBufferCreateInfo buffer_info{
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = size,
-        .usage = VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        .usage = VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+
     };
 
-    const VmaAllocationCreateInfo alloc_info{
-        .usage = VMA_MEMORY_USAGE_AUTO,
+    VmaAllocationCreateInfo allocation_create_info{
+        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
     };
-    // TODO: Need VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;?
+    const auto cpu_visible = desc.visibility == DescriptorHeapDesc::Visibility::CPU;
+    if (cpu_visible)
+    {
+        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
+    else
+    {
+        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    }
 
-    auto result =
-        vmaCreateBuffer(context.m_allocator, &buffer_info, &alloc_info, &m_heap.buffer, &m_heap.allocation, nullptr);
+    VmaAllocationInfo alloc_info;
+    auto result = vmaCreateBuffer(
+        context.m_allocator, &buffer_info, &allocation_create_info, &m_heap.buffer, &m_heap.allocation, &alloc_info);
 
     if (VK_FAILED(result))
     {
@@ -71,15 +84,16 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
         }
     }
 
+    m_data = alloc_info.pMappedData;
+
+    m_context = &context;
+
     return true;
 }
 
-bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va,
-                                    const Descriptor::Type type,
-                                    const VulkanContext& context,
-                                    VkDeviceSize* offset) const
+bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va, const Descriptor::Type type, VkDeviceSize* offset) const
 {
-    const auto& properties = context.m_capabilities.descriptor_heap_properties;
+    const auto& properties = m_context->m_capabilities.descriptor_heap_properties;
 
     VmaVirtualAllocationCreateInfo alloc_create_info = {};
 
@@ -108,10 +122,18 @@ bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va,
 
 void VulkanDescriptorHeap::deallocate(const VmaVirtualAllocation va) const
 {
+    assert(va);
     vmaVirtualFree(m_block, va);
 }
 
-VkDeviceAddress VulkanDescriptorHeap::get_address() const
+void* VulkanDescriptorHeap::get_cpu_pointer(size_t offset) const
+{
+    assert(m_data);
+    assert(offset < m_reserved_size);
+    return static_cast<uint8_t*>(m_data) + offset;
+}
+
+VkDeviceAddress VulkanDescriptorHeap::get_gpu_address() const
 {
     const VkBufferDeviceAddressInfo addr_info{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -123,4 +145,11 @@ VkDeviceAddress VulkanDescriptorHeap::get_address() const
 VkDeviceSize VulkanDescriptorHeap::get_reserved_size() const
 {
     return m_reserved_size;
+}
+
+VmaVirtualAllocationInfo VulkanDescriptorHeap::get_allocation_info(const VmaVirtualAllocation va) const
+{
+    VmaVirtualAllocationInfo info;
+    vmaGetVirtualAllocationInfo(m_block, va, &info);
+    return info;
 }
