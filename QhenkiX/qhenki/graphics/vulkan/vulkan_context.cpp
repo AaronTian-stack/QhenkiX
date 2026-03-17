@@ -307,7 +307,7 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         auto [q, family_index] = result.value();
         out.queue = q;
         out.family_index = family_index;
-        const VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        constexpr VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
         if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, &out.semaphore)))
         {
             return "Vulkan: Failed to create queue semaphore";
@@ -1419,8 +1419,6 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
     }
     assert(image_type < VK_IMAGE_TYPE_MAX_ENUM);
 
-    assert(desc.width < std::numeric_limits<uint32_t>::max());
-
     const auto is_3D = desc.dimension == TextureDimension::TEXTURE_3D;
 
     assert(util::is_power_of_two(desc.sample_count) && desc.sample_count <= 64);
@@ -1501,7 +1499,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = image_type,
         .format = vk_format,
-        .extent = {static_cast<uint32_t>(desc.width), desc.height, is_3D ? desc.depth_or_array_size : 1u},
+        .extent = {desc.width, desc.height, is_3D ? desc.depth_or_array_size : 1u},
         .mipLevels = desc.mip_levels,
         .arrayLayers = is_3D ? 1u : desc.depth_or_array_size,
         .samples = static_cast<VkSampleCountFlagBits>(desc.sample_count),
@@ -1558,8 +1556,187 @@ bool VulkanContext::create_descriptor_shader_view(const Texture& texture, Descri
     return false;
 }
 
+struct FormatInfo
+{
+    uint32_t block_width;
+    uint32_t block_height;
+    uint32_t bytes_per_block; // For uncompressed format this is bytes per pixel
+};
+
+namespace
+{
+bool get_vk_format_info(const VkFormat format, FormatInfo* out)
+{
+    switch (format)
+    {
+    case VK_FORMAT_R8_UNORM:
+        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 1};
+        return true;
+    case VK_FORMAT_R8G8_UNORM:
+        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 2};
+        return true;
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_R8G8B8A8_SRGB:
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_SRGB:
+        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 4};
+        return true;
+    case VK_FORMAT_R16G16B16A16_SFLOAT:
+        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 8};
+        return true;
+    case VK_FORMAT_R32G32B32A32_SFLOAT:
+        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 16};
+        return true;
+
+    case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+    case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+        *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 8};
+        return true;
+
+    case VK_FORMAT_BC3_UNORM_BLOCK:
+    case VK_FORMAT_BC3_SRGB_BLOCK:
+    case VK_FORMAT_BC5_UNORM_BLOCK:
+    case VK_FORMAT_BC5_SNORM_BLOCK:
+    case VK_FORMAT_BC7_UNORM_BLOCK:
+    case VK_FORMAT_BC7_SRGB_BLOCK:
+        *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 16};
+        return true;
+
+    default:
+        return false;
+    }
+}
+
+bool compute_vk_copy_pitch(VkFormat format,
+                           const uint32_t width,
+                           const uint32_t height,
+                           size_t* row_pitch,
+                           size_t* slice_pitch,
+                           const uint32_t depth)
+{
+    FormatInfo info{};
+    if (!get_vk_format_info(format, &info))
+    {
+        return false;
+    }
+
+    const uint32_t blocks_x = qhenki::util::ceil_div(width, info.block_width);
+    const uint32_t blocks_y = qhenki::util::ceil_div(height, info.block_height);
+
+    *row_pitch = static_cast<size_t>(blocks_x) * info.bytes_per_block;
+    *slice_pitch = *row_pitch * blocks_y * depth;
+
+    return true;
+}
+} // namespace
+
 bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture)
 {
+    const auto tex = to_internal(*texture);
+    const TextureDesc& desc = texture->desc;
+
+    const bool is_3D = desc.dimension == TextureDimension::TEXTURE_3D;
+    const uint32_t num_subresources = is_3D ? desc.mip_levels : desc.mip_levels * desc.depth_or_array_size;
+
+    auto& arena = acquire_arena(m_frame_count);
+    const auto regions = arena.alloc_array<VkBufferImageCopy>(num_subresources);
+
+    const auto vk_format = convert_format(desc.format);
+
+    static_assert(std::is_same_v<VkDeviceSize, size_t>);
+    size_t total_size = 0;
+    for (uint32_t subresource = 0; subresource < num_subresources; subresource++)
+    {
+        uint32_t mip;
+        uint32_t layer;
+
+        if (is_3D)
+        {
+            mip = subresource;
+            layer = 0;
+        }
+        else
+        {
+            mip = subresource % desc.mip_levels;
+            layer = subresource / desc.mip_levels;
+        }
+
+        const uint32_t mip_width = std::max(1u, desc.width >> mip);
+        const uint32_t mip_height = std::max(1u, desc.height >> mip);
+        const uint32_t mip_depth = is_3D ? std::max(1u, static_cast<uint32_t>(desc.depth_or_array_size) >> mip) : 1u;
+
+        size_t row_pitch = 0;
+        size_t slice_pitch = 0;
+        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &row_pitch, &slice_pitch, mip_depth))
+        {
+            return false;
+        }
+
+        regions[subresource] = {
+            .bufferOffset = total_size,
+            .bufferRowLength = 0,   // Tightly packed
+            .bufferImageHeight = 0, // Tightly packed
+            .imageSubresource =
+                {
+                    .aspectMask = get_image_aspect_mask(vk_format),
+                    .mipLevel = mip,
+                    .baseArrayLayer = is_3D ? 0 : layer,
+                    .layerCount = 1,
+                },
+            .imageOffset = {0, 0, 0},
+            .imageExtent = {mip_width, mip_height, mip_depth},
+        };
+
+        total_size += slice_pitch;
+    }
+
+    // TODO: Transient staging buffer
+    const BufferDesc staging_desc{
+        .size = total_size,
+        .usage = BufferUsage::COPY_SRC,
+        .visibility = CPU_SEQUENTIAL,
+    };
+    Buffer local_staging;
+    if (!create_buffer(staging_desc, data, &local_staging, nullptr))
+    {
+        return false;
+    }
+
+    const auto upload = static_cast<uint8_t*>(map_buffer(local_staging));
+    size_t data_offset = 0;
+
+    // Second pass: pack data into the staging buffer
+    for (uint32_t subresource = 0; subresource < num_subresources; ++subresource)
+    {
+        const uint32_t mip = is_3D ? subresource : subresource % desc.mip_levels;
+
+        const uint32_t mip_width = std::max(1u, desc.width >> mip);
+        const uint32_t mip_height = std::max(1u, desc.height >> mip);
+        const uint32_t mip_depth = is_3D ? std::max(1u, static_cast<uint32_t>(desc.depth_or_array_size) >> mip) : 1u;
+
+        size_t src_row_pitch = 0;
+        size_t src_slice_pitch = 0;
+        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &src_row_pitch, &src_slice_pitch, mip_depth))
+        {
+            return false;
+        }
+
+        memcpy(upload + regions[subresource].bufferOffset,
+               static_cast<const uint8_t*>(data) + data_offset,
+               src_slice_pitch);
+
+        data_offset += src_slice_pitch;
+    }
+
+    unmap_buffer(local_staging);
+
+    // Texture should have already been transitioned to TRANSFER_DST by prepended command list in submit_command_lists
+
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_buffer = to_internal(local_staging);
+    vkCmdCopyBufferToImage(
+        *vk_cmd_list, vk_buffer->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, num_subresources, regions);
+
     return true;
 }
 
@@ -1861,7 +2038,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     if (depth_stencil)
     {
         assert(depth_stencil->clear_type & RenderTarget::DEPTH || depth_stencil->clear_type & RenderTarget::STENCIL);
-        extent = {std::min(static_cast<uint32_t>(depth_stencil->texture->desc.width), swapchain.extent.width),
+        extent = {std::min(depth_stencil->texture->desc.width, swapchain.extent.width),
                   std::min(depth_stencil->texture->desc.height, swapchain.extent.height)};
 
         const auto& clear_params = depth_stencil->clear_params.dsv_clear_params;
@@ -1932,8 +2109,8 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
                 },
         };
         extent = {
-            std::min(extent.width, static_cast<uint32_t>(rts[i].texture->desc.width)),
-            std::min(extent.height, static_cast<uint32_t>(rts[i].texture->desc.height)),
+            std::min(extent.width, rts[i].texture->desc.width),
+            std::min(extent.height, rts[i].texture->desc.height),
         };
     }
 

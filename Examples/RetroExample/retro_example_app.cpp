@@ -340,8 +340,9 @@ void RetroExampleApp::create()
     TexMetadata meta = {};
     const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
     THROW_IF_TRUE(FAILED(hr));
+    assert(meta.width <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()));
     qhenki::gfx::TextureDesc skybox_tex_desc{
-        .width = meta.width,
+        .width = static_cast<uint32_t>(meta.width),
         .height = static_cast<uint32_t>(meta.height),
         .depth_or_array_size = static_cast<uint16_t>(meta.arraySize),
         .mip_levels = static_cast<uint16_t>(meta.mipLevels),

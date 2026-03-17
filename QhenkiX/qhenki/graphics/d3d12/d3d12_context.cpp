@@ -1504,6 +1504,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         .visibility = CPU_SEQUENTIAL,
     };
 
+    // TODO: Transient staging buffer
     Buffer local_staging;
     if (!create_buffer(staging_desc, nullptr, &local_staging, nullptr))
     {
@@ -1519,8 +1520,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     {
         const UINT32 mip = subresource % texture->desc.mip_levels;
 
-        // Ok because texture max width is less < UINT32
-        const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
+        const UINT32 mip_width = std::max(1u, texture->desc.width >> mip);
         const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
         // For 3D textures, depth varies per mip. For arrays/cubemaps, always 1 (one 2D slice per subresource)
         const UINT32 mip_depth = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D

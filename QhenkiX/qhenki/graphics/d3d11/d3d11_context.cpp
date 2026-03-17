@@ -722,7 +722,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     if (desc.dimension == TextureDimension::TEXTURE_1D)
     {
         const D3D11_TEXTURE1D_DESC texture_desc{
-            .Width = static_cast<UINT>(desc.width),
+            .Width = desc.width,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
             .Format = desc.format,
@@ -754,8 +754,8 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
         }
 
         const D3D11_TEXTURE2D_DESC texture_desc{
-            .Width = static_cast<UINT>(desc.width),
-            .Height = static_cast<UINT>(desc.height),
+            .Width = desc.width,
+            .Height = desc.height,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
             .Format = desc.format,
@@ -862,7 +862,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
     {
         const UINT32 mip = subresource % texture->desc.mip_levels;
 
-        const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
+        const UINT32 mip_width = std::max(1u, texture->desc.width >> mip);
         const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
         const UINT32 mip_depth = texture->desc.dimension == TextureDimension::TEXTURE_3D
                                    ? std::max<UINT32>(1u, texture->desc.depth_or_array_size >> mip)

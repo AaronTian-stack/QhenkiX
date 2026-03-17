@@ -30,7 +30,7 @@ struct TextureDesc
         VIDEO_ENCODE = BIT(15),
     };
 
-    uint64_t width = 0;
+    uint32_t width = 0;
     uint32_t height = 0;
     uint16_t depth_or_array_size = 1;
     uint16_t mip_levels = 1;

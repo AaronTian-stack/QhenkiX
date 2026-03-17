@@ -366,7 +366,7 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
         assert(tiny_image.bits == 8);      // Assume 8 bits per channel
         model->images.emplace_back();
         model->images.back().desc = {
-            .width = static_cast<uint64_t>(tiny_image.width),
+            .width = static_cast<uint32_t>(tiny_image.width),
             .height = static_cast<uint32_t>(tiny_image.height),
             .depth_or_array_size = 1,             // glTF images are 2D
             .mip_levels = 1,                      // TODO: generate mip maps in compute shader
