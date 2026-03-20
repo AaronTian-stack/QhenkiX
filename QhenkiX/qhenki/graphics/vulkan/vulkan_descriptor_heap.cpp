@@ -1,5 +1,7 @@
 #include "vulkan_descriptor_heap.h"
 
+#include <vk_mem_alloc.h>
+
 using namespace qhenki::gfx;
 
 VulkanDescriptorHeap::~VulkanDescriptorHeap()
@@ -12,10 +14,10 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
 {
     const auto& properties = context.m_capabilities.descriptor_heap_properties;
 
-    m_reserved_size = desc.type == DescriptorHeapDesc::Type::SAMPLER ? properties.minSamplerHeapReservedRange
-                                                                     : properties.minResourceHeapReservedRange;
+    auto reserved_size = desc.type == DescriptorHeapDesc::Type::SAMPLER ? properties.minSamplerHeapReservedRange
+                                                                        : properties.minResourceHeapReservedRange;
 
-    const auto size = desc.size + m_reserved_size;
+    const auto size = desc.size + reserved_size;
 
     if (!(desc.type == DescriptorHeapDesc::Type::SAMPLER ? size < properties.maxSamplerHeapSize
                                                          : size < properties.maxResourceHeapSize))
@@ -30,18 +32,14 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
 
     };
 
-    VmaAllocationCreateInfo allocation_create_info{};
-    const auto cpu_visible = desc.visibility == DescriptorHeapDesc::Visibility::CPU;
-    if (cpu_visible)
+    VmaAllocationCreateInfo allocation_create_info{
+        // TODO: Don't do this
+        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    };
+    if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
     {
-        allocation_create_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    }
-    else
-    {
-        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
     VmaAllocationInfo alloc_info;
@@ -65,12 +63,12 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
         return false;
     }
 
-    if (m_reserved_size > 0)
+    if (reserved_size > 0)
     {
         VmaVirtualAllocation reserved_alloc = VK_NULL_HANDLE;
         VkDeviceSize reserved_offset = 0;
         const VmaVirtualAllocationCreateInfo reserved_info{
-            .size = m_reserved_size,
+            .size = reserved_size,
             .alignment = 1,
         };
 
@@ -85,9 +83,11 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
     }
 
     m_data = alloc_info.pMappedData;
-    assert(!cpu_visible || m_data);
+    assert(m_data);
 
     m_context = &context;
+    m_total_size = size;
+    m_reserved_size = reserved_size;
 
     return true;
 }
@@ -135,7 +135,12 @@ void* VulkanDescriptorHeap::get_cpu_pointer(const size_t offset) const
 
 VkDeviceAddress VulkanDescriptorHeap::get_gpu_address() const
 {
-    return m_heap.get_gpu_address(m_context->m_device.device);
+    return m_context->get_gpu_address(m_heap.buffer);
+}
+
+VkDeviceSize VulkanDescriptorHeap::get_total_size() const
+{
+    return m_total_size;
 }
 
 VkDeviceSize VulkanDescriptorHeap::get_reserved_size() const

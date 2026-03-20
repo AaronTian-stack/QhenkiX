@@ -13,7 +13,10 @@ VulkanCommandPool::VulkanCommandPool(const VkDevice device, const VkCommandPool 
 VulkanCommandPool::~VulkanCommandPool()
 {
     assert(device);
-    vkFreeCommandBuffers(device, command_pool, command_buffers.size(), command_buffers.data());
+    if (!command_buffers.empty())
+    {
+        vkFreeCommandBuffers(device, command_pool, command_buffers.size(), command_buffers.data());
+    }
     if (command_pool)
     {
         vkDestroyCommandPool(device, command_pool, nullptr);
@@ -38,7 +41,10 @@ VkCommandBuffer VulkanCommandPool::create_command_buffer(VkCommandBufferAllocate
 VkResult VulkanCommandPool::reset()
 {
     assert(command_pool);
-    vkFreeCommandBuffers(device, command_pool, command_buffers.size(), command_buffers.data());
+    if (!command_buffers.empty())
+    {
+        vkFreeCommandBuffers(device, command_pool, command_buffers.size(), command_buffers.data());
+    }
     command_buffers.clear();
     return vkResetCommandPool(device, command_pool, 0);
 }

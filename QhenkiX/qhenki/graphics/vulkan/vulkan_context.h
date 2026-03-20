@@ -219,5 +219,7 @@ private:
                                    VkDescriptorType type) const;
 
     VulkanQueue& get_queue(QueueType queue);
+
+    VkDeviceAddress get_gpu_address(VkBuffer buffer) const;
 };
 } // namespace qhenki::gfx

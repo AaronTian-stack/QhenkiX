@@ -13,6 +13,7 @@ class VulkanDescriptorHeap
     VmaVirtualBlock m_block;
 
     const VulkanContext* m_context = nullptr;
+    VkDeviceSize m_total_size = 0;
     VkDeviceSize m_reserved_size = 0;
     void* m_data = nullptr; // Persistently mapped pointer to write into CPU descriptor heaps only
 
@@ -24,6 +25,7 @@ public:
     void deallocate(VmaVirtualAllocation va) const;
     void* get_cpu_pointer(size_t offset) const;
     VkDeviceAddress get_gpu_address() const;
+    VkDeviceSize get_total_size() const;
     VkDeviceSize get_reserved_size() const;
     VmaVirtualAllocationInfo get_allocation_info(VmaVirtualAllocation va) const;
 };

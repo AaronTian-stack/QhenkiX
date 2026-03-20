@@ -312,7 +312,15 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         auto [q, family_index] = result.value();
         out.queue = q;
         out.family_index = family_index;
-        constexpr VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        const VkSemaphoreTypeCreateInfo semaphore_type_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue = 0,
+        };
+        const VkSemaphoreCreateInfo semaphore_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &semaphore_type_info,
+        };
         if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, &out.semaphore)))
         {
             return "Vulkan: Failed to create queue semaphore";
@@ -1219,7 +1227,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorH
 
     const VkDeviceAddressRangeEXT heap_range{
         .address = vk_heap->get_gpu_address(),
-        .size = heap.desc.size,
+        .size = vk_heap->get_total_size(),
     };
 
     const VkBindHeapInfoEXT bind_heap_info{
@@ -1243,7 +1251,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
 
     const VkDeviceAddressRangeEXT heap_range{
         .address = vk_heap->get_gpu_address(),
-        .size = heap.desc.size,
+        .size = vk_heap->get_total_size(),
     };
 
     const VkBindHeapInfoEXT bind_heap_info{
@@ -1255,7 +1263,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
 
     const VkDeviceAddressRangeEXT sampler_heap_range{
         .address = vk_sampler_heap->get_gpu_address(),
-        .size = sampler_heap.desc.size,
+        .size = vk_sampler_heap->get_total_size(),
     };
 
     const VkBindHeapInfoEXT sampler_bind_heap_info{
@@ -1769,6 +1777,8 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
     vkCmdCopyBufferToImage(
         *vk_cmd_list, vk_buffer->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, num_subresources, regions);
 
+    *staging = std::move(local_staging);
+
     return true;
 }
 
@@ -1920,13 +1930,13 @@ bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool
 
 bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
-    const auto vk_cmd_list = to_internal(*cmd_list);
-
     // TODO: Somehow keep same debug name
     if (!create_command_list(cmd_list, command_pool, nullptr))
     {
         return false;
     }
+
+    const auto vk_cmd_list = to_internal(*cmd_list);
 
     constexpr VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -1972,7 +1982,7 @@ RenderTargetState& get_render_target_state(const RenderTarget* const* rts, const
 bool create_views(const VkDevice device,
                   const unsigned count,
                   const RenderTarget* targets,
-                  const Texture* depth_stencil,
+                  const RenderTarget* depth_stencil,
                   RenderTargetState* state)
 {
     for (unsigned i = 0; i < count; i++)
@@ -2005,14 +2015,15 @@ bool create_views(const VkDevice device,
     }
     if (depth_stencil)
     {
-        const auto vk_texture = to_internal(*depth_stencil);
-        assert(depth_stencil->desc.usage & TextureDesc::DEPTH_STENCIL);
-        const auto vk_format = convert_format(depth_stencil->desc.format);
+        const auto tex = depth_stencil->texture;
+        const auto vk_texture = to_internal(*tex);
+        assert(tex->desc.usage & TextureDesc::DEPTH_STENCIL);
+        const auto vk_format = convert_format(tex->desc.format);
 
         const VkImageViewCreateInfo info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = vk_texture->image,
-            .viewType = view_type_from_desc(depth_stencil->desc),
+            .viewType = view_type_from_desc(tex->desc),
             .format = vk_format,
             .subresourceRange = // TODO: Specific mips
             {
@@ -2059,7 +2070,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     const auto& swapchain = m_swapchain.swapchain;
 
     auto& rt_state = get_render_target_state(nullptr, depth_stencil);
-    if (VK_FAILED(create_views(m_device.device, 0, nullptr, depth_stencil->texture, &rt_state)))
+    if (!create_views(m_device.device, 0, nullptr, depth_stencil, &rt_state))
     {
         return false;
     }
@@ -2113,8 +2124,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
                                       const RenderTarget* depth_stencil)
 {
     auto& rt_state = get_render_target_state(&rts, depth_stencil);
-    if (VK_FAILED(
-            create_views(m_device.device, rt_count, rts, depth_stencil ? depth_stencil->texture : nullptr, &rt_state)))
+    if (!create_views(m_device.device, rt_count, rts, depth_stencil, &rt_state))
     {
         return false;
     }
@@ -2269,10 +2279,13 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         if (value >= m_texture_submit_fence_value)
         {
             // Safe to free command buffers as none of them are no longer in use
-            vkFreeCommandBuffers(m_device.device,
-                                 m_texture_transition_pool,
-                                 m_texture_transition_cmd_buffers.size(),
-                                 m_texture_transition_cmd_buffers.data());
+            if (!m_texture_transition_cmd_buffers.empty())
+            {
+                vkFreeCommandBuffers(m_device.device,
+                                     m_texture_transition_pool,
+                                     static_cast<uint32_t>(m_texture_transition_cmd_buffers.size()),
+                                     m_texture_transition_cmd_buffers.data());
+            }
             vkResetCommandPool(m_device.device, m_texture_transition_pool, 0);
             m_texture_transition_cmd_buffers.clear();
         }
@@ -2391,7 +2404,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         };
     }
     // Internal ordering wait
-    auto q = get_queue(queue);
+    auto& q = get_queue(queue);
     wait_semaphore_infos[submit_info.wait_fence_count] = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = q.semaphore,
@@ -2623,11 +2636,25 @@ bool VulkanContext::compatibility_set_samplers(unsigned slot,
 
 bool VulkanContext::wait_idle(const QueueType queue)
 {
-    return true;
+    switch (queue)
+    {
+    case GRAPHICS:
+        return VK_SUCCEEDED(vkQueueWaitIdle(m_graphics_queue.queue));
+    case COMPUTE:
+        return VK_SUCCEEDED(vkQueueWaitIdle(m_compute_queue.queue));
+    case COPY:
+        return VK_SUCCEEDED(vkQueueWaitIdle(m_transfer_queue.queue));
+    default:
+        return VK_SUCCEEDED(vkDeviceWaitIdle(m_device.device));
+    }
 }
 
 VulkanContext::~VulkanContext()
 {
+    if (m_device.device != VK_NULL_HANDLE)
+    {
+        vkDeviceWaitIdle(m_device.device);
+    }
     vmaDestroyAllocator(m_allocator);
     vkb::destroy_swapchain(m_swapchain.swapchain);
     if (m_surface)
@@ -2694,7 +2721,7 @@ bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
     const auto vk_buffer = to_internal(buffer);
 
     VkDeviceAddressRangeEXT address_range{
-        .address = vk_buffer->get_gpu_address(m_device.device),
+        .address = get_gpu_address(vk_buffer->buffer),
         .size = buffer.desc.size,
     };
 
@@ -2777,4 +2804,13 @@ VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
         assert(false);
         return m_graphics_queue;
     }
+}
+
+VkDeviceAddress VulkanContext::get_gpu_address(const VkBuffer buffer) const
+{
+    const VkBufferDeviceAddressInfo addr_info{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = buffer,
+    };
+    return vkGetBufferDeviceAddress(m_device.device, &addr_info);
 }
