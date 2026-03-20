@@ -180,9 +180,9 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
         VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
         VK_KHR_MAINTENANCE_9_EXTENSION_NAME,
-        VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
         VK_GOOGLE_HLSL_FUNCTIONALITY_1_EXTENSION_NAME,
         VK_GOOGLE_USER_TYPE_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
     };
 
     vkb::PhysicalDeviceSelector selector{m_instance};
@@ -252,6 +252,10 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         .maintenance6 = VK_TRUE,
         .pushDescriptor = VK_TRUE,
     };
+    VkPhysicalDeviceDescriptorHeapFeaturesEXT descriptor_heap_features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT,
+        .descriptorHeap = VK_TRUE,
+    };
 
     auto phys_ret = selector.defer_surface_initialization()
                         .set_minimum_version(major, minor)
@@ -261,6 +265,7 @@ std::string VulkanContext::create(const bool enable_debug_layer)
                         .set_required_features_12(features12)
                         .set_required_features_13(features13)
                         .set_required_features_14(features14)
+                        .add_required_extension_features(descriptor_heap_features)
                         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
                         .select();
 
@@ -546,6 +551,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
                                     const char* debug_name)
 {
     assert(pipeline);
+    assert(in_layout);
     if (desc.num_render_targets > MAX_RENDER_TARGETS)
     {
         return false;
@@ -614,15 +620,19 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     const spirv_cross::CompilerGLSL ps_reflect(ps_vk_pixel_shader->spirv);
     const auto ps_entry_name = ps_reflect.get_entry_points_and_stages()[0].name;
 
+    const auto vk_root_signature = to_internal(*in_layout);
+
     std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages;
     shader_stages[0] = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext = &vk_root_signature->layout,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
         .module = vk_vertex_shader->module,
         .pName = vs_entry_name.c_str(),
     };
     shader_stages[1] = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext = &vk_root_signature->layout,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
         .module = ps_vk_pixel_shader->module,
         .pName = ps_entry_name.c_str(),
@@ -945,7 +955,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .pAttachments = color_attachments.data(),
     };
 
-    std::array<VkFormat, 8> color_formats{};
+    std::array<VkFormat, MAX_RENDER_TARGETS> color_formats{};
     for (unsigned i = 0; i < desc.num_render_targets; i++)
     {
         color_formats[i] = convert_format(desc.rtv_formats[i]);
@@ -1024,7 +1034,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
 
     const auto vk_root_signature = to_internal(*layout);
 
-    auto params = vk_root_signature->bindings;
+    auto& params = vk_root_signature->bindings;
 
     uint32_t push_offset = 0;
     for (unsigned i = 0; i < desc->push_ranges.size(); i++)
@@ -1072,29 +1082,50 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
 
             VkSpirvResourceTypeFlagsEXT mask = 0;
-            uint32_t descriptor_size = get_descriptor_size(Descriptor::Type::BUFFER);
+            uint32_t descriptor_size = 0;
+            uint32_t descriptor_alignment = 0;
+
             switch (binding.type)
             {
             case LayoutBinding::RangeType::SRV_BUFFER:
             case LayoutBinding::RangeType::SRV_TEXTURE:
                 mask = srv_mask;
-                descriptor_size = get_descriptor_size(Descriptor::Type::TEXTURE);
                 break;
             case LayoutBinding::RangeType::UAV_BUFFER:
             case LayoutBinding::RangeType::UAV_TEXTURE:
                 mask = uav_mask;
-                descriptor_size = get_descriptor_size(Descriptor::Type::TEXTURE);
                 break;
             case LayoutBinding::RangeType::CBV:
                 mask = cbv_mask;
                 break;
             case LayoutBinding::RangeType::SAMPLER:
                 mask = sampler_mask;
-                descriptor_size = get_descriptor_size(Descriptor::Type::SAMPLER);
                 break;
             }
+            switch (binding.type)
+            {
+            case LayoutBinding::RangeType::SRV_BUFFER:
+            case LayoutBinding::RangeType::UAV_BUFFER:
+            case LayoutBinding::RangeType::CBV:
+                descriptor_size = get_descriptor_size(Descriptor::Type::BUFFER);
+                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::BUFFER);
+                break;
+            case LayoutBinding::RangeType::SRV_TEXTURE:
+            case LayoutBinding::RangeType::UAV_TEXTURE:
+                descriptor_size = get_descriptor_size(Descriptor::Type::TEXTURE);
+                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::TEXTURE);
+                break;
+            case LayoutBinding::RangeType::SAMPLER:
+                descriptor_size = get_descriptor_size(Descriptor::Type::SAMPLER);
+                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::SAMPLER);
+                break;
+            }
+
             assert(mask);
             assert(descriptor_size);
+            assert(descriptor_alignment);
+
+            heap_offset = util::ceil_div(heap_offset, descriptor_alignment) * descriptor_alignment;
 
             params.push_back({
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
@@ -1330,6 +1361,7 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
     {
         buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
+    buffer_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     assert(buffer_info.usage);
 
     VmaAllocationCreateInfo alloc_info = {VMA_MEMORY_USAGE_UNKNOWN};
@@ -1377,46 +1409,14 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
     return true;
 }
 
-bool VulkanContext::allocate_descriptor(DescriptorHeap* const heap,
-                                        const VulkanDescriptorHeap* const vk_heap,
-                                        const DescriptorHeapDesc::Type heap_type,
-                                        Descriptor* const descriptor,
-                                        const Descriptor::Type descriptor_type) const
-{
-    if (heap->desc.type != heap_type)
-    {
-        return false;
-    }
-    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
-    {
-        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
-        {
-            return false;
-        }
-    }
-
-    const auto info = vk_heap->get_allocation_info(descriptor->alloc);
-    if (info.size != get_descriptor_size(descriptor_type))
-    {
-        vk_heap->deallocate(descriptor->alloc);
-        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
-        {
-            return false;
-        }
-    }
-
-    descriptor->heap = heap;
-    return true;
-}
-
 bool VulkanContext::create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    return false;
+    return create_descriptor_buffer(buffer, heap, descriptor, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 }
 
 bool VulkanContext::create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    return false;
+    return create_descriptor_buffer(buffer, heap, descriptor, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 }
 
 void VulkanContext::copy_buffer(
@@ -1585,52 +1585,7 @@ bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, co
 
 bool VulkanContext::create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    const auto vk_heap = to_internal(*heap);
-
-    if (!allocate_descriptor(
-            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::TEXTURE))
-    {
-        return false;
-    }
-
-    const auto vk_texture = to_internal(texture);
-
-    const VkImageViewCreateInfo view_info{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = vk_texture->image,
-        .viewType = view_type_from_desc(texture.desc),
-        .format = convert_format(texture.desc.format),
-        .subresourceRange =
-            {
-                .aspectMask = get_image_aspect_mask(convert_format(texture.desc.format)),
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = VK_REMAINING_ARRAY_LAYERS,
-            },
-    };
-
-    VkImageDescriptorInfoEXT image_info{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT,
-        .pView = &view_info,
-    };
-
-    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
-                                                    .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                                                    .data{
-                                                        .pImage = &image_info,
-                                                    }};
-
-    // Address to CPU mapped heap
-    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
-    const VkHostAddressRangeEXT range{
-        .address = address,
-        .size = get_descriptor_size(Descriptor::Type::TEXTURE),
-    };
-
-    vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range);
-
-    return true;
+    return create_descriptor_texture(texture, heap, descriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 }
 
 struct FormatInfo
@@ -1819,7 +1774,37 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
 
 bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    return true;
+    const auto vk_heap = to_internal(*heap);
+
+    if (!allocate_descriptor(heap, vk_heap, DescriptorHeapDesc::Type::SAMPLER, descriptor, Descriptor::Type::SAMPLER))
+    {
+        return false;
+    }
+
+    const VkSamplerCreateInfo sampler_info{
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = get_vk_filter(desc.mag_filter),
+        .minFilter = get_vk_filter(desc.min_filter),
+        .mipmapMode = get_vk_sampler_mipmap_mode(desc.mip_filter),
+        .addressModeU = texture_address_mode(desc.address_mode_u),
+        .addressModeV = texture_address_mode(desc.address_mode_v),
+        .addressModeW = texture_address_mode(desc.address_mode_w),
+        .mipLodBias = desc.mip_lod_bias,
+        .anisotropyEnable = desc.max_anisotropy > 0,
+        .maxAnisotropy = static_cast<float>(desc.max_anisotropy),
+        .compareEnable = desc.comparison_func != ComparisonFunc::NONE,
+        .compareOp = comparison_func(desc.comparison_func),
+        .minLod = desc.min_lod,
+        .maxLod = desc.max_lod,
+    };
+
+    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
+    const VkHostAddressRangeEXT range{
+        .address = address,
+        .size = get_descriptor_size(Descriptor::Type::SAMPLER),
+    };
+
+    return VK_SUCCEEDED(vkWriteSamplerDescriptorsEXT(m_device.device, 1, &sampler_info, &range));
 }
 
 void* VulkanContext::map_buffer(const Buffer& buffer)
@@ -2659,6 +2644,123 @@ VulkanContext::~VulkanContext()
     }
     vkb::destroy_device(m_device);
     vkb::destroy_instance(m_instance);
+}
+
+bool VulkanContext::allocate_descriptor(DescriptorHeap* const heap,
+                                        const VulkanDescriptorHeap* const vk_heap,
+                                        const DescriptorHeapDesc::Type expected_heap_type,
+                                        Descriptor* const descriptor,
+                                        const Descriptor::Type descriptor_type) const
+{
+    if (heap->desc.type != expected_heap_type)
+    {
+        return false;
+    }
+    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
+    {
+        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
+        {
+            return false;
+        }
+    }
+
+    const auto info = vk_heap->get_allocation_info(descriptor->alloc);
+    if (info.size != get_descriptor_size(descriptor_type))
+    {
+        vk_heap->deallocate(descriptor->alloc);
+        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
+        {
+            return false;
+        }
+    }
+
+    descriptor->heap = heap;
+    return true;
+}
+
+bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
+                                             DescriptorHeap* heap,
+                                             Descriptor* descriptor,
+                                             const VkDescriptorType type) const
+{
+    const auto vk_heap = to_internal(*heap);
+
+    if (!allocate_descriptor(
+            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::BUFFER))
+    {
+        return false;
+    }
+
+    const auto vk_buffer = to_internal(buffer);
+
+    VkDeviceAddressRangeEXT address_range{
+        .address = vk_buffer->get_gpu_address(m_device.device),
+        .size = buffer.desc.size,
+    };
+
+    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+                                                    .type = type,
+                                                    .data{
+                                                        .pAddressRange = &address_range,
+                                                    }};
+
+    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
+    const VkHostAddressRangeEXT range{
+        .address = address,
+        .size = get_descriptor_size(Descriptor::Type::BUFFER),
+    };
+
+    return VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
+}
+
+bool VulkanContext::create_descriptor_texture(const Texture& texture,
+                                              DescriptorHeap* heap,
+                                              Descriptor* descriptor,
+                                              const VkDescriptorType type) const
+{
+    const auto vk_heap = to_internal(*heap);
+
+    if (!allocate_descriptor(
+            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::TEXTURE))
+    {
+        return false;
+    }
+
+    const auto vk_texture = to_internal(texture);
+
+    const VkImageViewCreateInfo view_info{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = vk_texture->image,
+        .viewType = view_type_from_desc(texture.desc),
+        .format = convert_format(texture.desc.format),
+        .subresourceRange =
+            {
+                .aspectMask = get_image_aspect_mask(convert_format(texture.desc.format)),
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+    };
+
+    VkImageDescriptorInfoEXT image_info{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT,
+        .pView = &view_info,
+    };
+
+    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+                                                    .type = type,
+                                                    .data{
+                                                        .pImage = &image_info,
+                                                    }};
+
+    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
+    const VkHostAddressRangeEXT range{
+        .address = address,
+        .size = get_descriptor_size(Descriptor::Type::TEXTURE),
+    };
+
+    return VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
 }
 
 VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)

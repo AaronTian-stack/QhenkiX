@@ -30,18 +30,18 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
 
     };
 
-    VmaAllocationCreateInfo allocation_create_info{
-        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
-    };
+    VmaAllocationCreateInfo allocation_create_info{};
     const auto cpu_visible = desc.visibility == DescriptorHeapDesc::Visibility::CPU;
     if (cpu_visible)
     {
-        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        allocation_create_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     }
     else
     {
-        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
     VmaAllocationInfo alloc_info;
@@ -85,6 +85,7 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
     }
 
     m_data = alloc_info.pMappedData;
+    assert(!cpu_visible || m_data);
 
     m_context = &context;
 
@@ -126,20 +127,15 @@ void VulkanDescriptorHeap::deallocate(const VmaVirtualAllocation va) const
     vmaVirtualFree(m_block, va);
 }
 
-void* VulkanDescriptorHeap::get_cpu_pointer(size_t offset) const
+void* VulkanDescriptorHeap::get_cpu_pointer(const size_t offset) const
 {
-    assert(m_data);
-    assert(offset < m_reserved_size);
+    assert(offset >= m_reserved_size);
     return static_cast<uint8_t*>(m_data) + offset;
 }
 
 VkDeviceAddress VulkanDescriptorHeap::get_gpu_address() const
 {
-    const VkBufferDeviceAddressInfo addr_info{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = m_heap.buffer,
-    };
-    return vkGetBufferDeviceAddress(m_context->m_device, &addr_info);
+    return m_heap.get_gpu_address(m_context->m_device.device);
 }
 
 VkDeviceSize VulkanDescriptorHeap::get_reserved_size() const

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <directx/d3d12.h>
 #include <directx/dxgiformat.h>
 #include <wrl/client.h>
 #include <string>

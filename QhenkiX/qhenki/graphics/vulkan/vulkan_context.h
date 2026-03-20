@@ -203,11 +203,20 @@ public:
     friend class VulkanDescriptorHeap;
 
 private:
+    // Grab an offset from for the descriptor in the heap
     bool allocate_descriptor(DescriptorHeap* heap,
                              const VulkanDescriptorHeap* vk_heap,
-                             DescriptorHeapDesc::Type heap_type,
+                             DescriptorHeapDesc::Type expected_heap_type,
                              Descriptor* descriptor,
                              Descriptor::Type descriptor_type) const;
+    bool create_descriptor_buffer(const Buffer& buffer,
+                                  DescriptorHeap* heap,
+                                  Descriptor* descriptor,
+                                  VkDescriptorType type) const;
+    bool create_descriptor_texture(const Texture& texture,
+                                   DescriptorHeap* heap,
+                                   Descriptor* descriptor,
+                                   VkDescriptorType type) const;
 
     VulkanQueue& get_queue(QueueType queue);
 };

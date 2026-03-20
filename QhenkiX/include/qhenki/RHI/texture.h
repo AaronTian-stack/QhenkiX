@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
 
 #include "barrier.h"
+#include "smartpointer.h"
 
 namespace qhenki::gfx
 {
