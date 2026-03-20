@@ -168,7 +168,7 @@ public:
                               unsigned frame_index) override;
     void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override;
 
-    void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
+    bool issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
 
     void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
     void start_imgui_frame() override;

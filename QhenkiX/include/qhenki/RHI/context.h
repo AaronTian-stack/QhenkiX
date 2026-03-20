@@ -213,7 +213,7 @@ public:
                                       const Swapchain& swapchain,
                                       unsigned frame_index) = 0;
     virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) = 0;
-    virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
+    virtual bool issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
     virtual void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) = 0;
     virtual void start_imgui_frame() = 0;

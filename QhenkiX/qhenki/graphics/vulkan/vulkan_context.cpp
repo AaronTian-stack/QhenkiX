@@ -463,8 +463,6 @@ unsigned VulkanContext::get_swapchain_frame_index()
 
 bool VulkanContext::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
 {
-    assert(shader);
-
     auto state = mkS<VulkanShader>();
     state->spirv.resize(size / sizeof(uint32_t));
     memcpy(state->spirv.data(), data, size);
@@ -1295,7 +1293,7 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned i
 
 bool VulkanContext::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
-    return true;
+    return false;
 }
 
 bool VulkanContext::free_descriptor(Descriptor* descriptor)
@@ -2550,8 +2548,55 @@ void VulkanContext::set_barrier_resource(unsigned count, ImageBarrier* barriers,
 {
 }
 
-void VulkanContext::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+bool VulkanContext::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
 {
+    const auto vk_cmd_buffer = to_internal(*cmd_list);
+    auto& arena = acquire_arena(m_frame_count);
+    const auto vk_barriers = arena.alloc_array<VkImageMemoryBarrier2>(count);
+
+    for (unsigned i = 0; i < count; i++)
+    {
+        const auto& barrier = barriers[i];
+        if (!barrier.resource)
+        {
+#if defined(_WIN32) || defined(_WIN64)
+            OutputDebugStringA("Qhenki Vulkan ERROR: Barrier resource is null. Barrier was not issued\n");
+#else
+            printf("Qhenki Vulkan ERROR: Barrier resource is null. Barrier was not issued\n");
+#endif
+            return false;
+        }
+
+        vk_barriers[i] = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = sync_stage(barrier.src_stage),
+            .srcAccessMask = access_flags(barrier.src_access),
+            .dstStageMask = sync_stage(barrier.dst_stage),
+            .dstAccessMask = access_flags(barrier.dst_access),
+            .oldLayout = layout(barrier.src_layout),
+            .newLayout = layout(barrier.dst_layout),
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = static_cast<VkImage>(barrier.resource),
+            .subresourceRange =
+                {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = barrier.subresource_range.base_mip_level,
+                    .levelCount = barrier.subresource_range.mip_level_count,
+                    .baseArrayLayer = barrier.subresource_range.base_array_layer,
+                    .layerCount = barrier.subresource_range.array_layer_count,
+                },
+        };
+    }
+
+    const VkDependencyInfo dep_info{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = count,
+        .pImageMemoryBarriers = vk_barriers,
+    };
+    vkCmdPipelineBarrier2(*vk_cmd_buffer, &dep_info);
+
+    return true;
 }
 
 void VulkanContext::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)

@@ -1166,8 +1166,9 @@ void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, 
 {
 }
 
-void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+bool D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
 {
+    return true;
 }
 
 void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)

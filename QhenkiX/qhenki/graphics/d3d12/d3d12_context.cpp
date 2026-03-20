@@ -2096,7 +2096,7 @@ void D3D12Context::set_barrier_resource(const unsigned count, ImageBarrier* barr
     }
 }
 
-void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
+bool D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -2111,7 +2111,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, co
         if (!barrier.resource)
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Barrier resource is null. Barrier was not issued\n");
-            return;
+            return false;
         }
 
         auto& d3d12_barrier = d3d12_barriers[i];
@@ -2143,6 +2143,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, co
     };
 
     command_list->Barrier(1, &barrier_group);
+    return true;
 }
 
 void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
