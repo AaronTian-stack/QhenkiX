@@ -2542,10 +2542,19 @@ void VulkanContext::set_barrier_resource(unsigned count,
                                          const Swapchain& swapchain,
                                          unsigned frame_index)
 {
+    for (unsigned i = 0; i < count; i++)
+    {
+        barriers[i].resource = reinterpret_cast<void*>(m_swapchain.images[frame_index]);
+    }
 }
 
-void VulkanContext::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target)
+void VulkanContext::set_barrier_resource(const unsigned count, ImageBarrier* barriers, const Texture& render_target)
 {
+    const auto vk_texture = to_internal(render_target);
+    for (unsigned i = 0; i < count; i++)
+    {
+        barriers[i].resource = reinterpret_cast<void*>(vk_texture->image);
+    }
 }
 
 bool VulkanContext::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
