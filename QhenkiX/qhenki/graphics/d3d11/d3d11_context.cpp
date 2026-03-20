@@ -9,9 +9,11 @@
 #include <DirectXMath.h>
 #include <DirectXTex.h>
 
-#include "d3d11_heap.h"
+#include "d3d11_descriptor_heap.h"
 #include "d3d11_pipeline.h"
+#include "d3d11_sampler_heap.h"
 #include "d3d11_shader.h"
+#include "d3d11_srv_uav_heap.h"
 #include "d3d11_texture.h"
 #include "qhenki/application.h"
 #include "qhenki/utility/d3d_util.h"
@@ -48,16 +50,23 @@ D3D11Texture* to_internal(const Texture& ext)
     return d3d11_texture;
 }
 
-D3D11_SRV_UAV_Heap* to_internal_srv_uav(const DescriptorHeap& ext)
+D3D11DescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
-    const auto d3d11_heap = static_cast<D3D11_SRV_UAV_Heap*>(ext.internal_state.get());
+    const auto d3d11_heap = static_cast<D3D11DescriptorHeap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
 
-D3D11_Sampler_Heap* to_internal_sampler(const DescriptorHeap& ext)
+D3D11SRVUAVHeap* to_internal_srv_uav(const DescriptorHeap& ext)
 {
-    const auto d3d11_heap = static_cast<D3D11_Sampler_Heap*>(ext.internal_state.get());
+    const auto d3d11_heap = static_cast<D3D11SRVUAVHeap*>(ext.internal_state.get());
+    assert(d3d11_heap);
+    return d3d11_heap;
+}
+
+D3D11SamplerHeap* to_internal_sampler(const DescriptorHeap& ext)
+{
+    const auto d3d11_heap = static_cast<D3D11SamplerHeap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
@@ -477,23 +486,32 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     switch (desc.type)
     {
     case DescriptorHeapDesc::Type::CBV_SRV_UAV:
-        heap->internal_state = mkS<D3D11_SRV_UAV_Heap>();
+        heap->internal_state = mkS<D3D11SRVUAVHeap>();
         break;
     case DescriptorHeapDesc::Type::SAMPLER:
-        heap->internal_state = mkS<D3D11_Sampler_Heap>();
+        heap->internal_state = mkS<D3D11SamplerHeap>();
         break;
     default:
-        OutputDebugStringA("Qhenki D3D11 ERROR: Unsupported descriptor heap type\n");
         return false;
     }
 
-    // TODO: Force fixed size for slightly stricter match with D3D12?
+    const auto d3d11_heap = to_internal(*heap);
+
+    if (!d3d11_heap->create(desc))
+    {
+        heap->internal_state.reset();
+        return false;
+    }
+
+    heap->desc = desc;
+
     return true;
 }
 
 size_t D3D11Context::get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const
 {
-    return 0;
+    // TODO: Return D3D12 limits?
+    return std::numeric_limits<size_t>::max();
 }
 
 void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -517,12 +535,18 @@ bool D3D11Context::copy_descriptors(size_t bytes, const Descriptor& src, const D
 
 bool D3D11Context::free_descriptor(Descriptor* descriptor)
 {
+    // Could be CBV which has nothing so check heap
+    if (descriptor->heap)
+    {
+        const auto heap = to_internal(*descriptor->heap);
+        heap->deallocate(descriptor->offset);
+    }
     return true;
 }
 
 size_t D3D11Context::get_descriptor_size(Descriptor::Type type) const
 {
-    return 0;
+    return 1;
 }
 
 size_t D3D11Context::get_descriptor_alignment(Descriptor::Type type) const
@@ -622,18 +646,16 @@ bool D3D11Context::create_descriptor_constant_view(const Buffer& buffer,
 
 bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    assert(heap);
-    assert(descriptor);
     const auto buffer_d3d11 = to_internal(buffer);
     const auto heap_d3d11 = to_internal_srv_uav(*heap);
 
-    const auto create_new_descriptor = descriptor->offset == CREATE_NEW_DESCRIPTOR;
-
-    const auto offset = create_new_descriptor ? heap_d3d11->shader_resource_views.size() : descriptor->offset;
-
-    if (create_new_descriptor)
+    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {
-        heap_d3d11->shader_resource_views.push_back({});
+        if (!heap_d3d11->allocate(&descriptor->offset))
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to allocate descriptor from heap\n");
+            return false;
+        }
     }
 
     ComPtr<ID3D11ShaderResourceView> view;
@@ -648,16 +670,13 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
     };
     if (FAILED(m_device->CreateShaderResourceView(buffer_d3d11->Get(), &srv_desc, view.ReleaseAndGetAddressOf())))
     {
-        if (create_new_descriptor)
-        {
-            heap_d3d11->shader_resource_views.pop_back();
-        }
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
         return false;
     }
-    heap_d3d11->shader_resource_views[offset] = std::move(view);
 
-    *descriptor = Descriptor(heap, offset);
+    heap_d3d11->place_srv(descriptor->offset, std::move(view));
+
+    descriptor->heap = heap;
 
     return true;
 }
@@ -810,16 +829,16 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
                                                  DescriptorHeap* const heap,
                                                  Descriptor* const descriptor)
 {
-    assert(descriptor);
     const auto texture_d3d11 = to_internal(texture);
     const auto heap_d3d11 = to_internal_srv_uav(*heap);
 
-    const auto create_new_descriptor = descriptor->offset == CREATE_NEW_DESCRIPTOR;
-
-    const size_t offset = create_new_descriptor ? heap_d3d11->shader_resource_views.size() : descriptor->offset;
-    if (create_new_descriptor)
+    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {
-        heap_d3d11->shader_resource_views.push_back({});
+        if (!heap_d3d11->allocate(&descriptor->offset))
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to allocate descriptor from heap\n");
+            return false;
+        }
     }
 
     const auto resource = get_texture_resource(*texture_d3d11);
@@ -828,16 +847,13 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     ComPtr<ID3D11ShaderResourceView> view;
     if (FAILED(m_device->CreateShaderResourceView(resource, nullptr, view.ReleaseAndGetAddressOf())))
     {
-        if (create_new_descriptor)
-        {
-            heap_d3d11->shader_resource_views.pop_back();
-        }
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture SRV\n");
         return false;
     }
-    heap_d3d11->shader_resource_views[offset] = std::move(view);
 
-    *descriptor = Descriptor(heap, offset);
+    heap_d3d11->place_srv(descriptor->offset, std::move(view));
+
+    descriptor->heap = heap;
 
     return true;
 }
@@ -917,9 +933,12 @@ bool D3D11Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
     }
 
     auto d3d11_heap = to_internal_sampler(*heap);
-    d3d11_heap->push_back(std::move(sampler_state));
 
-    *descriptor = Descriptor(heap, d3d11_heap->size() - 1);
+    d3d11_heap->allocate(&descriptor->offset);
+
+    d3d11_heap->place_sampler(descriptor->offset, std::move(sampler_state));
+
+    descriptor->heap = heap;
 
     return true;
 }
@@ -965,7 +984,7 @@ bool D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
         buffer_d3d11[i] = buffer->Get();
         assert(strides[i] <= std::numeric_limits<UINT>::max());
         assert(offsets[i] <= std::numeric_limits<UINT>::max());
-        buffer_strides[i] = sizes[i];
+        buffer_strides[i] = strides[i];
         buffer_offsets[i] = offsets[i];
     }
     m_device_context->IASetVertexBuffers(
@@ -1074,6 +1093,10 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
     return true;
 }
 
+void D3D11Context::end_render_pass(CommandList* cmd_list)
+{
+}
+
 void D3D11Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
 {
     for (unsigned int i = 0; i < count; i++)
@@ -1099,10 +1122,6 @@ void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, co
 void D3D11Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
     m_device_context->Draw(vertex_count, start_vertex_offset);
-}
-
-void D3D11Context::end_render_pass(CommandList* cmd_list)
-{
 }
 
 void D3D11Context::draw_indexed(CommandList* cmd_list,
@@ -1208,10 +1227,10 @@ bool D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
     return true;
 }
 
-bool D3D11Context::compatibility_set_shader_buffers(unsigned slot,
-                                                    unsigned count,
+bool D3D11Context::compatibility_set_shader_buffers(const unsigned slot,
+                                                    const unsigned count,
                                                     Descriptor* const* descriptors,
-                                                    PipelineStage stage)
+                                                    const PipelineStage stage)
 {
     std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> srv{};
     if (count > srv.size())
@@ -1223,7 +1242,13 @@ bool D3D11Context::compatibility_set_shader_buffers(unsigned slot,
     {
         assert(descriptors[i]->heap);
         const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
-        srv[i] = heap->shader_resource_views[descriptors[i]->offset].Get();
+        const auto srv_ptr = heap->get_srv(descriptors[i]->offset);
+        if (!srv_ptr)
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Invalid descriptor for shader buffer\n");
+            return false;
+        }
+        srv[i] = srv_ptr;
     }
     switch (stage)
     {
@@ -1280,14 +1305,28 @@ bool D3D11Context::compatibility_set_textures(const unsigned slot,
     {
         assert(descriptors[i]->heap);
         const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
+
+        const auto uav_ptr = heap->get_uav(descriptors[i]->offset);
+        const auto srv_ptr = heap->get_srv(descriptors[i]->offset);
+
         // The descriptor offset is used as index into vector
         switch (flag)
         {
         case ACCESS_STORAGE_ACCESS:
-            resource_views.unordered_access_views[i] = heap->unordered_access_views[descriptors[i]->offset].Get();
+            if (!uav_ptr)
+            {
+                OutputDebugStringA("Qhenki D3D11 ERROR: Invalid descriptor for unordered access texture\n");
+                return false;
+            }
+            resource_views.unordered_access_views[i] = uav_ptr;
             break;
         case ACCESS_SHADER_RESOURCE:
-            resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i]->offset].Get();
+            if (!srv_ptr)
+            {
+                OutputDebugStringA("Qhenki D3D11 ERROR: Invalid descriptor for shader resource texture\n");
+                return false;
+            }
+            resource_views.shader_resource_views[i] = srv_ptr;
             break;
         default:
             OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
@@ -1357,9 +1396,10 @@ bool D3D11Context::compatibility_set_samplers(const unsigned slot,
     }
     for (unsigned i = 0; i < count; i++)
     {
-        if (samplers)
+        if (samplers && samplers[i])
         {
-            sampler_d3d11[i] = samplers[i] ? to_internal_sampler(*samplers[i]->heap)->at(i).Get() : nullptr;
+            const auto heap = to_internal_sampler(*samplers[i]->heap);
+            sampler_d3d11[i] = heap->get_sampler(samplers[i]->offset);
         }
         else
         {

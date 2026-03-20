@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <qhenki/display_window.h>
+#include "qhenki/display_window.h"
 #include "shader.h"
 #include "swapchain.h"
 
@@ -71,6 +71,14 @@ public:
 
     virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
     virtual bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) = 0;
+
+    /**
+     * Free descriptor from the descriptor heap, allowing another descriptor to be created at the same offset. Only call
+     * this function if you are using create_descriptor exclusively with CREATE_NEW_DESCRIPTOR, otherwise the behavior
+     * is undefined.
+     * @param descriptor Descriptor to free.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool free_descriptor(Descriptor* descriptor) = 0;
     virtual size_t get_descriptor_size(Descriptor::Type type) const = 0;
     virtual size_t get_descriptor_alignment(Descriptor::Type type) const = 0;
