@@ -412,7 +412,7 @@ void ExampleApp::render()
 
     // You MUST call Present at the end of the render loop
     // TODO: change for Vulkan
-    m_context->present(m_swapchain, 0, nullptr, m_frame_index);
+    THROW_IF_FALSE(m_context->present(m_swapchain, 0, nullptr, m_frame_index));
 
     m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
 

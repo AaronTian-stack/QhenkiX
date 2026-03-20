@@ -453,7 +453,7 @@ bool VulkanContext::present(const Swapchain& swapchain,
                             unsigned swapchain_index)
 {
     ++m_frame_count;
-    return true;
+    return false;
 }
 
 unsigned VulkanContext::get_swapchain_frame_index(const Swapchain& swapchain)
@@ -2420,7 +2420,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         .value = q.last_signaled_fence_value,
         .stageMask = stage_mask,
     };
-    if (number_of_textures_to_transition)
+    if (number_of_textures_to_transition > 0)
     {
         wait_semaphore_infos[submit_info.wait_fence_count + 1] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -2440,18 +2440,26 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     }
 
     // +1 for internal ordering signal
-    const auto submit_count = submit_info.signal_fence_count + 1;
-    const auto signal_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(submit_count);
+    const auto signal_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(submit_info.signal_fence_count + 1);
+    uint32_t signal_count = 0;
     for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
     {
-        signal_semaphore_infos[i] = {
+        const auto vk_fence = to_internal(submit_info.signal_fences[i]);
+        uint64_t current_val = 0;
+        vkGetSemaphoreCounterValue(m_device.device, *vk_fence, &current_val);
+        if (submit_info.signal_values[i] <= current_val)
+        {
+            // No-op
+            continue;
+        }
+        signal_semaphore_infos[signal_count++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = *to_internal(submit_info.signal_fences[i]),
+            .semaphore = *vk_fence,
             .value = submit_info.signal_values[i],
             .stageMask = stage_mask,
         };
     }
-    signal_semaphore_infos[submit_info.signal_fence_count] = {
+    signal_semaphore_infos[signal_count++] = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = q.semaphore,
         .value = ++q.last_signaled_fence_value,
@@ -2464,7 +2472,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         .pWaitSemaphoreInfos = wait_semaphore_infos,
         .commandBufferInfoCount = submit_info.command_list_count,
         .pCommandBufferInfos = cmd_buffer_infos,
-        .signalSemaphoreInfoCount = submit_count,
+        .signalSemaphoreInfoCount = signal_count,
         .pSignalSemaphoreInfos = signal_semaphore_infos,
     };
 
