@@ -12,8 +12,10 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 
 #include "vk_mem_alloc.h"
+
 #include "vulkan_command_pool.h"
 #include "vulkan_descriptor_heap.h"
+#include "vulkan_pipeline.h"
 #include "vulkan_root_signature.h"
 #include "vulkan_shader.h"
 #include "vulkan_texture.h"
@@ -52,9 +54,9 @@ VulkanRootSignature* to_internal(const PipelineLayout& ext)
     return vulkan_root_sig;
 }
 
-VkPipeline* to_internal(const GraphicsPipeline& ext)
+VulkanPipeline* to_internal(const GraphicsPipeline& ext)
 {
-    const auto vulkan_pipeline = static_cast<VkPipeline*>(ext.internal_state.get());
+    const auto vulkan_pipeline = static_cast<VulkanPipeline*>(ext.internal_state.get());
     assert(vulkan_pipeline);
     return vulkan_pipeline;
 }
@@ -657,13 +659,11 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     // We require multi-viewport device feature
     VkPipelineViewportStateCreateInfo viewport_state_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = MAX_VIEWPORTS_SCISSORS,
-        .scissorCount = MAX_VIEWPORTS_SCISSORS,
     };
 
     std::array dynamic_states = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+        VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
         VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
         VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE,
     };
@@ -1006,7 +1006,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
-    pipeline->internal_state = mkS<VkPipeline>(vk_pipeline);
+    pipeline->internal_state = mkS<VulkanPipeline>(vk_pipeline, primitive_topology);
 
     set_debug_name(m_device.device, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(vk_pipeline), debug_name);
 
@@ -1017,7 +1017,10 @@ bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline&
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
     const auto vk_pipeline = to_internal(pipeline);
-    vkCmdBindPipeline(*vk_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, *vk_pipeline);
+
+    vkCmdSetPrimitiveTopology(*vk_cmd_list, vk_pipeline->topology);
+    vkCmdBindPipeline(*vk_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->pipeline);
+
     return true;
 }
 
@@ -1959,6 +1962,12 @@ bool VulkanContext::close_command_list(CommandList* cmd_list)
     return VK_SUCCEEDED(vkEndCommandBuffer(*vk_cmd_list));
 }
 
+void VulkanContext::end_render_pass(CommandList* cmd_list)
+{
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    vkCmdEndRendering(*vk_cmd_list);
+}
+
 bool VulkanContext::reset_command_pool(CommandPool* command_pool)
 {
     const auto vk_pool = to_internal(*command_pool);
@@ -2208,7 +2217,7 @@ void VulkanContext::set_viewports(CommandList* list, const unsigned count, const
         };
     }
     const auto vk_cmd_list = to_internal(*list);
-    vkCmdSetViewport(*vk_cmd_list, 0, count, vk_viewports.data());
+    vkCmdSetViewportWithCount(*vk_cmd_list, count, vk_viewports.data());
 }
 
 void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
@@ -2223,7 +2232,7 @@ void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, c
         };
     }
     const auto vk_cmd_list = to_internal(*list);
-    vkCmdSetScissor(*vk_cmd_list, 0, count, vk_scissors.data());
+    vkCmdSetScissorWithCount(*vk_cmd_list, count, vk_scissors.data());
 }
 
 void VulkanContext::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)

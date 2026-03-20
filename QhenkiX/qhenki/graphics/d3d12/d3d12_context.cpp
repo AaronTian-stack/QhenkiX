@@ -1956,6 +1956,10 @@ void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, co
     command_list->RSSetScissorRects(count, scissor_rect);
 }
 
+void D3D12Context::end_render_pass(CommandList* cmd_list)
+{
+}
+
 void D3D12Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);

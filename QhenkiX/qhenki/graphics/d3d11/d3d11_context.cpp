@@ -1101,6 +1101,10 @@ void D3D11Context::draw(CommandList* cmd_list, const uint32_t vertex_count, cons
     m_device_context->Draw(vertex_count, start_vertex_offset);
 }
 
+void D3D11Context::end_render_pass(CommandList* cmd_list)
+{
+}
+
 void D3D11Context::draw_indexed(CommandList* cmd_list,
                                 const uint32_t index_count,
                                 const uint32_t instance_count,

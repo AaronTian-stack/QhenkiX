@@ -143,6 +143,7 @@ public:
                            unsigned rt_count,
                            const RenderTarget* rts,
                            const RenderTarget* depth_stencil) override;
+    void end_render_pass(CommandList* cmd_list) override;
 
     void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) override;
     void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) override;

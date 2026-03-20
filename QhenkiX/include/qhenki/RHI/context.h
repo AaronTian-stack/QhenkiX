@@ -168,6 +168,7 @@ public:
                                    unsigned int rt_count,
                                    const RenderTarget* rts,
                                    const RenderTarget* depth_stencil) = 0;
+    virtual void end_render_pass(CommandList* cmd_list) = 0;
 
     virtual void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;
     virtual void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) = 0;

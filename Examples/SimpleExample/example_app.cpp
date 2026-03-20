@@ -366,7 +366,6 @@ void ExampleApp::render()
                                                    descriptor));
 
         // Sampler
-
         descriptor = qhenki::gfx::Descriptor(&m_sampler_heap, 0);
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
     }
@@ -379,6 +378,8 @@ void ExampleApp::render()
     m_context->bind_index_buffer(&cmd_list, m_index_buffer, qhenki::gfx::IndexType::UINT32, 0);
 
     m_context->draw_indexed(&cmd_list, 3, 1, 0, 0, 0);
+
+    m_context->end_render_pass(&cmd_list);
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_present = {

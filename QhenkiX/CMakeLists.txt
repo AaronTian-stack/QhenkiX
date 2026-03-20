@@ -103,6 +103,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_root_signature.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_shader.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_pipeline.h"
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 )
 
