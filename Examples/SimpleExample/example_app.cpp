@@ -221,11 +221,11 @@ void ExampleApp::create()
 
     // Transition texture
     qhenki::gfx::ImageBarrier barrier_render = {
-        .src_stage = qhenki::gfx::SyncStage::SYNC_NONE, // Not accessed before the barrier in same submission
-        .dst_stage = qhenki::gfx::SyncStage::SYNC_NONE, // Not accessed after either
+        .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,
+        .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
 
-        .src_access = qhenki::gfx::AccessFlags::NO_ACCESS, // The resource is not accessed in this execution
-        .dst_access = qhenki::gfx::AccessFlags::NO_ACCESS,
+        .src_access = qhenki::gfx::AccessFlags::ACCESS_COPY_DEST,
+        .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
 
         .src_layout = qhenki::gfx::Layout::COPY_DEST,
         .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
