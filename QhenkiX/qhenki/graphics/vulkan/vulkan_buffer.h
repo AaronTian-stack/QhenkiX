@@ -11,10 +11,10 @@ struct VulkanBuffer
     VmaAllocator allocator;
     // All types are pointers
     VulkanBuffer() = default;
-    VulkanBuffer(const VulkanBuffer&) = default;
-    VulkanBuffer(VulkanBuffer&&) = default;
-    VulkanBuffer& operator=(const VulkanBuffer&) = default;
-    VulkanBuffer& operator=(VulkanBuffer&&) = default;
+    VulkanBuffer(const VulkanBuffer&) = delete;
+    VulkanBuffer(VulkanBuffer&&) = delete;
+    VulkanBuffer& operator=(const VulkanBuffer&) = delete;
+    VulkanBuffer& operator=(VulkanBuffer&&) = delete;
     ~VulkanBuffer()
     {
         vmaDestroyBuffer(allocator, buffer, allocation);

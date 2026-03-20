@@ -19,7 +19,12 @@ class VulkanDescriptorHeap
 
 public:
     VulkanDescriptorHeap() = default;
+    VulkanDescriptorHeap(const VulkanDescriptorHeap&) = delete;
+    VulkanDescriptorHeap(VulkanDescriptorHeap&&) = delete;
+    VulkanDescriptorHeap& operator=(const VulkanDescriptorHeap&) = delete;
+    VulkanDescriptorHeap& operator=(VulkanDescriptorHeap&&) = delete;
     ~VulkanDescriptorHeap();
+
     bool create(const DescriptorHeapDesc& desc, const VulkanContext& context);
     bool allocate(VmaVirtualAllocation* va, Descriptor::Type type, VkDeviceSize* offset) const;
     void deallocate(VmaVirtualAllocation va) const;
