@@ -1300,6 +1300,8 @@ bool VulkanContext::copy_descriptors(size_t bytes, const Descriptor& src, const 
 
 bool VulkanContext::free_descriptor(Descriptor* descriptor)
 {
+    const auto vk_heap = to_internal(*descriptor->heap);
+    vk_heap->deallocate(descriptor->alloc);
     return true;
 }
 
