@@ -983,8 +983,9 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
 size_t D3D12Context::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type) const
 {
     // We assume Tier 2 minimum
-    return type == DescriptorHeapDesc::Type::SAMPLER ? D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE
-                                                     : D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2;
+    return type == DescriptorHeapDesc::Type::SAMPLER
+             ? D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE * get_descriptor_size(Descriptor::SAMPLER)
+             : D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2 * get_descriptor_size(Descriptor::BUFFER);
 }
 
 void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -1079,8 +1080,6 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
 
 bool D3D12Context::free_descriptor(Descriptor* descriptor)
 {
-    assert(descriptor);
-    assert(descriptor->heap);
     const auto heap_d3d12 = to_internal(*descriptor->heap);
     if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {

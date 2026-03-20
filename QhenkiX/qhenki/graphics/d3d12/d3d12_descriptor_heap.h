@@ -29,7 +29,6 @@ public:
 
     bool create(ID3D12Device* device, const D3D12_DESCRIPTOR_HEAP_DESC& desc);
 
-    // Thread safe
     bool allocate(size_t* alloc_offset);
     void deallocate(size_t alloc_offset);
 
