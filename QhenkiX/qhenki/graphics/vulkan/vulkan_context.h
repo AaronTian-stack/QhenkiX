@@ -66,7 +66,7 @@ public:
                  unsigned fence_count,
                  Fence* wait_fences,
                  unsigned swapchain_index) override;
-    unsigned get_swapchain_frame_index(const Swapchain& swapchain) override;
+    unsigned get_swapchain_frame_index() override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
     bool create_pipeline(const GraphicsPipelineDesc& desc,

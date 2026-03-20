@@ -456,7 +456,7 @@ bool VulkanContext::present(const Swapchain& swapchain,
     return false;
 }
 
-unsigned VulkanContext::get_swapchain_frame_index(const Swapchain& swapchain)
+unsigned VulkanContext::get_swapchain_frame_index()
 {
     return 0;
 }

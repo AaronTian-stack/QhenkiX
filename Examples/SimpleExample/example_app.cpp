@@ -410,11 +410,9 @@ void ExampleApp::render()
     };
     m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
-    // You MUST call Present at the end of the render loop
-    // TODO: change for Vulkan
     THROW_IF_FALSE(m_context->present(m_swapchain, 0, nullptr, m_frame_index));
 
-    m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
+    m_frame_index = m_context->get_swapchain_frame_index();
 
     // If next frame is not ready to be used, wait until it is
     auto next_fence_value = m_fence_frame_ready_val[m_frame_index];

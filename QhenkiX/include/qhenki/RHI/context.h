@@ -43,7 +43,7 @@ public:
                          unsigned fence_count,
                          Fence* wait_fences,
                          unsigned swapchain_index) = 0;
-    virtual unsigned get_swapchain_frame_index(const Swapchain& swapchain) = 0;
+    virtual unsigned get_swapchain_frame_index() = 0;
 
     virtual bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) = 0;
     virtual bool create_pipeline(const GraphicsPipelineDesc& desc,

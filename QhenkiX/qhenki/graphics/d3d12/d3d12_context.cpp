@@ -435,7 +435,7 @@ bool D3D12Context::present(const Swapchain& swapchain,
     return true;
 }
 
-unsigned D3D12Context::get_swapchain_frame_index(const Swapchain& swapchain)
+unsigned D3D12Context::get_swapchain_frame_index()
 {
     return m_swapchain->GetCurrentBackBufferIndex();
 }

@@ -330,7 +330,7 @@ bool D3D11Context::present(const Swapchain& swapchain,
     return false;
 }
 
-unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
+unsigned D3D11Context::get_swapchain_frame_index()
 {
     return m_frame_count % Application::m_frames_in_flight;
 }

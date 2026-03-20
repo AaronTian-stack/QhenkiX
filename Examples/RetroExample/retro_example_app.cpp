@@ -1371,7 +1371,7 @@ void RetroExampleApp::render()
 
     m_context->present(m_swapchain, 0, nullptr, m_frame_index);
 
-    m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
+    m_frame_index = m_context->get_swapchain_frame_index();
 
     auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
@@ -1391,7 +1391,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
 {
     m_context->wait_idle(qhenki::gfx::QueueType::GRAPHICS);
     const qhenki::gfx::TextureDesc depth_desc{
-        .width = static_cast<uint64_t>(width),
+        .width = width,
         .height = height,
         .format = m_depth_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
@@ -1402,7 +1402,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
 
     const qhenki::gfx::TextureDesc offscreen_rt_desc{
-        .width = static_cast<uint64_t>(width),
+        .width = width,
         .height = height,
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
@@ -1416,7 +1416,7 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
                                                             &m_offscreen_texture.srv_descriptor));
 
     qhenki::gfx::TextureDesc blit_rt_desc{
-        .width = static_cast<uint64_t>(width / 4),
+        .width = width / 4,
         .height = height / 4,
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
