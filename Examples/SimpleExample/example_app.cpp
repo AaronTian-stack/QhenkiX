@@ -374,6 +374,8 @@ void ExampleApp::render()
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
     }
 
+    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
+
     constexpr uint64_t offset = 0;
     uint64_t stride = sizeof(Vertex);
     const auto buffers = &m_vertex_buffer;

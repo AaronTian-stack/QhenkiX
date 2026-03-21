@@ -27,7 +27,7 @@ class DeferredDescriptorCopier
 public:
     void add_pending_descriptor_copy(size_t bytes, const Descriptor& src, const Descriptor& dst);
     size_t get_max_segments() const;
-    void merge_regions();
+    size_t merge_regions();
     const PendingDescriptorCopy* get_merged_regions(size_t* count) const;
     void reset();
 };

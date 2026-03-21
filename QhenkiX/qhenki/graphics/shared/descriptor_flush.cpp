@@ -56,13 +56,13 @@ size_t DeferredDescriptorCopier::get_max_segments() const
     return pending_copies.size();
 }
 
-void DeferredDescriptorCopier::merge_regions()
+size_t DeferredDescriptorCopier::merge_regions()
 {
     merged_copies.clear();
 
     if (pending_copies.empty())
     {
-        return;
+        return 0;
     }
 
     if (pending_copies.size() > 1)
@@ -87,6 +87,8 @@ void DeferredDescriptorCopier::merge_regions()
             merged_copies.push_back(next);
         }
     }
+
+    return pending_copies.size() - merged_copies.size();
 }
 
 const PendingDescriptorCopy* DeferredDescriptorCopier::get_merged_regions(size_t* count) const

@@ -109,6 +109,16 @@ void set_debug_name(const VkDevice device, const VkObjectType type, const uint64
         vkSetDebugUtilsObjectNameEXT(device, &name_info);
     }
 }
+
+auto get_gpu_address(const VkDevice device, VkBuffer buffer) -> VkDeviceAddress
+{
+    const VkBufferDeviceAddressInfo addr_info{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = buffer,
+    };
+    return vkGetBufferDeviceAddress(device, &addr_info);
+}
+
 } // namespace
 
 constexpr uint32_t major = 1;
@@ -1269,7 +1279,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorH
     const auto vk_heap = to_internal(heap);
 
     const VkDeviceAddressRangeEXT heap_range{
-        .address = vk_heap->get_gpu_address(),
+        .address = get_gpu_address(m_device.device, vk_heap->get_buffer()),
         .size = vk_heap->get_total_size(),
     };
 
@@ -1293,7 +1303,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     const auto vk_sampler_heap = to_internal(sampler_heap);
 
     const VkDeviceAddressRangeEXT heap_range{
-        .address = vk_heap->get_gpu_address(),
+        .address = get_gpu_address(m_device.device, vk_heap->get_buffer()),
         .size = vk_heap->get_total_size(),
     };
 
@@ -1305,7 +1315,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     };
 
     const VkDeviceAddressRangeEXT sampler_heap_range{
-        .address = vk_sampler_heap->get_gpu_address(),
+        .address = get_gpu_address(m_device.device, vk_heap->get_buffer()),
         .size = vk_sampler_heap->get_total_size(),
     };
 
@@ -1366,10 +1376,10 @@ bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, 
 
 bool VulkanContext::flush_descriptor_copies(CommandList* cmd_list)
 {
-    m_descriptor_copier.merge_regions();
+    const auto saved_count = m_descriptor_copier.merge_regions();
 
     size_t region_count = 0;
-    const PendingDescriptorCopy* const regions = m_descriptor_copier.get_merged_regions(&region_count);
+    const auto regions = m_descriptor_copier.get_merged_regions(&region_count);
 
     if (region_count == 0)
     {
@@ -1377,16 +1387,10 @@ bool VulkanContext::flush_descriptor_copies(CommandList* cmd_list)
         return true;
     }
 
-    const PendingDescriptorCopy& first = regions[0];
-    const VulkanDescriptorHeap* const first_src_heap = to_internal(*first.src.heap);
-    const VulkanDescriptorHeap* const first_dst_heap = to_internal(*first.dst.heap);
-    const VkBuffer src_buffer = first_src_heap->vk_buffer();
-    const VkBuffer dst_buffer = first_dst_heap->vk_buffer();
-
     auto& arena = acquire_arena(m_frame_count);
-    VkBufferCopy2* const vk_regions = arena.alloc_array<VkBufferCopy2>(region_count);
+    const auto vk_regions = arena.alloc_array<VkBufferCopy2>(region_count);
 
-    for (size_t i = 0; i < region_count; ++i)
+    for (size_t i = 0; i < region_count; i++)
     {
         const PendingDescriptorCopy& pending = regions[i];
         vk_regions[i] = {
@@ -1397,16 +1401,32 @@ bool VulkanContext::flush_descriptor_copies(CommandList* cmd_list)
         };
     }
 
-    const VkCopyBufferInfo2 copy_info{
-        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-        .srcBuffer = src_buffer,
-        .dstBuffer = dst_buffer,
-        .regionCount = static_cast<uint32_t>(region_count),
-        .pRegions = vk_regions,
-    };
-
     const auto vk_cmd = to_internal(*cmd_list);
-    vkCmdCopyBuffer2(*vk_cmd, &copy_info);
+
+    size_t run_start = 0;
+    while (run_start < region_count)
+    {
+        const auto src_buffer = to_internal(*regions[run_start].src.heap)->get_buffer();
+        const auto dst_buffer = to_internal(*regions[run_start].dst.heap)->get_buffer();
+
+        auto run_end = run_start + 1;
+        while (run_end < region_count && to_internal(*regions[run_end].src.heap)->get_buffer() == src_buffer &&
+               to_internal(*regions[run_end].dst.heap)->get_buffer() == dst_buffer)
+        {
+            ++run_end;
+        }
+
+        const VkCopyBufferInfo2 copy_info{
+            .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+            .srcBuffer = src_buffer,
+            .dstBuffer = dst_buffer,
+            .regionCount = static_cast<uint32_t>(run_end - run_start),
+            .pRegions = &vk_regions[run_start],
+        };
+        vkCmdCopyBuffer2(*vk_cmd, &copy_info);
+
+        run_start = run_end;
+    }
 
     m_descriptor_copier.reset();
     return true;
@@ -2957,7 +2977,7 @@ bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
     const auto vk_buffer = to_internal(buffer);
 
     VkDeviceAddressRangeEXT address_range{
-        .address = get_gpu_address(vk_buffer->buffer),
+        .address = get_gpu_address(m_device.device, vk_buffer->buffer),
         .size = buffer.desc.size,
     };
 
@@ -3040,13 +3060,4 @@ VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
         assert(false);
         return m_graphics_queue;
     }
-}
-
-VkDeviceAddress VulkanContext::get_gpu_address(const VkBuffer buffer) const
-{
-    const VkBufferDeviceAddressInfo addr_info{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = buffer,
-    };
-    return vkGetBufferDeviceAddress(m_device.device, &addr_info);
 }

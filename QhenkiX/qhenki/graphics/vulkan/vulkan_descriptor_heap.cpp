@@ -41,9 +41,11 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
         allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
-    else {
+    else
     {
-        buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        {
+            buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        }
     }
 
     VmaAllocationInfo alloc_info;
@@ -137,9 +139,9 @@ void* VulkanDescriptorHeap::get_cpu_pointer(const size_t offset) const
     return static_cast<uint8_t*>(m_data) + offset;
 }
 
-VkDeviceAddress VulkanDescriptorHeap::get_gpu_address() const
+VkBuffer VulkanDescriptorHeap::get_buffer() const
 {
-    return m_context->get_gpu_address(m_heap.buffer);
+    return m_heap.buffer;
 }
 
 VkDeviceSize VulkanDescriptorHeap::get_total_size() const

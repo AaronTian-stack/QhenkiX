@@ -29,7 +29,7 @@ public:
     bool allocate(VmaVirtualAllocation* va, Descriptor::Type type, VkDeviceSize* offset) const;
     void deallocate(VmaVirtualAllocation va) const;
     void* get_cpu_pointer(size_t offset) const;
-    VkDeviceAddress get_gpu_address() const;
+    VkBuffer get_buffer() const;
     VkDeviceSize get_total_size() const;
     VkDeviceSize get_reserved_size() const;
     VmaVirtualAllocationInfo get_allocation_info(VmaVirtualAllocation va) const;

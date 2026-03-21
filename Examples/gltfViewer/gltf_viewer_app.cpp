@@ -605,6 +605,8 @@ void gltfViewerApp::render()
         m_context->set_descriptor_table(&cmd_list, 2, descriptor);
     }
 
+    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
+
     { // Render
         // Draw glTF model
         std::unique_lock lock(m_model_mutex, std::defer_lock);
@@ -650,6 +652,8 @@ void gltfViewerApp::render()
                                                 descriptor));
             }
             // Compatibility will bind per draw call because we cannot bind all textures at once
+
+            THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
 
             for (int i = 0; i < m_model.nodes.size(); i++)
             {
