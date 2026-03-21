@@ -130,20 +130,22 @@ void ExampleApp::create()
                    Vertex{.position = {0.5f, -0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}, .texcoord = {1.0f, 0.0f}},
                    Vertex{.position = {-0.5f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f}, .texcoord = {0.0f, 0.0f}}};
     qhenki::gfx::BufferDesc desc{.size = vertices.size() * sizeof(Vertex),
-                                 .usage = qhenki::gfx::BufferUsage::VERTEX,
+                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     THROW_IF_FALSE(
         m_context->create_buffer(desc, vertices.data(), &vertex_CPU, "Interleaved Position/Color Buffer CPU"));
 
+    desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::COPY_DST;
     desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, "Interleaved Position/Color Buffer GPU"));
 
     constexpr auto indices = std::array{0u, 1u, 2u};
     qhenki::gfx::BufferDesc index_desc{.size = indices.size() * sizeof(uint32_t),
-                                       .usage = qhenki::gfx::BufferUsage::INDEX,
+                                       .usage = qhenki::gfx::BufferUsage::INDEX | qhenki::gfx::BufferUsage::COPY_SRC,
                                        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, "Index Buffer CPU"));
 
+    index_desc.usage = qhenki::gfx::BufferUsage::INDEX | qhenki::gfx::BufferUsage::COPY_DST;
     index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
 

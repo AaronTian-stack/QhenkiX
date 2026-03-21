@@ -199,10 +199,13 @@ void RetroExampleApp::create()
     assert(model.buffers.size() == 1);
     auto& buffer = model.buffers[0];
     qhenki::gfx::BufferDesc desc{.size = buffer.data.size(),
-                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                                          qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &cylinder_CPU, "Skybox Vertex Buffer CPU"));
 
+    desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                 qhenki::gfx::BufferUsage::COPY_DST;
     desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_skybox_buffer, "Skybox Vertex Buffer GPU"));
 
@@ -271,7 +274,8 @@ void RetroExampleApp::create()
     auto& stencil_buffer = stencil_model.buffers[0];
     qhenki::gfx::BufferDesc stencil_desc{
         .size = stencil_buffer.data.size(),
-        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                 qhenki::gfx::BufferUsage::COPY_SRC,
         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
     };
     qhenki::gfx::Buffer stencil_CPU;
@@ -282,6 +286,8 @@ void RetroExampleApp::create()
         memcpy(ptr, stencil_buffer.data.data(), stencil_buffer.data.size());
         m_context->unmap_buffer(stencil_CPU);
     }
+    stencil_desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                         qhenki::gfx::BufferUsage::COPY_DST;
     stencil_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(stencil_desc, nullptr, &m_stencil_mesh.buffer, "Stencil cylinder GPU"));
     m_context->copy_buffer(&cmd_list_init, stencil_CPU, 0, &m_stencil_mesh.buffer, 0, stencil_buffer.data.size());
@@ -319,7 +325,8 @@ void RetroExampleApp::create()
     auto& cube_buffer = cube_model.buffers[0];
     qhenki::gfx::BufferDesc cube_desc{
         .size = cube_buffer.data.size(),
-        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                 qhenki::gfx::BufferUsage::COPY_SRC,
         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
     };
     qhenki::gfx::Buffer bevel_cube_CPU;
@@ -330,6 +337,8 @@ void RetroExampleApp::create()
         memcpy(ptr, cube_buffer.data.data(), cube_buffer.data.size());
         m_context->unmap_buffer(bevel_cube_CPU);
     }
+    cube_desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                      qhenki::gfx::BufferUsage::COPY_DST;
     cube_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &m_bevel_cube_mesh.buffer, "Bevel Cube GPU"));
     m_context->copy_buffer(&cmd_list_init, bevel_cube_CPU, 0, &m_bevel_cube_mesh.buffer, 0, cube_buffer.data.size());
