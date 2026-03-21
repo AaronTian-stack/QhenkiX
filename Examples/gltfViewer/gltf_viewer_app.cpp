@@ -859,6 +859,8 @@ void gltfViewerApp::render()
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);
 
+    m_context->end_render_pass(&cmd_list);
+
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_present = {
         .src_stage = qhenki::gfx::SyncStage::SYNC_DRAW, // Wait for all draws to swapchain to finish before

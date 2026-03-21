@@ -1152,6 +1152,8 @@ void RetroExampleApp::render()
     m_context->draw_indexed(
         &cmd_list, static_cast<unsigned>(m_bevel_cube_mesh.index.first.count), bevel_instance_count, 0, 0, 0);
 
+    m_context->end_render_pass(&cmd_list);
+
     qhenki::gfx::ImageBarrier rt_to_srv{
         .src_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
         .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
@@ -1209,6 +1211,8 @@ void RetroExampleApp::render()
     }
 
     m_context->draw(&cmd_list, 3, 0);
+
+    m_context->end_render_pass(&cmd_list);
 
     // Start blur passes
     std::array<size_t, BLOOM_TEXTURE_COUNT> blur_srv_start{};
@@ -1302,6 +1306,8 @@ void RetroExampleApp::render()
         }
 
         m_context->draw(&cmd_list, 3, 0);
+
+        m_context->end_render_pass(&cmd_list);
     }
 
     // Composite image into swapchain backbuffer
@@ -1337,6 +1343,8 @@ void RetroExampleApp::render()
 
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);
+
+    m_context->end_render_pass(&cmd_list);
 
     std::array<qhenki::gfx::ImageBarrier, 2> end_barriers;
     // RT -> Present for swapchain
