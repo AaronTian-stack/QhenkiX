@@ -379,28 +379,28 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         return "Vulkan: Device does not support required number of viewports";
     }
 
-    const VkSemaphoreTypeCreateInfo texture_semaphore_type{
+    const VkSemaphoreTypeCreateInfo internal_semaphore_type{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
         .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
         .initialValue = 0,
     };
-    const VkSemaphoreCreateInfo texture_semaphore_info{
+    const VkSemaphoreCreateInfo internal_semaphore_ci{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = &texture_semaphore_type,
+        .pNext = &internal_semaphore_type,
     };
-    if (VK_FAILED(vkCreateSemaphore(m_device.device, &texture_semaphore_info, nullptr, &m_texture_submit_semaphore)))
+    if (VK_FAILED(vkCreateSemaphore(m_device.device, &internal_semaphore_ci, nullptr, &m_internal_semaphore)))
     {
-        return "Vulkan: Failed to create texture submit timeline semaphore";
+        return "Vulkan: Failed to create internal timeline semaphore";
     }
 
-    const VkCommandPoolCreateInfo texture_patch{
+    const VkCommandPoolCreateInfo internal_pool_ci{
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
         .queueFamilyIndex = m_graphics_queue.family_index,
     };
-    if (VK_FAILED(vkCreateCommandPool(m_device.device, &texture_patch, nullptr, &m_texture_transition_pool)))
+    if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &m_internal_cmd_pool)))
     {
-        return "Vulkan: Failed to create texture transition command pool";
+        return "Vulkan: Failed to create internal command pool";
     }
 
     const VkSemaphoreCreateInfo image_available_info{
@@ -1315,7 +1315,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     };
 
     const VkDeviceAddressRangeEXT sampler_heap_range{
-        .address = get_gpu_address(m_device.device, vk_heap->get_buffer()),
+        .address = get_gpu_address(m_device.device, vk_sampler_heap->get_buffer()),
         .size = vk_sampler_heap->get_total_size(),
     };
 
@@ -1350,7 +1350,7 @@ bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, 
         return false;
     }
 
-    if (src.heap->desc.visibility == DescriptorHeapDesc::Visibility::CPU)
+    if (src.heap->desc.visibility != DescriptorHeapDesc::Visibility::CPU)
     {
         return false;
     }
@@ -1371,64 +1371,6 @@ bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, 
     }
 
     m_descriptor_copier.add_pending_descriptor_copy(bytes, src, dst);
-    return true;
-}
-
-bool VulkanContext::flush_descriptor_copies(CommandList* cmd_list)
-{
-    const auto saved_count = m_descriptor_copier.merge_regions();
-
-    size_t region_count = 0;
-    const auto regions = m_descriptor_copier.get_merged_regions(&region_count);
-
-    if (region_count == 0)
-    {
-        m_descriptor_copier.reset();
-        return true;
-    }
-
-    auto& arena = acquire_arena(m_frame_count);
-    const auto vk_regions = arena.alloc_array<VkBufferCopy2>(region_count);
-
-    for (size_t i = 0; i < region_count; i++)
-    {
-        const PendingDescriptorCopy& pending = regions[i];
-        vk_regions[i] = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
-            .srcOffset = static_cast<VkDeviceSize>(pending.src.offset),
-            .dstOffset = static_cast<VkDeviceSize>(pending.dst.offset),
-            .size = static_cast<VkDeviceSize>(pending.bytes),
-        };
-    }
-
-    const auto vk_cmd = to_internal(*cmd_list);
-
-    size_t run_start = 0;
-    while (run_start < region_count)
-    {
-        const auto src_buffer = to_internal(*regions[run_start].src.heap)->get_buffer();
-        const auto dst_buffer = to_internal(*regions[run_start].dst.heap)->get_buffer();
-
-        auto run_end = run_start + 1;
-        while (run_end < region_count && to_internal(*regions[run_end].src.heap)->get_buffer() == src_buffer &&
-               to_internal(*regions[run_end].dst.heap)->get_buffer() == dst_buffer)
-        {
-            ++run_end;
-        }
-
-        const VkCopyBufferInfo2 copy_info{
-            .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-            .srcBuffer = src_buffer,
-            .dstBuffer = dst_buffer,
-            .regionCount = static_cast<uint32_t>(run_end - run_start),
-            .pRegions = &vk_regions[run_start],
-        };
-        vkCmdCopyBuffer2(*vk_cmd, &copy_info);
-
-        run_start = run_end;
-    }
-
-    m_descriptor_copier.reset();
     return true;
 }
 
@@ -2419,143 +2361,214 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         }
     }
 
-    // +1 for internal ordering
-    uint32_t additional_waits = 1;
-    const auto number_of_textures_to_transition = m_texture_queue.size_approx();
-    const auto needs_transition = number_of_textures_to_transition > 0;
-    if (needs_transition)
-    {
-        ++additional_waits;
-    }
-    if (submit_info.wait_swapchain)
-    {
-        ++additional_waits;
-    }
-
     auto& arena = acquire_arena(m_frame_count);
-    // Wait on texture transitions
-    if (needs_transition)
-    {
-        // Separate submission to graphics queue
-        // TODO: Revisit and evaluate performance implications
 
-        uint64_t value;
-        if (VK_FAILED(vkGetSemaphoreCounterValue(m_device.device, m_texture_submit_semaphore, &value)))
+    // Record internal command buffer (graphics queue) for texture transitions + descriptor copies
+    const auto number_of_textures_to_transition = m_texture_queue.size_approx();
+    const bool needs_transition = number_of_textures_to_transition > 0;
+
+    // Descriptor copies
+    // TODO: Do it on compute queue?
+    m_descriptor_copier.merge_regions();
+    size_t descriptor_region_count = 0;
+    const PendingDescriptorCopy* descriptor_regions = m_descriptor_copier.get_merged_regions(&descriptor_region_count);
+    const bool needs_descriptor_copies = descriptor_region_count > 0;
+
+    VkCommandBuffer internal_cmd = VK_NULL_HANDLE;
+    if (needs_transition || needs_descriptor_copies)
+    {
+        // Check if previous internal cmd buffers can be recycled
+        if (!m_internal_cmd_buffers.empty())
         {
-            return false;
-        }
-        if (value >= m_texture_submit_fence_value)
-        {
-            // Safe to free command buffers as none of them are no longer in use
-            if (!m_texture_transition_cmd_buffers.empty())
+            uint64_t sem_value = 0;
+            vkGetSemaphoreCounterValue(m_device.device, m_internal_semaphore, &sem_value);
+            if (sem_value >= m_internal_semaphore_value)
             {
                 vkFreeCommandBuffers(m_device.device,
-                                     m_texture_transition_pool,
-                                     static_cast<uint32_t>(m_texture_transition_cmd_buffers.size()),
-                                     m_texture_transition_cmd_buffers.data());
+                                     m_internal_cmd_pool,
+                                     static_cast<uint32_t>(m_internal_cmd_buffers.size()),
+                                     m_internal_cmd_buffers.data());
+                m_internal_cmd_buffers.clear();
+                vkResetCommandPool(m_device.device, m_internal_cmd_pool, 0);
             }
-            vkResetCommandPool(m_device.device, m_texture_transition_pool, 0);
-            m_texture_transition_cmd_buffers.clear();
         }
 
         const VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = m_texture_transition_pool,
+            .commandPool = m_internal_cmd_pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
-        VkCommandBuffer cmd_buffer;
-        // It is safe to allocate from the pool that has pending command buffers
-        if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, &cmd_buffer)))
+        if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, &internal_cmd)))
         {
             return false;
         }
-        m_texture_transition_cmd_buffers.push_back(cmd_buffer);
-
-        // Drain texture queue and record initial layout transitions
-        auto const textures = arena.alloc_array<Texture*>(number_of_textures_to_transition);
-        const size_t texture_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
-        assert(texture_count == number_of_textures_to_transition);
+        m_internal_cmd_buffers.push_back(internal_cmd);
 
         constexpr VkCommandBufferBeginInfo begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         };
-        if (VK_FAILED(vkBeginCommandBuffer(cmd_buffer, &begin_info)))
+        if (VK_FAILED(vkBeginCommandBuffer(internal_cmd, &begin_info)))
         {
             return false;
         }
 
-        const auto barriers = arena.alloc_array<VkImageMemoryBarrier2>(texture_count);
-        for (size_t i = 0; i < texture_count; i++)
+        if (needs_transition)
         {
-            const auto texture = textures[i];
-            const auto vulkan_texture = to_internal(*texture);
-            barriers[i] = {
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                .srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                .srcAccessMask = 0,
-                .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-                .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
-                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                .newLayout = vulkan_texture->initial_layout,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = vulkan_texture->image,
-                .subresourceRange =
-                    {
-                        .aspectMask = get_image_aspect_mask(convert_format(texture->desc.format)),
-                        .baseMipLevel = 0,
-                        .levelCount = VK_REMAINING_MIP_LEVELS,
-                        .baseArrayLayer = 0,
-                        .layerCount = VK_REMAINING_ARRAY_LAYERS,
-                    },
+            auto const textures = arena.alloc_array<Texture*>(number_of_textures_to_transition);
+            const auto texture_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
+            assert(texture_count == number_of_textures_to_transition);
+
+            const auto image_barriers = arena.alloc_array<VkImageMemoryBarrier2>(texture_count);
+            for (size_t i = 0; i < texture_count; i++)
+            {
+                const auto texture = textures[i];
+                const auto vulkan_texture = to_internal(*texture);
+                // Finish before everything else
+                image_barriers[i] = {
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                    .srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                    .srcAccessMask = 0,
+                    .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                    .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+                    .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                    .newLayout = vulkan_texture->initial_layout,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = vulkan_texture->image,
+                    .subresourceRange =
+                        {
+                            .aspectMask = get_image_aspect_mask(convert_format(texture->desc.format)),
+                            .baseMipLevel = 0,
+                            .levelCount = VK_REMAINING_MIP_LEVELS,
+                            .baseArrayLayer = 0,
+                            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                        },
+                };
+            }
+            const VkDependencyInfo dep_info{
+                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .imageMemoryBarrierCount = static_cast<uint32_t>(texture_count),
+                .pImageMemoryBarriers = image_barriers,
             };
+            vkCmdPipelineBarrier2(internal_cmd, &dep_info);
         }
-        const VkDependencyInfo dep_info{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = static_cast<uint32_t>(texture_count),
-            .pImageMemoryBarriers = barriers,
-        };
-        vkCmdPipelineBarrier2(cmd_buffer, &dep_info);
 
-        if (VK_FAILED(vkEndCommandBuffer(cmd_buffer)))
+        if (needs_descriptor_copies)
         {
-            return false;
+            auto vk_regions = arena.alloc_array<VkBufferCopy2>(descriptor_region_count);
+            for (size_t i = 0; i < descriptor_region_count; i++)
+            {
+                const PendingDescriptorCopy& pending = descriptor_regions[i];
+                vk_regions[i] = {
+                    .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+                    .srcOffset = static_cast<VkDeviceSize>(pending.src.offset),
+                    .dstOffset = static_cast<VkDeviceSize>(pending.dst.offset),
+                    .size = static_cast<VkDeviceSize>(pending.bytes),
+                };
+            }
+
+            size_t run_start = 0;
+            while (run_start < descriptor_region_count)
+            {
+                const VkBuffer src_buffer = to_internal(*descriptor_regions[run_start].src.heap)->get_buffer();
+                const VkBuffer dst_buffer = to_internal(*descriptor_regions[run_start].dst.heap)->get_buffer();
+
+                size_t run_end = run_start + 1;
+                while (run_end < descriptor_region_count &&
+                       to_internal(*descriptor_regions[run_end].src.heap)->get_buffer() == src_buffer &&
+                       to_internal(*descriptor_regions[run_end].dst.heap)->get_buffer() == dst_buffer)
+                {
+                    ++run_end;
+                }
+
+                const VkCopyBufferInfo2 copy_info{
+                    .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                    .srcBuffer = src_buffer,
+                    .dstBuffer = dst_buffer,
+                    .regionCount = static_cast<uint32_t>(run_end - run_start),
+                    .pRegions = &vk_regions[run_start],
+                };
+                vkCmdCopyBuffer2(internal_cmd, &copy_info);
+
+                run_start = run_end;
+            }
+
+            // Finish before everything else
+            const VkMemoryBarrier2 transfer_barrier{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+                .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT,
+            };
+            const VkDependencyInfo barrier_dep{
+                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .memoryBarrierCount = 1,
+                .pMemoryBarriers = &transfer_barrier,
+            };
+            vkCmdPipelineBarrier2(internal_cmd, &barrier_dep);
+
+            m_descriptor_copier.reset();
         }
 
-        const VkCommandBufferSubmitInfo cmd_buffer_submit{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-            .commandBuffer = cmd_buffer,
-        };
-
-        VkSemaphoreSubmitInfo signal_info{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_texture_submit_semaphore,
-            .value = ++m_texture_submit_fence_value,
-            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        };
-
-        const VkSubmitInfo2 patch{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-            .waitSemaphoreInfoCount = 0,
-            .pWaitSemaphoreInfos = nullptr,
-            .commandBufferInfoCount = 1,
-            .pCommandBufferInfos = &cmd_buffer_submit,
-            .signalSemaphoreInfoCount = 1,
-            .pSignalSemaphoreInfos = &signal_info,
-        };
-
-        if (VK_FAILED(vkQueueSubmit2(m_graphics_queue.queue, 1, &patch, VK_NULL_HANDLE)))
+        if (VK_FAILED(vkEndCommandBuffer(internal_cmd)))
         {
             return false;
         }
     }
 
+    const bool has_internal_cmd = internal_cmd != VK_NULL_HANDLE;
+
+    // Track the semaphore value so the recycling check knows when this is done
+    if (has_internal_cmd)
+    {
+        ++m_internal_semaphore_value;
+    }
+
+    // If non-graphics: Submit separately on the graphics queue and synchronize
+    // Otherwise avoid extra submission by adding into the same submit
+    if (has_internal_cmd && queue != GRAPHICS)
+    {
+        const VkCommandBufferSubmitInfo internal_cmd_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = internal_cmd,
+        };
+        const VkSemaphoreSubmitInfo internal_signal{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_internal_semaphore,
+            .value = m_internal_semaphore_value,
+            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        };
+        const VkSubmitInfo2 internal_submit{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &internal_cmd_info,
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &internal_signal,
+        };
+        if (VK_FAILED(vkQueueSubmit2(m_graphics_queue.queue, 1, &internal_submit, VK_NULL_HANDLE)))
+        {
+            return false;
+        }
+    }
+
+    // +1 for internal ordering, +1 optional swapchain, +1 optional internal semaphore
+    const bool wait_on_internal_semaphore = has_internal_cmd && queue != GRAPHICS;
+    uint32_t additional_waits = 1;
+    if (submit_info.wait_swapchain)
+    {
+        ++additional_waits;
+    }
+    if (wait_on_internal_semaphore)
+    {
+        ++additional_waits;
+    }
+
     const uint32_t wait_size = submit_info.wait_fence_count + additional_waits;
     const auto wait_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(wait_size);
 
-    // Try to narrow stage mask a little
     const VkPipelineStageFlags2 stage_mask = queue == GRAPHICS ? VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
                                            : queue == COMPUTE  ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
                                            : queue == COPY     ? VK_PIPELINE_STAGE_2_COPY_BIT
@@ -2571,27 +2584,26 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
             .stageMask = stage_mask,
         };
     }
-    // Internal ordering wait
     auto& q = get_queue(queue);
-    wait_semaphore_infos[submit_info.wait_fence_count] = {
+    uint32_t wait_idx = submit_info.wait_fence_count;
+    wait_semaphore_infos[wait_idx++] = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = q.semaphore,
         .value = q.last_signaled_fence_value,
         .stageMask = stage_mask,
     };
-    if (number_of_textures_to_transition > 0)
+    if (wait_on_internal_semaphore)
     {
-        wait_semaphore_infos[submit_info.wait_fence_count + 1] = {
+        wait_semaphore_infos[wait_idx++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_texture_submit_semaphore,
-            .value = m_texture_submit_fence_value,
+            .semaphore = m_internal_semaphore,
+            .value = m_internal_semaphore_value,
             .stageMask = stage_mask,
         };
     }
     if (submit_info.wait_swapchain)
     {
-        const uint32_t idx = submit_info.wait_fence_count + (needs_transition ? 2u : 1u);
-        wait_semaphore_infos[idx] = {
+        wait_semaphore_infos[wait_idx++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = m_image_available_semaphores[m_frame_count % m_image_available_semaphores.size()],
             .value = 0,
@@ -2599,17 +2611,29 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         };
     }
 
-    const auto cmd_buffer_infos = arena.alloc_array<VkCommandBufferSubmitInfo>(submit_info.command_list_count);
+    const bool prepend_internal = has_internal_cmd && queue == GRAPHICS;
+    const uint32_t total_cmd_count = submit_info.command_list_count + (prepend_internal ? 1u : 0u);
+    const auto cmd_buffer_infos = arena.alloc_array<VkCommandBufferSubmitInfo>(total_cmd_count);
+    uint32_t cmd_idx = 0;
+    if (prepend_internal)
+    {
+        cmd_buffer_infos[cmd_idx++] = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = internal_cmd,
+        };
+    }
     for (unsigned i = 0; i < submit_info.command_list_count; i++)
     {
-        cmd_buffer_infos[i] = {
+        cmd_buffer_infos[cmd_idx++] = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
             .commandBuffer = *to_internal(submit_info.command_lists[i]),
         };
     }
 
-    // +1 for internal ordering signal, +1 for optional swapchain signal
-    const uint32_t max_signal_count = submit_info.signal_fence_count + 1 + (submit_info.signal_swapchain ? 1u : 0u);
+    // +1 internal ordering, +1 optional swapchain, +1 optional internal semaphore
+    const bool signal_internal_semaphore = prepend_internal;
+    const uint32_t max_signal_count = submit_info.signal_fence_count + 1 + (submit_info.signal_swapchain ? 1u : 0u) +
+                                      (signal_internal_semaphore ? 1u : 0u);
     const auto signal_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(max_signal_count);
     uint32_t signal_count = 0;
     for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
@@ -2635,6 +2659,15 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         .value = ++q.last_signaled_fence_value,
         .stageMask = stage_mask,
     };
+    if (signal_internal_semaphore)
+    {
+        signal_semaphore_infos[signal_count++] = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_internal_semaphore,
+            .value = m_internal_semaphore_value,
+            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        };
+    }
     if (submit_info.signal_swapchain)
     {
         const uint32_t frame_slot = m_frame_count % m_render_finished_semaphores.size();
@@ -2649,7 +2682,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .waitSemaphoreInfoCount = wait_size,
         .pWaitSemaphoreInfos = wait_semaphore_infos,
-        .commandBufferInfoCount = submit_info.command_list_count,
+        .commandBufferInfoCount = total_cmd_count,
         .pCommandBufferInfos = cmd_buffer_infos,
         .signalSemaphoreInfoCount = signal_count,
         .pSignalSemaphoreInfos = signal_semaphore_infos,
@@ -2925,6 +2958,11 @@ VulkanContext::~VulkanContext()
     {
         vkDestroySemaphore(m_device.device, sem, nullptr);
     }
+    if (m_internal_cmd_pool != VK_NULL_HANDLE)
+    {
+        vkDestroyCommandPool(m_device.device, m_internal_cmd_pool, nullptr);
+    }
+    vkDestroySemaphore(m_device.device, m_internal_semaphore, nullptr);
     vkb::destroy_device(m_device);
     vkb::destroy_instance(m_instance);
 }

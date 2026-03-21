@@ -536,11 +536,6 @@ bool D3D11Context::copy_descriptors(size_t bytes, const Descriptor& src, const D
     return true;
 }
 
-bool D3D11Context::flush_descriptor_copies(CommandList* cmd_list)
-{
-    return true;
-}
-
 bool D3D11Context::free_descriptor(Descriptor* descriptor)
 {
     // Could be CBV which has nothing so check heap

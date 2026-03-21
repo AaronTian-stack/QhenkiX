@@ -168,8 +168,6 @@ void ImGUIExampleApp::render()
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
     auto& cmd_list = m_cmd_lists[frame_slot];
 
-    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
-
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {
         .src_stage = qhenki::gfx::SyncStage::SYNC_DRAW, // Ensure we are not drawing anything to swapchain (still might

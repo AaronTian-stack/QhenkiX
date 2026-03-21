@@ -973,8 +973,6 @@ void RetroExampleApp::render()
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
     auto& cmd_list = m_cmd_lists[frame_slot];
 
-    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
-
     qhenki::gfx::RenderTarget color{
         .clear_params = {.clear_color_value = {1.f, 1.f, 1.f, 0.f}},
         .clear_type = qhenki::gfx::RenderTarget::COLOR,
@@ -1076,8 +1074,6 @@ void RetroExampleApp::render()
         qhenki::gfx::Descriptor sampler_descriptor(&m_sampler_heap, 0);
         m_context->set_descriptor_table(&cmd_list, 2, sampler_descriptor);
     }
-
-    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
 
     auto stride_from_accessor = [](const int component_type, const int type)
     {
@@ -1224,8 +1220,6 @@ void RetroExampleApp::render()
         increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
     }
 
-    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
-
     m_context->draw(&cmd_list, 3, 0);
 
     m_context->end_render_pass(&cmd_list);
@@ -1245,8 +1239,6 @@ void RetroExampleApp::render()
             increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
         }
     }
-
-    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
 
     constexpr unsigned BLUR_PASSES = 4;
     const unsigned iterations = BLUR_PASSES * 2;
@@ -1358,8 +1350,6 @@ void RetroExampleApp::render()
         increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
         m_context->set_descriptor_table(&cmd_list, 1, qhenki::gfx::Descriptor(&m_GPU_heap, composite_start));
     }
-
-    THROW_IF_FALSE(m_context->flush_descriptor_copies(&cmd_list));
 
     m_context->draw(&cmd_list, 3, 0);
 

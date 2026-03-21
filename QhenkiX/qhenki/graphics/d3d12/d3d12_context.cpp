@@ -1089,11 +1089,6 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
     return true;
 }
 
-bool D3D12Context::flush_descriptor_copies(CommandList* cmd_list)
-{
-    return false;
-}
-
 bool D3D12Context::free_descriptor(Descriptor* descriptor)
 {
     const auto heap_d3d12 = to_internal(*descriptor->heap);

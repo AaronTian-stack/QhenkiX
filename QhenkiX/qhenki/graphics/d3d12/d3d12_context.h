@@ -96,7 +96,6 @@ public:
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
 
     bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
-    bool flush_descriptor_copies(CommandList* cmd_list) override;
 
     bool free_descriptor(Descriptor* descriptor) override;
     size_t get_descriptor_size(Descriptor::Type type) const override;

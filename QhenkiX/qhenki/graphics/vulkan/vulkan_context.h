@@ -52,10 +52,10 @@ class VulkanContext : public Context
     VulkanQueue m_transfer_queue;
 
     moodycamel::ConcurrentQueue<Texture*> m_texture_queue;
-    VkSemaphore m_texture_submit_semaphore = VK_NULL_HANDLE;
-    uint64_t m_texture_submit_fence_value = 0;
-    VkCommandPool m_texture_transition_pool = VK_NULL_HANDLE;
-    std::vector<VkCommandBuffer> m_texture_transition_cmd_buffers;
+    VkCommandPool m_internal_cmd_pool = VK_NULL_HANDLE;
+    std::vector<VkCommandBuffer> m_internal_cmd_buffers;
+    VkSemaphore m_internal_semaphore = VK_NULL_HANDLE;
+    uint64_t m_internal_semaphore_value = 0;
 
     DeferredDescriptorCopier m_descriptor_copier;
 
@@ -95,7 +95,6 @@ public:
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
 
     bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
-    bool flush_descriptor_copies(CommandList* cmd_list) override;
 
     bool free_descriptor(Descriptor* descriptor) override;
     size_t get_descriptor_size(Descriptor::Type type) const override;

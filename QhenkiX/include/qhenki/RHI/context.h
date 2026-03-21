@@ -90,8 +90,6 @@ public:
      */
     virtual bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) = 0;
 
-    virtual bool flush_descriptor_copies(CommandList* cmd_list) = 0;
-
     /**
      * Free descriptor from the descriptor heap, allowing another descriptor to be created at the same offset. Only call
      * this function if you are using create_descriptor exclusively with CREATE_NEW_DESCRIPTOR, otherwise the behavior
