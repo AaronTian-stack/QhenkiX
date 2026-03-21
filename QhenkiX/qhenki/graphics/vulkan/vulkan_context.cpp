@@ -1375,8 +1375,6 @@ size_t VulkanContext::get_descriptor_alignment(const Descriptor::Type type) cons
 
 bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
-    assert(buffer);
-
     buffer->internal_state = mkS<VulkanBuffer>();
     const auto vulkan_buffer = static_cast<VulkanBuffer*>(buffer->internal_state.get());
 
@@ -1475,6 +1473,27 @@ bool VulkanContext::create_descriptor_shader_view(const Buffer& buffer, Descript
 void VulkanContext::copy_buffer(
     CommandList* cmd_list, const Buffer& src, uint64_t src_offset, Buffer* dst, uint64_t dst_offset, uint64_t bytes)
 {
+    assert(src_offset + bytes <= src.desc.size);
+    assert(dst_offset + bytes <= dst->desc.size);
+
+    const auto vk_cmd = to_internal(*cmd_list);
+    const auto vk_src = to_internal(src);
+    const auto vk_dst = to_internal(*dst);
+
+    const VkBufferCopy2 region{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+        .srcOffset = src_offset,
+        .dstOffset = dst_offset,
+        .size = bytes,
+    };
+    const VkCopyBufferInfo2 copy_info{
+        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+        .srcBuffer = vk_src->buffer,
+        .dstBuffer = vk_dst->buffer,
+        .regionCount = 1,
+        .pRegions = &region,
+    };
+    vkCmdCopyBuffer2(*vk_cmd, &copy_info);
 }
 
 bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)

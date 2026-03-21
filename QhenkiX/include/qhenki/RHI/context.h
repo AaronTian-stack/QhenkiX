@@ -110,6 +110,16 @@ public:
                                                  Descriptor* descriptor) = 0;
     virtual bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 
+    /**
+     * Copies contents from source buffer to destination buffer. You may need to issue applicable barriers before and
+     * after this operation.
+     * @param cmd_list Command list to record copy command on.
+     * @param src Pointer to source buffer. Must have COPY_SOURCE usage.
+     * @param src_offset Offset in bytes from the start of the source buffer to copy from.
+     * @param dst Pointer to destination buffer. Must have COPY_DEST usage.
+     * @param dst_offset Offset in bytes from the start of the destination buffer to copy to.s
+     * @param bytes Number of bytes to copy.
+     */
     virtual void copy_buffer(CommandList* cmd_list,
                              const Buffer& src,
                              uint64_t src_offset,

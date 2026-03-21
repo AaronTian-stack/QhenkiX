@@ -1310,7 +1310,6 @@ void D3D12Context::copy_buffer(CommandList* cmd_list,
                                const uint64_t dst_offset,
                                const uint64_t bytes)
 {
-    assert(dst);
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
     const auto src_allocation = to_internal(src);
