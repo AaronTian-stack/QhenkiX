@@ -1068,8 +1068,6 @@ bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline&
 
 bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout)
 {
-    assert(layout);
-
     assert(desc->spaces.size() + desc->push_ranges.size() <= MAX_SPACES);
     // This should never fire since we target Vulkan 1.4
     assert(m_capabilities.descriptor_heap_properties.maxPushDataSize >= 256);

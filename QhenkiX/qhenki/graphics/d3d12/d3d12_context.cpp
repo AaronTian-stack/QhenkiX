@@ -754,7 +754,11 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     thread_local memory::Arena arena(util::MEGABYTE);
     arena.reset();
 
-    const auto params = arena.alloc_array<D3D12_ROOT_PARAMETER>(param_count);
+    D3D12_ROOT_PARAMETER* params = nullptr;
+    if (param_count > 0)
+    {
+        params = arena.alloc_array<D3D12_ROOT_PARAMETER>(param_count);
+    }
     unsigned params_index = 0;
 
     unsigned size = 0;
