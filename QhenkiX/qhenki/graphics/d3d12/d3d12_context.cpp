@@ -780,7 +780,13 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
         size += range.size;
-        assert(size < 128);
+        if (size > 128)
+        {
+            // TODO: Ban this outright?
+            // Issue warning that this breaks Vulkan compability
+            OutputDebugStringA(
+                "Qhenki D3D12 WARNING: Root constant exceeds 128 bytes which breaks compability with Vulkan\n");
+        }
     }
 
     const auto ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
@@ -908,7 +914,7 @@ bool D3D12Context::set_pipeline_constant(
     }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, size, data, offset);
+    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, size / 4u, data, offset / 4u);
     return true;
 }
 
@@ -1045,8 +1051,6 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
 
 bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
-    assert(src.heap);
-    assert(dst.heap);
     const auto src_heap_d3d12 = to_internal(*src.heap);
     const auto dst_heap_d3d12 = to_internal(*dst.heap);
 
@@ -1161,8 +1165,6 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         allocation_desc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
     }
-
-    // Initial state is not used in D3D12
 
     // Barrier layout is undefined for CreateResource3
     if (FAILED(m_allocator->CreateResource3(&allocation_desc,
