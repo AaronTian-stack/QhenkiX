@@ -233,9 +233,10 @@ void RetroExampleApp::create()
     };
     THROW_IF_FALSE(m_context->create_descriptor(sampler_linear_desc, &m_sampler_heap, &m_sampler_linear_descriptor));
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list_init = m_cmd_lists[m_frame_index];
+    const unsigned frame_slot_init = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot_init]));
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot_init], m_cmd_pools[frame_slot_init]));
+    auto& cmd_list_init = m_cmd_lists[frame_slot_init];
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
     tinygltf::Model stencil_model;
@@ -370,7 +371,7 @@ void RetroExampleApp::create()
     m_context->issue_barrier(&cmd_list_init, 1, &barrier_skybox);
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list_init));
-    auto current_fence_value = ++m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = ++m_fence_frame_ready_val[frame_slot_init];
     qhenki::gfx::SubmitInfo info_init{
         .command_list_count = 1,
         .command_lists = &cmd_list_init,
@@ -382,7 +383,7 @@ void RetroExampleApp::create()
 
     qhenki::gfx::WaitInfo wait_info{.count = 1,
                                     .fences = &m_fence_frame_ready,
-                                    .values = &m_fence_frame_ready_val[m_frame_index]};
+                                    .values = &m_fence_frame_ready_val[frame_slot_init]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info));
 
     const char* skybox_vs_name = nullptr;
@@ -776,6 +777,9 @@ void RetroExampleApp::render()
         }
     }
 
+    const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->acquire_swapchain_image(&m_frame_index));
+
     const auto dim = this->m_window.get_display_size();
 
     m_camera.perspective.viewport_width = static_cast<float>(dim.x);
@@ -950,15 +954,15 @@ void RetroExampleApp::render()
     cb.camera_position = display_world.translation;
     cb.time = time_sec;
 
-    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
+    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[frame_slot]);
     assert(buffer_pointer);
     memcpy(buffer_pointer, &cb, sizeof(FrameConstants));
-    m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
+    m_context->unmap_buffer(m_matrix_buffers[frame_slot]);
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot]));
 
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list = m_cmd_lists[m_frame_index];
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
+    auto& cmd_list = m_cmd_lists[frame_slot];
 
     qhenki::gfx::RenderTarget color{
         .clear_params = {.clear_color_value = {1.f, 1.f, 1.f, 0.f}},
@@ -1022,7 +1026,7 @@ void RetroExampleApp::render()
 
     if (m_context->is_compatibility())
     {
-        std::array buffer = {&m_matrix_buffers[m_frame_index]};
+        std::array buffer = {&m_matrix_buffers[frame_slot]};
         m_context->compatibility_set_constant_buffers(0,
                                                       buffer.size(),
                                                       buffer.data(),
@@ -1046,7 +1050,7 @@ void RetroExampleApp::render()
     {
         qhenki::gfx::Descriptor cbv_descriptor(&m_GPU_heap, gpu_descriptor_heap_index);
         THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                   m_matrix_descriptors[m_frame_index],
+                                                   m_matrix_descriptors[frame_slot],
                                                    cbv_descriptor));
         m_context->set_descriptor_table(&cmd_list, 0, cbv_descriptor);
         increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::BUFFER, false);
@@ -1359,21 +1363,22 @@ void RetroExampleApp::render()
 
     m_context->close_command_list(&cmd_list);
 
-    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = m_fence_frame_ready_val[frame_slot];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
         .signal_fence_count = 1,
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
+        .wait_swapchain = true,
+        .signal_swapchain = true,
     };
     m_context->submit_command_lists(info, qhenki::gfx::QueueType::GRAPHICS);
 
-    m_context->present(m_swapchain, 0, nullptr, m_frame_index);
+    THROW_IF_FALSE(m_context->present(m_swapchain, m_frame_index));
 
-    m_frame_index = m_context->get_swapchain_frame_index();
-
-    auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
+    const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    auto next_fence_value = m_fence_frame_ready_val[next_frame_slot];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
         qhenki::gfx::WaitInfo wait_info{
@@ -1384,7 +1389,7 @@ void RetroExampleApp::render()
         };
         m_context->wait_fences(wait_info);
     }
-    m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
+    m_fence_frame_ready_val[next_frame_slot] = current_fence_value + 1;
 }
 
 void RetroExampleApp::resize(const unsigned width, const unsigned height)

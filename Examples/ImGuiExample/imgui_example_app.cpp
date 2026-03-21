@@ -117,14 +117,15 @@ void ImGUIExampleApp::create()
     THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
 
     // Schedule copies to GPU buffers / texture
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list = m_cmd_lists[m_frame_index];
+    const unsigned frame_slot_init = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot_init]));
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot_init], m_cmd_pools[frame_slot_init]));
+    auto& cmd_list = m_cmd_lists[frame_slot_init];
     m_context->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer, 0, desc.size);
     m_context->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer, 0, index_desc.size);
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list));
-    auto current_fence_value = ++m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = ++m_fence_frame_ready_val[frame_slot_init];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
@@ -146,7 +147,7 @@ void ImGUIExampleApp::create()
 
     qhenki::gfx::WaitInfo wait_info{.count = 1,
                                     .fences = &m_fence_frame_ready,
-                                    .values = &m_fence_frame_ready_val[m_frame_index]};
+                                    .values = &m_fence_frame_ready_val[frame_slot_init]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info)); // Block CPU until done
 }
 
@@ -155,12 +156,15 @@ void ImGUIExampleApp::render()
     m_context->start_imgui_frame();
     ImGui::ShowDemoWindow();
 
+    const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->acquire_swapchain_image(&m_frame_index));
+
     const auto dim = this->m_window.get_display_size();
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot]));
 
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list = m_cmd_lists[m_frame_index];
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
+    auto& cmd_list = m_cmd_lists[frame_slot];
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {
@@ -238,24 +242,22 @@ void ImGUIExampleApp::render()
     m_context->close_command_list(&cmd_list);
 
     // Submit command list
-    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = m_fence_frame_ready_val[frame_slot];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
         .signal_fence_count = 1,
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
+        .wait_swapchain = true,
+        .signal_swapchain = true,
     };
     m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
-    // You MUST call Present at the end of the render loop
-    // TODO: change for Vulkan
-    m_context->present(m_swapchain, 0, nullptr, m_frame_index);
+    THROW_IF_FALSE(m_context->present(m_swapchain, m_frame_index));
 
-    m_frame_index = m_context->get_swapchain_frame_index();
-
-    // If next frame is not ready to be used, wait until it is
-    auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
+    const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    auto next_fence_value = m_fence_frame_ready_val[next_frame_slot];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
         qhenki::gfx::WaitInfo wait_info{
@@ -266,7 +268,7 @@ void ImGUIExampleApp::render()
         };
         m_context->wait_fences(wait_info);
     }
-    m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
+    m_fence_frame_ready_val[next_frame_slot] = current_fence_value + 1;
 }
 
 void ImGUIExampleApp::resize(unsigned width, unsigned height)

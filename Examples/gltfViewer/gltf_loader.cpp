@@ -252,7 +252,7 @@ qhenki::gfx::Buffer copy_materials(GLTFModel* model, qhenki::gfx::Context& conte
     qhenki::gfx::Buffer staging_buffer;
     qhenki::gfx::BufferDesc desc{.size = sizeof(GLTFModel::Material) * model->materials.size(),
                                  .stride = sizeof(GLTFModel::Material),
-                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC | qhenki::gfx::BufferUsage::UAV,
+                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 
     };
@@ -347,7 +347,7 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
     }
     qhenki::gfx::BufferDesc desc{.size = sizeof(GLTFModel::Texture) * model->textures.size(),
                                  .stride = sizeof(GLTFModel::Texture),
-                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC | qhenki::gfx::BufferUsage::UAV,
+                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     context.create_buffer(desc, model->textures.data(), &staging_buffers[0]);
     desc.usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::UAV;
