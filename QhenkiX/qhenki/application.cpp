@@ -35,6 +35,11 @@ void Application::init_display_window(void* payload)
         result = util::format_string("%s | DX12", title);
         break;
     }
+    case gfx::API::Vulkan:
+    {
+        result = util::format_string("%s | Vulkan", title);
+        break;
+    }
     default:
     {
         result = util::format_string("%s | undefined", title);

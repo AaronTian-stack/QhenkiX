@@ -208,6 +208,8 @@ set(VOLK_HEADERS_ONLY OFF CACHE BOOL "" FORCE)
 set(VOLK_PULL_IN_VULKAN ON CACHE BOOL "" FORCE)
 qhenkix_add_dependency_subdirectory(external/volk ${CMAKE_BINARY_DIR}/volk)
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE IMGUI_IMPL_VULKAN_USE_VOLK)
+
 set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
 set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
 qhenkix_add_dependency_subdirectory(external/vk-bootstrap ${CMAKE_BINARY_DIR}/vk-bootstrap)

@@ -3,7 +3,6 @@
 #define VK_NO_PROTOTYPES
 #include <vk_mem_alloc.h>
 #include <VkBootstrap.h>
-#include <vulkan/vulkan.h>
 
 #include "concurrentqueue.h"
 #include "qhenki/RHI/context.h"
