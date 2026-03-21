@@ -1333,9 +1333,83 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned i
     vkCmdPushDataEXT(*vk_cmd_list, &push_data_info);
 }
 
-bool VulkanContext::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)
+bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
-    return false;
+    if (src.heap->desc.type != dst.heap->desc.type)
+    {
+        return false;
+    }
+
+    if (src.heap->desc.visibility == DescriptorHeapDesc::Visibility::CPU)
+    {
+        return false;
+    }
+
+    const auto valid_size = bytes % get_descriptor_size(Descriptor::BUFFER) == 0 ||
+                            bytes % get_descriptor_size(Descriptor::TEXTURE) == 0 ||
+                            bytes % get_descriptor_size(Descriptor::SAMPLER) == 0;
+    const auto valid_alignment_src = src.offset % get_descriptor_alignment(Descriptor::BUFFER) == 0 ||
+                                     src.offset % get_descriptor_alignment(Descriptor::TEXTURE) == 0 ||
+                                     src.offset % get_descriptor_alignment(Descriptor::SAMPLER) == 0;
+    const auto valid_alignment_dst = dst.offset % get_descriptor_alignment(Descriptor::BUFFER) == 0 ||
+                                     dst.offset % get_descriptor_alignment(Descriptor::TEXTURE) == 0 ||
+                                     dst.offset % get_descriptor_alignment(Descriptor::SAMPLER) == 0;
+
+    if (!valid_size || !valid_alignment_src || !valid_alignment_dst)
+    {
+        return false;
+    }
+
+    m_descriptor_copier.add_pending_descriptor_copy(bytes, src, dst);
+    return true;
+}
+
+bool VulkanContext::flush_descriptor_copies(CommandList* cmd_list)
+{
+    m_descriptor_copier.merge_regions();
+
+    size_t region_count = 0;
+    const PendingDescriptorCopy* const regions = m_descriptor_copier.get_merged_regions(&region_count);
+
+    if (region_count == 0)
+    {
+        m_descriptor_copier.reset();
+        return true;
+    }
+
+    const PendingDescriptorCopy& first = regions[0];
+    const VulkanDescriptorHeap* const first_src_heap = to_internal(*first.src.heap);
+    const VulkanDescriptorHeap* const first_dst_heap = to_internal(*first.dst.heap);
+    const VkBuffer src_buffer = first_src_heap->vk_buffer();
+    const VkBuffer dst_buffer = first_dst_heap->vk_buffer();
+
+    auto& arena = acquire_arena(m_frame_count);
+    VkBufferCopy2* const vk_regions = arena.alloc_array<VkBufferCopy2>(region_count);
+
+    for (size_t i = 0; i < region_count; ++i)
+    {
+        const PendingDescriptorCopy& pending = regions[i];
+        vk_regions[i] = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+            .srcOffset = static_cast<VkDeviceSize>(pending.src.offset),
+            .dstOffset = static_cast<VkDeviceSize>(pending.dst.offset),
+            .size = static_cast<VkDeviceSize>(pending.bytes),
+        };
+    }
+
+    const VkCopyBufferInfo2 copy_info{
+        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+        .srcBuffer = src_buffer,
+        .dstBuffer = dst_buffer,
+        .regionCount = static_cast<uint32_t>(region_count),
+        .pRegions = vk_regions,
+    };
+
+    const auto vk_cmd = to_internal(*cmd_list);
+    vkCmdCopyBuffer2(*vk_cmd, &copy_info);
+
+    m_descriptor_copier.reset();
+    return true;
 }
 
 bool VulkanContext::free_descriptor(Descriptor* descriptor)
@@ -2821,27 +2895,15 @@ VulkanContext::~VulkanContext()
     }
     for (VulkanQueue* q : {&m_graphics_queue, &m_compute_queue, &m_transfer_queue})
     {
-        if (q->semaphore != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(m_device.device, q->semaphore, nullptr);
-            q->semaphore = VK_NULL_HANDLE;
-        }
+        vkDestroySemaphore(m_device.device, q->semaphore, nullptr);
     }
     for (VkSemaphore& sem : m_image_available_semaphores)
     {
-        if (sem != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(m_device.device, sem, nullptr);
-            sem = VK_NULL_HANDLE;
-        }
+        vkDestroySemaphore(m_device.device, sem, nullptr);
     }
     for (VkSemaphore& sem : m_render_finished_semaphores)
     {
-        if (sem != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(m_device.device, sem, nullptr);
-            sem = VK_NULL_HANDLE;
-        }
+        vkDestroySemaphore(m_device.device, sem, nullptr);
     }
     vkb::destroy_device(m_device);
     vkb::destroy_instance(m_instance);

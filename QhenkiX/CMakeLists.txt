@@ -77,6 +77,8 @@ set(QHENKIX_SOURCES
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12DescriptorHelpers/RenderTargetHelper.cpp"
+
+    "${QHENKIX_DIR}/graphics/shared/descriptor_flush.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
@@ -110,6 +112,8 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_shader.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_pipeline.h"
     "${QHENKIX_DIR}/utility/vulkan_util.h"
+
+    "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")

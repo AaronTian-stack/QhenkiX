@@ -25,11 +25,10 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
         return false;
     }
 
-    const VkBufferCreateInfo buffer_info{
+    VkBufferCreateInfo buffer_info{
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = size,
         .usage = VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-
     };
 
     VmaAllocationCreateInfo allocation_create_info{
@@ -40,6 +39,11 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
     if (desc.visibility == DescriptorHeapDesc::Visibility::GPU)
     {
         allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    }
+    else {
+    {
+        buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     }
 
     VmaAllocationInfo alloc_info;

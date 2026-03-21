@@ -78,7 +78,19 @@ public:
                                      const DescriptorHeap& sampler_heap) = 0;
 
     virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
+
+
+    /**
+     * Copies bytes of descriptors from source descriptor to destination descriptor. The descriptors must be in heaps of
+     * the same type, and the source descriptor must refer to a CPU descriptor heap. Not thread safe.
+     * @param bytes Number of bytes to copy.
+     * @param src Source descriptor to start copying from.
+     * @param dst Destination descriptor to start copying to.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) = 0;
+
+    virtual bool flush_descriptor_copies(CommandList* cmd_list) = 0;
 
     /**
      * Free descriptor from the descriptor heap, allowing another descriptor to be created at the same offset. Only call
@@ -135,7 +147,6 @@ public:
 
     /**
      * @brief Creates staging buffer with data pointer and copies it to the texture.
-     *
      * @param cmd_list Pointer to the command list used to record the copy operation.
      * @param data Pointer to the data to be copied.
      * @param staging Pointer to the uninitialized staging buffer.
@@ -162,8 +173,8 @@ public:
     virtual bool create_command_pool(CommandPool* command_pool, QueueType queue) = 0;
 
     /**
-     * Creates a command list. Thread safe only if a separate command pool is used for each thread, as modifying
-     * CommandPool internals is not thread safe.
+     * Creates a command list. This function is only thread safe only if a separate command pool is used for each
+     * thread, as modifying CommandPool internals is not thread safe.
      * @param cmd_list Command list to be created. If already initialized, the preexisting command list will be released
      * and then created.
      * @param command_pool Command pool to allocate command list from.

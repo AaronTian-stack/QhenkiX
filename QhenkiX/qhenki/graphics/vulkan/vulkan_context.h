@@ -5,6 +5,7 @@
 #include <VkBootstrap.h>
 
 #include "concurrentqueue.h"
+#include "qhenki/graphics/shared/descriptor_flush.h"
 #include "qhenki/RHI/context.h"
 
 #define VK_SUCCEEDED(result) ((result) == VK_SUCCESS)
@@ -56,6 +57,8 @@ class VulkanContext : public Context
     VkCommandPool m_texture_transition_pool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> m_texture_transition_cmd_buffers;
 
+    DeferredDescriptorCopier m_descriptor_copier;
+
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
@@ -92,6 +95,8 @@ public:
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
 
     bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
+    bool flush_descriptor_copies(CommandList* cmd_list) override;
+
     bool free_descriptor(Descriptor* descriptor) override;
     size_t get_descriptor_size(Descriptor::Type type) const override;
     size_t get_descriptor_alignment(Descriptor::Type type) const override;
