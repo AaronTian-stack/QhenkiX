@@ -39,11 +39,19 @@ public:
                                   const SwapchainDesc& swapchain_desc,
                                   unsigned* frame_index) = 0;
     virtual bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) = 0;
-    virtual bool present(const Swapchain& swapchain,
-                         unsigned fence_count,
-                         Fence* wait_fences,
-                         unsigned swapchain_index) = 0;
-    virtual unsigned get_swapchain_frame_index() = 0;
+    /**
+     * Get the index of the next available swapchain image to render to.
+     * @param swapchain_index Return index to write the acquired image index to.
+     * @return True if the operation succeeded, false otherwise.
+     */
+    virtual bool acquire_swapchain_image(unsigned* swapchain_index) = 0;
+    virtual bool present(const Swapchain& swapchain, unsigned swapchain_index) = 0;
+    /**
+     * Get the current frame slot index for resources that need to be unique per frame.
+     * @param slot_count How many frames in flight are being used.
+     * @return The index of the current frame slot, which should be used for resources that need to be unique per frame.
+     */
+    virtual unsigned get_frame_slot(unsigned slot_count) const = 0;
 
     virtual bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) = 0;
     virtual bool create_pipeline(const GraphicsPipelineDesc& desc,

@@ -37,11 +37,9 @@ public:
                           const SwapchainDesc& swapchain_desc,
                           unsigned* frame_index) override;
     bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
-    bool present(const Swapchain& swapchain,
-                 unsigned fence_count,
-                 Fence* wait_fences,
-                 unsigned swapchain_index) override;
-    unsigned get_swapchain_frame_index() override;
+    bool acquire_swapchain_image(unsigned* swapchain_index) override;
+    bool present(const Swapchain& swapchain, unsigned swapchain_index) override;
+    unsigned get_frame_slot(unsigned slot_count) const override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
 

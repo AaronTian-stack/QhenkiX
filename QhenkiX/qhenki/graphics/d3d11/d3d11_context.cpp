@@ -317,10 +317,7 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
     return create_swapchain_resources(m_device.Get(), m_swapchain.Get(), m_swapchain_view.ReleaseAndGetAddressOf());
 }
 
-bool D3D11Context::present(const Swapchain& swapchain,
-                           unsigned fence_count,
-                           Fence* wait_fences,
-                           unsigned swapchain_index)
+bool D3D11Context::present(const Swapchain& swapchain, unsigned swapchain_index)
 {
     UINT sync_interval = 1;
     UINT flags = 0;
@@ -339,9 +336,15 @@ bool D3D11Context::present(const Swapchain& swapchain,
     return false;
 }
 
-unsigned D3D11Context::get_swapchain_frame_index()
+bool D3D11Context::acquire_swapchain_image(unsigned* swapchain_index)
 {
-    return m_frame_count % Application::m_frames_in_flight;
+    *swapchain_index = m_frame_count % Application::m_frames_in_flight;
+    return true;
+}
+
+unsigned D3D11Context::get_frame_slot(const unsigned slot_count) const
+{
+    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
 }
 
 bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)

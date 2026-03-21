@@ -20,5 +20,10 @@ struct SubmitInfo
     uint32_t signal_fence_count;
     Fence* signal_fences;
     uint64_t* signal_values;
+
+    // Set to true if submission requires acquiring swapchain image.
+    bool wait_swapchain;
+    // Set to true if present occurs after this submission.
+    bool signal_swapchain;
 };
 } // namespace qhenki::gfx

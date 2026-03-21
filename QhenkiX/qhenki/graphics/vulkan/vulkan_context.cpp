@@ -393,6 +393,23 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         return "Vulkan: Failed to create texture transition command pool";
     }
 
+    const VkSemaphoreCreateInfo image_available_info{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    };
+    for (size_t i = 0; i < m_image_available_semaphores.size(); i++)
+    {
+        if (VK_FAILED(
+                vkCreateSemaphore(m_device.device, &image_available_info, nullptr, &m_image_available_semaphores[i])))
+        {
+            return "Vulkan: Failed to create image-available binary semaphore";
+        }
+        if (VK_FAILED(
+                vkCreateSemaphore(m_device.device, &image_available_info, nullptr, &m_render_finished_semaphores[i])))
+        {
+            return "Vulkan: Failed to create render-finished binary semaphore";
+        }
+    }
+
     return "";
 }
 
@@ -447,18 +464,45 @@ bool VulkanContext::resize_swapchain(Swapchain* swapchain, int width, int height
     return true;
 }
 
-bool VulkanContext::present(const Swapchain& swapchain,
-                            unsigned fence_count,
-                            Fence* wait_fences,
-                            unsigned swapchain_index)
+bool VulkanContext::acquire_swapchain_image(unsigned* swapchain_index)
 {
-    ++m_frame_count;
-    return false;
+    const unsigned frame_slot = m_frame_count % m_image_available_semaphores.size();
+    if (VK_FAILED(vkAcquireNextImageKHR(m_device.device,
+                                        m_swapchain.swapchain.swapchain,
+                                        std::numeric_limits<uint64_t>::max(),
+                                        m_image_available_semaphores[frame_slot],
+                                        VK_NULL_HANDLE,
+                                        swapchain_index)))
+    {
+        return false;
+    }
+    return true;
 }
 
-unsigned VulkanContext::get_swapchain_frame_index()
+bool VulkanContext::present(const Swapchain& swapchain, unsigned swapchain_index)
 {
-    return 0;
+    const unsigned frame_slot = m_frame_count % m_render_finished_semaphores.size();
+    const VkSemaphore wait_semaphore = m_render_finished_semaphores[frame_slot];
+    const VkPresentInfoKHR present_info{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &wait_semaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &m_swapchain.swapchain.swapchain,
+        .pImageIndices = &swapchain_index,
+    };
+    // TODO: Present on different queue?
+    if (VK_FAILED(vkQueuePresentKHR(m_graphics_queue.queue, &present_info)))
+    {
+        return false;
+    }
+    ++m_frame_count;
+    return true;
+}
+
+unsigned VulkanContext::get_frame_slot(const unsigned slot_count) const
+{
+    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
 }
 
 bool VulkanContext::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
@@ -2272,6 +2316,10 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         ++additional_waits;
     }
+    if (submit_info.wait_swapchain)
+    {
+        ++additional_waits;
+    }
 
     auto& arena = acquire_arena(m_frame_count);
     // Wait on texture transitions
@@ -2429,6 +2477,16 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
             .stageMask = stage_mask,
         };
     }
+    if (submit_info.wait_swapchain)
+    {
+        const uint32_t idx = submit_info.wait_fence_count + (needs_transition ? 2u : 1u);
+        wait_semaphore_infos[idx] = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_image_available_semaphores[m_frame_count % m_image_available_semaphores.size()],
+            .value = 0,
+            .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        };
+    }
 
     const auto cmd_buffer_infos = arena.alloc_array<VkCommandBufferSubmitInfo>(submit_info.command_list_count);
     for (unsigned i = 0; i < submit_info.command_list_count; i++)
@@ -2439,8 +2497,9 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         };
     }
 
-    // +1 for internal ordering signal
-    const auto signal_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(submit_info.signal_fence_count + 1);
+    // +1 for internal ordering signal, +1 for optional swapchain signal
+    const uint32_t max_signal_count = submit_info.signal_fence_count + 1 + (submit_info.signal_swapchain ? 1u : 0u);
+    const auto signal_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(max_signal_count);
     uint32_t signal_count = 0;
     for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
     {
@@ -2465,6 +2524,15 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         .value = ++q.last_signaled_fence_value,
         .stageMask = stage_mask,
     };
+    if (submit_info.signal_swapchain)
+    {
+        const uint32_t frame_slot = m_frame_count % m_render_finished_semaphores.size();
+        signal_semaphore_infos[signal_count++] = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_render_finished_semaphores[frame_slot],
+            .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        };
+    }
 
     const VkSubmitInfo2 submit{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
@@ -2740,6 +2808,22 @@ VulkanContext::~VulkanContext()
         {
             vkDestroySemaphore(m_device.device, q->semaphore, nullptr);
             q->semaphore = VK_NULL_HANDLE;
+        }
+    }
+    for (VkSemaphore& sem : m_image_available_semaphores)
+    {
+        if (sem != VK_NULL_HANDLE)
+        {
+            vkDestroySemaphore(m_device.device, sem, nullptr);
+            sem = VK_NULL_HANDLE;
+        }
+    }
+    for (VkSemaphore& sem : m_render_finished_semaphores)
+    {
+        if (sem != VK_NULL_HANDLE)
+        {
+            vkDestroySemaphore(m_device.device, sem, nullptr);
+            sem = VK_NULL_HANDLE;
         }
     }
     vkb::destroy_device(m_device);

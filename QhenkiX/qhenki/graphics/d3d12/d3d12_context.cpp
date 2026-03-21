@@ -414,10 +414,7 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
     return true;
 }
 
-bool D3D12Context::present(const Swapchain& swapchain,
-                           unsigned fence_count,
-                           Fence* wait_fences,
-                           unsigned swapchain_index)
+bool D3D12Context::present(const Swapchain& swapchain, unsigned swapchain_index)
 {
     ++m_frame_count;
     UINT sync_interval = 1;
@@ -435,9 +432,15 @@ bool D3D12Context::present(const Swapchain& swapchain,
     return true;
 }
 
-unsigned D3D12Context::get_swapchain_frame_index()
+bool D3D12Context::acquire_swapchain_image(unsigned* swapchain_index)
 {
-    return m_swapchain->GetCurrentBackBufferIndex();
+    *swapchain_index = m_swapchain->GetCurrentBackBufferIndex();
+    return true;
+}
+
+unsigned D3D12Context::get_frame_slot(const unsigned slot_count) const
+{
+    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
 }
 
 bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
