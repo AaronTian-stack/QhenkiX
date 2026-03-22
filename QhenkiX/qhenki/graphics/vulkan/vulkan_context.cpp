@@ -1475,11 +1475,13 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
 void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_heap = to_internal(*gpu_descriptor.heap);
+    const size_t absolute_offset = gpu_descriptor.offset + vk_heap->get_reserved_size();
 
     const VkPushDataInfoEXT push_data_info{
         .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
         .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET + index * sizeof(size_t)), // Implies max 16 params
-        .data = {.address = &gpu_descriptor.offset, .size = sizeof(size_t)}};
+        .data = {.address = &absolute_offset, .size = sizeof(size_t)}};
     vkCmdPushDataEXT(*vk_cmd_list, &push_data_info);
 }
 
@@ -2608,10 +2610,12 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
             for (size_t i = 0; i < descriptor_region_count; i++)
             {
                 const PendingDescriptorCopy& pending = descriptor_regions[i];
+                const auto src_reserved = to_internal(*pending.src.heap)->get_reserved_size();
+                const auto dst_reserved = to_internal(*pending.dst.heap)->get_reserved_size();
                 vk_regions[i] = {
                     .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
-                    .srcOffset = static_cast<VkDeviceSize>(pending.src.offset),
-                    .dstOffset = static_cast<VkDeviceSize>(pending.dst.offset),
+                    .srcOffset = static_cast<VkDeviceSize>(pending.src.offset) + src_reserved,
+                    .dstOffset = static_cast<VkDeviceSize>(pending.dst.offset) + dst_reserved,
                     .size = static_cast<VkDeviceSize>(pending.bytes),
                 };
             }

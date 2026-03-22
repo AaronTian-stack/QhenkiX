@@ -123,6 +123,10 @@ bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va, const Descriptor::
     }
 
     const auto res = vmaVirtualAllocate(m_block, &alloc_create_info, va, offset);
+    if (res == VK_SUCCESS)
+    {
+        *offset -= m_reserved_size;
+    }
 
     return res == VK_SUCCESS;
 }
@@ -135,8 +139,7 @@ void VulkanDescriptorHeap::deallocate(const VmaVirtualAllocation va) const
 
 void* VulkanDescriptorHeap::get_cpu_pointer(const size_t offset) const
 {
-    assert(offset >= m_reserved_size);
-    return static_cast<uint8_t*>(m_data) + offset;
+    return static_cast<uint8_t*>(m_data) + m_reserved_size + offset;
 }
 
 VkBuffer VulkanDescriptorHeap::get_buffer() const

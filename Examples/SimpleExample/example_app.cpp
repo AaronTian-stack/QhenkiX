@@ -371,9 +371,7 @@ void ExampleApp::render()
                                                    m_texture_descriptor,
                                                    descriptor));
 
-        // Sampler
-        descriptor = qhenki::gfx::Descriptor(&m_sampler_heap, 0);
-        m_context->set_descriptor_table(&cmd_list, 1, descriptor);
+        m_context->set_descriptor_table(&cmd_list, 1, m_sampler_descriptor);
     }
 
     constexpr uint64_t offset = 0;

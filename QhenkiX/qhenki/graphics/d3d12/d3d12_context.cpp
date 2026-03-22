@@ -439,9 +439,6 @@ unsigned D3D12Context::get_frame_slot(const unsigned slot_count) const
 
 bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
 {
-    assert(data);
-    assert(shader);
-
     ComPtr<IDxcBlobEncoding> container_blob_enc;
     if (FAILED(m_library->CreateBlob(data, static_cast<UINT32>(size), 0, container_blob_enc.ReleaseAndGetAddressOf())))
     {
