@@ -1005,7 +1005,7 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list,
     m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
 }
 
-bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue)
+bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)
 {
     return true;
 }
@@ -1143,7 +1143,7 @@ bool D3D11Context::submit_command_lists(const SubmitInfo& submit_info, QueueType
     return true;
 }
 
-bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value)
+bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value, const char* debug_name)
 {
     return true;
 }

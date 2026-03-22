@@ -36,6 +36,7 @@ class VulkanContext : public Context
     VkSurfaceKHR m_surface;
     std::array<VkSemaphore, 2> m_image_available_semaphores{VK_NULL_HANDLE, VK_NULL_HANDLE};
     std::array<VkSemaphore, 2> m_render_finished_semaphores{VK_NULL_HANDLE, VK_NULL_HANDLE};
+    unsigned m_acquired_image_index = 0;
 
     VmaAllocator m_allocator = nullptr;
 
@@ -131,7 +132,7 @@ public:
 
     void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) override;
 
-    bool create_command_pool(CommandPool* command_pool, QueueType queue) override;
+    bool create_command_pool(CommandPool* command_pool, QueueType queue, const char* debug_name) override;
     bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
     bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool close_command_list(CommandList* cmd_list) override;
@@ -161,7 +162,7 @@ public:
 
     bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
-    bool create_fence(Fence* fence, uint64_t initial_value) override;
+    bool create_fence(Fence* fence, uint64_t initial_value, const char* debug_name) override;
     uint64_t get_fence_value(const Fence& fence) override;
     bool wait_fences(const WaitInfo& info) override;
 

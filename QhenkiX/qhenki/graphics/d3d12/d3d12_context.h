@@ -84,9 +84,7 @@ public:
     bool set_pipeline_constant(
         CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
 
-    bool create_descriptor_heap(const DescriptorHeapDesc& desc,
-                                DescriptorHeap* heap,
-                                const char* debug_name = nullptr) override;
+    bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
     size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
@@ -132,7 +130,7 @@ public:
 
     void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) override;
 
-    bool create_command_pool(CommandPool* command_pool, QueueType queue) override;
+    bool create_command_pool(CommandPool* command_pool, QueueType queue, const char* debug_name) override;
     bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
     bool close_command_list(CommandList* cmd_list) override;
@@ -163,7 +161,7 @@ public:
 
     bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
-    bool create_fence(Fence* fence, uint64_t initial_value) override;
+    bool create_fence(Fence* fence, uint64_t initial_value, const char* debug_name) override;
     uint64_t get_fence_value(const Fence& fence) override;
     bool wait_fences(const WaitInfo& info) override;
 

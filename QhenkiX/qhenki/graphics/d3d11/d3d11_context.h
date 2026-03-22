@@ -73,10 +73,7 @@ public:
     size_t get_descriptor_size(Descriptor::Type type) const override;
     size_t get_descriptor_alignment(Descriptor::Type type) const override;
 
-    bool create_buffer(const BufferDesc& desc,
-                       const void* data,
-                       Buffer* buffer,
-                       const char* debug_name = nullptr) override;
+    bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name) override;
     bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
     bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
 
@@ -87,7 +84,7 @@ public:
                      uint64_t dst_offset,
                      uint64_t bytes) override;
 
-    bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name = nullptr) override;
+    bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name) override;
     bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
@@ -106,11 +103,9 @@ public:
                              const uint64_t* offsets) override;
     void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) override;
 
-    bool create_command_pool(CommandPool* command_pool, QueueType queue) override;
+    bool create_command_pool(CommandPool* command_pool, QueueType queue, const char* debug_name) override;
 
-    bool create_command_list(CommandList* cmd_list,
-                             const CommandPool& command_pool,
-                             const char* debug_name = nullptr) override;
+    bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
     bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool close_command_list(CommandList* cmd_list) override;
 
@@ -139,7 +134,7 @@ public:
 
     bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
-    bool create_fence(Fence* fence, uint64_t initial_value) override;
+    bool create_fence(Fence* fence, uint64_t initial_value, const char* debug_name) override;
     uint64_t get_fence_value(const Fence& fence) override;
     bool wait_fences(const WaitInfo& info) override;
 

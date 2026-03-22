@@ -98,7 +98,7 @@ VulkanShader* to_internal(const Shader& ext)
 
 void set_debug_name(const VkDevice device, const VkObjectType type, const uint64_t handle, const char* name)
 {
-    if (vkSetDebugUtilsObjectNameEXT)
+    if (vkSetDebugUtilsObjectNameEXT && name)
     {
         const VkDebugUtilsObjectNameInfoEXT name_info{
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -314,7 +314,7 @@ std::string VulkanContext::create(const bool enable_debug_layer)
 
     allocator_desc.pVulkanFunctions = &vulkan_functions;
 
-    auto init_queue = [this](const vkb::QueueType type, VulkanQueue& out) -> std::string
+    auto init_queue = [this](const vkb::QueueType type, VulkanQueue& out, const char* name) -> std::string
     {
         auto result = m_device.get_queue_and_index(type);
         if (!result)
@@ -324,6 +324,8 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         auto [q, family_index] = result.value();
         out.queue = q;
         out.family_index = family_index;
+        set_debug_name(m_device.device, VK_OBJECT_TYPE_QUEUE, reinterpret_cast<uint64_t>(q), name);
+
         const VkSemaphoreTypeCreateInfo semaphore_type_info{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
             .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
@@ -337,18 +339,21 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         {
             return "Vulkan: Failed to create queue semaphore";
         }
+        char sem_name[64];
+        snprintf(sem_name, sizeof(sem_name), "%s Internal Semaphore", name);
+        set_debug_name(m_device.device, VK_OBJECT_TYPE_SEMAPHORE, reinterpret_cast<uint64_t>(out.semaphore), sem_name);
         return {};
     };
 
-    if (auto err = init_queue(vkb::QueueType::graphics, m_graphics_queue); !err.empty())
+    if (auto err = init_queue(vkb::QueueType::graphics, m_graphics_queue, "Graphics Queue"); !err.empty())
     {
         return err;
     }
-    if (auto err = init_queue(vkb::QueueType::compute, m_compute_queue); !err.empty())
+    if (auto err = init_queue(vkb::QueueType::compute, m_compute_queue, "Compute Queue"); !err.empty())
     {
         return err;
     }
-    if (auto err = init_queue(vkb::QueueType::transfer, m_transfer_queue); !err.empty())
+    if (auto err = init_queue(vkb::QueueType::transfer, m_transfer_queue, "Transfer Queue"); !err.empty())
     {
         return err;
     }
@@ -392,6 +397,10 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     {
         return "Vulkan: Failed to create internal timeline semaphore";
     }
+    set_debug_name(m_device.device,
+                   VK_OBJECT_TYPE_SEMAPHORE,
+                   reinterpret_cast<uint64_t>(m_internal_semaphore),
+                   "Internal Timeline Semaphore");
 
     const VkCommandPoolCreateInfo internal_pool_ci{
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -402,6 +411,10 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     {
         return "Vulkan: Failed to create internal command pool";
     }
+    set_debug_name(m_device.device,
+                   VK_OBJECT_TYPE_COMMAND_POOL,
+                   reinterpret_cast<uint64_t>(m_internal_cmd_pool),
+                   "Internal Command Pool");
 
     const VkSemaphoreCreateInfo image_available_info{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -413,11 +426,24 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         {
             return "Vulkan: Failed to create image-available binary semaphore";
         }
+        char avail_name[64];
+        snprintf(avail_name, sizeof(avail_name), "Image Available Semaphore [%zu]", i);
+        set_debug_name(m_device.device,
+                       VK_OBJECT_TYPE_SEMAPHORE,
+                       reinterpret_cast<uint64_t>(m_image_available_semaphores[i]),
+                       avail_name);
+
         if (VK_FAILED(
                 vkCreateSemaphore(m_device.device, &image_available_info, nullptr, &m_render_finished_semaphores[i])))
         {
             return "Vulkan: Failed to create render-finished binary semaphore";
         }
+        char finished_name[64];
+        snprintf(finished_name, sizeof(finished_name), "Render Finished Semaphore [%zu]", i);
+        set_debug_name(m_device.device,
+                       VK_OBJECT_TYPE_SEMAPHORE,
+                       reinterpret_cast<uint64_t>(m_render_finished_semaphores[i]),
+                       finished_name);
     }
 
     return "";
@@ -451,6 +477,10 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
         return false;
     }
     m_swapchain.swapchain = std::move(swap_ret.value());
+    set_debug_name(m_device.device,
+                   VK_OBJECT_TYPE_SWAPCHAIN_KHR,
+                   reinterpret_cast<uint64_t>(m_swapchain.swapchain.swapchain),
+                   "Swapchain");
 
     auto swap_img = m_swapchain.swapchain.get_images();
     if (!swap_img)
@@ -458,6 +488,15 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
         return false;
     }
     m_swapchain.images = std::move(swap_img.value());
+    for (size_t i = 0; i < m_swapchain.images.size(); i++)
+    {
+        char img_name[64];
+        snprintf(img_name, sizeof(img_name), "Swapchain Image [%zu]", i);
+        set_debug_name(m_device.device,
+                       VK_OBJECT_TYPE_IMAGE,
+                       reinterpret_cast<uint64_t>(m_swapchain.images[i]),
+                       img_name);
+    }
 
     auto swap_img_view = m_swapchain.swapchain.get_image_views();
     if (!swap_img_view)
@@ -465,6 +504,15 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
         return false;
     }
     m_swapchain.image_views = std::move(swap_img_view.value());
+    for (size_t i = 0; i < m_swapchain.image_views.size(); i++)
+    {
+        char view_name[64];
+        snprintf(view_name, sizeof(view_name), "Swapchain Image View [%zu]", i);
+        set_debug_name(m_device.device,
+                       VK_OBJECT_TYPE_IMAGE_VIEW,
+                       reinterpret_cast<uint64_t>(m_swapchain.image_views[i]),
+                       view_name);
+    }
 
     return true;
 }
@@ -476,23 +524,23 @@ bool VulkanContext::resize_swapchain(Swapchain* swapchain, int width, int height
 
 bool VulkanContext::acquire_swapchain_image(unsigned* swapchain_index)
 {
-    const unsigned frame_slot = m_frame_count % m_image_available_semaphores.size();
+    const unsigned sem_index = m_frame_count % m_image_available_semaphores.size();
     if (VK_FAILED(vkAcquireNextImageKHR(m_device.device,
                                         m_swapchain.swapchain.swapchain,
                                         std::numeric_limits<uint64_t>::max(),
-                                        m_image_available_semaphores[frame_slot],
+                                        m_image_available_semaphores[sem_index],
                                         VK_NULL_HANDLE,
                                         swapchain_index)))
     {
         return false;
     }
+    m_acquired_image_index = *swapchain_index;
     return true;
 }
 
 bool VulkanContext::present(const Swapchain& swapchain, unsigned swapchain_index)
 {
-    const unsigned frame_slot = m_frame_count % m_render_finished_semaphores.size();
-    const VkSemaphore wait_semaphore = m_render_finished_semaphores[frame_slot];
+    const auto wait_semaphore = m_render_finished_semaphores[m_acquired_image_index];
     const VkPresentInfoKHR present_info{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
@@ -1262,6 +1310,11 @@ bool VulkanContext::create_descriptor_heap(const DescriptorHeapDesc& desc, Descr
 
     heap->desc = desc;
 
+    set_debug_name(m_device.device,
+                   VK_OBJECT_TYPE_BUFFER,
+                   reinterpret_cast<uint64_t>(vk_heap->get_buffer()),
+                   debug_name);
+
     return true;
 }
 
@@ -1971,7 +2024,7 @@ void VulkanContext::bind_index_buffer(CommandList* cmd_list,
                           format == IndexType::UINT32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
 }
 
-bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueType queue)
+bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)
 {
     assert(command_pool);
     command_pool->queue_type = queue;
@@ -2001,6 +2054,8 @@ bool VulkanContext::create_command_pool(CommandPool* command_pool, const QueueTy
         return false;
     }
 
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(pool), debug_name);
+
     // TODO: Stop using RAII
     *command_pool = {
         .queue_type = queue,
@@ -2024,6 +2079,8 @@ bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool
         return false;
     }
     cmd_list->internal_state = mkS<VkCommandBuffer>(cmd_buffer);
+
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<uint64_t>(cmd_buffer), debug_name);
 
     return true;
 }
@@ -2403,6 +2460,10 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         {
             return false;
         }
+        set_debug_name(m_device.device,
+                       VK_OBJECT_TYPE_COMMAND_BUFFER,
+                       reinterpret_cast<uint64_t>(internal_cmd),
+                       "Internal Command Buffer");
         m_internal_cmd_buffers.push_back(internal_cmd);
 
         constexpr VkCommandBufferBeginInfo begin_info{
@@ -2696,7 +2757,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     return true;
 }
 
-bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value)
+bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value, const char* debug_name)
 {
     const VkSemaphoreTypeCreateInfo type_info{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -2715,6 +2776,8 @@ bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value)
         fence->internal_state.reset();
         return false;
     }
+
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_SEMAPHORE, reinterpret_cast<uint64_t>(*vk_fence), debug_name);
 
     return true;
 }

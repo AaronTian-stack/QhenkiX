@@ -285,7 +285,7 @@ std::string D3D12Context::create(const bool enable_debug_layer)
         return "D3D12: Failed to create copy command queue";
     }
 
-    if (!create_fence(&m_fence_wait_all, 0))
+    if (!create_fence(&m_fence_wait_all, 0, "Internal stall fence"))
     {
         return "D3D12: Failed to create fence";
     }
@@ -1715,7 +1715,7 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list,
     command_list->IASetIndexBuffer(&view);
 }
 
-bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueType queue)
+bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)
 {
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     switch (queue)
@@ -1732,14 +1732,18 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueTyp
     }
 
     command_pool->internal_state = mkS<ComPtr<ID3D12CommandAllocator>>();
-    if (FAILED(
-            m_device->CreateCommandAllocator(type, IID_PPV_ARGS(to_internal(*command_pool)->ReleaseAndGetAddressOf()))))
+    const auto command_allocator = to_internal(*command_pool);
+
+    if (FAILED(m_device->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command allocator\n");
         command_pool->internal_state.reset();
         return false;
     }
     command_pool->queue_type = queue;
+
+    set_debug_name(command_allocator->Get(), debug_name);
+
     return true;
 }
 
@@ -2032,13 +2036,15 @@ bool D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const Que
             return false;
         }
     }
+
     return true;
 }
 
-bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
+bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value, const char* debug_name)
 {
     fence->internal_state = mkS<D3D12Fence>();
-    auto fence_d3d12 = to_internal(*fence);
+    const auto fence_d3d12 = to_internal(*fence);
+
     if (FAILED(m_device->CreateFence(initial_value,
                                      D3D12_FENCE_FLAG_NONE,
                                      IID_PPV_ARGS(fence_d3d12->fence.ReleaseAndGetAddressOf()))))
@@ -2047,6 +2053,7 @@ bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
         fence->internal_state.reset();
         return false;
     }
+
     fence_d3d12->event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!fence_d3d12->event)
     {
@@ -2054,6 +2061,9 @@ bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
         fence->internal_state.reset();
         return false;
     }
+
+    set_debug_name(fence_d3d12->fence.Get(), debug_name);
+
     return true;
 }
 

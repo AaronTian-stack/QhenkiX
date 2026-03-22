@@ -168,7 +168,7 @@ public:
                                      const uint64_t* offsets) = 0;
     virtual void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) = 0;
 
-    virtual bool create_command_pool(CommandPool* command_pool, QueueType queue) = 0;
+    virtual bool create_command_pool(CommandPool* command_pool, QueueType queue, const char* debug_name = nullptr) = 0;
 
     /**
      * Creates a command list. This function is only thread safe only if a separate command pool is used for each
@@ -228,7 +228,7 @@ public:
      */
     virtual bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) = 0;
 
-    virtual bool create_fence(Fence* fence, uint64_t initial_value) = 0;
+    virtual bool create_fence(Fence* fence, uint64_t initial_value, const char* debug_name = nullptr) = 0;
     // If submission is pending value may be out of date
     virtual uint64_t get_fence_value(const Fence& fence) = 0;
     // Waits for fences on CPU
