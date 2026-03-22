@@ -43,6 +43,11 @@ void RetroExampleApp::init_display_window(void* payload)
         result = qhenki::util::format_string("%s | DX12", title);
         break;
     }
+    case qhenki::gfx::API::Vulkan:
+    {
+        result = qhenki::util::format_string("%s | Vulkan", title);
+        break;
+    }
     default:
     {
         result = qhenki::util::format_string("%s | undefined", title);

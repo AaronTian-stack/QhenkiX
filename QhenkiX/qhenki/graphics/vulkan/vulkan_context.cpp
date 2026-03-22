@@ -254,6 +254,7 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     };
 
     VkPhysicalDeviceVulkan13Features features13{
+        .shaderDemoteToHelperInvocation = VK_TRUE,
         .synchronization2 = VK_TRUE,
         .dynamicRendering = VK_TRUE,
         .maintenance4 = VK_TRUE,
@@ -763,13 +764,22 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     thread_local memory::Arena arena(util::MEGABYTE);
     arena.reset();
 
-    const auto input_attributes = arena.alloc_array<VkVertexInputAttributeDescription>(resources.stage_inputs.size());
+    const auto input_count = resources.stage_inputs.size();
+    VkVertexInputAttributeDescription* input_attributes = nullptr;
+    if (input_count > 0)
+    {
+        input_attributes = arena.alloc_array<VkVertexInputAttributeDescription>(input_count);
+    }
 
-    const uint32_t binding_count = desc.increment_slot ? static_cast<uint32_t>(resources.stage_inputs.size()) : 1u;
-    const auto binding_descs = arena.alloc_array<VkVertexInputBindingDescription>(binding_count);
+    const uint32_t binding_count = desc.increment_slot ? static_cast<uint32_t>(input_count) : input_count > 0 ? 1u : 0u;
+    VkVertexInputBindingDescription* binding_descs = nullptr;
+    if (binding_count > 0)
+    {
+        binding_descs = arena.alloc_array<VkVertexInputBindingDescription>(binding_count);
+    }
 
     uint32_t offset = 0;
-    for (uint32_t i = 0; i < resources.stage_inputs.size(); i++)
+    for (uint32_t i = 0; i < input_count; i++)
     {
         const auto& input = resources.stage_inputs[i];
         const auto& type = vs_reflect.get_type(input.type_id);
@@ -839,7 +849,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = binding_count,
         .pVertexBindingDescriptions = binding_descs,
-        .vertexAttributeDescriptionCount = static_cast<uint32_t>(resources.stage_inputs.size()),
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(input_count),
         .pVertexAttributeDescriptions = input_attributes,
     };
 
@@ -1006,7 +1016,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
             state.failOp = map_stencil_op(op.StencilFailOp);
             state.passOp = map_stencil_op(op.StencilPassOp);
             state.depthFailOp = map_stencil_op(op.StencilDepthFailOp);
-            state.compareOp = map_compare_func(ds.depth_func);
+            state.compareOp = map_compare_func(op.StencilFunc);
             state.compareMask = ds.stencil_read_mask;
             state.writeMask = ds.stencil_write_mask;
             state.reference = 0;
@@ -1167,7 +1177,8 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .colorAttachmentCount = desc.num_render_targets,
         .pColorAttachmentFormats = desc.num_render_targets ? color_formats.data() : nullptr,
         .depthAttachmentFormat = has_depth_attachment ? depth_stencil_format : VK_FORMAT_UNDEFINED,
-        .stencilAttachmentFormat = has_depth_attachment && desc.depth_stencil_state->stencil_enable
+        .stencilAttachmentFormat = has_depth_attachment &&
+                                           (get_image_aspect_mask(depth_stencil_format) & VK_IMAGE_ASPECT_STENCIL_BIT)
                                      ? depth_stencil_format
                                      : VK_FORMAT_UNDEFINED,
     };
@@ -1476,12 +1487,14 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned i
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
     const auto vk_heap = to_internal(*gpu_descriptor.heap);
-    const size_t absolute_offset = gpu_descriptor.offset + vk_heap->get_reserved_size();
+    // No way you will have a descriptor heap >2GB. This also doubles the amount of tables we can have from 16 -> 32
+    // (128 / 4)
+    const uint32_t absolute_offset = static_cast<uint32_t>(gpu_descriptor.offset + vk_heap->get_reserved_size());
 
-    const VkPushDataInfoEXT push_data_info{
-        .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
-        .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET + index * sizeof(size_t)), // Implies max 16 params
-        .data = {.address = &absolute_offset, .size = sizeof(size_t)}};
+    const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+                                           .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET +
+                                                                           index * sizeof(uint32_t)),
+                                           .data = {.address = &absolute_offset, .size = sizeof(uint32_t)}};
     vkCmdPushDataEXT(*vk_cmd_list, &push_data_info);
 }
 
@@ -2109,7 +2122,7 @@ void VulkanContext::bind_index_buffer(CommandList* cmd_list,
     vkCmdBindIndexBuffer2(*vk_cmd_list,
                           vk_buffer->buffer,
                           offset,
-                          buffer.desc.size,
+                          VK_WHOLE_SIZE,
                           format == IndexType::UINT32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
 }
 
@@ -2353,6 +2366,10 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
         .extent = extent,
     };
 
+    const bool has_stencil = depth_stencil &&
+                             (convert_format(depth_stencil->texture->desc.format) == VK_FORMAT_D24_UNORM_S8_UINT ||
+                              convert_format(depth_stencil->texture->desc.format) == VK_FORMAT_D32_SFLOAT_S8_UINT);
+
     const VkRenderingInfo rendering_info{
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea = render_area,
@@ -2361,6 +2378,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
         .colorAttachmentCount = 1,
         .pColorAttachments = &color_attachment,
         .pDepthAttachment = depth_stencil ? &depth_attachment : nullptr,
+        .pStencilAttachment = has_stencil ? &depth_attachment : nullptr,
     };
 
     const auto vk_cmd_list = to_internal(*cmd_list);
@@ -2427,6 +2445,10 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
         .extent = extent,
     };
 
+    const bool has_stencil = depth_stencil &&
+                             (convert_format(depth_stencil->texture->desc.format) == VK_FORMAT_D24_UNORM_S8_UINT ||
+                              convert_format(depth_stencil->texture->desc.format) == VK_FORMAT_D32_SFLOAT_S8_UINT);
+
     const VkRenderingInfo rendering_info{
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea = render_area,
@@ -2435,6 +2457,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
         .colorAttachmentCount = rt_count,
         .pColorAttachments = color_attachments.data(),
         .pDepthAttachment = depth_stencil ? &depth_attachment : nullptr,
+        .pStencilAttachment = has_stencil ? &depth_attachment : nullptr,
     };
 
     const auto vk_cmd_list = to_internal(*cmd_list);
