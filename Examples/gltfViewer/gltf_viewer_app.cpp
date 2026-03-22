@@ -355,7 +355,7 @@ void gltfViewerApp::render()
     m_context->start_imgui_frame();
 
     const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
-    THROW_IF_FALSE(m_context->acquire_swapchain_image(&m_frame_index));
+    THROW_IF_FALSE(m_context->acquire_swapchain_image());
 
     {
         // ImGui::ShowDemoWindow();
@@ -543,7 +543,7 @@ void gltfViewerApp::render()
         .src_layout = qhenki::gfx::Layout::PRESENT,
         .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
     };
-    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_render, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
     // Clear back buffer / Start render pass
@@ -553,7 +553,7 @@ void gltfViewerApp::render()
         .clear_type = qhenki::gfx::RenderTarget::DEPTH,
         .texture = &m_depth_buffer,
     };
-    m_context->start_render_pass(&cmd_list, clear_values.data(), &depth, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), &depth);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{
@@ -873,7 +873,7 @@ void gltfViewerApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_present, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_present);
 
     // Close the command list
@@ -894,7 +894,7 @@ void gltfViewerApp::render()
     };
     m_context->submit_command_lists(info, qhenki::gfx::QueueType::GRAPHICS);
 
-    THROW_IF_FALSE(m_context->present(m_swapchain, m_frame_index));
+    THROW_IF_FALSE(m_context->present(m_swapchain));
 
     const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);
     auto next_fence_value = m_fence_frame_ready_val[next_frame_slot];

@@ -257,7 +257,7 @@ void ExampleApp::create()
 void ExampleApp::render()
 {
     const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
-    THROW_IF_FALSE(m_context->acquire_swapchain_image(&m_frame_index));
+    THROW_IF_FALSE(m_context->acquire_swapchain_image());
 
     const auto seconds_elapsed = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
@@ -301,12 +301,12 @@ void ExampleApp::render()
         .src_layout = qhenki::gfx::Layout::PRESENT,
         .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
     };
-    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_render, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
     // Clear back buffer / Start render pass
     std::array clear_values = {0.f, 0.f, 0.f, 1.f};
-    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{
@@ -399,14 +399,14 @@ void ExampleApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_present, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_present);
 
     // Close the command list
     m_context->close_command_list(&cmd_list);
 
     // Submit command list
-    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = m_fence_frame_ready_val[frame_slot];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
@@ -418,7 +418,7 @@ void ExampleApp::render()
     };
     m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
-    THROW_IF_FALSE(m_context->present(m_swapchain, m_frame_index));
+    THROW_IF_FALSE(m_context->present(m_swapchain));
 
     // If next frame is not ready to be used, wait until it is
     const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);

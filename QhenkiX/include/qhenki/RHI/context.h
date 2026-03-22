@@ -35,19 +35,19 @@ public:
     virtual std::string create(bool enable_debug_layer) = 0;
     virtual bool is_compatibility() const = 0;
 
-    virtual bool create_swapchain(const DisplayWindow& window,
-                                  const SwapchainDesc& swapchain_desc,
-                                  unsigned* frame_index) = 0;
-    virtual bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) = 0;
+    virtual bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc) = 0;
+    virtual bool resize_swapchain(Swapchain* swapchain, int width, int height) = 0;
     /**
-     * Get the index of the next available swapchain image to render to.
-     * @param swapchain_index Return index to write the acquired image index to.
+     * Update the internal index of the next available swapchain image to render to. This should be called once at the
+     * beginning at each frame.
      * @return True if the operation succeeded, false otherwise.
      */
-    virtual bool acquire_swapchain_image(unsigned* swapchain_index) = 0;
-    virtual bool present(const Swapchain& swapchain, unsigned swapchain_index) = 0;
+    virtual bool acquire_swapchain_image() = 0;
+    virtual bool present(const Swapchain& swapchain) = 0;
     /**
-     * Get the current frame slot index for resources that need to be unique per frame.
+     * Get the current frame slot index for resources that need to be unique per frame. This is a convenience function
+     * that returns a value internally incremented whenever present is called: thus it is possible to track this
+     * value yourself if desired.
      * @param slot_count How many frames in flight are being used.
      * @return The index of the current frame slot, which should be used for resources that need to be unique per frame.
      */
@@ -192,13 +192,11 @@ public:
      * @param cmd_list Command list to record render pass commands on.
      * @param clear_color_values Clear color values for render targets. If null, render targets will not be cleared.
      * @param depth_stencil Depth stencil render target. If null, no depth stencil will be bound.
-     * @param frame_index Which swap chain buffer to use as render target.
      * @return True if the operation succeeded, false otherwise.
      */
     virtual bool start_render_pass(CommandList* cmd_list,
                                    const float* clear_color_values,
-                                   const RenderTarget* depth_stencil,
-                                   unsigned frame_index) = 0;
+                                   const RenderTarget* depth_stencil) = 0;
     virtual bool start_render_pass(CommandList* cmd_list,
                                    unsigned int rt_count,
                                    const RenderTarget* rts,
@@ -235,10 +233,7 @@ public:
     virtual bool wait_fences(const WaitInfo& info) = 0;
 
     // Sets ImageBarrier resource to swapchain resource
-    virtual void set_barrier_resource(unsigned count,
-                                      ImageBarrier* barriers,
-                                      const Swapchain& swapchain,
-                                      unsigned frame_index) = 0;
+    virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain) = 0;
     virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) = 0;
     virtual bool issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
@@ -268,6 +263,8 @@ public:
 
 protected:
     unsigned m_frame_count = 0;
+    // For internal swapchain purposes
+    unsigned m_swapchain_index = 0;
 };
 
 inline memory::Arena& acquire_arena(const uint64_t current_frame)

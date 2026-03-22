@@ -106,10 +106,10 @@ void Application::run(const gfx::API api,
         };
     }
 
-    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain, &m_frame_index));
+    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain));
 
     // Create fences
-    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[m_frame_index]));
+    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, 0));
 
     create();
     resize(m_window.m_display_info.width, m_window.m_display_info.height);
@@ -128,7 +128,7 @@ void Application::run(const gfx::API api,
             {
                 m_window.m_display_info.width = event.window.data1;
                 m_window.m_display_info.height = event.window.data2;
-                m_context->resize_swapchain(&m_swapchain, event.window.data1, event.window.data2, m_frame_index);
+                m_context->resize_swapchain(&m_swapchain, event.window.data1, event.window.data2);
                 // The swapchain backbuffer index might have changed after resize to use the same index as the last
                 // present, so the last fence value is no longer valid
                 // Reset both wait values to avoid infinite wait (one of them should be decremented)

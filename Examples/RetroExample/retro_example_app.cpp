@@ -787,7 +787,7 @@ void RetroExampleApp::render()
     }
 
     const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
-    THROW_IF_FALSE(m_context->acquire_swapchain_image(&m_frame_index));
+    THROW_IF_FALSE(m_context->acquire_swapchain_image());
 
     const auto dim = this->m_window.get_display_size();
 
@@ -1277,7 +1277,7 @@ void RetroExampleApp::render()
             .src_layout = qhenki::gfx::Layout::PRESENT,
             .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
         };
-        m_context->set_barrier_resource(1, &swap_barriers[2], m_swapchain, m_frame_index);
+        m_context->set_barrier_resource(1, &swap_barriers[2], m_swapchain);
 
         m_starting_bloom_index = 1 - m_starting_bloom_index;
 
@@ -1323,7 +1323,7 @@ void RetroExampleApp::render()
 
     // Composite image into swapchain backbuffer
     std::array clear_values = {0.f, 0.f, 0.f, 1.f};
-    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr);
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
     m_context->bind_pipeline(&cmd_list, m_blit_copy_pipeline);
@@ -1368,7 +1368,7 @@ void RetroExampleApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &end_barriers[0], m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &end_barriers[0], m_swapchain);
     // Offscreen back to RT
     end_barriers[1] = {
         .src_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
@@ -1395,7 +1395,7 @@ void RetroExampleApp::render()
     };
     m_context->submit_command_lists(info, qhenki::gfx::QueueType::GRAPHICS);
 
-    THROW_IF_FALSE(m_context->present(m_swapchain, m_frame_index));
+    THROW_IF_FALSE(m_context->present(m_swapchain));
 
     const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);
     auto next_fence_value = m_fence_frame_ready_val[next_frame_slot];

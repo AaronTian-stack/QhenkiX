@@ -298,9 +298,7 @@ bool D3D12Context::is_compatibility() const
     return false;
 }
 
-bool D3D12Context::create_swapchain(const DisplayWindow& window,
-                                    const SwapchainDesc& swapchain_desc,
-                                    unsigned* const frame_index)
+bool D3D12Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
 {
     if (swapchain_desc.tearing && !m_capabilities.allow_tearing)
     {
@@ -370,14 +368,10 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
         }
     }
 
-    *frame_index = m_swapchain->GetCurrentBackBufferIndex();
     return true;
 }
 
-bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
-                                    const int width,
-                                    const int height,
-                                    unsigned& frame_index)
+bool D3D12Context::resize_swapchain(Swapchain* const swapchain, const int width, const int height)
 {
     wait_idle(GRAPHICS);
 
@@ -409,12 +403,12 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
 
     swapchain->width = width;
     swapchain->height = height;
-    frame_index = m_swapchain->GetCurrentBackBufferIndex();
+    m_swapchain_index = m_swapchain->GetCurrentBackBufferIndex();
 
     return true;
 }
 
-bool D3D12Context::present(const Swapchain& swapchain, unsigned swapchain_index)
+bool D3D12Context::present(const Swapchain& swapchain)
 {
     ++m_frame_count;
     UINT sync_interval = 1;
@@ -432,9 +426,9 @@ bool D3D12Context::present(const Swapchain& swapchain, unsigned swapchain_index)
     return true;
 }
 
-bool D3D12Context::acquire_swapchain_image(unsigned* swapchain_index)
+bool D3D12Context::acquire_swapchain_image()
 {
-    *swapchain_index = m_swapchain->GetCurrentBackBufferIndex();
+    m_swapchain_index = m_swapchain->GetCurrentBackBufferIndex();
     return true;
 }
 
@@ -1864,8 +1858,7 @@ void clear_depth(ID3D12GraphicsCommandList7* command_list,
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      const float* clear_color_values,
-                                     const RenderTarget* const depth_stencil,
-                                     const unsigned frame_index)
+                                     const RenderTarget* const depth_stencil)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -1886,12 +1879,12 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     clear_depth(command_list, depth_stencil, &render_target_helper);
 
     render_target_helper.OMSetRenderTargets(
-        command_list, 1, m_swapchain_buffers[frame_index].GetAddressOf(), nullptr, dsv, nullptr);
+        command_list, 1, m_swapchain_buffers[m_swapchain_index].GetAddressOf(), nullptr, dsv, nullptr);
 
     if (clear_color_values)
     {
         render_target_helper.ClearRenderTargetView(
-            command_list, m_swapchain_buffers[frame_index].Get(), nullptr, clear_color_values, 0, nullptr);
+            command_list, m_swapchain_buffers[m_swapchain_index].Get(), nullptr, clear_color_values, 0, nullptr);
     }
 
     return true;
@@ -2092,16 +2085,11 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
     return true;
 }
 
-void D3D12Context::set_barrier_resource(const unsigned count,
-                                        ImageBarrier* barriers,
-                                        const Swapchain& swapchain,
-                                        const unsigned frame_index)
+void D3D12Context::set_barrier_resource(const unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
 {
-    assert(count == 0 || barriers);
-    assert(frame_index == m_swapchain->GetCurrentBackBufferIndex());
     for (unsigned i = 0; i < count; i++)
     {
-        barriers[i].resource = static_cast<void*>(m_swapchain_buffers[frame_index].Get());
+        barriers[i].resource = static_cast<void*>(m_swapchain_buffers[m_swapchain_index].Get());
     }
 }
 

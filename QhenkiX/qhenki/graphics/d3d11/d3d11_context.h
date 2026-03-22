@@ -33,12 +33,10 @@ class D3D11Context : public Context
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
-    bool create_swapchain(const DisplayWindow& window,
-                          const SwapchainDesc& swapchain_desc,
-                          unsigned* frame_index) override;
-    bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
-    bool acquire_swapchain_image(unsigned* swapchain_index) override;
-    bool present(const Swapchain& swapchain, unsigned swapchain_index) override;
+    bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc) override;
+    bool resize_swapchain(Swapchain* swapchain, int width, int height) override;
+    bool acquire_swapchain_image() override;
+    bool present(const Swapchain& swapchain) override;
     unsigned get_frame_slot(unsigned slot_count) const override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
@@ -113,8 +111,7 @@ public:
 
     bool start_render_pass(CommandList* cmd_list,
                            const float* clear_color_values,
-                           const RenderTarget* depth_stencil,
-                           unsigned frame_index) override;
+                           const RenderTarget* depth_stencil) override;
     bool start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,
                            const RenderTarget* rts,
@@ -138,10 +135,7 @@ public:
     uint64_t get_fence_value(const Fence& fence) override;
     bool wait_fences(const WaitInfo& info) override;
 
-    void set_barrier_resource(unsigned count,
-                              ImageBarrier* barriers,
-                              const Swapchain& swapchain,
-                              unsigned frame_index) override;
+    void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain) override;
     void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override;
 
     bool issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;

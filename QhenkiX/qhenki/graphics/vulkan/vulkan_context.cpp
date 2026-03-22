@@ -454,9 +454,7 @@ bool VulkanContext::is_compatibility() const
     return false;
 }
 
-bool VulkanContext::create_swapchain(const DisplayWindow& window,
-                                     const SwapchainDesc& swapchain_desc,
-                                     unsigned* frame_index)
+bool VulkanContext::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
 {
     if (!SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface))
     {
@@ -517,12 +515,12 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window,
     return true;
 }
 
-bool VulkanContext::resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index)
+bool VulkanContext::resize_swapchain(Swapchain* swapchain, int width, int height)
 {
     return true;
 }
 
-bool VulkanContext::acquire_swapchain_image(unsigned* swapchain_index)
+bool VulkanContext::acquire_swapchain_image()
 {
     const unsigned sem_index = m_frame_count % m_image_available_semaphores.size();
     if (VK_FAILED(vkAcquireNextImageKHR(m_device.device,
@@ -530,24 +528,23 @@ bool VulkanContext::acquire_swapchain_image(unsigned* swapchain_index)
                                         std::numeric_limits<uint64_t>::max(),
                                         m_image_available_semaphores[sem_index],
                                         VK_NULL_HANDLE,
-                                        swapchain_index)))
+                                        &m_swapchain_index)))
     {
         return false;
     }
-    m_acquired_image_index = *swapchain_index;
     return true;
 }
 
-bool VulkanContext::present(const Swapchain& swapchain, unsigned swapchain_index)
+bool VulkanContext::present(const Swapchain& swapchain)
 {
-    const auto wait_semaphore = m_render_finished_semaphores[m_acquired_image_index];
+    const auto wait_semaphore = m_render_finished_semaphores[m_swapchain_index];
     const VkPresentInfoKHR present_info{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &wait_semaphore,
         .swapchainCount = 1,
         .pSwapchains = &m_swapchain.swapchain.swapchain,
-        .pImageIndices = &swapchain_index,
+        .pImageIndices = &m_swapchain_index,
     };
     // TODO: Present on different queue?
     if (VK_FAILED(vkQueuePresentKHR(m_graphics_queue.queue, &present_info)))
@@ -2213,12 +2210,11 @@ bool create_views(const VkDevice device,
 
 bool VulkanContext::start_render_pass(CommandList* cmd_list,
                                       const float* clear_color_values,
-                                      const RenderTarget* depth_stencil,
-                                      const unsigned frame_index)
+                                      const RenderTarget* depth_stencil)
 {
     VkRenderingAttachmentInfo color_attachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = m_swapchain.image_views[frame_index],
+        .imageView = m_swapchain.image_views[m_swapchain_index],
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -2731,10 +2727,9 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     }
     if (submit_info.signal_swapchain)
     {
-        const uint32_t frame_slot = m_frame_count % m_render_finished_semaphores.size();
         signal_semaphore_infos[signal_count++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_render_finished_semaphores[frame_slot],
+            .semaphore = m_render_finished_semaphores[m_swapchain_index],
             .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         };
     }
@@ -2812,14 +2807,11 @@ bool VulkanContext::wait_fences(const WaitInfo& info)
     return VK_SUCCEEDED(vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max()));
 }
 
-void VulkanContext::set_barrier_resource(unsigned count,
-                                         ImageBarrier* barriers,
-                                         const Swapchain& swapchain,
-                                         unsigned frame_index)
+void VulkanContext::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
 {
     for (unsigned i = 0; i < count; i++)
     {
-        barriers[i].resource = reinterpret_cast<void*>(m_swapchain.images[frame_index]);
+        barriers[i].resource = reinterpret_cast<void*>(m_swapchain.images[m_swapchain_index]);
     }
 }
 

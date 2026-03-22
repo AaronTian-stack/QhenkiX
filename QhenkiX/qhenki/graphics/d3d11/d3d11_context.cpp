@@ -246,9 +246,7 @@ bool create_swapchain_resources(ID3D11Device* device, IDXGISwapChain1* swapchain
 }
 } // namespace
 
-bool D3D11Context::create_swapchain(const DisplayWindow& window,
-                                    const SwapchainDesc& swapchain_desc,
-                                    unsigned* const frame_index)
+bool D3D11Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
 {
     if (swapchain_desc.tearing && !m_allow_tearing)
     {
@@ -256,7 +254,6 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
         return false;
     }
 
-    *frame_index = 0;
     UINT swapchain_flags = 0;
     if (swapchain_desc.tearing && m_allow_tearing)
     {
@@ -295,10 +292,7 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
     return true;
 }
 
-bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
-                                    const int width,
-                                    const int height,
-                                    unsigned& frame_index)
+bool D3D11Context::resize_swapchain(Swapchain* const swapchain, const int width, const int height)
 {
     m_device_context->Flush();
 
@@ -317,7 +311,7 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
     return create_swapchain_resources(m_device.Get(), m_swapchain.Get(), m_swapchain_view.ReleaseAndGetAddressOf());
 }
 
-bool D3D11Context::present(const Swapchain& swapchain, unsigned swapchain_index)
+bool D3D11Context::present(const Swapchain& swapchain)
 {
     UINT sync_interval = 1;
     UINT flags = 0;
@@ -336,9 +330,8 @@ bool D3D11Context::present(const Swapchain& swapchain, unsigned swapchain_index)
     return false;
 }
 
-bool D3D11Context::acquire_swapchain_image(unsigned* swapchain_index)
+bool D3D11Context::acquire_swapchain_image()
 {
-    *swapchain_index = m_frame_count % Application::m_frames_in_flight;
     return true;
 }
 
@@ -1045,8 +1038,7 @@ void unbind_srvs_for_render_targets(ID3D11DeviceContext* ctx)
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      const float* clear_color_values,
-                                     const RenderTarget* const depth_stencil,
-                                     unsigned frame_index)
+                                     const RenderTarget* const depth_stencil)
 {
     unbind_srvs_for_render_targets(m_device_context.Get());
     const auto view = m_swapchain_view.Get();
@@ -1158,10 +1150,7 @@ bool D3D11Context::wait_fences(const WaitInfo& info)
     return true;
 }
 
-void D3D11Context::set_barrier_resource(unsigned count,
-                                        ImageBarrier* barriers,
-                                        const Swapchain& swapchain,
-                                        unsigned frame_index)
+void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
 {
 }
 
@@ -1445,6 +1434,8 @@ D3D11Context::~D3D11Context()
     m_device_context.Reset();
     m_dxgi_factory.Reset();
     m_layout_assembler.clear_maps();
+    m_swapchain_view.Reset();
+    m_swapchain.Reset();
     if (m_debug)
     {
         m_debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
