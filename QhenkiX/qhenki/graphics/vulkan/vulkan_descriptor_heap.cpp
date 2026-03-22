@@ -14,13 +14,25 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
 {
     const auto& properties = context.m_capabilities.descriptor_heap_properties;
 
-    auto reserved_size = desc.type == DescriptorHeapDesc::Type::SAMPLER ? properties.minSamplerHeapReservedRange
-                                                                        : properties.minResourceHeapReservedRange;
+    VkDeviceSize reserved_size;
+    VkDeviceSize max_size;
+    VkDeviceSize alignment;
+    if (desc.type == DescriptorHeapDesc::Type::SAMPLER)
+    {
+        reserved_size = properties.minSamplerHeapReservedRange;
+        max_size = properties.maxSamplerHeapSize;
+        alignment = properties.samplerHeapAlignment;
+    }
+    else
+    {
+        reserved_size = properties.minResourceHeapReservedRange;
+        max_size = properties.maxResourceHeapSize;
+        alignment = properties.resourceHeapAlignment;
+    }
 
     const auto size = desc.size + reserved_size;
 
-    if (!(desc.type == DescriptorHeapDesc::Type::SAMPLER ? size < properties.maxSamplerHeapSize
-                                                         : size < properties.maxResourceHeapSize))
+    if (size > max_size)
     {
         return false;
     }
@@ -49,8 +61,13 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
     }
 
     VmaAllocationInfo alloc_info;
-    auto result = vmaCreateBuffer(
-        context.m_allocator, &buffer_info, &allocation_create_info, &m_heap.buffer, &m_heap.allocation, &alloc_info);
+    auto result = vmaCreateBufferWithAlignment(context.m_allocator,
+                                               &buffer_info,
+                                               &allocation_create_info,
+                                               alignment,
+                                               &m_heap.buffer,
+                                               &m_heap.allocation,
+                                               &alloc_info);
 
     if (VK_FAILED(result))
     {
