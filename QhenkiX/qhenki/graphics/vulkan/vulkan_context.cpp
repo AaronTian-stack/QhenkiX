@@ -22,6 +22,7 @@
 
 #include <spirv_glsl.hpp>
 
+#include "qhenki/utility/math_util.h"
 #include "qhenki/utility/string_util.h"
 #include "qhenki/utility/vulkan_util.h"
 
@@ -1331,10 +1332,23 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             assert(mask);
             assert(descriptor_size);
             assert(descriptor_alignment);
+            assert(qhenki::util::is_power_of_two(descriptor_alignment));
 
-            heap_offset = util::ceil_div(heap_offset, descriptor_alignment) * descriptor_alignment;
+            heap_offset = util::align_u(heap_offset, descriptor_alignment);
 
             const uint32_t range_heap_start = heap_offset;
+
+            uint32_t heap_array_stride = 0;
+            if (binding.count > 1)
+            {
+                uint32_t walk = range_heap_start;
+                walk = util::align_u(walk, descriptor_alignment);
+                const uint32_t first_desc_start = walk;
+                walk += descriptor_size;
+                walk = util::align_u(walk, descriptor_alignment);
+                const uint32_t second_desc_start = walk;
+                heap_array_stride = second_desc_start - first_desc_start;
+            }
 
             params.push_back({
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
@@ -1349,14 +1363,15 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                             .heapOffset = range_heap_start,
                             // We rely on 256 byte minimum push constant size, second half is used for internal logic
                             .pushOffset = push_offset,
-                            .heapIndexStride = 1, // Byte scaling for pushOffset
+                            .heapIndexStride = 1,
+                            .heapArrayStride = heap_array_stride,
                         },
                     },
             });
 
             for (uint32_t k = 0; k < binding.count; k++)
             {
-                heap_offset = util::ceil_div(heap_offset, descriptor_alignment) * descriptor_alignment;
+                heap_offset = util::align_u(heap_offset, descriptor_alignment);
                 heap_offset += descriptor_size;
             }
         }
@@ -2326,7 +2341,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     VkRenderingAttachmentInfo color_attachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
         .imageView = m_swapchain.image_views[m_swapchain_index],
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .clearValue =
@@ -2412,7 +2427,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
         color_attachments[i] = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = rt_state.color_render_targets[i],
-            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
             .clearValue =
@@ -3227,14 +3242,17 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
 
     const auto vk_texture = to_internal(texture);
 
+    const VkFormat vk_format = convert_format(texture.desc.format);
+    const VkImageAspectFlags aspect_mask = get_image_aspect_mask(vk_format);
+
     const VkImageViewCreateInfo view_info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = vk_texture->image,
         .viewType = view_type_from_desc(texture.desc),
-        .format = convert_format(texture.desc.format),
+        .format = vk_format,
         .subresourceRange =
             {
-                .aspectMask = get_image_aspect_mask(convert_format(texture.desc.format)),
+                .aspectMask = aspect_mask,
                 .baseMipLevel = 0,
                 .levelCount = VK_REMAINING_MIP_LEVELS,
                 .baseArrayLayer = 0,
@@ -3242,9 +3260,14 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
             },
     };
 
+    const VkImageLayout descriptor_access_layout = (aspect_mask & VK_IMAGE_ASPECT_COLOR_BIT) != 0
+                                                     ? layout(Layout::SHADER_RESOURCE)
+                                                     : layout(Layout::DEPTH_STENCIL_READ);
+
     VkImageDescriptorInfoEXT image_info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT,
         .pView = &view_info,
+        .layout = descriptor_access_layout,
     };
 
     const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
