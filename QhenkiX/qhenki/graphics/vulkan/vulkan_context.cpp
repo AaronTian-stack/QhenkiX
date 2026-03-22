@@ -512,6 +512,96 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
                        view_name);
     }
 
+    // Transition swapchain images from UNDEFINED to PRESENT_SRC_KHR
+    {
+        VkCommandBuffer cmd;
+        const VkCommandBufferAllocateInfo alloc_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = m_internal_cmd_pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+        if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, &cmd)))
+        {
+            return false;
+        }
+
+        constexpr VkCommandBufferBeginInfo begin_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        };
+        vkBeginCommandBuffer(cmd, &begin_info);
+
+        const auto image_count = static_cast<uint32_t>(m_swapchain.images.size());
+        VkImageMemoryBarrier2 barriers[4]{};
+        assert(image_count <= 4);
+        for (uint32_t i = 0; i < image_count; i++)
+        {
+            barriers[i] = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
+                .srcAccessMask = VK_ACCESS_2_NONE,
+                .dstStageMask = VK_PIPELINE_STAGE_2_NONE,
+                .dstAccessMask = VK_ACCESS_2_NONE,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = m_swapchain.images[i],
+                .subresourceRange =
+                    {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                    },
+            };
+        }
+
+        const VkDependencyInfo dep_info{
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = image_count,
+            .pImageMemoryBarriers = barriers,
+        };
+        vkCmdPipelineBarrier2(cmd, &dep_info);
+        vkEndCommandBuffer(cmd);
+
+        ++m_internal_semaphore_value;
+        const VkCommandBufferSubmitInfo cmd_submit_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = cmd,
+        };
+        const VkSemaphoreSubmitInfo signal_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = m_internal_semaphore,
+            .value = m_internal_semaphore_value,
+            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        };
+        const VkSubmitInfo2 submit{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &cmd_submit_info,
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &signal_info,
+        };
+        if (VK_FAILED(vkQueueSubmit2(m_graphics_queue.queue, 1, &submit, VK_NULL_HANDLE)))
+        {
+            return false;
+        }
+
+        const VkSemaphoreWaitInfo wait_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .semaphoreCount = 1,
+            .pSemaphores = &m_internal_semaphore,
+            .pValues = &m_internal_semaphore_value,
+        };
+        vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max());
+
+        vkFreeCommandBuffers(m_device.device, m_internal_cmd_pool, 1, &cmd);
+        vkResetCommandPool(m_device.device, m_internal_cmd_pool, 0);
+    }
+
     return true;
 }
 
