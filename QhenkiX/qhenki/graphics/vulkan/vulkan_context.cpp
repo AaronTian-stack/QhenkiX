@@ -1334,6 +1334,8 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
 
             heap_offset = util::ceil_div(heap_offset, descriptor_alignment) * descriptor_alignment;
 
+            const uint32_t range_heap_start = heap_offset;
+
             params.push_back({
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
                 .descriptorSet = i,
@@ -1344,7 +1346,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                 .sourceData =
                     {
                         .pushIndex{
-                            .heapOffset = heap_offset,
+                            .heapOffset = range_heap_start,
                             // We rely on 256 byte minimum push constant size, second half is used for internal logic
                             .pushOffset = push_offset,
                             .heapIndexStride = 1, // Byte scaling for pushOffset
@@ -1352,7 +1354,11 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                     },
             });
 
-            heap_offset += binding.count * descriptor_size;
+            for (uint32_t k = 0; k < binding.count; k++)
+            {
+                heap_offset = util::ceil_div(heap_offset, descriptor_alignment) * descriptor_alignment;
+                heap_offset += descriptor_size;
+            }
         }
         push_offset += sizeof(uint32_t);
 
