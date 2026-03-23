@@ -4,7 +4,7 @@
 
 using namespace qhenki;
 
-void DisplayWindow::create_window(const DisplayInfo& info, int monitor_index)
+void DisplayWindow::create_window(const DisplayInfo& info, const int monitor_index)
 {
     create_window_internal(info, monitor_index);
 }
@@ -16,9 +16,10 @@ SDL_DisplayMode DisplayWindow::get_current_monitor() const
 
 std::vector<SDL_DisplayMode> DisplayWindow::get_monitors()
 {
-    std::vector<SDL_DisplayMode> modes;
     int display_count;
     const auto displays = SDL_GetDisplays(&display_count);
+    std::vector<SDL_DisplayMode> modes;
+    modes.reserve(display_count);
     for (int i = 0; i < display_count; i++)
     {
         modes.push_back(*SDL_GetCurrentDisplayMode(displays[i]));
@@ -41,7 +42,7 @@ SDL_Window* DisplayWindow::get_window() const
     return m_window;
 }
 
-bool DisplayWindow::set_fullscreen(bool fullscreen)
+bool DisplayWindow::set_fullscreen(const bool fullscreen)
 {
     if (SDL_SetWindowFullscreen(m_window, fullscreen) != 0)
     {
@@ -72,7 +73,7 @@ void DisplayWindow::set_decoration(const bool undecorated)
     m_display_info.undecorated = undecorated;
 }
 
-void DisplayWindow::set_resizable(bool resizable)
+void DisplayWindow::set_resizable(const bool resizable)
 {
     SDL_SetWindowResizable(m_window, resizable);
     m_display_info.resizable = resizable;
@@ -94,10 +95,12 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
         return;
     }
 
-    // TODO: depending on backend need SDL_WINDOW_VULKAN, SDL_WINDOW_METAL, etc
-    // TODO: choose monitor to create window on
+    // TODO: Choose monitor to create window on
 
-    SDL_PropertiesID properties_id = SDL_CreateProperties();
+    auto properties_id = SDL_CreateProperties();
+
+    SDL_SetBooleanProperty(properties_id, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
+
     SDL_SetBooleanProperty(properties_id, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, info.fullscreen);
 
     SDL_SetNumberProperty(properties_id, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, info.width);

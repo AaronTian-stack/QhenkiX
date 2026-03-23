@@ -2,9 +2,11 @@
 
 #include "graphics/d3d11/d3d11_context.h"
 #include "graphics/d3d12/d3d12_context.h"
+#include "graphics/vulkan/vulkan_context.h"
 
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
+
 #include "qhenki/display_window.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/utility/string_util.h"
@@ -31,6 +33,11 @@ void Application::init_display_window(void* payload)
     case gfx::API::D3D12:
     {
         result = util::format_string("%s | DX12", title);
+        break;
+    }
+    case gfx::API::Vulkan:
+    {
+        result = util::format_string("%s | Vulkan", title);
         break;
     }
     default:
@@ -68,8 +75,8 @@ void Application::run(const gfx::API api,
         m_context = mkU<gfx::D3D12Context>();
         break;
     case gfx::API::Vulkan:
-    default:
-        throw std::runtime_error("API not implemented");
+        m_context = mkU<gfx::VulkanContext>();
+        break;
     }
 
     const std::string create_error = m_context->create(enable_debug_layer);
@@ -99,10 +106,10 @@ void Application::run(const gfx::API api,
         };
     }
 
-    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain, &m_frame_index));
+    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain));
 
     // Create fences
-    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, m_fence_frame_ready_val[m_frame_index]));
+    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, 0));
 
     create();
     resize(m_window.m_display_info.width, m_window.m_display_info.height);
@@ -121,7 +128,7 @@ void Application::run(const gfx::API api,
             {
                 m_window.m_display_info.width = event.window.data1;
                 m_window.m_display_info.height = event.window.data2;
-                m_context->resize_swapchain(&m_swapchain, event.window.data1, event.window.data2, m_frame_index);
+                m_context->resize_swapchain(&m_swapchain, event.window.data1, event.window.data2);
                 // The swapchain backbuffer index might have changed after resize to use the same index as the last
                 // present, so the last fence value is no longer valid
                 // Reset both wait values to avoid infinite wait (one of them should be decremented)

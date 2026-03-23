@@ -31,12 +31,7 @@ bool FXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
     return false;
 }
 
-bool FXCShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
-{
-    return get_compiler_path(buffer, length);
-}
-
-bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
+bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output, bool)
 {
     UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 

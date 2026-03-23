@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <qhenki/display_window.h>
+#include "qhenki/display_window.h"
 #include "shader.h"
 #include "swapchain.h"
 
@@ -11,8 +11,8 @@
 #include "buffer.h"
 #include "command_list.h"
 #include "command_pool.h"
+#include "descriptor.h"
 #include "descriptor_heap.h"
-#include "descriptor_table.h"
 #include "pipeline.h"
 #include "qhenki/memory/arena.h"
 #include "queue.h"
@@ -35,15 +35,23 @@ public:
     virtual std::string create(bool enable_debug_layer) = 0;
     virtual bool is_compatibility() const = 0;
 
-    virtual bool create_swapchain(const DisplayWindow& window,
-                                  const SwapchainDesc& swapchain_desc,
-                                  unsigned* frame_index) = 0;
-    virtual bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) = 0;
-    virtual bool present(const Swapchain& swapchain,
-                         unsigned fence_count,
-                         Fence* wait_fences,
-                         unsigned swapchain_index) = 0;
-    virtual unsigned get_swapchain_frame_index(const Swapchain& swapchain) = 0;
+    virtual bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc) = 0;
+    virtual bool resize_swapchain(Swapchain* swapchain, int width, int height) = 0;
+    /**
+     * Update the internal index of the next available swapchain image to render to. This should be called once at the
+     * beginning at each frame.
+     * @return True if the operation succeeded, false otherwise.
+     */
+    virtual bool acquire_swapchain_image() = 0;
+    virtual bool present(const Swapchain& swapchain) = 0;
+    /**
+     * Get the current frame slot index for resources that need to be unique per frame. This is a convenience function
+     * that returns a value internally incremented whenever present is called: thus it is possible to track this
+     * value yourself if desired.
+     * @param slot_count How many frames in flight are being used.
+     * @return The index of the current frame slot, which should be used for resources that need to be unique per frame.
+     */
+    virtual unsigned get_frame_slot(unsigned slot_count) const = 0;
 
     virtual bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) = 0;
     virtual bool create_pipeline(const GraphicsPipelineDesc& desc,
@@ -70,7 +78,25 @@ public:
                                      const DescriptorHeap& sampler_heap) = 0;
 
     virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
+
+
+    /**
+     * Copies bytes of descriptors from source descriptor to destination descriptor. The descriptors must be in heaps of
+     * the same type, and the source descriptor must refer to a CPU descriptor heap. Not thread safe.
+     * @param bytes Number of bytes to copy.
+     * @param src Source descriptor to start copying from.
+     * @param dst Destination descriptor to start copying to.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) = 0;
+
+    /**
+     * Free descriptor from the descriptor heap, allowing another descriptor to be created at the same offset. Only call
+     * this function if you are using create_descriptor exclusively with CREATE_NEW_DESCRIPTOR, otherwise the behavior
+     * is undefined.
+     * @param descriptor Descriptor to free.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool free_descriptor(Descriptor* descriptor) = 0;
     virtual size_t get_descriptor_size(Descriptor::Type type) const = 0;
     virtual size_t get_descriptor_alignment(Descriptor::Type type) const = 0;
@@ -94,6 +120,16 @@ public:
                                                  Descriptor* descriptor) = 0;
     virtual bool create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 
+    /**
+     * Copies contents from source buffer to destination buffer. You may need to issue applicable barriers before and
+     * after this operation.
+     * @param cmd_list Command list to record copy command on.
+     * @param src Pointer to source buffer. Must have COPY_SRC usage.
+     * @param src_offset Offset in bytes from the start of the source buffer to copy from.
+     * @param dst Pointer to destination buffer. Must have COPY_DST usage.
+     * @param dst_offset Offset in bytes from the start of the destination buffer to copy to.s
+     * @param bytes Number of bytes to copy.
+     */
     virtual void copy_buffer(CommandList* cmd_list,
                              const Buffer& src,
                              uint64_t src_offset,
@@ -109,7 +145,6 @@ public:
 
     /**
      * @brief Creates staging buffer with data pointer and copies it to the texture.
-     *
      * @param cmd_list Pointer to the command list used to record the copy operation.
      * @param data Pointer to the data to be copied.
      * @param staging Pointer to the uninitialized staging buffer.
@@ -124,18 +159,26 @@ public:
     virtual void* map_buffer(const Buffer& buffer) = 0;
     virtual void unmap_buffer(const Buffer& buffer) = 0;
 
-    virtual void bind_vertex_buffers(CommandList* cmd_list,
+    virtual bool bind_vertex_buffers(CommandList* cmd_list,
                                      unsigned start_slot,
                                      unsigned buffer_count,
                                      const Buffer* const* buffers,
-                                     const unsigned* sizes,
-                                     const unsigned* strides,
-                                     const unsigned* offsets) = 0;
-    virtual void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) = 0;
-    // TODO: bind compute pipeline
+                                     const uint64_t* sizes,
+                                     const uint64_t* strides,
+                                     const uint64_t* offsets) = 0;
+    virtual void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) = 0;
 
-    virtual bool create_command_pool(CommandPool* command_pool, QueueType queue) = 0;
+    virtual bool create_command_pool(CommandPool* command_pool, QueueType queue, const char* debug_name = nullptr) = 0;
 
+    /**
+     * Creates a command list. This function is only thread safe only if a separate command pool is used for each
+     * thread, as modifying CommandPool internals is not thread safe.
+     * @param cmd_list Command list to be created. If already initialized, the preexisting command list will be released
+     * and then created.
+     * @param command_pool Command pool to allocate command list from.
+     * @param debug_name String for debug name if supported by the API.
+     * @return True if the operation succeeded, false otherwise.
+     */
     virtual bool create_command_list(CommandList* cmd_list,
                                      const CommandPool& command_pool,
                                      const char* debug_name = nullptr) = 0;
@@ -149,17 +192,16 @@ public:
      * @param cmd_list Command list to record render pass commands on.
      * @param clear_color_values Clear color values for render targets. If null, render targets will not be cleared.
      * @param depth_stencil Depth stencil render target. If null, no depth stencil will be bound.
-     * @param frame_index Which swap chain buffer to use as render target.
-     * @return Whether the operation succeeded.
+     * @return True if the operation succeeded, false otherwise.
      */
     virtual bool start_render_pass(CommandList* cmd_list,
                                    const float* clear_color_values,
-                                   const RenderTarget* depth_stencil,
-                                   unsigned frame_index) = 0;
+                                   const RenderTarget* depth_stencil) = 0;
     virtual bool start_render_pass(CommandList* cmd_list,
                                    unsigned int rt_count,
-                                   const RenderTarget* const* rts,
+                                   const RenderTarget* rts,
                                    const RenderTarget* depth_stencil) = 0;
+    virtual void end_render_pass(CommandList* cmd_list) = 0;
 
     virtual void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;
     virtual void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) = 0;
@@ -174,21 +216,26 @@ public:
     // TODO: draw indirect
     // TODO: draw indirect count
 
-    virtual void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) = 0;
+    /**
+     * Submits command lists to the specified queue and signals/waits on fences as specified in submit_info. Not thread
+     * safe and should only be called from main thread.
+     * @param submit_info Struct containing command lists to be submitted, fences to be signaled and waited on, and
+     * what queues to wait on for each waiting fence.
+     * @param queue Queue to submit command lists to.
+     * @return True if the operation succeeded, false otherwise.
+     */
+    virtual bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) = 0;
 
-    virtual bool create_fence(Fence* fence, uint64_t initial_value) = 0;
+    virtual bool create_fence(Fence* fence, uint64_t initial_value, const char* debug_name = nullptr) = 0;
     // If submission is pending value may be out of date
     virtual uint64_t get_fence_value(const Fence& fence) = 0;
     // Waits for fences on CPU
     virtual bool wait_fences(const WaitInfo& info) = 0;
 
     // Sets ImageBarrier resource to swapchain resource
-    virtual void set_barrier_resource(unsigned count,
-                                      ImageBarrier* barriers,
-                                      const Swapchain& swapchain,
-                                      unsigned frame_index) = 0;
+    virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain) = 0;
     virtual void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) = 0;
-    virtual void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
+    virtual bool issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) = 0;
 
     virtual void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) = 0;
     virtual void start_imgui_frame() = 0;
@@ -213,6 +260,11 @@ public:
 
     virtual bool wait_idle(QueueType queue) = 0;
     virtual ~Context() = default;
+
+protected:
+    unsigned m_frame_count = 0;
+    // For internal swapchain purposes
+    unsigned m_swapchain_index = 0;
 };
 
 inline memory::Arena& acquire_arena(const uint64_t current_frame)

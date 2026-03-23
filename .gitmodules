@@ -11,3 +11,16 @@
 	path = QhenkiX/external/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "QhenkiX/external/vk-bootstrap"]
+	path = QhenkiX/external/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap
+[submodule "QhenkiX/external/volk"]
+	path = QhenkiX/external/volk
+	url = https://github.com/zeux/volk
+	branch = master
+[submodule "QhenkiX/external/Vulkan-Headers"]
+	path = QhenkiX/external/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers
+[submodule "QhenkiX/external/SPIRV-Cross"]
+	path = QhenkiX/external/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <directx/d3d12.h>
-#include "smartpointer.h"
+#include <limits>
 
 namespace qhenki::gfx
 {
@@ -10,6 +9,7 @@ enum class Filter
     NEAREST,
     LINEAR,
 };
+
 enum class AddressMode
 {
     WRAP,
@@ -17,6 +17,7 @@ enum class AddressMode
     CLAMP,
     BORDER,
 };
+
 enum class ComparisonFunc
 {
     NONE,
@@ -29,11 +30,12 @@ enum class ComparisonFunc
     GREATER_OR_EQUAL,
     ALWAYS,
 };
+
 struct SamplerDesc
 {
-    unsigned max_anisotropy = 0; // 0 to disable
+    unsigned max_anisotropy = 0;
     float min_lod = 0.f;
-    float max_lod = D3D12_FLOAT32_MAX;
+    float max_lod = std::numeric_limits<float>::max();
     float mip_lod_bias = 0.f;
     float border_color[4]{0.f, 0.f, 0.f, 0.f};
     Filter min_filter = Filter::LINEAR;

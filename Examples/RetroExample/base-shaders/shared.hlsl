@@ -3,41 +3,52 @@
 
 #include "shared_structs.h"
 
+#ifdef __spirv__
+[[vk::binding(0)]]
+#endif
 cbuffer FrameConstantBuffer : register(b0)
 {
     FrameConstants frame_constants;
 };
 
-Texture2D g_texture : register(t1
+#ifdef __spirv__
+[[vk::binding(1, 1)]]
+#endif
+Texture2D g_texture :
 #ifdef DX12
-                               ,
-                               space1);
+    register(t1, space1);
 #else
-                      );
+    register(t1);
 #endif
 
-Texture2D g_texture_blur : register(t2
+#ifdef __spirv__
+[[vk::binding(2, 1)]]
+#endif
+Texture2D g_texture_blur :
 #ifdef DX12
-                                    ,
-                                    space1);
+    register(t2, space1);
 #else
-                           );
+    register(t2);
 #endif
 
-SamplerState samp : register(s0
+#ifdef __spirv__
+[[vk::binding(0, 2)]]
+#endif
+SamplerState samp :
 #ifdef DX12
-                             ,
-                             space2);
+    register(s0, space2);
 #else
-                    );
+    register(s0);
 #endif
 
-SamplerState samp_linear : register(s1
+#ifdef __spirv__
+[[vk::binding(1, 2)]]
+#endif
+SamplerState samp_linear :
 #ifdef DX12
-                                    ,
-                                    space2);
+    register(s1, space2);
 #else
-                           );
+    register(s1);
 #endif
 
 static const float light_intensity = 2.0;

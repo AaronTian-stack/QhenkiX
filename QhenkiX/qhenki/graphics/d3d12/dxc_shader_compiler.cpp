@@ -155,7 +155,7 @@ const char* get_dxc_library_name()
 }
 } // namespace
 
-bool DXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
+bool DXCShaderCompiler::get_compiler_path(char* buffer, const size_t length)
 {
 #if defined(_WIN32) || defined(_WIN64)
     if (const auto dx_compiler = GetModuleHandleA(get_dxc_library_name()))
@@ -172,12 +172,7 @@ bool DXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
 #endif
 }
 
-bool DXCShaderCompiler::get_compiler_path_v(char* buffer, size_t length)
-{
-    return get_compiler_path(buffer, length);
-}
-
-bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output)
+bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output, const bool output_spirv)
 {
     if (input.shader_model < ShaderModel::SM_6_0)
     {
@@ -204,7 +199,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     thread_local memory::Arena arena{4 * MEGABYTE};
     arena.reset();
 
-    const auto args = arena.alloc_array<const wchar_t*>(input.get_defines().size() + input.includes.size() * 2 + 10);
+    const auto args = arena.alloc_array<const wchar_t*>(input.get_defines().size() + input.includes.size() * 2 + 32);
     size_t args_idx = 0;
 
     if (!args)
@@ -285,6 +280,22 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     args[args_idx++] = L"-T";
     const auto sm = get_shader_model_wchar(input.shader_type, input.shader_model);
     args[args_idx++] = sm.c_str();
+
+    if (output_spirv)
+    {
+        args[args_idx++] = L"-spirv";
+        args[args_idx++] = L"-fspv-preserve-bindings";
+        args[args_idx++] = L"-fspv-flatten-resource-arrays";
+        args[args_idx++] = L"-fspv-reflect";
+        // TODO: non-zero base vertex and instance?
+        if (input.shader_type == VERTEX_SHADER)
+        {
+            args[args_idx++] = L"-fvk-invert-y";
+        }
+        args[args_idx++] = L"-fvk-use-dx-layout";
+        args[args_idx++] = L"-fvk-use-dx-position-w";
+        args[args_idx++] = L"-fspv-target-env=vulkan1.3";
+    }
 
     if (input.flags & CompilerInput::DEBUG)
     {

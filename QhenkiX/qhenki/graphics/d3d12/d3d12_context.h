@@ -11,7 +11,6 @@
 
 #include "d3d12_descriptor_heap.h"
 #include "qhenki/RHI/context.h"
-#include "qhenki/RHI/descriptor_table.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -30,6 +29,8 @@ class D3D12Context : public Context
         D3D12_FEATURE_DATA_SHADER_MODEL shader_model = {}; // Shader Model
         bool allow_tearing;
     } m_capabilities;
+
+    // TODO: Add limits (ie memory)
 
     ComPtr<IDXGIFactory6> m_dxgi_factory;
 
@@ -55,20 +56,14 @@ class D3D12Context : public Context
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
 
-    uint64_t m_frame_count = 0;
-
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
-    bool create_swapchain(const DisplayWindow& window,
-                          const SwapchainDesc& swapchain_desc,
-                          unsigned* frame_index) override;
-    bool resize_swapchain(Swapchain* swapchain, int width, int height, unsigned& frame_index) override;
-    bool present(const Swapchain& swapchain,
-                 unsigned fence_count,
-                 Fence* wait_fences,
-                 unsigned swapchain_index) override;
-    unsigned get_swapchain_frame_index(const Swapchain& swapchain) override;
+    bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc) override;
+    bool resize_swapchain(Swapchain* swapchain, int width, int height) override;
+    bool acquire_swapchain_image() override;
+    bool present(const Swapchain& swapchain) override;
+    unsigned get_frame_slot(unsigned slot_count) const override;
 
     bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
 
@@ -87,9 +82,7 @@ public:
     bool set_pipeline_constant(
         CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
 
-    bool create_descriptor_heap(const DescriptorHeapDesc& desc,
-                                DescriptorHeap* heap,
-                                const char* debug_name = nullptr) override;
+    bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
     size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
@@ -97,7 +90,9 @@ public:
                              const DescriptorHeap& sampler_heap) override;
 
     void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
+
     bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
+
     bool free_descriptor(Descriptor* descriptor) override;
     size_t get_descriptor_size(Descriptor::Type type) const override;
     size_t get_descriptor_alignment(Descriptor::Type type) const override;
@@ -123,33 +118,32 @@ public:
     void* map_buffer(const Buffer& buffer) override;
     void unmap_buffer(const Buffer& buffer) override;
 
-    void bind_vertex_buffers(CommandList* cmd_list,
+    bool bind_vertex_buffers(CommandList* cmd_list,
                              unsigned start_slot,
                              unsigned buffer_count,
                              const Buffer* const* buffers,
-                             const unsigned* sizes,
-                             const unsigned* strides,
-                             const unsigned* offsets) override;
+                             const uint64_t* sizes,
+                             const uint64_t* strides,
+                             const uint64_t* offsets) override;
 
-    void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset) override;
+    void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) override;
 
-    bool create_command_pool(CommandPool* command_pool, QueueType queue) override;
+    bool create_command_pool(CommandPool* command_pool, QueueType queue, const char* debug_name) override;
     bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
-
     bool close_command_list(CommandList* cmd_list) override;
 
     bool reset_command_pool(CommandPool* command_pool) override;
 
     bool start_render_pass(CommandList* cmd_list,
                            const float* clear_color_values,
-                           const RenderTarget* depth_stencil,
-                           unsigned frame_index) override;
+                           const RenderTarget* depth_stencil) override;
 
     bool start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,
-                           const RenderTarget* const* rts,
+                           const RenderTarget* rts,
                            const RenderTarget* depth_stencil) override;
+    void end_render_pass(CommandList* cmd_list) override;
 
     void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) override;
     void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) override;
@@ -162,19 +156,16 @@ public:
                       int32_t base_vertex_offset,
                       uint32_t instance_offset) override;
 
-    void submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
+    bool submit_command_lists(const SubmitInfo& submit_info, QueueType queue) override;
 
-    bool create_fence(Fence* fence, uint64_t initial_value) override;
+    bool create_fence(Fence* fence, uint64_t initial_value, const char* debug_name) override;
     uint64_t get_fence_value(const Fence& fence) override;
     bool wait_fences(const WaitInfo& info) override;
 
-    void set_barrier_resource(unsigned count,
-                              ImageBarrier* barriers,
-                              const Swapchain& swapchain,
-                              unsigned frame_index) override;
+    void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain) override;
     void set_barrier_resource(unsigned count, ImageBarrier* barriers, const Texture& render_target) override;
 
-    void issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
+    bool issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers) override;
 
     void init_imgui(const DisplayWindow& window, const Swapchain& swapchain) override;
     void start_imgui_frame() override;
@@ -211,6 +202,6 @@ private:
     D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
                                                 const D3D12_SHADER_DESC& shader_desc,
                                                 bool increment_slot) const;
-    ComPtr<ID3D12CommandQueue>& get_command_queue(QueueType queue);
+    ID3D12CommandQueue* get_command_queue(QueueType queue) const;
 };
 } // namespace qhenki::gfx

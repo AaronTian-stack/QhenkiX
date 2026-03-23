@@ -1,7 +1,6 @@
 #pragma once
 
 #include <wrl/client.h>
-#include <mutex>
 #include <vector>
 
 #include "D3D12MemAlloc.h"
@@ -16,9 +15,8 @@ class D3D12DescriptorHeap
     ComPtr<ID3D12DescriptorHeap> m_heap;
     UINT m_descriptor_size = 0;
 
-    std::mutex m_mutex;
     std::vector<size_t> m_free_list;
-    std::atomic_size_t m_pointer{0};
+    size_t m_pointer = 0;
 
 public:
     D3D12DescriptorHeap() = default;
@@ -31,7 +29,6 @@ public:
 
     bool create(ID3D12Device* device, const D3D12_DESCRIPTOR_HEAP_DESC& desc);
 
-    // Thread safe
     bool allocate(size_t* alloc_offset);
     void deallocate(size_t alloc_offset);
 

@@ -285,7 +285,7 @@ std::string D3D12Context::create(const bool enable_debug_layer)
         return "D3D12: Failed to create copy command queue";
     }
 
-    if (!create_fence(&m_fence_wait_all, 0))
+    if (!create_fence(&m_fence_wait_all, 0, "Internal stall fence"))
     {
         return "D3D12: Failed to create fence";
     }
@@ -298,9 +298,7 @@ bool D3D12Context::is_compatibility() const
     return false;
 }
 
-bool D3D12Context::create_swapchain(const DisplayWindow& window,
-                                    const SwapchainDesc& swapchain_desc,
-                                    unsigned* const frame_index)
+bool D3D12Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
 {
     if (swapchain_desc.tearing && !m_capabilities.allow_tearing)
     {
@@ -370,14 +368,10 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window,
         }
     }
 
-    *frame_index = m_swapchain->GetCurrentBackBufferIndex();
     return true;
 }
 
-bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
-                                    const int width,
-                                    const int height,
-                                    unsigned& frame_index)
+bool D3D12Context::resize_swapchain(Swapchain* const swapchain, const int width, const int height)
 {
     wait_idle(GRAPHICS);
 
@@ -409,15 +403,12 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain,
 
     swapchain->width = width;
     swapchain->height = height;
-    frame_index = m_swapchain->GetCurrentBackBufferIndex();
+    m_swapchain_index = m_swapchain->GetCurrentBackBufferIndex();
 
     return true;
 }
 
-bool D3D12Context::present(const Swapchain& swapchain,
-                           unsigned fence_count,
-                           Fence* wait_fences,
-                           unsigned swapchain_index)
+bool D3D12Context::present(const Swapchain& swapchain)
 {
     ++m_frame_count;
     UINT sync_interval = 1;
@@ -435,16 +426,19 @@ bool D3D12Context::present(const Swapchain& swapchain,
     return true;
 }
 
-unsigned D3D12Context::get_swapchain_frame_index(const Swapchain& swapchain)
+bool D3D12Context::acquire_swapchain_image()
 {
-    return m_swapchain->GetCurrentBackBufferIndex();
+    m_swapchain_index = m_swapchain->GetCurrentBackBufferIndex();
+    return true;
+}
+
+unsigned D3D12Context::get_frame_slot(const unsigned slot_count) const
+{
+    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
 }
 
 bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
 {
-    assert(data);
-    assert(shader);
-
     ComPtr<IDxcBlobEncoding> container_blob_enc;
     if (FAILED(m_library->CreateBlob(data, static_cast<UINT32>(size), 0, container_blob_enc.ReleaseAndGetAddressOf())))
     {
@@ -491,15 +485,11 @@ D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection
                 .SemanticIndex = signature_parameter_desc.SemanticIndex,
                 .Format = DXCShaderCompiler::mask_to_format(signature_parameter_desc.Mask,
                                                             signature_parameter_desc.ComponentType),
-                .InputSlot = slot,
+                .InputSlot = increment_slot ? slot++ : 0u,
                 .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
                 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                .InstanceDataStepRate = 0u, // TODO: manual options for instancing
+                .InstanceDataStepRate = 0u, // TODO: Manual options for instancing
             };
-            if (increment_slot)
-            {
-                slot++;
-            }
         }
     }
 
@@ -513,6 +503,10 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                    PipelineLayout* in_layout,
                                    const char* debug_name)
 {
+    if (desc.num_render_targets > MAX_RENDER_TARGETS)
+    {
+        return false;
+    }
     assert(pipeline);
     pipeline->internal_state = mkS<D3D12Pipeline>();
     auto d3d12_pipeline = to_internal(*pipeline);
@@ -523,6 +517,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     ComPtr<ID3D12ShaderReflection> shader_reflection;
     D3D12_SHADER_DESC shader_desc{};
+    D3D12_INPUT_ELEMENT_DESC* input_layout_desc = nullptr;
     // SM >= 6.0
     {
         vs12 = static_cast<DXCShaderOutput*>(vertex_shader.internal_state.get());
@@ -562,8 +557,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
             return false;
         }
 
-        d3d12_pipeline->input_layout_desc =
-            this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
+        input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
         pso_desc.VS = {.pShaderBytecode = vs12->shader_blob->GetBufferPointer(),
                        .BytecodeLength = vs12->shader_blob->GetBufferSize()};
@@ -571,8 +565,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                        .BytecodeLength = ps12->shader_blob->GetBufferSize()};
     }
 
-    pso_desc.InputLayout = {.pInputElementDescs = d3d12_pipeline->input_layout_desc,
-                            .NumElements = shader_desc.InputParameters};
+    pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc, .NumElements = shader_desc.InputParameters};
 
     // Prefer root signature embedded in shader container if present
     ComPtr<ID3D12RootSignature> root_signature;
@@ -694,8 +687,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     pso_desc.NumRenderTargets = desc.num_render_targets;
 
-    // TODO: MSAA support
-    pso_desc.SampleDesc.Count = 1;
+    pso_desc.SampleDesc = DXGI_SAMPLE_DESC{desc.sample_count, 0};
 
     for (unsigned i = 0; i < desc.num_render_targets; i++)
     {
@@ -739,7 +731,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         {
             if (!space.empty())
             {
-                count++;
+                ++count;
             }
         }
         return count;
@@ -748,25 +740,47 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
 
     const UINT param_count = desc->push_ranges.size() + spaces;
 
-    boost::container::small_vector<D3D12_ROOT_PARAMETER, 16> params;
+    assert(param_count <= MAX_SPACES);
 
+    thread_local memory::Arena arena(util::MEGABYTE);
+    arena.reset();
+
+    D3D12_ROOT_PARAMETER* params = nullptr;
+    if (param_count > 0)
+    {
+        params = arena.alloc_array<D3D12_ROOT_PARAMETER>(param_count);
+    }
+    unsigned params_index = 0;
+
+    unsigned size = 0;
     for (unsigned i = 0; i < desc->push_ranges.size(); i++)
     {
         const auto& range = desc->push_ranges[i];
-        params.push_back({
+        if (range.size % 4u != 0)
+        {
+            return false;
+        }
+        params[params_index++] = {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
             .Constants =
                 {
                     .ShaderRegister = range.binding,
-                    .RegisterSpace = 5, // TODO: Change this to not be hardcoded
-                    .Num32BitValues = util::ceil_div(range.size, uint32_t{4}),
+                    .RegisterSpace = range.space,
+                    .Num32BitValues = util::ceil_div(range.size, 4u),
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        });
+        };
+        size += range.size;
+        if (size > 128)
+        {
+            // TODO: Ban this outright?
+            // Issue warning that this breaks Vulkan compability
+            OutputDebugStringA(
+                "Qhenki D3D12 WARNING: Root constant exceeds 128 bytes which breaks compability with Vulkan\n");
+        }
     }
 
-    auto& arena = acquire_arena(m_frame_count);
-    auto ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
+    const auto ranges = arena.alloc_array<D3D12_DESCRIPTOR_RANGE*>(desc->spaces.size());
 
     for (unsigned i = 0; i < desc->spaces.size(); i++)
     {
@@ -790,8 +804,28 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             const auto& binding = space[j];
             // Check that this is not the last binding and not infinite register count
             assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
-            D3D12_DESCRIPTOR_RANGE range{
-                .RangeType = binding.type,
+
+            D3D12_DESCRIPTOR_RANGE_TYPE type;
+            switch (binding.type)
+            {
+            case LayoutBinding::RangeType::SRV_BUFFER:
+            case LayoutBinding::RangeType::SRV_TEXTURE:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+                break;
+            case LayoutBinding::RangeType::UAV_BUFFER:
+            case LayoutBinding::RangeType::UAV_TEXTURE:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+                break;
+            case LayoutBinding::RangeType::CBV:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+                break;
+            case LayoutBinding::RangeType::SAMPLER:
+                type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+                break;
+            }
+
+            const D3D12_DESCRIPTOR_RANGE range{
+                .RangeType = type,
                 .NumDescriptors = binding.count,
                 .BaseShaderRegister = binding.binding,
                 .RegisterSpace = i,
@@ -800,7 +834,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
             offset += binding.count;
             l_ranges[j] = range;
         }
-        params.push_back({
+        params[params_index++] = {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             .DescriptorTable =
                 {
@@ -808,14 +842,14 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
                     .pDescriptorRanges = l_ranges,
                 },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        });
+        };
         ranges[i] = l_ranges;
     }
 
     const D3D12_ROOT_SIGNATURE_DESC root_sig_desc{
         // Default range flags
         .NumParameters = param_count,
-        .pParameters = params.data(),
+        .pParameters = params,
         .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
     };
 
@@ -842,6 +876,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create root signature\n");
         layout->internal_state.reset();
         return false;
+        ;
     }
 
     return true;
@@ -858,20 +893,19 @@ void D3D12Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLay
 bool D3D12Context::set_pipeline_constant(
     CommandList* cmd_list, const unsigned param, const uint32_t offset, const unsigned size, void* data)
 {
-    assert(cmd_list);
     assert(data);
-#ifdef _DEBUG
-    if (offset % 4 != 0)
+
+    if (size % 4u != 0)
     {
-        OutputDebugStringA("Qhenki D3D12 WARNING: Offset is best as multiple of 4 bytes\n");
+        return false;
     }
-    if (size % 4 != 0)
+    if (offset % 4u != 0)
     {
-        OutputDebugStringA("Qhenki D3D12 WARNING: Size is best as multiple of 4 bytes\n");
+        return false;
     }
-#endif
+
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, (size + 3) / 4, data, (offset + 3) / 4);
+    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, size / 4u, data, offset / 4u);
     return true;
 }
 
@@ -953,8 +987,9 @@ bool D3D12Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
 size_t D3D12Context::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type) const
 {
     // We assume Tier 2 minimum
-    return type == DescriptorHeapDesc::Type::SAMPLER ? D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE
-                                                     : D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2;
+    return type == DescriptorHeapDesc::Type::SAMPLER
+             ? D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE * get_descriptor_size(Descriptor::SAMPLER)
+             : D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2 * get_descriptor_size(Descriptor::BUFFER);
 }
 
 void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -1007,8 +1042,6 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned in
 
 bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
 {
-    assert(src.heap);
-    assert(dst.heap);
     const auto src_heap_d3d12 = to_internal(*src.heap);
     const auto dst_heap_d3d12 = to_internal(*dst.heap);
 
@@ -1024,7 +1057,12 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
         return false;
     }
 
-    if (bytes % get_descriptor_size(src.type) != 0)
+    assert(get_descriptor_size(Descriptor::BUFFER) == get_descriptor_size(Descriptor::TEXTURE));
+    const auto descriptor_size = src.heap->desc.type == DescriptorHeapDesc::Type::SAMPLER
+                                   ? get_descriptor_size(Descriptor::SAMPLER)
+                                   : get_descriptor_size(Descriptor::TEXTURE);
+
+    if (bytes % descriptor_size != 0)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Bytes must be a multiple of the descriptor size\n");
         return false;
@@ -1036,7 +1074,7 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
     D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
     dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset);
 
-    const auto descriptor_count = bytes / get_descriptor_size(src.type);
+    const auto descriptor_count = bytes / descriptor_size;
     m_device->CopyDescriptorsSimple(descriptor_count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
 
     return true;
@@ -1044,8 +1082,6 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
 
 bool D3D12Context::free_descriptor(Descriptor* descriptor)
 {
-    assert(descriptor);
-    assert(descriptor->heap);
     const auto heap_d3d12 = to_internal(*descriptor->heap);
     if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {
@@ -1120,8 +1156,6 @@ bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         allocation_desc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
     }
-
-    // Initial state is not used in D3D12
 
     // Barrier layout is undefined for CreateResource3
     if (FAILED(m_allocator->CreateResource3(&allocation_desc,
@@ -1223,8 +1257,6 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
     };
     m_device->CreateConstantBufferView(&desc, cpu_handle);
 
-    descriptor->type = Descriptor::BUFFER;
-
     return true;
 }
 
@@ -1238,11 +1270,10 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
         return false;
     }
 
-    if (buffer.desc.stride == 0)
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Buffer stride is zero, cannot create shader resource view\n");
-        return false;
-    }
+    const auto is_raw = buffer.desc.stride == 0;
+    const auto num_elements = is_raw ? buffer.desc.size / 4u : buffer.desc.size / buffer.desc.stride;
+
+    assert(num_elements < std::numeric_limits<UINT>::max());
 
     const D3D12_SHADER_RESOURCE_VIEW_DESC desc{
         .Format = DXGI_FORMAT_UNKNOWN,
@@ -1251,15 +1282,13 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
         .Buffer =
             {
                 .FirstElement = 0,
-                .NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
+                .NumElements = static_cast<UINT>(num_elements),
                 .StructureByteStride = static_cast<UINT>(buffer.desc.stride),
-                .Flags = D3D12_BUFFER_SRV_FLAG_NONE, // No raw buffer
+                .Flags = is_raw ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE,
             },
     };
 
     m_device->CreateShaderResourceView(buffer_d3d12->Get()->GetResource(), &desc, cpu_handle);
-
-    descriptor->type = Descriptor::BUFFER;
 
     return true;
 }
@@ -1271,7 +1300,6 @@ void D3D12Context::copy_buffer(CommandList* cmd_list,
                                const uint64_t dst_offset,
                                const uint64_t bytes)
 {
-    assert(dst);
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
     const auto src_allocation = to_internal(src);
@@ -1291,9 +1319,20 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         OutputDebugStringA("Qhenki D3D12 ERROR: Tried to initialize 1D texture with height > 1\n");
         return false;
     }
+    if (desc.usage == TextureDesc::NONE)
+    {
+        return false;
+    }
+    if (desc.is_cube)
+    {
+        // Cubemaps must be 2D textures with square faces and array size divisible by 6
+        if (desc.dimension != TextureDimension::TEXTURE_2D || desc.width != desc.height ||
+            (desc.depth_or_array_size % 6) != 0)
+        {
+            return false;
+        }
+    }
 
-    texture->internal_state = mkS<D3D12Texture>();
-    auto texture_d3d12 = to_internal(*texture);
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Alignment = 0,
         .Width = desc.width,
@@ -1307,22 +1346,30 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
                 .Quality = 0,
             },
         .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-        .Flags = D3D12_RESOURCE_FLAG_NONE, // TODO: Set flags for UAV
-                                           //.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
+        .Flags = D3D12_RESOURCE_FLAG_NONE,
+        //.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
     };
     D3D12_CLEAR_VALUE clear{
         .Format = desc.format,
     };
     const D3D12_CLEAR_VALUE* clear_ptr = nullptr;
-    if (is_depth_stencil_format(desc.format))
+
+    if (desc.usage & TextureDesc::DEPTH_STENCIL)
     {
-        clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-        clear.DepthStencil = {.Depth = desc.clear_depth_value.depth, .Stencil = desc.clear_depth_value.stencil};
-        // TODO: UAV flags
+        if (desc.initial_layout == Layout::DEPTH_STENCIL_WRITE)
+        {
+            clear_ptr = &clear;
+            clear.DepthStencil = {.Depth = desc.clear_depth_value.depth, .Stencil = desc.clear_depth_value.stencil};
+        }
     }
-    else if (desc.is_render_target)
+    if (desc.usage & TextureDesc::RENDER_TARGET)
     {
+        if (clear_ptr)
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Texture cannot have both depth stencil and render target usage\n");
+            return false;
+        }
         clear_ptr = &clear;
         resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
@@ -1331,6 +1378,10 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         {
             clear.Color[i] = desc.clear_color_value[i];
         }
+    }
+    if (desc.usage & TextureDesc::UNORDERED_ACCESS)
+    {
+        resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
 
     switch (desc.dimension)
@@ -1346,9 +1397,12 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         break;
     }
 
-    D3D12MA::ALLOCATION_DESC allocation_desc{
+    constexpr D3D12MA::ALLOCATION_DESC allocation_desc{
         .HeapType = D3D12_HEAP_TYPE_DEFAULT,
     };
+
+    texture->internal_state = mkS<D3D12Texture>();
+    const auto texture_d3d12 = to_internal(*texture);
 
     if (FAILED(m_allocator->CreateResource3(&allocation_desc,
                                             &resource_desc,
@@ -1372,33 +1426,33 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
 }
 namespace
 {
-bool allocate_arb_texture_descriptor(DescriptorHeap* const heap,
-                                     D3D12DescriptorHeap* const heap_d3d12,
-                                     const DescriptorHeapDesc::Type expected_type,
-                                     Descriptor* const descriptor,
-                                     const wchar_t* message,
-                                     D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
+bool allocate_texture_descriptor(DescriptorHeap* const heap,
+                                 D3D12DescriptorHeap* const d3d_heap,
+                                 const DescriptorHeapDesc::Type expected_type,
+                                 Descriptor* const descriptor,
+                                 const char* message,
+                                 D3D12_CPU_DESCRIPTOR_HANDLE* cpu_handle)
 {
     assert(cpu_handle);
     if (heap->desc.type != expected_type)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type for ");
-        OutputDebugStringW(message);
+        OutputDebugStringA(message);
         OutputDebugStringA("\n");
         return false;
     }
     if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {
-        if (!heap_d3d12->allocate(&descriptor->offset))
+        if (!d3d_heap->allocate(&descriptor->offset))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to allocate descriptor for ");
-            OutputDebugStringW(message);
+            OutputDebugStringA(message);
             OutputDebugStringA("\n");
             return false;
         }
     }
     descriptor->heap = heap;
-    heap_d3d12->get_CPU_descriptor(cpu_handle, descriptor->offset);
+    d3d_heap->get_CPU_descriptor(cpu_handle, descriptor->offset);
     return true;
 }
 } // namespace
@@ -1407,21 +1461,17 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
                                                  DescriptorHeap* const heap,
                                                  Descriptor* descriptor)
 {
-    assert(heap);
     const auto texture_d3d12 = to_internal(texture);
     const auto heap_d3d12 = to_internal(*heap);
 
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-    if (!allocate_arb_texture_descriptor(
-            heap, heap_d3d12, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, L"SRV", &cpu_handle))
+    if (!allocate_texture_descriptor(
+            heap, heap_d3d12, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, "SRV", &cpu_handle))
     {
         return false;
     }
 
-    // TODO: View description
     m_device->CreateShaderResourceView(texture_d3d12->allocation.Get()->GetResource(), nullptr, cpu_handle);
-
-    descriptor->type = Descriptor::TEXTURE;
 
     return true;
 }
@@ -1436,9 +1486,9 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
 
     auto& arena = acquire_arena(m_frame_count);
-    auto layouts = arena.alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
-    auto row_counts = arena.alloc_array<UINT>(num_subresources);
-    auto row_sizes = arena.alloc_array<UINT64>(num_subresources);
+    const auto layouts = arena.alloc_array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>(num_subresources);
+    const auto row_counts = arena.alloc_array<UINT>(num_subresources);
+    const auto row_sizes = arena.alloc_array<UINT64>(num_subresources);
 
     UINT64 size;
     m_device->GetCopyableFootprints(&desc, 0, num_subresources, 0, layouts, row_counts, row_sizes, &size);
@@ -1449,6 +1499,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         .visibility = CPU_SEQUENTIAL,
     };
 
+    // TODO: Transient staging buffer
     Buffer local_staging;
     if (!create_buffer(staging_desc, nullptr, &local_staging, nullptr))
     {
@@ -1464,8 +1515,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     {
         const UINT32 mip = subresource % texture->desc.mip_levels;
 
-        // Ok because texture max width is less < UINT32
-        const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
+        const UINT32 mip_width = std::max(1u, texture->desc.width >> mip);
         const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
         // For 3D textures, depth varies per mip. For arrays/cubemaps, always 1 (one 2D slice per subresource)
         const UINT32 mip_depth = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D
@@ -1562,8 +1612,6 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
     };
     m_device->CreateSampler(&sampler_desc, cpu_handle);
 
-    descriptor->type = Descriptor::SAMPLER;
-
     return true;
 }
 
@@ -1604,15 +1652,18 @@ void D3D12Context::unmap_buffer(const Buffer& buffer)
     }
 }
 
-void D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
+bool D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
                                        const unsigned start_slot,
                                        const unsigned buffer_count,
                                        const Buffer* const* buffers,
-                                       const unsigned* sizes,
-                                       const unsigned* const strides,
-                                       const unsigned* const offsets)
+                                       const uint64_t* sizes,
+                                       const uint64_t* strides,
+                                       const uint64_t* offsets)
 {
-    assert(buffer_count <= D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
+    if (buffer_count > D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT)
+    {
+        return false;
+    }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -1622,18 +1673,23 @@ void D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
     {
         const auto allocation = to_internal(*buffers[i]);
         const auto resource = allocation->Get()->GetResource();
-
+        assert(sizes[i] <= std::numeric_limits<UINT>::max());
+        assert(strides[i] <= std::numeric_limits<UINT>::max());
         vertex_buffer_views[i] = {
             .BufferLocation = resource->GetGPUVirtualAddress() + offsets[i],
-            .SizeInBytes = sizes[i],
-            .StrideInBytes = strides[i],
+            .SizeInBytes = static_cast<UINT>(sizes[i]),
+            .StrideInBytes = static_cast<UINT>(strides[i]),
         };
     }
 
     command_list->IASetVertexBuffers(start_slot, buffer_count, vertex_buffer_views.data());
+    return true;
 }
 
-void D3D12Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, unsigned offset)
+void D3D12Context::bind_index_buffer(CommandList* cmd_list,
+                                     const Buffer& buffer,
+                                     const IndexType format,
+                                     uint64_t offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -1649,9 +1705,8 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list, const Buffer& buffer
     command_list->IASetIndexBuffer(&view);
 }
 
-bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueType queue)
+bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)
 {
-    // Command allocator creation does not require the queue object
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     switch (queue)
     {
@@ -1668,6 +1723,7 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueTyp
 
     command_pool->internal_state = mkS<ComPtr<ID3D12CommandAllocator>>();
     const auto command_allocator = to_internal(*command_pool);
+
     if (FAILED(m_device->CreateCommandAllocator(type, IID_PPV_ARGS(command_allocator->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command allocator\n");
@@ -1675,14 +1731,15 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueTyp
         return false;
     }
     command_pool->queue_type = queue;
+
+    set_debug_name(command_allocator->Get(), debug_name);
+
     return true;
 }
 
 bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
-    const auto command_allocator = to_internal(command_pool);
-    const auto d3d12_cmd_list = to_internal(*cmd_list);
-    if (FAILED(d3d12_cmd_list->Get()->Reset(command_allocator->Get(), nullptr)))
+    if (FAILED(to_internal(*cmd_list)->Get()->Reset(to_internal(command_pool)->Get(), nullptr)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reset command list");
         return false;
@@ -1692,8 +1749,6 @@ bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& 
 
 bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name)
 {
-    assert(cmd_list);
-
     D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     switch (command_pool.queue_type)
     {
@@ -1709,9 +1764,8 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
     }
 
     cmd_list->internal_state = mkS<ComPtr<ID3D12GraphicsCommandList7>>();
-    auto d3d12_cmd_list = to_internal(*cmd_list);
     if (FAILED(m_device->CreateCommandList1(
-            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(d3d12_cmd_list->ReleaseAndGetAddressOf()))))
+            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(to_internal(*cmd_list)->ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command list\n");
         cmd_list->internal_state.reset();
@@ -1724,7 +1778,6 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
 bool D3D12Context::close_command_list(CommandList* cmd_list)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    assert(cmd_list_d3d12);
     if (FAILED(cmd_list_d3d12->Get()->Close()))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to close command list\n");
@@ -1744,19 +1797,20 @@ bool D3D12Context::reset_command_pool(CommandPool* command_pool)
     return true;
 }
 
-ComPtr<ID3D12CommandQueue>& D3D12Context::get_command_queue(const QueueType queue)
+ID3D12CommandQueue* D3D12Context::get_command_queue(const QueueType queue) const
 {
     switch (queue)
     {
     case GRAPHICS:
-        return m_graphics_queue;
+        return m_graphics_queue.Get();
     case COMPUTE:
-        return m_compute_queue;
+        return m_compute_queue.Get();
     case COPY:
-        return m_copy_queue;
+        return m_copy_queue.Get();
+    default:
+        assert(false);
+        return nullptr;
     }
-    assert(false);
-    return m_graphics_queue;
 }
 
 namespace
@@ -1774,7 +1828,7 @@ void clear_depth(ID3D12GraphicsCommandList7* command_list,
 {
     if (depth_stencil)
     {
-        assert(is_depth_stencil_format(depth_stencil->texture->desc.format));
+        assert(depth_stencil->texture->desc.usage & TextureDesc::DEPTH_STENCIL);
         if (depth_stencil->clear_type != RenderTarget::NONE)
         {
             auto clear_flags = static_cast<D3D12_CLEAR_FLAGS>(0);
@@ -1800,8 +1854,7 @@ void clear_depth(ID3D12GraphicsCommandList7* command_list,
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      const float* clear_color_values,
-                                     const RenderTarget* const depth_stencil,
-                                     const unsigned frame_index)
+                                     const RenderTarget* const depth_stencil)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -1822,12 +1875,12 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     clear_depth(command_list, depth_stencil, &render_target_helper);
 
     render_target_helper.OMSetRenderTargets(
-        command_list, 1, m_swapchain_buffers[frame_index].GetAddressOf(), nullptr, dsv, nullptr);
+        command_list, 1, m_swapchain_buffers[m_swapchain_index].GetAddressOf(), nullptr, dsv, nullptr);
 
     if (clear_color_values)
     {
         render_target_helper.ClearRenderTargetView(
-            command_list, m_swapchain_buffers[frame_index].Get(), nullptr, clear_color_values, 0, nullptr);
+            command_list, m_swapchain_buffers[m_swapchain_index].Get(), nullptr, clear_color_values, 0, nullptr);
     }
 
     return true;
@@ -1835,7 +1888,7 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
 
 bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      const unsigned rt_count,
-                                     const RenderTarget* const* rts,
+                                     const RenderTarget* rts,
                                      const RenderTarget* const depth_stencil)
 {
     if (rt_count > D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
@@ -1849,8 +1902,8 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     std::array<ID3D12Resource*, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> d3d12_textures;
     for (unsigned i = 0; i < rt_count; i++)
     {
-        assert(rts[i]->texture->desc.is_render_target);
-        d3d12_textures[i] = to_internal(*rts[i]->texture)->allocation.Get()->GetResource();
+        assert(rts[i].texture->desc.usage & TextureDesc::RENDER_TARGET);
+        d3d12_textures[i] = to_internal(*rts[i].texture)->allocation.Get()->GetResource();
     }
 
     ID3D12Resource* dsv = nullptr;
@@ -1871,13 +1924,13 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
 
     for (unsigned i = 0; i < rt_count; i++)
     {
-        if (rts[i]->clear_type == RenderTarget::COLOR)
+        if (rts[i].clear_type == RenderTarget::COLOR)
         {
-            const auto d3d12_tex = to_internal(*rts[i]->texture);
+            const auto d3d12_tex = to_internal(*rts[i].texture);
             render_target_helper.ClearRenderTargetView(command_list,
                                                        d3d12_tex->allocation.Get()->GetResource(),
                                                        nullptr,
-                                                       rts[i]->clear_params.clear_color_value.data(),
+                                                       rts[i].clear_params.clear_color_value.data(),
                                                        0,
                                                        nullptr);
         }
@@ -1889,6 +1942,7 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
 
 void D3D12Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
 {
+    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->Get();
     command_list->RSSetViewports(count, viewport);
@@ -1896,9 +1950,14 @@ void D3D12Context::set_viewports(CommandList* list, const unsigned count, const 
 
 void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
 {
+    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->Get();
     command_list->RSSetScissorRects(count, scissor_rect);
+}
+
+void D3D12Context::end_render_pass(CommandList* cmd_list)
+{
 }
 
 void D3D12Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
@@ -1921,8 +1980,28 @@ void D3D12Context::draw_indexed(CommandList* cmd_list,
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
+bool D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
 {
+    // Internally ordered within the same queue so treat this as an error
+    for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
+    {
+        if (submit_info.wait_queues[i] == queue)
+        {
+            return false;
+        }
+    }
+    for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
+    {
+        const auto fence = to_internal(submit_info.wait_fences[i]);
+        const auto result =
+            get_command_queue(submit_info.wait_queues[i])->Wait(fence->fence.Get(), submit_info.wait_values[i]);
+        if (FAILED(result))
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to wait for fence\n");
+            return false;
+        }
+    }
+
     auto& arena = acquire_arena(m_frame_count);
     auto cmd_list_ptrs = arena.alloc_array<ID3D12CommandList*>(submit_info.command_list_count);
 
@@ -1943,14 +2022,18 @@ void D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const Que
         if (FAILED(result))
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Failed to signal fence\n");
+            return false;
         }
     }
+
+    return true;
 }
 
-bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
+bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value, const char* debug_name)
 {
     fence->internal_state = mkS<D3D12Fence>();
-    auto fence_d3d12 = to_internal(*fence);
+    const auto fence_d3d12 = to_internal(*fence);
+
     if (FAILED(m_device->CreateFence(initial_value,
                                      D3D12_FENCE_FLAG_NONE,
                                      IID_PPV_ARGS(fence_d3d12->fence.ReleaseAndGetAddressOf()))))
@@ -1959,6 +2042,7 @@ bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
         fence->internal_state.reset();
         return false;
     }
+
     fence_d3d12->event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!fence_d3d12->event)
     {
@@ -1966,6 +2050,9 @@ bool D3D12Context::create_fence(Fence* fence, const uint64_t initial_value)
         fence->internal_state.reset();
         return false;
     }
+
+    set_debug_name(fence_d3d12->fence.Get(), debug_name);
+
     return true;
 }
 
@@ -1990,20 +2077,15 @@ bool D3D12Context::wait_fences(const WaitInfo& info)
         }
         wait_handles[i] = d3d12_fence->event;
     }
-    WaitForMultipleObjectsEx(info.count, wait_handles, info.wait_all, info.timeout, FALSE);
+    WaitForMultipleObjectsEx(info.count, wait_handles, info.wait_all, INFINITE, FALSE);
     return true;
 }
 
-void D3D12Context::set_barrier_resource(const unsigned count,
-                                        ImageBarrier* barriers,
-                                        const Swapchain& swapchain,
-                                        const unsigned frame_index)
+void D3D12Context::set_barrier_resource(const unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
 {
-    assert(count == 0 || barriers);
-    assert(frame_index == m_swapchain->GetCurrentBackBufferIndex());
     for (unsigned i = 0; i < count; i++)
     {
-        barriers[i].resource = static_cast<void*>(m_swapchain_buffers[frame_index].Get());
+        barriers[i].resource = static_cast<void*>(m_swapchain_buffers[m_swapchain_index].Get());
     }
 }
 
@@ -2016,7 +2098,7 @@ void D3D12Context::set_barrier_resource(const unsigned count, ImageBarrier* barr
     }
 }
 
-void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
+bool D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     const auto command_list = cmd_list_d3d12->Get();
@@ -2031,7 +2113,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, co
         if (!barrier.resource)
         {
             OutputDebugStringA("Qhenki D3D12 ERROR: Barrier resource is null. Barrier was not issued\n");
-            return;
+            return false;
         }
 
         auto& d3d12_barrier = d3d12_barriers[i];
@@ -2063,6 +2145,7 @@ void D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, co
     };
 
     command_list->Barrier(1, &barrier_group);
+    return true;
 }
 
 void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
@@ -2198,8 +2281,7 @@ bool D3D12Context::wait_idle(const QueueType queue)
         return false;
     }
 
-    const WaitInfo wait_info{
-        .wait_all = true, .count = 1, .fences = &m_fence_wait_all, .values = &value, .timeout = INFINITE};
+    const WaitInfo wait_info{.wait_all = true, .count = 1, .fences = &m_fence_wait_all, .values = &value};
     return wait_fences(wait_info);
 }
 

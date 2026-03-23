@@ -43,6 +43,11 @@ void RetroExampleApp::init_display_window(void* payload)
         result = qhenki::util::format_string("%s | DX12", title);
         break;
     }
+    case qhenki::gfx::API::Vulkan:
+    {
+        result = qhenki::util::format_string("%s | Vulkan", title);
+        break;
+    }
     default:
     {
         result = qhenki::util::format_string("%s | undefined", title);
@@ -72,8 +77,10 @@ void RetroExampleApp::init_display_window(void* payload)
 
 void RetroExampleApp::create()
 {
-    const bool use_dx11 = m_context->is_compatibility();
-    const char* subdir = use_dx11 ? "dx11" : "dx12";
+    const auto api = get_graphics_api();
+    const bool use_dx11 = api == qhenki::gfx::API::D3D11;
+    const bool use_vulkan = api == qhenki::gfx::API::Vulkan;
+    const char* subdir = use_dx11 ? "dx11" : (use_vulkan ? "vulkan" : "dx12");
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
@@ -92,17 +99,17 @@ void RetroExampleApp::create()
     qhenki::gfx::LayoutBinding b1{
         .binding = 0,
         .count = 1,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+        .type = qhenki::gfx::LayoutBinding::RangeType::CBV,
     };
     qhenki::gfx::LayoutBinding b2{
         .binding = 1,
         .count = 2,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
     };
     qhenki::gfx::LayoutBinding b3{
         .binding = 0,
         .count = 2,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+        .type = qhenki::gfx::LayoutBinding::RangeType::SAMPLER,
     };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     layout_desc.spaces[0] = {b1}; // CBV
@@ -197,10 +204,13 @@ void RetroExampleApp::create()
     assert(model.buffers.size() == 1);
     auto& buffer = model.buffers[0];
     qhenki::gfx::BufferDesc desc{.size = buffer.data.size(),
-                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                                          qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &cylinder_CPU, "Skybox Vertex Buffer CPU"));
 
+    desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                 qhenki::gfx::BufferUsage::COPY_DST;
     desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_skybox_buffer, "Skybox Vertex Buffer GPU"));
 
@@ -231,9 +241,10 @@ void RetroExampleApp::create()
     };
     THROW_IF_FALSE(m_context->create_descriptor(sampler_linear_desc, &m_sampler_heap, &m_sampler_linear_descriptor));
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list_init = m_cmd_lists[m_frame_index];
+    const unsigned frame_slot_init = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot_init]));
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot_init], m_cmd_pools[frame_slot_init]));
+    auto& cmd_list_init = m_cmd_lists[frame_slot_init];
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
     tinygltf::Model stencil_model;
@@ -268,7 +279,8 @@ void RetroExampleApp::create()
     auto& stencil_buffer = stencil_model.buffers[0];
     qhenki::gfx::BufferDesc stencil_desc{
         .size = stencil_buffer.data.size(),
-        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                 qhenki::gfx::BufferUsage::COPY_SRC,
         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
     };
     qhenki::gfx::Buffer stencil_CPU;
@@ -279,6 +291,8 @@ void RetroExampleApp::create()
         memcpy(ptr, stencil_buffer.data.data(), stencil_buffer.data.size());
         m_context->unmap_buffer(stencil_CPU);
     }
+    stencil_desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                         qhenki::gfx::BufferUsage::COPY_DST;
     stencil_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(stencil_desc, nullptr, &m_stencil_mesh.buffer, "Stencil cylinder GPU"));
     m_context->copy_buffer(&cmd_list_init, stencil_CPU, 0, &m_stencil_mesh.buffer, 0, stencil_buffer.data.size());
@@ -316,7 +330,8 @@ void RetroExampleApp::create()
     auto& cube_buffer = cube_model.buffers[0];
     qhenki::gfx::BufferDesc cube_desc{
         .size = cube_buffer.data.size(),
-        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX,
+        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                 qhenki::gfx::BufferUsage::COPY_SRC,
         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
     };
     qhenki::gfx::Buffer bevel_cube_CPU;
@@ -327,6 +342,8 @@ void RetroExampleApp::create()
         memcpy(ptr, cube_buffer.data.data(), cube_buffer.data.size());
         m_context->unmap_buffer(bevel_cube_CPU);
     }
+    cube_desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                      qhenki::gfx::BufferUsage::COPY_DST;
     cube_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &m_bevel_cube_mesh.buffer, "Bevel Cube GPU"));
     m_context->copy_buffer(&cmd_list_init, bevel_cube_CPU, 0, &m_bevel_cube_mesh.buffer, 0, cube_buffer.data.size());
@@ -338,14 +355,17 @@ void RetroExampleApp::create()
     TexMetadata meta = {};
     const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
     THROW_IF_TRUE(FAILED(hr));
+    assert(meta.width <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()));
     qhenki::gfx::TextureDesc skybox_tex_desc{
-        .width = meta.width,
+        .width = static_cast<uint32_t>(meta.width),
         .height = static_cast<uint32_t>(meta.height),
         .depth_or_array_size = static_cast<uint16_t>(meta.arraySize),
         .mip_levels = static_cast<uint16_t>(meta.mipLevels),
         .format = meta.format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
+        .is_cube = meta.IsCubemap(),
         .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+        .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
     };
     THROW_IF_FALSE(m_context->create_texture(skybox_tex_desc, &m_skybox_texture, "Skybox Texture"));
 
@@ -366,7 +386,7 @@ void RetroExampleApp::create()
     m_context->issue_barrier(&cmd_list_init, 1, &barrier_skybox);
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list_init));
-    auto current_fence_value = ++m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = ++m_fence_frame_ready_val[frame_slot_init];
     qhenki::gfx::SubmitInfo info_init{
         .command_list_count = 1,
         .command_lists = &cmd_list_init,
@@ -378,11 +398,26 @@ void RetroExampleApp::create()
 
     qhenki::gfx::WaitInfo wait_info{.count = 1,
                                     .fences = &m_fence_frame_ready,
-                                    .values = &m_fence_frame_ready_val[m_frame_index]};
+                                    .values = &m_fence_frame_ready_val[frame_slot_init]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info));
 
-    const char* skybox_vs_name = use_dx11 ? "skybox_vs_5_0_vs_main.dxbc" : "skybox_vs_6_6_vs_main.dxil";
-    const char* skybox_ps_name = use_dx11 ? "skybox_ps_5_0_ps_main.dxbc" : "skybox_ps_6_6_ps_main.dxil";
+    const char* skybox_vs_name = nullptr;
+    const char* skybox_ps_name = nullptr;
+    if (use_dx11)
+    {
+        skybox_vs_name = "skybox_vs_5_0_vs_main.dxbc";
+        skybox_ps_name = "skybox_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        skybox_vs_name = "skybox_vs_6_6_vs_main.spv";
+        skybox_ps_name = "skybox_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        skybox_vs_name = "skybox_vs_6_6_vs_main.dxil";
+        skybox_ps_name = "skybox_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(skybox_vs_name, qhenki::gfx::VERTEX_SHADER, &m_skybox_vertex_shader));
     THROW_IF_FALSE(load_shader(skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
 
@@ -422,8 +457,23 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Skybox pipeline"));
 
-    const char* cube_vs_name = use_dx11 ? "cube_vs_5_0_vs_main.dxbc" : "cube_vs_6_6_vs_main.dxil";
-    const char* cube_ps_name = use_dx11 ? "cube_ps_5_0_ps_main.dxbc" : "cube_ps_6_6_ps_main.dxil";
+    const char* cube_vs_name = nullptr;
+    const char* cube_ps_name = nullptr;
+    if (use_dx11)
+    {
+        cube_vs_name = "cube_vs_5_0_vs_main.dxbc";
+        cube_ps_name = "cube_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        cube_vs_name = "cube_vs_6_6_vs_main.spv";
+        cube_ps_name = "cube_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        cube_vs_name = "cube_vs_6_6_vs_main.dxil";
+        cube_ps_name = "cube_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(cube_vs_name, qhenki::gfx::VERTEX_SHADER, &m_cube_vertex_shader));
     THROW_IF_FALSE(load_shader(cube_ps_name, qhenki::gfx::PIXEL_SHADER, &m_cube_pixel_shader));
 
@@ -441,8 +491,23 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Cube pipeline"));
 
-    const char* stencil_vs_name = use_dx11 ? "stencil_vs_5_0_vs_main.dxbc" : "stencil_vs_6_6_vs_main.dxil";
-    const char* stencil_ps_name = use_dx11 ? "stencil_ps_5_0_ps_main.dxbc" : "stencil_ps_6_6_ps_main.dxil";
+    const char* stencil_vs_name = nullptr;
+    const char* stencil_ps_name = nullptr;
+    if (use_dx11)
+    {
+        stencil_vs_name = "stencil_vs_5_0_vs_main.dxbc";
+        stencil_ps_name = "stencil_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        stencil_vs_name = "stencil_vs_6_6_vs_main.spv";
+        stencil_ps_name = "stencil_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        stencil_vs_name = "stencil_vs_6_6_vs_main.dxil";
+        stencil_ps_name = "stencil_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_vertex_shader));
     THROW_IF_FALSE(load_shader(stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_pixel_shader));
 
@@ -508,8 +573,23 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Stencil cube pipeline"));
 
-    const char* bevel_vs_name = use_dx11 ? "cube_instanced_vs_5_0_vs_main.dxbc" : "cube_instanced_vs_6_6_vs_main.dxil";
-    const char* bevel_ps_name = use_dx11 ? "cube_instanced_ps_5_0_ps_main.dxbc" : "cube_instanced_ps_6_6_ps_main.dxil";
+    const char* bevel_vs_name = nullptr;
+    const char* bevel_ps_name = nullptr;
+    if (use_dx11)
+    {
+        bevel_vs_name = "cube_instanced_vs_5_0_vs_main.dxbc";
+        bevel_ps_name = "cube_instanced_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        bevel_vs_name = "cube_instanced_vs_6_6_vs_main.spv";
+        bevel_ps_name = "cube_instanced_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        bevel_vs_name = "cube_instanced_vs_6_6_vs_main.dxil";
+        bevel_ps_name = "cube_instanced_ps_6_6_ps_main.dxil";
+    }
     THROW_IF_FALSE(load_shader(bevel_vs_name, qhenki::gfx::VERTEX_SHADER, &m_bevel_cube_vertex_shader));
     THROW_IF_FALSE(load_shader(bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
     qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
@@ -554,13 +634,31 @@ void RetroExampleApp::create()
                                               &m_pipeline_layout,
                                               "Bevel cube instanced pipeline"));
 
-    const char* blit_vs_name = use_dx11 ? "fullscreen_triangle_vs_5_0_vs_main.dxbc"
-                                        : "fullscreen_triangle_vs_6_6_vs_main.dxil";
-    const char* blit_copy_ps_name = use_dx11 ? "blit_copy_ps_5_0_ps_main.dxbc" : "blit_copy_ps_6_6_ps_main.dxil";
-    const char* blit_lum_ps_name = use_dx11 ? "blit_luminance_ps_5_0_ps_main.dxbc"
-                                            : "blit_luminance_ps_6_6_ps_main.dxil";
-    const char* blit_bloom_blob_name = use_dx11 ? "blit_bloom_1d_ps_5_0_ps_main.dxbc_blob"
-                                                : "blit_bloom_1d_ps_6_6_ps_main.dxil_blob";
+    const char* blit_vs_name = nullptr;
+    const char* blit_copy_ps_name = nullptr;
+    const char* blit_lum_ps_name = nullptr;
+    const char* blit_bloom_blob_name = nullptr;
+    if (use_dx11)
+    {
+        blit_vs_name = "fullscreen_triangle_vs_5_0_vs_main.dxbc";
+        blit_copy_ps_name = "blit_copy_ps_5_0_ps_main.dxbc";
+        blit_lum_ps_name = "blit_luminance_ps_5_0_ps_main.dxbc";
+        blit_bloom_blob_name = "blit_bloom_1d_ps_5_0_ps_main.dxbc_blob";
+    }
+    else if (use_vulkan)
+    {
+        blit_vs_name = "fullscreen_triangle_vs_6_6_vs_main.spv";
+        blit_copy_ps_name = "blit_copy_ps_6_6_ps_main.spv";
+        blit_lum_ps_name = "blit_luminance_ps_6_6_ps_main.spv";
+        blit_bloom_blob_name = "blit_bloom_1d_ps_6_6_ps_main.spv_blob";
+    }
+    else
+    {
+        blit_vs_name = "fullscreen_triangle_vs_6_6_vs_main.dxil";
+        blit_copy_ps_name = "blit_copy_ps_6_6_ps_main.dxil";
+        blit_lum_ps_name = "blit_luminance_ps_6_6_ps_main.dxil";
+        blit_bloom_blob_name = "blit_bloom_1d_ps_6_6_ps_main.dxil_blob";
+    }
     THROW_IF_FALSE(load_shader(blit_vs_name, qhenki::gfx::VERTEX_SHADER, &m_blit_vertex_shader));
     THROW_IF_FALSE(load_shader(blit_copy_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_copy_pixel_shader));
     THROW_IF_FALSE(load_shader(blit_lum_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_luminance_pixel_shader));
@@ -693,6 +791,9 @@ void RetroExampleApp::render()
             ImGui::End();
         }
     }
+
+    const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->acquire_swapchain_image());
 
     const auto dim = this->m_window.get_display_size();
 
@@ -868,15 +969,15 @@ void RetroExampleApp::render()
     cb.camera_position = display_world.translation;
     cb.time = time_sec;
 
-    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
+    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[frame_slot]);
     assert(buffer_pointer);
     memcpy(buffer_pointer, &cb, sizeof(FrameConstants));
-    m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
+    m_context->unmap_buffer(m_matrix_buffers[frame_slot]);
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot]));
 
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list = m_cmd_lists[m_frame_index];
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
+    auto& cmd_list = m_cmd_lists[frame_slot];
 
     qhenki::gfx::RenderTarget color{
         .clear_params = {.clear_color_value = {1.f, 1.f, 1.f, 0.f}},
@@ -889,7 +990,7 @@ void RetroExampleApp::render()
                                                                         qhenki::gfx::RenderTarget::STENCIL),
         .texture = &m_depth_buffer,
     };
-    m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(color).data(), &depth);
+    m_context->start_render_pass(&cmd_list, 1, &color, &depth);
 
     const D3D12_VIEWPORT viewport{
         .TopLeftX = 0,
@@ -915,32 +1016,19 @@ void RetroExampleApp::render()
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_skybox_pipeline));
     size_t gpu_descriptor_heap_index = 0;
 
-    auto increment_gpu_descriptor_heap_index =
-        [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::Type type, const bool tight)
+    auto place_gpu_descriptor = [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::Type type) -> size_t
     {
-        if (tight)
-        {
-            if (type == qhenki::gfx::Descriptor::SAMPLER)
-            {
-                gpu_descriptor_heap_index += m_context->get_descriptor_size(type);
-            }
-            else
-            {
-                gpu_descriptor_heap_index += std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                      m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
-            }
-        }
-        else
-        {
-            gpu_descriptor_heap_index += m_context->get_descriptor_size(type);
-            gpu_descriptor_heap_index = qhenki::util::align_u(gpu_descriptor_heap_index,
-                                                              m_context->get_descriptor_alignment(type));
-        }
+        const size_t size = static_cast<size_t>(m_context->get_descriptor_size(type));
+        const size_t alignment = static_cast<size_t>(m_context->get_descriptor_alignment(type));
+        gpu_descriptor_heap_index = qhenki::util::align_u(gpu_descriptor_heap_index, alignment);
+        const size_t offset = gpu_descriptor_heap_index;
+        gpu_descriptor_heap_index += size;
+        return offset;
     };
 
     if (m_context->is_compatibility())
     {
-        std::array buffer = {&m_matrix_buffers[m_frame_index]};
+        std::array buffer = {&m_matrix_buffers[frame_slot]};
         m_context->compatibility_set_constant_buffers(0,
                                                       buffer.size(),
                                                       buffer.data(),
@@ -962,23 +1050,27 @@ void RetroExampleApp::render()
     }
     else
     {
-        qhenki::gfx::Descriptor cbv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
+        const size_t cbv_off = place_gpu_descriptor(qhenki::gfx::Descriptor::BUFFER);
+        qhenki::gfx::Descriptor cbv_descriptor(&m_GPU_heap, cbv_off);
         THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                   m_matrix_descriptors[m_frame_index],
+                                                   m_matrix_descriptors[frame_slot],
                                                    cbv_descriptor));
         m_context->set_descriptor_table(&cmd_list, 0, cbv_descriptor);
-        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::BUFFER, false);
 
-        qhenki::gfx::Descriptor srv_descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
-        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+        const size_t tex_bytes = m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE);
+        const size_t srv1_b0 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+        THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
                                                    m_skybox_texture_descriptor,
-                                                   srv_descriptor));
-        m_context->set_descriptor_table(&cmd_list, 1, srv_descriptor);
-        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
+                                                   qhenki::gfx::Descriptor(&m_GPU_heap, srv1_b0)));
+        const size_t srv1_b1 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+        THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
+                                                   m_skybox_texture_descriptor,
+                                                   qhenki::gfx::Descriptor(&m_GPU_heap, srv1_b1)));
+        m_context->set_descriptor_table(&cmd_list, 1, qhenki::gfx::Descriptor(&m_GPU_heap, srv1_b0));
 
-        qhenki::gfx::Descriptor sampler_descriptor{.heap = &m_sampler_heap, .offset = 0};
-        m_context->set_descriptor_table(&cmd_list, 2, sampler_descriptor);
+        m_context->set_descriptor_table(&cmd_list, 2, m_sampler_descriptor);
     }
+
     auto stride_from_accessor = [](const int component_type, const int type)
     {
         const unsigned comp_size = component_type == TINYGLTF_PARAMETER_TYPE_FLOAT            ? 4u
@@ -990,15 +1082,15 @@ void RetroExampleApp::render()
     };
     auto vb_offset = [](const Mesh::AccessorBufferView& abv)
     {
-        return static_cast<unsigned>(abv.second.offset + abv.first.offset);
+        return abv.second.offset + abv.first.offset;
     };
     auto vb_length = [](const Mesh::AccessorBufferView& abv)
     {
-        return static_cast<unsigned>(abv.second.length);
+        return abv.second.length;
     };
     auto vb_stride = [&stride_from_accessor](const Mesh::AccessorBufferView& abv)
     {
-        return abv.second.stride != 0 ? static_cast<unsigned>(abv.second.stride)
+        return abv.second.stride != 0 ? abv.second.stride
                                       : stride_from_accessor(abv.first.component_type, abv.first.type);
     };
     const std::array skybox_vbs = {&m_skybox_buffer};
@@ -1066,6 +1158,8 @@ void RetroExampleApp::render()
     m_context->draw_indexed(
         &cmd_list, static_cast<unsigned>(m_bevel_cube_mesh.index.first.count), bevel_instance_count, 0, 0, 0);
 
+    m_context->end_render_pass(&cmd_list);
+
     qhenki::gfx::ImageBarrier rt_to_srv{
         .src_stage = qhenki::gfx::SyncStage::SYNC_RENDER_TARGET,
         .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
@@ -1082,7 +1176,7 @@ void RetroExampleApp::render()
         .clear_type = qhenki::gfx::RenderTarget::COLOR,
         .texture = &m_bloom_textures[m_starting_bloom_index].tex,
     };
-    m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target).data(), nullptr);
+    m_context->start_render_pass(&cmd_list, 1, &blit_target, nullptr);
     const unsigned bloom_w = m_bloom_textures.front().tex.desc.width;
     const unsigned bloom_h = m_bloom_textures.front().tex.desc.height;
     const D3D12_VIEWPORT bloom_viewport{
@@ -1114,31 +1208,42 @@ void RetroExampleApp::render()
     }
     else
     {
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
-        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+        const size_t tex_bytes = m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE);
+        const size_t lum_b0 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+        THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
                                                    m_offscreen_texture.srv_descriptor,
-                                                   descriptor));
-        m_context->set_descriptor_table(&cmd_list, 1, descriptor);
-        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
+                                                   qhenki::gfx::Descriptor(&m_GPU_heap, lum_b0)));
+        const size_t lum_b1 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+        THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
+                                                   m_offscreen_texture.srv_descriptor,
+                                                   qhenki::gfx::Descriptor(&m_GPU_heap, lum_b1)));
+        m_context->set_descriptor_table(&cmd_list, 1, qhenki::gfx::Descriptor(&m_GPU_heap, lum_b0));
     }
 
     m_context->draw(&cmd_list, 3, 0);
+
+    m_context->end_render_pass(&cmd_list);
 
     // Start blur passes
     std::array<size_t, BLOOM_TEXTURE_COUNT> blur_srv_start{};
     if (!m_context->is_compatibility())
     {
         // TODO: Implementation will merge descriptor copies
+        const size_t tex_bytes = m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE);
         for (unsigned i = 0; i < m_bloom_textures.size(); i++)
         {
-            qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = gpu_descriptor_heap_index};
-            blur_srv_start[i] = gpu_descriptor_heap_index;
-            THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+            const size_t bb0 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+            blur_srv_start[i] = bb0;
+            THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
                                                        m_bloom_textures[i].srv_descriptor,
-                                                       descriptor));
-            increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
+                                                       qhenki::gfx::Descriptor(&m_GPU_heap, bb0)));
+            const size_t bb1 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+            THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
+                                                       m_bloom_textures[i].srv_descriptor,
+                                                       qhenki::gfx::Descriptor(&m_GPU_heap, bb1)));
         }
     }
+
     constexpr unsigned BLUR_PASSES = 4;
     const unsigned iterations = BLUR_PASSES * 2;
     for (unsigned i = 0; i <= iterations; i++)
@@ -1176,9 +1281,9 @@ void RetroExampleApp::render()
             .src_layout = qhenki::gfx::Layout::PRESENT,
             .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
         };
-        m_context->set_barrier_resource(1, &swap_barriers[2], m_swapchain, m_frame_index);
+        m_context->set_barrier_resource(1, &swap_barriers[2], m_swapchain);
 
-        m_starting_bloom_index = (m_starting_bloom_index + 1) % m_bloom_textures.size();
+        m_starting_bloom_index = 1 - m_starting_bloom_index;
 
         if (i == iterations)
         {
@@ -1192,7 +1297,7 @@ void RetroExampleApp::render()
             .clear_type = qhenki::gfx::RenderTarget::COLOR,
             .texture = &bloom1.tex,
         };
-        m_context->start_render_pass(&cmd_list, 1, qhenki::util::ptr_array(blit_target_blur).data(), nullptr);
+        m_context->start_render_pass(&cmd_list, 1, &blit_target_blur, nullptr);
         m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
         m_context->set_scissor_rects(&cmd_list, 1, &bloom_scissor);
 
@@ -1211,20 +1316,18 @@ void RetroExampleApp::render()
         }
         else
         {
-            m_context->set_descriptor_table(&cmd_list,
-                                            1,
-                                            qhenki::gfx::Descriptor{
-                                                .heap = &m_GPU_heap,
-                                                .offset = blur_srv_start[1 - m_starting_bloom_index],
-                                            });
+            m_context->set_descriptor_table(
+                &cmd_list, 1, qhenki::gfx::Descriptor(&m_GPU_heap, blur_srv_start[1 - m_starting_bloom_index]));
         }
 
         m_context->draw(&cmd_list, 3, 0);
+
+        m_context->end_render_pass(&cmd_list);
     }
 
     // Composite image into swapchain backbuffer
     std::array clear_values = {0.f, 0.f, 0.f, 1.f};
-    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr);
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
     m_context->bind_pipeline(&cmd_list, m_blit_copy_pipeline);
@@ -1240,25 +1343,25 @@ void RetroExampleApp::render()
     }
     else
     {
-        auto composite_start = gpu_descriptor_heap_index;
-        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+        const size_t tex_bytes = m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE);
+        const size_t composite_b0 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+        THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
                                                    m_offscreen_texture.srv_descriptor,
-                                                   qhenki::gfx::Descriptor{.heap = &m_GPU_heap,
-                                                                           .offset = gpu_descriptor_heap_index}));
-        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
-        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
+                                                   qhenki::gfx::Descriptor(&m_GPU_heap, composite_b0)));
+        const size_t composite_b1 = place_gpu_descriptor(qhenki::gfx::Descriptor::TEXTURE);
+        THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
                                                    final_bloom.srv_descriptor,
-                                                   qhenki::gfx::Descriptor{.heap = &m_GPU_heap,
-                                                                           .offset = gpu_descriptor_heap_index}));
-        increment_gpu_descriptor_heap_index(qhenki::gfx::Descriptor::TEXTURE, false);
-        m_context->set_descriptor_table(&cmd_list,
-                                        1,
-                                        qhenki::gfx::Descriptor{.heap = &m_GPU_heap, .offset = composite_start});
+                                                   qhenki::gfx::Descriptor(&m_GPU_heap, composite_b1)));
+        m_context->set_descriptor_table(&cmd_list, 1, qhenki::gfx::Descriptor(&m_GPU_heap, composite_b0));
+        m_context->set_descriptor_table(&cmd_list, 2, m_sampler_descriptor);
     }
+
     m_context->draw(&cmd_list, 3, 0);
 
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);
+
+    m_context->end_render_pass(&cmd_list);
 
     std::array<qhenki::gfx::ImageBarrier, 2> end_barriers;
     // RT -> Present for swapchain
@@ -1270,7 +1373,7 @@ void RetroExampleApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &end_barriers[0], m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &end_barriers[0], m_swapchain);
     // Offscreen back to RT
     end_barriers[1] = {
         .src_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
@@ -1285,53 +1388,56 @@ void RetroExampleApp::render()
 
     m_context->close_command_list(&cmd_list);
 
-    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = m_fence_frame_ready_val[frame_slot];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
         .signal_fence_count = 1,
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
+        .wait_swapchain = true,
+        .signal_swapchain = true,
     };
     m_context->submit_command_lists(info, qhenki::gfx::QueueType::GRAPHICS);
 
-    m_context->present(m_swapchain, 0, nullptr, m_frame_index);
+    THROW_IF_FALSE(m_context->present(m_swapchain));
 
-    m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
-
-    auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
+    const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    auto next_fence_value = m_fence_frame_ready_val[next_frame_slot];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
-        qhenki::gfx::WaitInfo wait_info{.wait_all = true,
-                                        .count = 1,
-                                        .fences = &m_fence_frame_ready,
-                                        .values = &next_fence_value,
-                                        .timeout = INFINITE};
+        qhenki::gfx::WaitInfo wait_info{
+            .wait_all = true,
+            .count = 1,
+            .fences = &m_fence_frame_ready,
+            .values = &next_fence_value,
+        };
         m_context->wait_fences(wait_info);
     }
-    m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
+    m_fence_frame_ready_val[next_frame_slot] = current_fence_value + 1;
 }
 
 void RetroExampleApp::resize(const unsigned width, const unsigned height)
 {
     m_context->wait_idle(qhenki::gfx::QueueType::GRAPHICS);
     const qhenki::gfx::TextureDesc depth_desc{
-        .width = static_cast<uint64_t>(width),
+        .width = width,
         .height = height,
         .format = m_depth_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
+        .usage = qhenki::gfx::TextureDesc::DEPTH_STENCIL,
         .clear_depth_value = {.depth = 1.f, .stencil = 0},
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));
 
     const qhenki::gfx::TextureDesc offscreen_rt_desc{
-        .width = static_cast<uint64_t>(width),
+        .width = width,
         .height = height,
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
-        .is_render_target = true,
+        .usage = qhenki::gfx::TextureDesc::RENDER_TARGET | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
         .clear_color_value = {1.f, 1.f, 1.f, 0.f},
     };
     THROW_IF_FALSE(m_context->create_texture(offscreen_rt_desc, &m_offscreen_texture.tex, "Offscreen RT"));
@@ -1340,12 +1446,12 @@ void RetroExampleApp::resize(const unsigned width, const unsigned height)
                                                             &m_offscreen_texture.srv_descriptor));
 
     qhenki::gfx::TextureDesc blit_rt_desc{
-        .width = static_cast<uint64_t>(width / 4),
+        .width = width / 4,
         .height = height / 4,
         .format = m_offscreen_rt_format,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::RENDER_TARGET,
-        .is_render_target = true,
+        .usage = qhenki::gfx::TextureDesc::RENDER_TARGET | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
         .clear_color_value = {0.f, 0.f, 0.f, 0.f},
     };
     for (unsigned i = 0; i < m_bloom_textures.size(); i++)

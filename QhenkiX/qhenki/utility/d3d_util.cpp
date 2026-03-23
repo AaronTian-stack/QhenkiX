@@ -43,7 +43,6 @@ namespace qhenki::gfx
     X(ACCESS_DEPTH_STENCIL_WRITE, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE)                                         \
     X(ACCESS_DEPTH_STENCIL_READ, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ)                                           \
     X(ACCESS_SHADER_RESOURCE, D3D12_BARRIER_ACCESS_SHADER_RESOURCE)                                                 \
-    X(ACCESS_STREAM_OUTPUT, D3D12_BARRIER_ACCESS_STREAM_OUTPUT)                                                     \
     X(ACCESS_INDIRECT_ARGUMENT, D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT)                                             \
     X(ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_COPY_DEST)                                                             \
     X(ACCESS_COPY_SOURCE, D3D12_BARRIER_ACCESS_COPY_SOURCE)                                                         \
@@ -209,6 +208,7 @@ D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(const PrimitiveTopology topology
     {
         PRIMITIVE_TOPOLOGY_MAP(MAP_TOPOLOGY)
     default:
+        assert(false);
         return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     }
 
@@ -241,21 +241,17 @@ D3D12_BARRIER_ACCESS access_flags(const AccessFlags access)
 #undef MAP_ACCESS
 }
 
-D3D12_BARRIER_LAYOUT layout(Layout layout)
+D3D12_BARRIER_LAYOUT layout(const Layout layout)
 {
 #define MAP_LAYOUT(our, d3d) \
     case Layout::our:        \
-        state = (d3d);       \
-        break;
+        return d3d;
 
-    D3D12_BARRIER_LAYOUT state = {};
     switch (layout)
     {
         LAYOUT_MAP(MAP_LAYOUT)
-    default:
-        throw std::runtime_error("D3DHelper: Invalid layout");
     }
-    return state;
+    return D3D12_BARRIER_LAYOUT_UNDEFINED;
 
 #undef MAP_LAYOUT
 }

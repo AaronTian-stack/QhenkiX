@@ -10,11 +10,10 @@ enum class BufferUsage : uint8_t
     VERTEX = BIT(0),
     INDEX = BIT(1),
     CONSTANT = BIT(2),
-    SHADER = BIT(3),
-    UAV = BIT(4),
-    INDIRECT = BIT(5),
-    COPY_SRC = BIT(6),
-    COPY_DST = BIT(7),
+    UAV = BIT(3),
+    INDIRECT = BIT(4),
+    COPY_SRC = BIT(5),
+    COPY_DST = BIT(6),
 };
 
 constexpr BufferUsage operator|(BufferUsage lhs, BufferUsage rhs)

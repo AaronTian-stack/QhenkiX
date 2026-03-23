@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 
@@ -14,6 +14,5 @@ struct WaitInfo
     unsigned count;
     Fence* fences;
     uint64_t* values;
-    uint64_t timeout = INFINITE;
 };
 } // namespace qhenki::gfx

@@ -117,10 +117,36 @@ if(QHENKIX_PREBUILT_LIB)
         qhenkix_add_dependency_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
     endif()
 
+    set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+    set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+    qhenkix_add_dependency_subdirectory(QhenkiX/external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
+
+    set(VULKAN_HEADERS_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/Vulkan-Headers" CACHE PATH "" FORCE)
+    set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
+    set(VOLK_HEADERS_ONLY OFF CACHE BOOL "" FORCE)
+    set(VOLK_PULL_IN_VULKAN ON CACHE BOOL "" FORCE)
+    qhenkix_add_dependency_subdirectory(QhenkiX/external/volk ${CMAKE_BINARY_DIR}/volk)
+
+    set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
+    set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
+    qhenkix_add_dependency_subdirectory(QhenkiX/external/vk-bootstrap ${CMAKE_BINARY_DIR}/vk-bootstrap)
+
+    set(SPIRV_CROSS_STATIC ON CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
+    qhenkix_add_dependency_subdirectory(QhenkiX/external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
+
     add_library(QhenkiX STATIC IMPORTED GLOBAL)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
     target_include_directories(QhenkiX INTERFACE ${QHENKIX_INCLUDE_DIRS})
-    target_link_libraries(QhenkiX INTERFACE DirectXTex DirectX-Guids SDL3::SDL3)
+    target_link_libraries(QhenkiX INTERFACE
+        DirectXTex
+        DirectX-Guids
+        SDL3::SDL3
+        vk-bootstrap::vk-bootstrap
+        spirv-cross-core
+        spirv-cross-glsl
+    )
     if(WIN32)
         target_link_libraries(QhenkiX INTERFACE ${QHENKIX_SYSTEM_LIBS})
     endif()

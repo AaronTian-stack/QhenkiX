@@ -23,7 +23,6 @@ struct RasterizerDesc
     bool depth_clip_enable = true;
     // Always uses alpha MSAA
     // No AA lines
-    // No forced Sample Count
     // TODO: Conservative Rasterization?
 };
 
@@ -46,14 +45,16 @@ struct InputLayoutDesc
     D3D12_INPUT_ELEMENT_DESC* elements;
 };
 
+constexpr unsigned MAX_RENDER_TARGETS = 8u;
+
 struct GraphicsPipelineDesc
 {
     std::optional<D3D12_BLEND_DESC> blend_desc;
     std::optional<DepthStencilDesc> depth_stencil_state;
-    std::array<DXGI_FORMAT, 8> rtv_formats{};
+    std::array<DXGI_FORMAT, MAX_RENDER_TARGETS> rtv_formats{};
     std::optional<RasterizerDesc> rasterizer_state;
     std::optional<InputLayoutDesc> input_layout;
-    std::optional<DXGI_SAMPLE_DESC> multisample_desc;
+    unsigned sample_count = 1;
     unsigned num_render_targets = 0;
     DXGI_FORMAT dsv_format{};
     PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
@@ -69,19 +70,26 @@ struct LayoutBinding
 {
     uint32_t binding;
     uint32_t count;
-    D3D12_DESCRIPTOR_RANGE_TYPE type;
-    // TODO: stage flags
+    enum class RangeType : uint8_t
+    {
+        SRV_BUFFER,
+        SRV_TEXTURE,
+        UAV_BUFFER,
+        UAV_TEXTURE,
+        CBV,
+        SAMPLER,
+    } type;
 };
 
 struct PushRange
 {
     uint32_t size;
-    uint32_t binding; // Not relevant in Vulkan
-                      // TODO: stage flags
+    uint32_t binding;
+    uint32_t space;
 };
 
 constexpr auto INFINITE_DESCRIPTORS = 0xFFFFFFFF;
-constexpr size_t MAX_SPACES = 6; // 6 is arbitrary, defined based off Vulkan max descriptor sets
+constexpr size_t MAX_SPACES = 7; // Defined based off Vulkan max descriptor sets
 
 struct PipelineLayoutDesc
 {

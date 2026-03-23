@@ -252,13 +252,13 @@ qhenki::gfx::Buffer copy_materials(GLTFModel* model, qhenki::gfx::Context& conte
     qhenki::gfx::Buffer staging_buffer;
     qhenki::gfx::BufferDesc desc{.size = sizeof(GLTFModel::Material) * model->materials.size(),
                                  .stride = sizeof(GLTFModel::Material),
-                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC | qhenki::gfx::BufferUsage::SHADER,
+                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 
     };
     THROW_IF_FALSE(context.create_buffer(desc, model->materials.data(), &staging_buffer));
 
-    desc.usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::SHADER;
+    desc.usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::UAV;
     desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(context.create_buffer(desc, nullptr, &model->material_buffer));
 
@@ -347,10 +347,10 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
     }
     qhenki::gfx::BufferDesc desc{.size = sizeof(GLTFModel::Texture) * model->textures.size(),
                                  .stride = sizeof(GLTFModel::Texture),
-                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC | qhenki::gfx::BufferUsage::SHADER,
+                                 .usage = qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     context.create_buffer(desc, model->textures.data(), &staging_buffers[0]);
-    desc.usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::SHADER;
+    desc.usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::UAV;
     desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     context.create_buffer(desc, nullptr, &model->texture_buffer);
     context.copy_buffer(cmd_list, staging_buffers[0], 0, &model->texture_buffer, 0, desc.size);
@@ -366,13 +366,14 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
         assert(tiny_image.bits == 8);      // Assume 8 bits per channel
         model->images.emplace_back();
         model->images.back().desc = {
-            .width = static_cast<uint64_t>(tiny_image.width),
+            .width = static_cast<uint32_t>(tiny_image.width),
             .height = static_cast<uint32_t>(tiny_image.height),
             .depth_or_array_size = 1,             // glTF images are 2D
             .mip_levels = 1,                      // TODO: generate mip maps in compute shader
             .format = DXGI_FORMAT_R8G8B8A8_UNORM, // From above assumptions
             .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
             .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+            .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
         };
         context.create_texture(model->images.back().desc, &model->images.back());
         // No custom image loading just use the default stb_image implementation

@@ -16,6 +16,10 @@ qhenkix_require_submodule("external/imgui" "imgui.cpp")
 qhenkix_require_submodule("external/DirectX-Headers" "CMakeLists.txt")
 qhenkix_require_submodule("external/DirectXTex" "CMakeLists.txt")
 qhenkix_require_submodule("external/SDL" "CMakeLists.txt")
+qhenkix_require_submodule("external/Vulkan-Headers" "CMakeLists.txt")
+qhenkix_require_submodule("external/volk" "CMakeLists.txt")
+qhenkix_require_submodule("external/vk-bootstrap" "CMakeLists.txt")
+qhenkix_require_submodule("external/SPIRV-Cross" "CMakeLists.txt")
 
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
 
@@ -30,6 +34,7 @@ set(IMGUI_SOURCES
     "${IMGUI_DIR}/backends/imgui_impl_dx11.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_dx12.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp"
 )
 set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/application.cpp"
@@ -44,6 +49,9 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_shader.cpp"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.cpp"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.cpp"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.cpp"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.cpp"
 
@@ -51,6 +59,10 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.cpp"
+
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.cpp"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.cpp"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_pool.cpp"
 
     "${QHENKIX_DIR}/input/input_manager.cpp"
 
@@ -60,20 +72,25 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/memory/arena.cpp"
 
     "${QHENKIX_DIR}/utility/d3d_util.cpp"
-    "${QHENKIX_DIR}/utility/file_util.cpp"  
+    "${QHENKIX_DIR}/utility/file_util.cpp"
+    "${QHENKIX_DIR}/utility/vulkan_util.cpp"  
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12DescriptorHelpers/RenderTargetHelper.cpp"
+
+    "${QHENKIX_DIR}/graphics/shared/descriptor_flush.cpp"
 )
 
 set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_context.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_heap.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_shader.h"
     "${QHENKIX_DIR}/graphics/d3d11/d3d11_texture.h"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.h"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.h"
+    "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.h"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
     "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
 
@@ -85,6 +102,18 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
     "${QHENKIX_DIR}/utility/d3d_util.h"
+
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_pool.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_root_signature.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_shader.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_pipeline.h"
+    "${QHENKIX_DIR}/utility/vulkan_util.h"
+
+    "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"
 )
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
@@ -116,7 +145,7 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/RHI/command_pool.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/context.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/descriptor_heap.h"
-    "${QHENKIX_PUBLIC_DIR}/RHI/descriptor_table.h"
+    "${QHENKIX_PUBLIC_DIR}/RHI/descriptor.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/enums.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/pipeline.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/queue.h"
@@ -172,6 +201,29 @@ target_link_libraries(${PROJECT_NAME} PUBLIC DirectX-Guids)
 
 qhenkix_add_dependency_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
 target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
+
+set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
+
+set(VULKAN_HEADERS_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/Vulkan-Headers" CACHE PATH "" FORCE)
+set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
+set(VOLK_HEADERS_ONLY OFF CACHE BOOL "" FORCE)
+set(VOLK_PULL_IN_VULKAN ON CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/volk ${CMAKE_BINARY_DIR}/volk)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE IMGUI_IMPL_VULKAN_USE_VOLK)
+
+set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
+set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/vk-bootstrap ${CMAKE_BINARY_DIR}/vk-bootstrap)
+target_link_libraries(${PROJECT_NAME} PUBLIC vk-bootstrap::vk-bootstrap)
+
+set(SPIRV_CROSS_STATIC ON CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
+target_link_libraries(${PROJECT_NAME} PUBLIC spirv-cross-core spirv-cross-glsl)
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)

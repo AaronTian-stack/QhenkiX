@@ -9,9 +9,11 @@
 #include <DirectXMath.h>
 #include <DirectXTex.h>
 
-#include "d3d11_heap.h"
+#include "d3d11_descriptor_heap.h"
 #include "d3d11_pipeline.h"
+#include "d3d11_sampler_heap.h"
 #include "d3d11_shader.h"
+#include "d3d11_srv_uav_heap.h"
 #include "d3d11_texture.h"
 #include "qhenki/application.h"
 #include "qhenki/utility/d3d_util.h"
@@ -48,16 +50,23 @@ D3D11Texture* to_internal(const Texture& ext)
     return d3d11_texture;
 }
 
-D3D11_SRV_UAV_Heap* to_internal_srv_uav(const DescriptorHeap& ext)
+D3D11DescriptorHeap* to_internal(const DescriptorHeap& ext)
 {
-    const auto d3d11_heap = static_cast<D3D11_SRV_UAV_Heap*>(ext.internal_state.get());
+    const auto d3d11_heap = static_cast<D3D11DescriptorHeap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
 
-D3D11_Sampler_Heap* to_internal_sampler(const DescriptorHeap& ext)
+D3D11SRVUAVHeap* to_internal_srv_uav(const DescriptorHeap& ext)
 {
-    const auto d3d11_heap = static_cast<D3D11_Sampler_Heap*>(ext.internal_state.get());
+    const auto d3d11_heap = static_cast<D3D11SRVUAVHeap*>(ext.internal_state.get());
+    assert(d3d11_heap);
+    return d3d11_heap;
+}
+
+D3D11SamplerHeap* to_internal_sampler(const DescriptorHeap& ext)
+{
+    const auto d3d11_heap = static_cast<D3D11SamplerHeap*>(ext.internal_state.get());
     assert(d3d11_heap);
     return d3d11_heap;
 }
@@ -237,9 +246,7 @@ bool create_swapchain_resources(ID3D11Device* device, IDXGISwapChain1* swapchain
 }
 } // namespace
 
-bool D3D11Context::create_swapchain(const DisplayWindow& window,
-                                    const SwapchainDesc& swapchain_desc,
-                                    unsigned* const frame_index)
+bool D3D11Context::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
 {
     if (swapchain_desc.tearing && !m_allow_tearing)
     {
@@ -247,7 +254,6 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
         return false;
     }
 
-    *frame_index = 0;
     UINT swapchain_flags = 0;
     if (swapchain_desc.tearing && m_allow_tearing)
     {
@@ -286,10 +292,7 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window,
     return true;
 }
 
-bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
-                                    const int width,
-                                    const int height,
-                                    unsigned& frame_index)
+bool D3D11Context::resize_swapchain(Swapchain* const swapchain, const int width, const int height)
 {
     m_device_context->Flush();
 
@@ -308,10 +311,7 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain,
     return create_swapchain_resources(m_device.Get(), m_swapchain.Get(), m_swapchain_view.ReleaseAndGetAddressOf());
 }
 
-bool D3D11Context::present(const Swapchain& swapchain,
-                           unsigned fence_count,
-                           Fence* wait_fences,
-                           unsigned swapchain_index)
+bool D3D11Context::present(const Swapchain& swapchain)
 {
     UINT sync_interval = 1;
     UINT flags = 0;
@@ -324,15 +324,20 @@ bool D3D11Context::present(const Swapchain& swapchain,
 
     if (SUCCEEDED(m_swapchain->Present(sync_interval, flags)))
     {
-        ++m_frame_index;
+        ++m_frame_count;
         return true;
     }
     return false;
 }
 
-unsigned D3D11Context::get_swapchain_frame_index(const Swapchain& swapchain)
+bool D3D11Context::acquire_swapchain_image()
 {
-    return m_frame_index % Application::m_frames_in_flight;
+    return true;
+}
+
+unsigned D3D11Context::get_frame_slot(const unsigned slot_count) const
+{
+    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
 }
 
 bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
@@ -477,23 +482,32 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     switch (desc.type)
     {
     case DescriptorHeapDesc::Type::CBV_SRV_UAV:
-        heap->internal_state = mkS<D3D11_SRV_UAV_Heap>();
+        heap->internal_state = mkS<D3D11SRVUAVHeap>();
         break;
     case DescriptorHeapDesc::Type::SAMPLER:
-        heap->internal_state = mkS<D3D11_Sampler_Heap>();
+        heap->internal_state = mkS<D3D11SamplerHeap>();
         break;
     default:
-        OutputDebugStringA("Qhenki D3D11 ERROR: Unsupported descriptor heap type\n");
         return false;
     }
 
-    // TODO: Force fixed size for slightly stricter match with D3D12?
+    const auto d3d11_heap = to_internal(*heap);
+
+    if (!d3d11_heap->create(desc))
+    {
+        heap->internal_state.reset();
+        return false;
+    }
+
+    heap->desc = desc;
+
     return true;
 }
 
 size_t D3D11Context::get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const
 {
-    return 0;
+    // TODO: Return D3D12 limits?
+    return std::numeric_limits<size_t>::max();
 }
 
 void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
@@ -517,12 +531,18 @@ bool D3D11Context::copy_descriptors(size_t bytes, const Descriptor& src, const D
 
 bool D3D11Context::free_descriptor(Descriptor* descriptor)
 {
+    // Could be CBV which has nothing so check heap
+    if (descriptor->heap)
+    {
+        const auto heap = to_internal(*descriptor->heap);
+        heap->deallocate(descriptor->offset);
+    }
     return true;
 }
 
 size_t D3D11Context::get_descriptor_size(Descriptor::Type type) const
 {
-    return 0;
+    return 1;
 }
 
 size_t D3D11Context::get_descriptor_alignment(Descriptor::Type type) const
@@ -532,28 +552,20 @@ size_t D3D11Context::get_descriptor_alignment(Descriptor::Type type) const
 
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
-    assert(buffer);
-    if (desc.usage & BufferUsage::CONSTANT)
-    {
-        if (desc.size > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
-        {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
-            return false;
-        }
-        if (desc.size % 16 != 0)
-        {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Constant buffer size is not aligned to 16 bytes\n");
-            return false;
-        }
-    }
-
-    assert(desc.size <= UINT_MAX);
-    assert(desc.stride <= UINT_MAX);
-
     D3D11_BUFFER_DESC buffer_info{
         .ByteWidth = static_cast<UINT>(desc.size),
         .StructureByteStride = static_cast<UINT>(desc.stride),
     };
+
+    if (desc.usage & BufferUsage::CONSTANT)
+    {
+        buffer_info.ByteWidth = util::align_u(buffer_info.ByteWidth, 16u);
+        if (buffer_info.ByteWidth > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
+            return false;
+        }
+    }
 
     if (desc.usage & BufferUsage::VERTEX)
     {
@@ -567,23 +579,48 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         buffer_info.BindFlags |= D3D11_BIND_CONSTANT_BUFFER;
     }
-    if (desc.usage & BufferUsage::SHADER)
-    {
-        buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
-        buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-    }
     if (desc.usage & BufferUsage::UAV)
     {
         buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     }
     if (desc.usage & BufferUsage::INDIRECT)
     {
-        buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: check this
+        buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: Check this
     }
+
+    if (buffer_info.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+    {
+        buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+        if (buffer_info.StructureByteStride > 0)
+        {
+            buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+        }
+        else
+        {
+            buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+        }
+    }
+
     if (desc.visibility & CPU_SEQUENTIAL)
     {
-        buffer_info.Usage = D3D11_USAGE_DYNAMIC;
-        buffer_info.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        buffer_info.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+        if (buffer_info.BindFlags == 0)
+        {
+            buffer_info.Usage = D3D11_USAGE_STAGING;
+        }
+        else if (buffer_info.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+        {
+            // DYNAMIC buffers cannot be UAV bound
+            // This prevents staging buffers from being used directly
+            // TODO: Revisit this
+            buffer_info.Usage = D3D11_USAGE_DEFAULT;
+            buffer_info.CPUAccessFlags = 0;
+        }
+        else
+        {
+            buffer_info.Usage = D3D11_USAGE_DYNAMIC;
+            buffer_info.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        }
     }
     else
     {
@@ -621,46 +658,56 @@ bool D3D11Context::create_descriptor_constant_view(const Buffer& buffer,
 
 bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
-    assert(heap);
-    assert(descriptor);
     const auto buffer_d3d11 = to_internal(buffer);
     const auto heap_d3d11 = to_internal_srv_uav(*heap);
 
-    const auto create_new_descriptor = descriptor->offset == CREATE_NEW_DESCRIPTOR;
-
-    const auto offset = create_new_descriptor ? heap_d3d11->shader_resource_views.size() : descriptor->offset;
-
-    if (create_new_descriptor)
+    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {
-        heap_d3d11->shader_resource_views.push_back({});
+        if (!heap_d3d11->allocate(&descriptor->offset))
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to allocate descriptor from heap\n");
+            return false;
+        }
     }
 
+    const auto is_raw = buffer.desc.stride == 0;
+
     ComPtr<ID3D11ShaderResourceView> view;
-    const D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{
-        .Format = DXGI_FORMAT_UNKNOWN,
-        .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
-        .Buffer =
-            {
-                .FirstElement = 0,
-                .NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
-            },
-    };
+    D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+    if (is_raw)
+    {
+        srv_desc = {
+            .Format = DXGI_FORMAT_R32_TYPELESS,
+            .ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX,
+            .BufferEx =
+                {
+                    .FirstElement = 0,
+                    .NumElements = static_cast<UINT>(buffer.desc.size / 4u),
+                    .Flags = D3D11_BUFFEREX_SRV_FLAG_RAW,
+                },
+        };
+    }
+    else
+    {
+        srv_desc = {
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
+            .Buffer =
+                {
+                    .FirstElement = 0,
+                    .NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
+                },
+        };
+    }
     if (FAILED(m_device->CreateShaderResourceView(buffer_d3d11->Get(), &srv_desc, view.ReleaseAndGetAddressOf())))
     {
-        if (create_new_descriptor)
-        {
-            heap_d3d11->shader_resource_views.pop_back();
-        }
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
         return false;
     }
-    heap_d3d11->shader_resource_views[offset] = std::move(view);
 
-    *descriptor = Descriptor{
-        .heap = heap,
-        .offset = offset,
-        .type = Descriptor::BUFFER,
-    };
+    heap_d3d11->place_srv(descriptor->offset, std::move(view));
+
+    descriptor->heap = heap;
 
     return true;
 }
@@ -679,19 +726,12 @@ void D3D11Context::copy_buffer(CommandList* cmd_list,
     const auto src_d3d11 = to_internal(src);
     const auto dst_d3d11 = to_internal(*dst);
 
-    // Assume 1D for now
+    // 1D buffer
     const auto box = CD3D11_BOX(static_cast<long>(src_offset), 0, 0, static_cast<long>(src_offset + bytes), 1, 1);
 
-    // Copy entire buffer for now
-    // TODO: per subresource
-    m_device_context->CopySubresourceRegion(dst_d3d11->Get(),
-                                            0, // Dst subresource
-                                            static_cast<long>(dst_offset),
-                                            0,
-                                            0,
-                                            src_d3d11->Get(),
-                                            0, // Src subresource
-                                            &box);
+    // Buffers don't have subresources
+    m_device_context->CopySubresourceRegion(
+        dst_d3d11->Get(), 0, static_cast<long>(dst_offset), 0, 0, src_d3d11->Get(), 0, &box);
 }
 
 bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
@@ -699,20 +739,40 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     assert(texture);
     auto texture_d3d11 = mkS<D3D11Texture>();
 
-    UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
-    if (is_depth_stencil_format(desc.format))
+    UINT bind_flags = 0;
+    if (desc.usage & TextureDesc::SHADER_RESOURCE)
     {
-        bind_flags = D3D11_BIND_DEPTH_STENCIL; // Overwrite
+        bind_flags |= D3D11_BIND_SHADER_RESOURCE;
     }
-    if (desc.is_render_target)
+    if (desc.usage & TextureDesc::RENDER_TARGET)
     {
         bind_flags |= D3D11_BIND_RENDER_TARGET;
     }
+    if (desc.usage & TextureDesc::UNORDERED_ACCESS)
+    {
+        bind_flags |= D3D11_BIND_UNORDERED_ACCESS;
+    }
+    if (desc.usage & TextureDesc::DEPTH_STENCIL)
+    {
+        bind_flags |= D3D11_BIND_DEPTH_STENCIL;
+    }
+    if (desc.usage & TextureDesc::VIDEO_ENCODE)
+    {
+        // VIDEO_ENCODE Requires 11.1
+        return false;
+    }
+    if (desc.usage & TextureDesc::VIDEO_DECODE)
+    {
+        // D3D11_BIND_DECODER Requires 11.1
+        return false;
+    }
+
+    assert(bind_flags);
 
     if (desc.dimension == TextureDimension::TEXTURE_1D)
     {
         const D3D11_TEXTURE1D_DESC texture_desc{
-            .Width = static_cast<UINT>(desc.width),
+            .Width = desc.width,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
             .Format = desc.format,
@@ -734,9 +794,18 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
     }
     else if (desc.dimension == TextureDimension::TEXTURE_2D)
     {
+        UINT misc_flags = 0;
+        if (desc.is_cube)
+        {
+            // Cubemaps are 2D arrays with 6 faces per cube
+            assert(desc.width == desc.height);
+            assert(desc.depth_or_array_size % 6 == 0);
+            misc_flags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
+        }
+
         const D3D11_TEXTURE2D_DESC texture_desc{
-            .Width = static_cast<UINT>(desc.width),
-            .Height = static_cast<UINT>(desc.height),
+            .Width = desc.width,
+            .Height = desc.height,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
             .Format = desc.format,
@@ -744,7 +813,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
             .CPUAccessFlags = 0,
-            .MiscFlags = 0, // TODO: cubemaps?
+            .MiscFlags = misc_flags,
         };
 
         texture_d3d11->texture.emplace<ComPtr<ID3D11Texture2D>>();
@@ -791,16 +860,16 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
                                                  DescriptorHeap* const heap,
                                                  Descriptor* const descriptor)
 {
-    assert(descriptor);
     const auto texture_d3d11 = to_internal(texture);
     const auto heap_d3d11 = to_internal_srv_uav(*heap);
 
-    const auto create_new_descriptor = descriptor->offset == CREATE_NEW_DESCRIPTOR;
-
-    const size_t offset = create_new_descriptor ? heap_d3d11->shader_resource_views.size() : descriptor->offset;
-    if (create_new_descriptor)
+    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
     {
-        heap_d3d11->shader_resource_views.push_back({});
+        if (!heap_d3d11->allocate(&descriptor->offset))
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to allocate descriptor from heap\n");
+            return false;
+        }
     }
 
     const auto resource = get_texture_resource(*texture_d3d11);
@@ -809,20 +878,13 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     ComPtr<ID3D11ShaderResourceView> view;
     if (FAILED(m_device->CreateShaderResourceView(resource, nullptr, view.ReleaseAndGetAddressOf())))
     {
-        if (create_new_descriptor)
-        {
-            heap_d3d11->shader_resource_views.pop_back();
-        }
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create texture SRV\n");
         return false;
     }
-    heap_d3d11->shader_resource_views[offset] = std::move(view);
 
-    *descriptor = Descriptor{
-        .heap = heap,
-        .offset = offset,
-        .type = Descriptor::TEXTURE,
-    };
+    heap_d3d11->place_srv(descriptor->offset, std::move(view));
+
+    descriptor->heap = heap;
 
     return true;
 }
@@ -847,7 +909,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
     {
         const UINT32 mip = subresource % texture->desc.mip_levels;
 
-        const UINT32 mip_width = std::max(1u, static_cast<UINT32>(texture->desc.width) >> mip);
+        const UINT32 mip_width = std::max(1u, texture->desc.width >> mip);
         const UINT32 mip_height = std::max(1u, texture->desc.height >> mip);
         const UINT32 mip_depth = texture->desc.dimension == TextureDimension::TEXTURE_3D
                                    ? std::max<UINT32>(1u, texture->desc.depth_or_array_size >> mip)
@@ -902,13 +964,12 @@ bool D3D11Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
     }
 
     auto d3d11_heap = to_internal_sampler(*heap);
-    d3d11_heap->push_back(std::move(sampler_state));
 
-    *descriptor = {
-        .heap = heap,
-        .offset = d3d11_heap->size() - 1,
-        .type = Descriptor::SAMPLER,
-    };
+    d3d11_heap->allocate(&descriptor->offset);
+
+    d3d11_heap->place_sampler(descriptor->offset, std::move(sampler_state));
+
+    descriptor->heap = heap;
 
     return true;
 }
@@ -933,34 +994,46 @@ void D3D11Context::unmap_buffer(const Buffer& buffer)
     m_device_context->Unmap(buffer_d3d11->Get(), 0);
 }
 
-void D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
+bool D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
                                        const unsigned start_slot,
                                        const unsigned buffer_count,
                                        const Buffer* const* buffers,
-                                       const unsigned* sizes,
-                                       const unsigned* const strides,
-                                       const unsigned* const offsets)
+                                       const uint64_t* sizes,
+                                       const uint64_t* strides,
+                                       const uint64_t* offsets)
 {
-    assert(buffer_count <= D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
-    std::array<ID3D11Buffer*, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11{};
+    if (buffer_count > D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT)
+    {
+        return false;
+    }
+    std::array<ID3D11Buffer*, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_d3d11;
+    std::array<UINT, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_strides{};
+    std::array<UINT, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> buffer_offsets{};
     for (unsigned int i = 0; i < buffer_count; i++)
     {
         const auto buffer = to_internal(*buffers[i]);
         buffer_d3d11[i] = buffer->Get();
+        assert(strides[i] <= std::numeric_limits<UINT>::max());
+        assert(offsets[i] <= std::numeric_limits<UINT>::max());
+        buffer_strides[i] = strides[i];
+        buffer_offsets[i] = offsets[i];
     }
-    m_device_context->IASetVertexBuffers(start_slot, buffer_count, buffer_d3d11.data(), strides, offsets);
+    m_device_context->IASetVertexBuffers(
+        start_slot, buffer_count, buffer_d3d11.data(), buffer_strides.data(), buffer_offsets.data());
+    return true;
 }
 
 void D3D11Context::bind_index_buffer(CommandList* cmd_list,
                                      const Buffer& buffer,
                                      const IndexType format,
-                                     const unsigned offset)
+                                     uint64_t offset)
 {
     const auto buffer_d3d11 = to_internal(buffer);
+    assert(offset <= std::numeric_limits<UINT>::max());
     m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
 }
 
-bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue)
+bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)
 {
     return true;
 }
@@ -1000,8 +1073,7 @@ void unbind_srvs_for_render_targets(ID3D11DeviceContext* ctx)
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      const float* clear_color_values,
-                                     const RenderTarget* const depth_stencil,
-                                     unsigned frame_index)
+                                     const RenderTarget* const depth_stencil)
 {
     unbind_srvs_for_render_targets(m_device_context.Get());
     const auto view = m_swapchain_view.Get();
@@ -1013,7 +1085,7 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
 
 bool D3D11Context::start_render_pass(CommandList* cmd_list,
                                      const unsigned rt_count,
-                                     const RenderTarget* const* rts,
+                                     const RenderTarget* rts,
                                      const RenderTarget* const depth_stencil)
 {
     std::array<ID3D11RenderTargetView* const*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> rtvs{};
@@ -1025,9 +1097,7 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
     // Clear render target views (if applicable)
     for (unsigned int i = 0; i < rt_count; i++)
     {
-        assert(rts[i]);
-
-        const auto state = to_internal(*rts[i]->texture);
+        const auto state = to_internal(*rts[i].texture);
 
         if (!state->rtv_view)
         {
@@ -1039,10 +1109,10 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
                 return false;
             }
         }
-        if (rts[i]->clear_type & RenderTarget::ClearType::COLOR)
+        if (rts[i].clear_type & RenderTarget::ClearType::COLOR)
         {
             m_device_context->ClearRenderTargetView(state->rtv_view.Get(),
-                                                    rts[i]->clear_params.clear_color_value.data());
+                                                    rts[i].clear_params.clear_color_value.data());
         }
 
         rtvs[i] = state->rtv_view.GetAddressOf();
@@ -1051,6 +1121,10 @@ bool D3D11Context::start_render_pass(CommandList* cmd_list,
     unbind_srvs_for_render_targets(m_device_context.Get());
     m_device_context->OMSetRenderTargets(rt_count, rtvs[0], ds);
     return true;
+}
+
+void D3D11Context::end_render_pass(CommandList* cmd_list)
+{
 }
 
 void D3D11Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
@@ -1091,11 +1165,12 @@ void D3D11Context::draw_indexed(CommandList* cmd_list,
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
-void D3D11Context::submit_command_lists(const SubmitInfo& submit_info, QueueType queue)
+bool D3D11Context::submit_command_lists(const SubmitInfo& submit_info, QueueType queue)
 {
+    return true;
 }
 
-bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value)
+bool D3D11Context::create_fence(Fence* fence, uint64_t initial_value, const char* debug_name)
 {
     return true;
 }
@@ -1110,10 +1185,7 @@ bool D3D11Context::wait_fences(const WaitInfo& info)
     return true;
 }
 
-void D3D11Context::set_barrier_resource(unsigned count,
-                                        ImageBarrier* barriers,
-                                        const Swapchain& swapchain,
-                                        unsigned frame_index)
+void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
 {
 }
 
@@ -1121,8 +1193,9 @@ void D3D11Context::set_barrier_resource(unsigned count, ImageBarrier* barriers, 
 {
 }
 
-void D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
+bool D3D11Context::issue_barrier(CommandList* cmd_list, unsigned count, const ImageBarrier* barriers)
 {
+    return true;
 }
 
 void D3D11Context::init_imgui(const DisplayWindow& window, const Swapchain& swapchain)
@@ -1182,10 +1255,10 @@ bool D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
     return true;
 }
 
-bool D3D11Context::compatibility_set_shader_buffers(unsigned slot,
-                                                    unsigned count,
+bool D3D11Context::compatibility_set_shader_buffers(const unsigned slot,
+                                                    const unsigned count,
                                                     Descriptor* const* descriptors,
-                                                    PipelineStage stage)
+                                                    const PipelineStage stage)
 {
     std::array<ID3D11ShaderResourceView*, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> srv{};
     if (count > srv.size())
@@ -1197,7 +1270,13 @@ bool D3D11Context::compatibility_set_shader_buffers(unsigned slot,
     {
         assert(descriptors[i]->heap);
         const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
-        srv[i] = heap->shader_resource_views[descriptors[i]->offset].Get();
+        const auto srv_ptr = heap->get_srv(descriptors[i]->offset);
+        if (!srv_ptr)
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Invalid descriptor for shader buffer\n");
+            return false;
+        }
+        srv[i] = srv_ptr;
     }
     switch (stage)
     {
@@ -1254,14 +1333,28 @@ bool D3D11Context::compatibility_set_textures(const unsigned slot,
     {
         assert(descriptors[i]->heap);
         const auto heap = to_internal_srv_uav(*descriptors[i]->heap);
+
+        const auto uav_ptr = heap->get_uav(descriptors[i]->offset);
+        const auto srv_ptr = heap->get_srv(descriptors[i]->offset);
+
         // The descriptor offset is used as index into vector
         switch (flag)
         {
         case ACCESS_STORAGE_ACCESS:
-            resource_views.unordered_access_views[i] = heap->unordered_access_views[descriptors[i]->offset].Get();
+            if (!uav_ptr)
+            {
+                OutputDebugStringA("Qhenki D3D11 ERROR: Invalid descriptor for unordered access texture\n");
+                return false;
+            }
+            resource_views.unordered_access_views[i] = uav_ptr;
             break;
         case ACCESS_SHADER_RESOURCE:
-            resource_views.shader_resource_views[i] = heap->shader_resource_views[descriptors[i]->offset].Get();
+            if (!srv_ptr)
+            {
+                OutputDebugStringA("Qhenki D3D11 ERROR: Invalid descriptor for shader resource texture\n");
+                return false;
+            }
+            resource_views.shader_resource_views[i] = srv_ptr;
             break;
         default:
             OutputDebugStringA("Qhenki D3D11 ERROR: Invalid access flag for texture\n");
@@ -1331,9 +1424,10 @@ bool D3D11Context::compatibility_set_samplers(const unsigned slot,
     }
     for (unsigned i = 0; i < count; i++)
     {
-        if (samplers)
+        if (samplers && samplers[i])
         {
-            sampler_d3d11[i] = samplers[i] ? to_internal_sampler(*samplers[i]->heap)->at(i).Get() : nullptr;
+            const auto heap = to_internal_sampler(*samplers[i]->heap);
+            sampler_d3d11[i] = heap->get_sampler(samplers[i]->offset);
         }
         else
         {
@@ -1375,6 +1469,8 @@ D3D11Context::~D3D11Context()
     m_device_context.Reset();
     m_dxgi_factory.Reset();
     m_layout_assembler.clear_maps();
+    m_swapchain_view.Reset();
+    m_swapchain.Reset();
     if (m_debug)
     {
         m_debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);

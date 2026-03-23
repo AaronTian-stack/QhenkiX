@@ -10,6 +10,7 @@ int main(int argc, char* argv[])
     auto& api_group = program.add_mutually_exclusive_group();
     api_group.add_argument("-dx11").flag().help("use DirectX 11");
     api_group.add_argument("-dx12").flag().help("use DirectX 12");
+    api_group.add_argument("-vk", "--vulkan").flag().help("use Vulkan");
     program.add_argument("-t", "--tearing").flag().help("enable tearing (vsync off)");
     program.add_argument("-f", "--fullscreen").flag().help("start in fullscreen mode");
 
@@ -24,7 +25,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    const auto api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11 : qhenki::gfx::API::D3D12;
+    const auto api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11
+                   : program.get<bool>("-dx12") ? qhenki::gfx::API::D3D12
+                                                : qhenki::gfx::API::Vulkan;
 
     const bool tearing = program.get<bool>("--tearing");
     const bool fullscreen = program.get<bool>("--fullscreen");

@@ -86,10 +86,28 @@ void gltfViewerApp::init_display_window(void* payload)
 
 void gltfViewerApp::create()
 {
-    const bool use_dx11 = m_context->is_compatibility();
-    const char* subdir = use_dx11 ? "dx11" : "dx12";
-    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.dxbc" : "base_vs_6_6_vs_main.dxil";
-    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.dxbc" : "base_ps_6_6_ps_main.dxil";
+    const auto api = get_graphics_api();
+    const bool use_dx11 = api == qhenki::gfx::API::D3D11;
+    const bool use_vulkan = api == qhenki::gfx::API::Vulkan;
+    const char* subdir = use_dx11 ? "dx11" : (use_vulkan ? "vulkan" : "dx12");
+
+    const char* vs_name = nullptr;
+    const char* ps_name = nullptr;
+    if (use_dx11)
+    {
+        vs_name = "base_vs_5_0_vs_main.dxbc";
+        ps_name = "base_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        vs_name = "base_vs_6_6_vs_main.spv";
+        ps_name = "base_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        vs_name = "base_vs_6_6_vs_main.dxil";
+        ps_name = "base_ps_6_6_ps_main.dxil";
+    }
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
@@ -113,24 +131,24 @@ void gltfViewerApp::create()
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::CBV,
         };
     qhenki::gfx::LayoutBinding material{
         .binding = 1,
         .count = 1,
-        .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .type = qhenki::gfx::LayoutBinding::RangeType::SRV_BUFFER,
     };
     qhenki::gfx::LayoutBinding textures // SRV for texture
         {
-            .binding = 2, // TODO: figure out how to handle this for Vulkan
+            .binding = 2,
             .count = 1000,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
         };
     qhenki::gfx::LayoutBinding samplers // Sampler for texture
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SAMPLER,
         };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     layout_desc.spaces[0] = {camera, material, textures};
@@ -138,6 +156,7 @@ void gltfViewerApp::create()
     layout_desc.push_ranges.push_back(qhenki::gfx::PushRange{
         .size = sizeof(XMFLOAT4X4) * 2 + sizeof(int),
         .binding = 0,
+        .space = 5,
     });
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
@@ -334,6 +353,10 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
 void gltfViewerApp::render()
 {
     m_context->start_imgui_frame();
+
+    const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->acquire_swapchain_image());
+
     {
         // ImGui::ShowDemoWindow();
         const float PAD = 10.0f;
@@ -395,7 +418,7 @@ void gltfViewerApp::render()
                 thread_local ContextModel cm;
                 cm = {
                     .context = m_context.get(),
-                    .pool = &m_cmd_pools_thread[m_frame_index], // Needs its own command pool for async loading
+                    .pool = &m_cmd_pools_thread[frame_slot], // Needs its own command pool for async loading
                     .queue = qhenki::gfx::QueueType::GRAPHICS,
                     .model_count = m_models.size(),
                     .models = m_models.data(),
@@ -497,15 +520,15 @@ void gltfViewerApp::render()
     XMStoreFloat4x4(&camera_data.inv_view_proj, XMMatrixTranspose(XMMatrixInverse(nullptr, view_proj)));
     camera_data.position = m_camera.hierarchy.world_transform.translation;
 
-    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
+    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[frame_slot]);
     assert(buffer_pointer);
     memcpy(buffer_pointer, &camera_data, sizeof(CameraData));
-    m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
+    m_context->unmap_buffer(m_matrix_buffers[frame_slot]);
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot]));
 
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list = m_cmd_lists[m_frame_index];
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
+    auto& cmd_list = m_cmd_lists[frame_slot];
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {
@@ -520,7 +543,7 @@ void gltfViewerApp::render()
         .src_layout = qhenki::gfx::Layout::PRESENT,
         .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
     };
-    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_render, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
     // Clear back buffer / Start render pass
@@ -530,7 +553,7 @@ void gltfViewerApp::render()
         .clear_type = qhenki::gfx::RenderTarget::DEPTH,
         .texture = &m_depth_buffer,
     };
-    m_context->start_render_pass(&cmd_list, clear_values.data(), &depth, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), &depth);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{
@@ -561,24 +584,24 @@ void gltfViewerApp::render()
     {
         m_context->compatibility_set_constant_buffers(0,
                                                       1,
-                                                      qhenki::util::ptr_array(m_matrix_buffers[m_frame_index]).data(),
+                                                      qhenki::util::ptr_array(m_matrix_buffers[frame_slot]).data(),
                                                       qhenki::gfx::PipelineStage::VERTEX);
     }
     else
     {
         // Location of start of GPU heap
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 0};
+        qhenki::gfx::Descriptor descriptor(&m_GPU_heap, 0);
 
         // Parameter 1 is table, set to start at beginning of GPU heap
         m_context->set_descriptor_table(&cmd_list, 1, descriptor);
 
         // Copy matrix descriptors to GPU heap
         THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                   m_matrix_descriptors[m_frame_index],
+                                                   m_matrix_descriptors[frame_slot],
                                                    descriptor));
 
         // Sampler
-        descriptor = {.heap = &m_sampler_heap, .offset = 0};
+        descriptor = qhenki::gfx::Descriptor(&m_sampler_heap, 0);
         m_context->set_descriptor_table(&cmd_list, 2, descriptor);
     }
 
@@ -593,13 +616,8 @@ void gltfViewerApp::render()
             // Bindless bind textures, only need to do before all draws
             if (!m_context->is_compatibility()) // NOT compatibility
             {
-                // Start at 1
-                qhenki::gfx::Descriptor descriptor{
-                    .heap = &m_GPU_heap,
-                    .offset =
-                        qhenki::util::align_u(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                              m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::TEXTURE)),
-                };
+                qhenki::gfx::Descriptor descriptor(&m_GPU_heap,
+                                                   m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER));
 
                 // Make sure the order matches in the shader
 
@@ -678,7 +696,7 @@ void gltfViewerApp::render()
 
                             assert(buffer_view.stride <= std::numeric_limits<unsigned>::max());
                             assert(accessor.offset <= std::numeric_limits<unsigned>::max());
-                            unsigned stride = buffer_view.stride;
+                            auto stride = buffer_view.stride;
                             if (stride == 0)
                             {
                                 // Tightly packed, infer stride from size of type times number of components
@@ -711,10 +729,9 @@ void gltfViewerApp::render()
                                 stride = calc_component_size(accessor.component_type) * calc_type_count(accessor.type);
                             }
 
-                            unsigned offset = accessor.offset + buffer_view.offset;
+                            auto offset = accessor.offset + buffer_view.offset;
 
-                            // TODO: assert overflow
-                            const unsigned length = buffer_view.length;
+                            const uint64_t length = buffer_view.length;
 
                             m_context->bind_vertex_buffers(&cmd_list, slot, 1, &buffer, &length, &stride, &offset);
                         }
@@ -842,6 +859,8 @@ void gltfViewerApp::render()
     ImGui::Render();
     m_context->render_imgui_draw_data(&cmd_list);
 
+    m_context->end_render_pass(&cmd_list);
+
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_present = {
         .src_stage = qhenki::gfx::SyncStage::SYNC_DRAW, // Wait for all draws to swapchain to finish before
@@ -854,14 +873,14 @@ void gltfViewerApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_present, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_present);
 
     // Close the command list
     m_context->close_command_list(&cmd_list);
 
     // Submit command list
-    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = m_fence_frame_ready_val[frame_slot];
     // To delete the model at m_model_index need to wait for this fence value
     // m_model_last_used_fence_value[m_model_index] = current_fence_value;
     qhenki::gfx::SubmitInfo info{
@@ -870,27 +889,26 @@ void gltfViewerApp::render()
         .signal_fence_count = 1,
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
+        .wait_swapchain = true,
+        .signal_swapchain = true,
     };
     m_context->submit_command_lists(info, qhenki::gfx::QueueType::GRAPHICS);
 
-    // You MUST call Present at the end of the render loop
-    // TODO: change for Vulkan
-    m_context->present(m_swapchain, 0, nullptr, m_frame_index);
+    THROW_IF_FALSE(m_context->present(m_swapchain));
 
-    m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
-
-    // If next frame is not ready to be used, wait until it is
-    auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
+    const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    auto next_fence_value = m_fence_frame_ready_val[next_frame_slot];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
-        qhenki::gfx::WaitInfo wait_info{.wait_all = true,
-                                        .count = 1,
-                                        .fences = &m_fence_frame_ready,
-                                        .values = &next_fence_value,
-                                        .timeout = INFINITE};
+        qhenki::gfx::WaitInfo wait_info{
+            .wait_all = true,
+            .count = 1,
+            .fences = &m_fence_frame_ready,
+            .values = &next_fence_value,
+        };
         m_context->wait_fences(wait_info);
     }
-    m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
+    m_fence_frame_ready_val[next_frame_slot] = current_fence_value + 1;
 }
 
 void gltfViewerApp::resize(const unsigned width, const unsigned height)
@@ -902,6 +920,7 @@ void gltfViewerApp::resize(const unsigned width, const unsigned height)
         .format = DXGI_FORMAT_D32_FLOAT,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
+        .usage = qhenki::gfx::TextureDesc::DEPTH_STENCIL,
         .clear_depth_value = {1.f, 0},
     };
     THROW_IF_FALSE(m_context->create_texture(depth_desc, &m_depth_buffer, "Depth Buffer Texture"));

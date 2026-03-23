@@ -12,10 +12,28 @@
 
 void ExampleApp::create()
 {
-    const bool use_dx11 = m_context->is_compatibility();
-    const char* subdir = use_dx11 ? "dx11" : "dx12";
-    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.dxbc" : "base_vs_6_6_vs_main.dxil";
-    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.dxbc" : "base_ps_6_6_ps_main.dxil";
+    const auto api = get_graphics_api();
+    const bool use_dx11 = api == qhenki::gfx::API::D3D11;
+    const bool use_vulkan = api == qhenki::gfx::API::Vulkan;
+    const char* subdir = use_dx11 ? "dx11" : (use_vulkan ? "vulkan" : "dx12");
+
+    const char* vs_name = nullptr;
+    const char* ps_name = nullptr;
+    if (use_dx11)
+    {
+        vs_name = "base_vs_5_0_vs_main.dxbc";
+        ps_name = "base_ps_5_0_ps_main.dxbc";
+    }
+    else if (use_vulkan)
+    {
+        vs_name = "base_vs_6_6_vs_main.spv";
+        ps_name = "base_ps_6_6_ps_main.spv";
+    }
+    else
+    {
+        vs_name = "base_vs_6_6_vs_main.dxil";
+        ps_name = "base_ps_6_6_ps_main.dxil";
+    }
 
     auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
     {
@@ -39,19 +57,19 @@ void ExampleApp::create()
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::CBV,
         };
     qhenki::gfx::LayoutBinding b2 // SRV for texture
         {
             .binding = 1, // TODO: figure out how to handle this for Vulkan
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
         };
     qhenki::gfx::LayoutBinding b3 // Sampler for texture
         {
             .binding = 0,
             .count = 1,
-            .type = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SAMPLER,
         };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     layout_desc.spaces[0] = {b1, b2};
@@ -97,7 +115,7 @@ void ExampleApp::create()
     // A graphics queue is already given to the application by the context
 
     // Allocate Command Pool(s)/Allocator(s) from queue
-    for (int i = 0; i < m_frames_in_flight; i++)
+    for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
         THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], qhenki::gfx::GRAPHICS));
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
@@ -112,20 +130,22 @@ void ExampleApp::create()
                    Vertex{.position = {0.5f, -0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}, .texcoord = {1.0f, 0.0f}},
                    Vertex{.position = {-0.5f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f}, .texcoord = {0.0f, 0.0f}}};
     qhenki::gfx::BufferDesc desc{.size = vertices.size() * sizeof(Vertex),
-                                 .usage = qhenki::gfx::BufferUsage::VERTEX,
+                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     THROW_IF_FALSE(
         m_context->create_buffer(desc, vertices.data(), &vertex_CPU, "Interleaved Position/Color Buffer CPU"));
 
+    desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::COPY_DST;
     desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, "Interleaved Position/Color Buffer GPU"));
 
     constexpr auto indices = std::array{0u, 1u, 2u};
     qhenki::gfx::BufferDesc index_desc{.size = indices.size() * sizeof(uint32_t),
-                                       .usage = qhenki::gfx::BufferUsage::INDEX,
+                                       .usage = qhenki::gfx::BufferUsage::INDEX | qhenki::gfx::BufferUsage::COPY_SRC,
                                        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, "Index Buffer CPU"));
 
+    index_desc.usage = qhenki::gfx::BufferUsage::INDEX | qhenki::gfx::BufferUsage::COPY_DST;
     index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
     THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
 
@@ -149,6 +169,7 @@ void ExampleApp::create()
         .format = DXGI_FORMAT_R8G8B8A8_UNORM,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::COPY_DEST,
+        .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,
     };
     THROW_IF_FALSE(m_context->create_texture(texture_desc, &m_texture, "Checkerboard Texture"));
 
@@ -192,9 +213,10 @@ void ExampleApp::create()
     qhenki::gfx::Buffer texture_staging; // Must keep in scope until copy is done
 
     // Schedule copies to GPU buffers / texture
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list = m_cmd_lists[m_frame_index];
+    const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot]));
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
+    auto& cmd_list = m_cmd_lists[frame_slot];
     m_context->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer, 0, desc.size);
     m_context->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer, 0, index_desc.size);
 
@@ -202,11 +224,11 @@ void ExampleApp::create()
 
     // Transition texture
     qhenki::gfx::ImageBarrier barrier_render = {
-        .src_stage = qhenki::gfx::SyncStage::SYNC_NONE, // Not accessed before the barrier in same submission
-        .dst_stage = qhenki::gfx::SyncStage::SYNC_NONE, // Not accessed after either
+        .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,
+        .dst_stage = qhenki::gfx::SyncStage::SYNC_PIXEL_SHADING,
 
-        .src_access = qhenki::gfx::AccessFlags::NO_ACCESS, // The resource is not accessed in this execution
-        .dst_access = qhenki::gfx::AccessFlags::NO_ACCESS,
+        .src_access = qhenki::gfx::AccessFlags::ACCESS_COPY_DEST,
+        .dst_access = qhenki::gfx::AccessFlags::ACCESS_SHADER_RESOURCE,
 
         .src_layout = qhenki::gfx::Layout::COPY_DEST,
         .dst_layout = qhenki::gfx::Layout::SHADER_RESOURCE,
@@ -215,25 +237,28 @@ void ExampleApp::create()
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list));
-    auto current_fence_value = ++m_fence_frame_ready_val[m_frame_index];
+    auto wait_value = ++m_fence_frame_ready_val[frame_slot];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
         .signal_fence_count = 1,
         .signal_fences = &m_fence_frame_ready,
-        .signal_values = &current_fence_value,
+        .signal_values = &wait_value,
     };
 
     m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
     qhenki::gfx::WaitInfo wait_info{.count = 1,
                                     .fences = &m_fence_frame_ready,
-                                    .values = &m_fence_frame_ready_val[m_frame_index]};
+                                    .values = &m_fence_frame_ready_val[frame_slot]};
     THROW_IF_FALSE(m_context->wait_fences(wait_info)); // Block CPU until done
 }
 
 void ExampleApp::render()
 {
+    const unsigned frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->acquire_swapchain_image());
+
     const auto seconds_elapsed = static_cast<float>(SDL_GetTicks()) / 1000.f;
 
     // Update matrices
@@ -253,15 +278,15 @@ void ExampleApp::render()
     XMStoreFloat4x4(&m_matrices.inv_view_proj, XMMatrixInverse(nullptr, prod));
 
     // Update matrix buffer
-    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[m_frame_index]);
+    const auto buffer_pointer = m_context->map_buffer(m_matrix_buffers[frame_slot]);
     THROW_IF_FALSE(buffer_pointer);
     memcpy(buffer_pointer, &m_matrices, sizeof(CameraMatrices));
-    m_context->unmap_buffer(m_matrix_buffers[m_frame_index]);
+    m_context->unmap_buffer(m_matrix_buffers[frame_slot]);
 
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[m_frame_index]));
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot]));
 
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[m_frame_index], m_cmd_pools[m_frame_index]));
-    auto& cmd_list = m_cmd_lists[m_frame_index];
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot], m_cmd_pools[frame_slot]));
+    auto& cmd_list = m_cmd_lists[frame_slot];
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_render = {
@@ -276,12 +301,12 @@ void ExampleApp::render()
         .src_layout = qhenki::gfx::Layout::PRESENT,
         .dst_layout = qhenki::gfx::Layout::RENDER_TARGET,
     };
-    m_context->set_barrier_resource(1, &barrier_render, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_render, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_render);
 
     // Clear back buffer / Start render pass
     std::array clear_values = {0.f, 0.f, 0.f, 1.f};
-    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr, m_frame_index);
+    m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr);
 
     // Set viewport
     const D3D12_VIEWPORT viewport{
@@ -312,7 +337,7 @@ void ExampleApp::render()
     {
         m_context->compatibility_set_constant_buffers(0,
                                                       1,
-                                                      qhenki::util::ptr_array(m_matrix_buffers[m_frame_index]).data(),
+                                                      qhenki::util::ptr_array(m_matrix_buffers[frame_slot]).data(),
                                                       qhenki::gfx::PipelineStage::VERTEX);
         m_context->compatibility_set_textures(1,
                                               1,
@@ -327,14 +352,14 @@ void ExampleApp::render()
     else
     {
         // Location of start of GPU heap
-        qhenki::gfx::Descriptor descriptor{.heap = &m_GPU_heap, .offset = 0};
+        qhenki::gfx::Descriptor descriptor(&m_GPU_heap, 0);
 
         // Parameter 0 is table, set to start at beginning of GPU heap
         m_context->set_descriptor_table(&cmd_list, 0, descriptor);
 
         // Copy matrix and texture descriptors to GPU heap
         THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                   m_matrix_descriptors[m_frame_index],
+                                                   m_matrix_descriptors[frame_slot],
                                                    descriptor));
 
         descriptor.offset =
@@ -346,19 +371,19 @@ void ExampleApp::render()
                                                    m_texture_descriptor,
                                                    descriptor));
 
-        // Sampler
-        descriptor = {.heap = &m_sampler_heap, .offset = 0};
-        m_context->set_descriptor_table(&cmd_list, 1, descriptor);
+        m_context->set_descriptor_table(&cmd_list, 1, m_sampler_descriptor);
     }
 
-    constexpr unsigned offset = 0;
-    auto stride = static_cast<unsigned>(sizeof(Vertex));
+    constexpr uint64_t offset = 0;
+    uint64_t stride = sizeof(Vertex);
     const auto buffers = &m_vertex_buffer;
-    const auto unsigned_size = static_cast<unsigned>(sizeof(Vertex) * 3);
+    constexpr uint64_t unsigned_size = sizeof(Vertex) * 3;
     m_context->bind_vertex_buffers(&cmd_list, 0, 1, &buffers, &unsigned_size, &stride, &offset);
     m_context->bind_index_buffer(&cmd_list, m_index_buffer, qhenki::gfx::IndexType::UINT32, 0);
 
     m_context->draw_indexed(&cmd_list, 3, 1, 0, 0, 0);
+
+    m_context->end_render_pass(&cmd_list);
 
     // Resource transition
     qhenki::gfx::ImageBarrier barrier_present = {
@@ -372,41 +397,41 @@ void ExampleApp::render()
         .src_layout = qhenki::gfx::Layout::RENDER_TARGET,
         .dst_layout = qhenki::gfx::Layout::PRESENT,
     };
-    m_context->set_barrier_resource(1, &barrier_present, m_swapchain, m_frame_index);
+    m_context->set_barrier_resource(1, &barrier_present, m_swapchain);
     m_context->issue_barrier(&cmd_list, 1, &barrier_present);
 
     // Close the command list
     m_context->close_command_list(&cmd_list);
 
     // Submit command list
-    auto current_fence_value = m_fence_frame_ready_val[m_frame_index];
+    auto current_fence_value = m_fence_frame_ready_val[frame_slot];
     qhenki::gfx::SubmitInfo info{
         .command_list_count = 1,
         .command_lists = &cmd_list,
         .signal_fence_count = 1,
         .signal_fences = &m_fence_frame_ready,
         .signal_values = &current_fence_value,
+        .wait_swapchain = true,
+        .signal_swapchain = true,
     };
     m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
-    // You MUST call Present at the end of the render loop
-    // TODO: change for Vulkan
-    m_context->present(m_swapchain, 0, nullptr, m_frame_index);
-
-    m_frame_index = m_context->get_swapchain_frame_index(m_swapchain);
+    THROW_IF_FALSE(m_context->present(m_swapchain));
 
     // If next frame is not ready to be used, wait until it is
-    auto next_fence_value = m_fence_frame_ready_val[m_frame_index];
+    const unsigned next_frame_slot = m_context->get_frame_slot(m_frames_in_flight);
+    auto next_fence_value = m_fence_frame_ready_val[next_frame_slot];
     if (m_context->get_fence_value(m_fence_frame_ready) < next_fence_value)
     {
-        qhenki::gfx::WaitInfo wait_info{.wait_all = true,
-                                        .count = 1,
-                                        .fences = &m_fence_frame_ready,
-                                        .values = &next_fence_value,
-                                        .timeout = INFINITE};
+        qhenki::gfx::WaitInfo wait_info{
+            .wait_all = true,
+            .count = 1,
+            .fences = &m_fence_frame_ready,
+            .values = &next_fence_value,
+        };
         m_context->wait_fences(wait_info);
     }
-    m_fence_frame_ready_val[m_frame_index] = current_fence_value + 1;
+    m_fence_frame_ready_val[next_frame_slot] = current_fence_value + 1;
 }
 
 void ExampleApp::resize(unsigned width, unsigned height)
