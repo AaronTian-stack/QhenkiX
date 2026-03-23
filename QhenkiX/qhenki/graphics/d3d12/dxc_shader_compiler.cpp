@@ -344,7 +344,8 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     free(data); // Not needed anymore
 
     // Save the blob in output
-    if (const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&output.blob), nullptr); FAILED(hr_s))
+    const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&output.blob), nullptr);
+    if (FAILED(hr_s))
     {
         output_error();
         return false;

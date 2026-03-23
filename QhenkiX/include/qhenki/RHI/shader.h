@@ -1,6 +1,5 @@
 #pragma once
 
-#include <smartpointer.h>
 #include <cstdint>
 
 namespace qhenki::gfx

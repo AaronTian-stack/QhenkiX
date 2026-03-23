@@ -12,7 +12,6 @@
 #include "d3d11_descriptor_heap.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_sampler_heap.h"
-#include "d3d11_shader.h"
 #include "d3d11_srv_uav_heap.h"
 #include "d3d11_texture.h"
 #include "qhenki/application.h"
