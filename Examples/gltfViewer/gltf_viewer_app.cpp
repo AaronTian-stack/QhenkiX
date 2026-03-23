@@ -93,8 +93,16 @@ void gltfViewerApp::create()
     char ps_name[64]{};
     THROW_IF_FALSE(append_shader_extension(api, vs_base_name, vs_name, sizeof(vs_name)));
     THROW_IF_FALSE(append_shader_extension(api, ps_base_name, ps_name, sizeof(ps_name)));
-    THROW_IF_FALSE(load_compiled_shader(*m_context, api, vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
-    THROW_IF_FALSE(load_compiled_shader(*m_context, api, ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
+
+    uPtr<std::byte, void (*)(void*)> vs_data(nullptr, free);
+    qhenki::gfx::Shader vertex_shader;
+    read_compiled_shader_bytes(api, vs_name, &vs_data, &vertex_shader.size);
+    vertex_shader.data = vs_data.get();
+
+    uPtr<std::byte, void (*)(void*)> ps_data(nullptr, free);
+    qhenki::gfx::Shader pixel_shader;
+    read_compiled_shader_bytes(api, ps_name, &ps_data, &pixel_shader.size);
+    pixel_shader.data = ps_data.get();
 
     // Create pipeline layout
     qhenki::gfx::LayoutBinding camera // Constant buffers
@@ -166,7 +174,7 @@ void gltfViewerApp::create()
         .increment_slot = true,
     };
     THROW_IF_FALSE(m_context->create_pipeline(
-            pipeline_desc, &m_pipeline, m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "Triangle pipeline"));
+        pipeline_desc, &m_pipeline, vertex_shader, pixel_shader, &m_pipeline_layout, "Triangle pipeline"));
 
     // A graphics queue is already given to the application by the context
 
