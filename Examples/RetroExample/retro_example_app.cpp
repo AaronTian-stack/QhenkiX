@@ -89,7 +89,7 @@ void RetroExampleApp::create()
                                       const qhenki::gfx::ShaderType shader_type,
                                       qhenki::gfx::Shader* out_shader) -> bool
     {
-        char shader_name[96] = {};
+        char shader_name[96]{};
         if (!append_shader_extension(api, shader_base_name, shader_name, sizeof(shader_name)))
         {
             return false;
@@ -602,7 +602,7 @@ void RetroExampleApp::create()
 
         const char* blit_bloom_base = select_profile_base("blit_bloom_1d_ps_5_0_ps_main",
                                                           "blit_bloom_1d_ps_6_6_ps_main");
-        char blit_bloom_name[96] = {};
+        char blit_bloom_name[96]{};
         THROW_IF_FALSE(append_shader_extension(api, blit_bloom_base, blit_bloom_name, sizeof(blit_bloom_name)));
         const auto blit_bloom_blob_name = qhenki::util::format_string("%s_blob", blit_bloom_name);
 

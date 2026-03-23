@@ -89,8 +89,8 @@ void gltfViewerApp::create()
 
     const char* vs_base_name = use_dx11 ? "base_vs_5_0_vs_main" : "base_vs_6_6_vs_main";
     const char* ps_base_name = use_dx11 ? "base_ps_5_0_ps_main" : "base_ps_6_6_ps_main";
-    char vs_name[64] = {};
-    char ps_name[64] = {};
+    char vs_name[64]{};
+    char ps_name[64]{};
     THROW_IF_FALSE(append_shader_extension(api, vs_base_name, vs_name, sizeof(vs_name)));
     THROW_IF_FALSE(append_shader_extension(api, ps_base_name, ps_name, sizeof(ps_name)));
     THROW_IF_FALSE(load_compiled_shader(*m_context, api, vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
