@@ -9,7 +9,6 @@ struct VulkanBuffer
     VkBuffer buffer;
     VmaAllocation allocation;
     VmaAllocator allocator;
-    // All types are pointers
     VulkanBuffer() = default;
     VulkanBuffer(const VulkanBuffer&) = delete;
     VulkanBuffer(VulkanBuffer&&) = delete;

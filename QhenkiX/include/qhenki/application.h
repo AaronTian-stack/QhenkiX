@@ -40,7 +40,6 @@ protected:
     // Preferences
 
     bool m_QUIT = false; // Set to true when the application should quit
-    // unsigned m_frame_index = 0; // Current swapchain index
     DisplayWindow m_window;
     uPtr<gfx::Context> m_context;
     gfx::Swapchain m_swapchain{};

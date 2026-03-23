@@ -1,5 +1,7 @@
 #pragma once
 
+#include <directx/d3d12.h>
+#include <directx/d3dcommon.h>
 #include <wrl/client.h>
 
 using Microsoft::WRL::ComPtr;

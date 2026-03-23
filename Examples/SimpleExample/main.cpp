@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
                                                 : qhenki::gfx::API::Vulkan;
 
     ExampleApp app;
-    app.run(api, true, nullptr, std::nullopt);
+    app.run(api, false, nullptr, std::nullopt);
 
     return 0;
 }
