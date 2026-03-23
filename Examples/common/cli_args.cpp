@@ -32,9 +32,19 @@ bool parse_cli_args(int argc, char* argv[], const char* program_name, CliOptions
         return false;
     }
 
-    out_options->api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11
-                     : program.get<bool>("-dx12") ? qhenki::gfx::API::D3D12
-                                                  : qhenki::gfx::API::D3D12;
+    if (program.get<bool>("-dx11"))
+    {
+        out_options->api = qhenki::gfx::API::D3D11;
+    }
+    else if (program.get<bool>("-vk"))
+    {
+        out_options->api = qhenki::gfx::API::Vulkan;
+    }
+    else
+    {
+        out_options->api = qhenki::gfx::API::D3D12;
+    }
+
     out_options->debug_layer = program.get<bool>("--debug");
     out_options->tearing = program.get<bool>("--tearing");
     out_options->fullscreen = program.get<bool>("--fullscreen");
