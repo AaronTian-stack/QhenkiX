@@ -11,11 +11,6 @@ using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-struct DXCShaderOutput
-{
-    ComPtr<IDxcBlob> shader_blob;
-};
-
 class DXCShaderCompiler : public ShaderCompiler
 {
     ComPtr<IDxcUtils> m_library;

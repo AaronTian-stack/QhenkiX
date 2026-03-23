@@ -6,8 +6,8 @@ namespace qhenki::gfx
 {
 struct D3D11GraphicsPipeline
 {
-    void* vertex_shader = nullptr; // D3D11Shader*
-    void* pixel_shader = nullptr;  // D3D11Shader*
+    ComPtr<ID3D11VertexShader> vertex_shader;
+    ComPtr<ID3D11PixelShader> pixel_shader;
     ID3D11InputLayout* input_layout = nullptr;
     D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     ComPtr<ID3D11RasterizerState> rasterizer_state;

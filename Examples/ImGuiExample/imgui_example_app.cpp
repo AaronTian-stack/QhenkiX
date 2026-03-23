@@ -16,8 +16,16 @@ void ImGUIExampleApp::create()
     char ps_name[64]{};
     THROW_IF_FALSE(append_shader_extension(api, vs_base_name, vs_name, sizeof(vs_name)));
     THROW_IF_FALSE(append_shader_extension(api, ps_base_name, ps_name, sizeof(ps_name)));
-    THROW_IF_FALSE(load_compiled_shader(*m_context, api, vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
-    THROW_IF_FALSE(load_compiled_shader(*m_context, api, ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
+
+    uPtr<std::byte, void (*)(void*)> vs_data(nullptr, free);
+    qhenki::gfx::Shader vertex_shader;
+    read_compiled_shader_bytes(api, vs_name, &vs_data, &vertex_shader.size);
+    vertex_shader.data = vs_data.get();
+
+    uPtr<std::byte, void (*)(void*)> ps_data(nullptr, free);
+    qhenki::gfx::Shader pixel_shader;
+    read_compiled_shader_bytes(api, ps_name, &ps_data, &pixel_shader.size);
+    pixel_shader.data = ps_data.get();
 
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
@@ -25,7 +33,6 @@ void ImGUIExampleApp::create()
     const auto bloated_descriptor_size = std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
                                                   m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
 
-    // Create GPU heap
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
@@ -33,7 +40,6 @@ void ImGUIExampleApp::create()
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap));
 
-    // Create CPU heap
     qhenki::gfx::DescriptorHeapDesc heap_desc_CPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
@@ -41,18 +47,15 @@ void ImGUIExampleApp::create()
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap));
 
-    // Create pipeline
     qhenki::gfx::GraphicsPipelineDesc pipeline_desc = {
         .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
         .num_render_targets = 1,
         .increment_slot = false,
     };
     THROW_IF_FALSE(m_context->create_pipeline(
-        pipeline_desc, &m_pipeline, m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "triangle_pipeline"));
+        pipeline_desc, &m_pipeline, vertex_shader, pixel_shader, &m_pipeline_layout, "Triangle pipeline"));
 
-    // A graphics queue is already given to the application by the context
 
-    // Allocate Command Pool(s)/Allocator(s) from queue
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
         THROW_IF_FALSE(m_context->create_command_pool(&m_cmd_pools[i], qhenki::gfx::GRAPHICS));
@@ -62,7 +65,6 @@ void ImGUIExampleApp::create()
     qhenki::gfx::Buffer vertex_CPU;
     qhenki::gfx::Buffer index_CPU;
 
-    // Create vertex buffer
     constexpr auto vertices = std::array{Vertex{.position = {0.0f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f}},
                                          Vertex{.position = {0.5f, -0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}},
                                          Vertex{{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
@@ -106,7 +108,6 @@ void ImGUIExampleApp::create()
 
     m_context->submit_command_lists(info, qhenki::gfx::GRAPHICS);
 
-    // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();

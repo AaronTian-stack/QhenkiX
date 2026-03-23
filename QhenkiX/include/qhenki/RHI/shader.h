@@ -1,6 +1,5 @@
 #pragma once
 
-#include <smartpointer.h>
 #include <cstdint>
 
 namespace qhenki::gfx
@@ -25,7 +24,7 @@ enum class ShaderModel
 };
 struct Shader
 {
-    ShaderType type;
-    sPtr<void> internal_state;
+    void* data;
+    size_t size;
 };
 } // namespace qhenki::gfx

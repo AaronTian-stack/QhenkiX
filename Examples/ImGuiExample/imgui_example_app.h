@@ -11,8 +11,6 @@ class ImGUIExampleApp : public qhenki::Application
 {
     qhenki::gfx::PipelineLayout m_pipeline_layout{};
     qhenki::gfx::GraphicsPipeline m_pipeline{};
-    qhenki::gfx::Shader m_vertex_shader{};
-    qhenki::gfx::Shader m_pixel_shader{};
 
     // One Command Pool per frame, per thread. Pool allocates lists
     // Command pools for main thread

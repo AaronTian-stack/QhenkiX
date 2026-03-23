@@ -53,11 +53,10 @@ public:
      */
     virtual unsigned get_frame_slot(unsigned slot_count) const = 0;
 
-    virtual bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) = 0;
     virtual bool create_pipeline(const GraphicsPipelineDesc& desc,
                                  GraphicsPipeline* pipeline,
-                                 const Shader& vertex_shader,
-                                 const Shader& pixel_shader,
+                                 Shader vertex_shader,
+                                 Shader pixel_shader,
                                  PipelineLayout* in_layout,
                                  const char* debug_name = nullptr) = 0;
     virtual bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) = 0;

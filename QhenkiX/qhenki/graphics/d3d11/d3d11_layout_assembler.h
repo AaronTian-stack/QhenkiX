@@ -7,6 +7,8 @@
 #include <mutex>
 #include <optional>
 
+#include "qhenki/RHI/shader.h"
+
 using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
@@ -37,19 +39,7 @@ public:
                                                                           bool increment_slot,
                                                                           unsigned* out_builtins);
 
-    /**
-     * @brief Creates an input layout using shader reflection.
-     *
-     * Creates input layout using shader reflection
-     *
-     * @param device D3D11 device
-     * @param vertex_shader_blob Compiled vertex shader blob
-     * @param increment_slot If true, slots will be incremented by 1 for each vertex attribute
-     * @return Pointer to the created ID3D11InputLayout
-     */
-    ID3D11InputLayout* create_input_layout_reflection(ID3D11Device* device,
-                                                      ID3DBlob* vertex_shader_blob,
-                                                      bool increment_slot);
+    ID3D11InputLayout* create_input_layout_reflection(ID3D11Device* device, Shader shader, bool increment_slot);
 
     void clear_maps();
 };

@@ -4,13 +4,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <memory>
 
 namespace qhenki::memory
 {
 class Arena
 {
-    std::unique_ptr<uint8_t[]> m_memory;
+    uPtr<uint8_t[]> m_memory;
     size_t m_capacity;
     size_t m_offset = 0;
 

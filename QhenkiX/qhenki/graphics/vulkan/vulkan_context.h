@@ -71,11 +71,10 @@ public:
     bool present(const Swapchain& swapchain) override;
     unsigned get_frame_slot(unsigned slot_count) const override;
 
-    bool create_shader(void* data, size_t size, ShaderType type, Shader* shader) override;
     bool create_pipeline(const GraphicsPipelineDesc& desc,
                          GraphicsPipeline* pipeline,
-                         const Shader& vertex_shader,
-                         const Shader& pixel_shader,
+                         Shader vertex_shader,
+                         Shader pixel_shader,
                          PipelineLayout* in_layout,
                          const char* debug_name) override;
 

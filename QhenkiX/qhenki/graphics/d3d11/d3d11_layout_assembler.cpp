@@ -5,6 +5,8 @@
 #include <d3d11shader.h>
 #include <d3dcompiler.h>
 
+#include "qhenki/RHI/shader.h"
+
 using namespace qhenki::gfx;
 
 namespace
@@ -221,15 +223,12 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
     return input_layout_desc;
 }
 
-ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11Device* const device,
-                                                                        ID3DBlob* const vertex_shader_blob,
+ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11Device* device,
+                                                                        const Shader shader,
                                                                         const bool increment_slot)
 {
     ComPtr<ID3D11ShaderReflection> vs_shader_reflection;
-    if (FAILED(D3DReflect(vertex_shader_blob->GetBufferPointer(),
-                          vertex_shader_blob->GetBufferSize(),
-                          IID_ID3D11ShaderReflection,
-                          &vs_shader_reflection)))
+    if (FAILED(D3DReflect(shader.data, shader.size, IID_ID3D11ShaderReflection, &vs_shader_reflection)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Input layout reflection failed\n");
         return nullptr;
@@ -256,11 +255,8 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11De
 
         ComPtr<ID3D11InputLayout>
             layout;
-    if (FAILED(device->CreateInputLayout(input_layout_desc.data(),
-                                         input_layout_desc.size(),
-                                         vertex_shader_blob->GetBufferPointer(),
-                                         vertex_shader_blob->GetBufferSize(),
-                                         &layout)))
+    if (FAILED(device->CreateInputLayout(
+            input_layout_desc.data(), input_layout_desc.size(), shader.data, shader.size, &layout)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout reflection\n");
         return nullptr;

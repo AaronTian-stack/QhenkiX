@@ -1,7 +1,7 @@
 #include "dxc_shader_compiler.h"
+
 #include "dxc_include_handler.h"
 
-#include <d3dcompiler.h>
 #include <cassert>
 #include <filesystem>
 #include <stdexcept>
@@ -343,22 +343,13 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     free(data); // Not needed anymore
 
-    output.internal_state = mkS<DXCShaderOutput>();
-    const auto dxc_output = static_cast<DXCShaderOutput*>(output.internal_state.get());
-
     // Save the blob in output
-    if (const auto hr_s =
-            result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(dxc_output->shader_blob.ReleaseAndGetAddressOf()), nullptr);
-        FAILED(hr_s))
+    const auto hr_s = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&output.blob), nullptr);
+    if (FAILED(hr_s))
     {
         output_error();
         return false;
     }
-
-    output.shader_size = dxc_output->shader_blob->GetBufferSize();
-    output.shader_data = dxc_output->shader_blob->GetBufferPointer();
-
-    assert(output.shader_size && output.shader_data);
 
     // Assumed to be null terminated
     const auto& pdb_path = input.pdb_path;
