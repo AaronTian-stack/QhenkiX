@@ -14,6 +14,8 @@ source_group("config" FILES ${CONFIG_FILE})
 add_executable(ImGuiExample
     main.cpp
     imgui_example_app.cpp
+    ${REPO_ROOT}/Examples/common/cli_args.cpp
+    ${REPO_ROOT}/Examples/common/shader_loader.cpp
     imgui_example_app.h
     ${CONFIG_FILE}
     ${SHADER_FILES}

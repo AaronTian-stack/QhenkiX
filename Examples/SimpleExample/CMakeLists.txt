@@ -14,6 +14,8 @@ source_group("config" FILES ${CONFIG_FILE})
 add_executable(SimpleExample
     main.cpp
     example_app.cpp
+    ${REPO_ROOT}/Examples/common/cli_args.cpp
+    ${REPO_ROOT}/Examples/common/shader_loader.cpp
     example_app.h
     shared_structs.h
     ${CONFIG_FILE}

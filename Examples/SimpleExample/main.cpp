@@ -1,34 +1,24 @@
-#include <cstdio>
-
-#include <argparse/argparse.hpp>
 #include "example_app.h"
+#include "example_shared/cli_args.h"
 
 int main(int argc, char* argv[])
 {
-    argparse::ArgumentParser program("SimpleExample");
-
-    auto& api_group = program.add_mutually_exclusive_group();
-    api_group.add_argument("-dx11").flag().help("use DirectX 11");
-    api_group.add_argument("-dx12").flag().help("use DirectX 12");
-    api_group.add_argument("-vk", "--vulkan").flag().help("use Vulkan");
-
-    try
+    CliOptions options;
+    if (!parse_cli_args(argc, argv, "SimpleExample", &options))
     {
-        program.parse_args(argc, argv);
-    }
-    catch (const std::exception& err)
-    {
-        fprintf(stderr, "%s\n", err.what());
-        fprintf(stderr, "%s", program.help().str().c_str());
         return 1;
     }
 
-    const auto api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11
-                   : program.get<bool>("-dx12") ? qhenki::gfx::API::D3D12
-                                                : qhenki::gfx::API::Vulkan;
+    qhenki::gfx::SwapchainDesc swapchain_desc = {
+        .width = 0,
+        .height = 0,
+        .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+        .buffer_count = qhenki::Application::m_frames_in_flight,
+        .tearing = options.tearing,
+    };
 
     ExampleApp app;
-    app.run(api, false, nullptr, std::nullopt);
+    app.run(options.api, options.debug_layer, nullptr, swapchain_desc);
 
     return 0;
 }
