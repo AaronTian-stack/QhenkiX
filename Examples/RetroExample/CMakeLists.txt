@@ -18,6 +18,8 @@ source_group("assets" FILES ${ASSET_FILES})
 add_executable(RetroExample
     main.cpp
     retro_example_app.cpp
+    ${REPO_ROOT}/Examples/common/cli_args.cpp
+    ${REPO_ROOT}/Examples/common/shader_loader.cpp
     retro_example_app.h
     scene.h
     scene.cpp

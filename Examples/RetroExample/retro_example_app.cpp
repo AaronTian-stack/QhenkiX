@@ -1,11 +1,11 @@
 #include "retro_example_app.h"
 #include "shared_structs.h"
+#include "example_shared/shader_loader.h"
 
 #include <DirectXTex.h>
 
 #include <imgui/imgui.h>
 
-#include <qhenki/utility/file_util.h>
 #include <qhenki/utility/general_util.h>
 #include <qhenki/utility/math_util.h>
 #include <qhenki/utility/shader_blob.h>
@@ -80,21 +80,6 @@ void RetroExampleApp::create()
     const auto api = get_graphics_api();
     const bool use_dx11 = api == qhenki::gfx::API::D3D11;
     const bool use_vulkan = api == qhenki::gfx::API::Vulkan;
-    const char* subdir = use_dx11 ? "dx11" : (use_vulkan ? "vulkan" : "dx12");
-
-    auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
-    {
-        const auto path = qhenki::util::format_string("compiled-shaders/%s/%s", subdir, name);
-
-        void* raw = nullptr;
-        size_t size = 0;
-        if (!qhenki::util::read_file(path.buffer.data(), &raw, &size))
-        {
-            return false;
-        }
-        const std::unique_ptr<std::byte, void (*)(void*)> data(static_cast<std::byte*>(raw), free);
-        return m_context->create_shader(data.get(), size, type, out);
-    };
 
     qhenki::gfx::LayoutBinding b1{
         .binding = 0,
@@ -418,8 +403,8 @@ void RetroExampleApp::create()
         skybox_vs_name = "skybox_vs_6_6_vs_main.dxil";
         skybox_ps_name = "skybox_ps_6_6_ps_main.dxil";
     }
-    THROW_IF_FALSE(load_shader(skybox_vs_name, qhenki::gfx::VERTEX_SHADER, &m_skybox_vertex_shader));
-    THROW_IF_FALSE(load_shader(skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, skybox_vs_name, qhenki::gfx::VERTEX_SHADER, &m_skybox_vertex_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, skybox_ps_name, qhenki::gfx::PIXEL_SHADER, &m_skybox_pixel_shader));
 
     D3D12_BLEND_DESC skybox_blend_desc{
         .AlphaToCoverageEnable = FALSE,
@@ -474,8 +459,8 @@ void RetroExampleApp::create()
         cube_vs_name = "cube_vs_6_6_vs_main.dxil";
         cube_ps_name = "cube_ps_6_6_ps_main.dxil";
     }
-    THROW_IF_FALSE(load_shader(cube_vs_name, qhenki::gfx::VERTEX_SHADER, &m_cube_vertex_shader));
-    THROW_IF_FALSE(load_shader(cube_ps_name, qhenki::gfx::PIXEL_SHADER, &m_cube_pixel_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, cube_vs_name, qhenki::gfx::VERTEX_SHADER, &m_cube_vertex_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, cube_ps_name, qhenki::gfx::PIXEL_SHADER, &m_cube_pixel_shader));
 
     qhenki::gfx::GraphicsPipelineDesc cube_pipeline_desc = {
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
@@ -508,8 +493,9 @@ void RetroExampleApp::create()
         stencil_vs_name = "stencil_vs_6_6_vs_main.dxil";
         stencil_ps_name = "stencil_ps_6_6_ps_main.dxil";
     }
-    THROW_IF_FALSE(load_shader(stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_vertex_shader));
-    THROW_IF_FALSE(load_shader(stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_pixel_shader));
+    THROW_IF_FALSE(load_compiled_shader(
+        *m_context, api, stencil_vs_name, qhenki::gfx::VERTEX_SHADER, &m_stencil_vertex_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, stencil_ps_name, qhenki::gfx::PIXEL_SHADER, &m_stencil_pixel_shader));
 
     D3D12_BLEND_DESC stencil_blend_desc{
         .AlphaToCoverageEnable = FALSE,
@@ -590,8 +576,10 @@ void RetroExampleApp::create()
         bevel_vs_name = "cube_instanced_vs_6_6_vs_main.dxil";
         bevel_ps_name = "cube_instanced_ps_6_6_ps_main.dxil";
     }
-    THROW_IF_FALSE(load_shader(bevel_vs_name, qhenki::gfx::VERTEX_SHADER, &m_bevel_cube_vertex_shader));
-    THROW_IF_FALSE(load_shader(bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
+    THROW_IF_FALSE(load_compiled_shader(
+        *m_context, api, bevel_vs_name, qhenki::gfx::VERTEX_SHADER, &m_bevel_cube_vertex_shader));
+    THROW_IF_FALSE(load_compiled_shader(
+        *m_context, api, bevel_ps_name, qhenki::gfx::PIXEL_SHADER, &m_bevel_cube_pixel_shader));
     qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
         .depth_stencil_state =
             qhenki::gfx::DepthStencilDesc{
@@ -659,15 +647,15 @@ void RetroExampleApp::create()
         blit_lum_ps_name = "blit_luminance_ps_6_6_ps_main.dxil";
         blit_bloom_blob_name = "blit_bloom_1d_ps_6_6_ps_main.dxil_blob";
     }
-    THROW_IF_FALSE(load_shader(blit_vs_name, qhenki::gfx::VERTEX_SHADER, &m_blit_vertex_shader));
-    THROW_IF_FALSE(load_shader(blit_copy_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_copy_pixel_shader));
-    THROW_IF_FALSE(load_shader(blit_lum_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_luminance_pixel_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, blit_vs_name, qhenki::gfx::VERTEX_SHADER, &m_blit_vertex_shader));
+    THROW_IF_FALSE(
+        load_compiled_shader(*m_context, api, blit_copy_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_copy_pixel_shader));
+    THROW_IF_FALSE(load_compiled_shader(
+        *m_context, api, blit_lum_ps_name, qhenki::gfx::PIXEL_SHADER, &m_blit_luminance_pixel_shader));
     {
-        const auto path = qhenki::util::format_string("compiled-shaders/%s/%s", subdir, blit_bloom_blob_name);
-        void* raw = nullptr;
+        std::unique_ptr<std::byte, void (*)(void*)> blob_data(nullptr, free);
         size_t blob_size = 0;
-        THROW_IF_FALSE(qhenki::util::read_file(path.buffer.data(), &raw, &blob_size));
-        const std::unique_ptr<std::byte, void (*)(void*)> blob_data(static_cast<std::byte*>(raw), free);
+        THROW_IF_FALSE(read_compiled_shader_bytes(api, blit_bloom_blob_name, &blob_data, &blob_size));
         const char* horizontal_defines[] = {"BLUR_HORIZONTAL=1"};
         const char* vertical_defines[] = {"BLUR_HORIZONTAL=0"};
         void* shader_ptr = nullptr;

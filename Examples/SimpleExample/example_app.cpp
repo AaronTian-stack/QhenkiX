@@ -1,56 +1,27 @@
 #include "example_app.h"
 #include <wrl/client.h>
+#include "example_shared/shader_loader.h"
 
-#include <qhenki/utility/file_util.h>
 #include "qhenki/utility/general_util.h"
 #include "qhenki/utility/math_util.h"
-#include "qhenki/utility/string_util.h"
 
 #include <array>
-#include <cstddef>
-#include <memory>
 
 void ExampleApp::create()
 {
     const auto api = get_graphics_api();
     const bool use_dx11 = api == qhenki::gfx::API::D3D11;
-    const bool use_vulkan = api == qhenki::gfx::API::Vulkan;
-    const char* subdir = use_dx11 ? "dx11" : (use_vulkan ? "vulkan" : "dx12");
 
-    const char* vs_name = nullptr;
-    const char* ps_name = nullptr;
-    if (use_dx11)
-    {
-        vs_name = "base_vs_5_0_vs_main.dxbc";
-        ps_name = "base_ps_5_0_ps_main.dxbc";
-    }
-    else if (use_vulkan)
-    {
-        vs_name = "base_vs_6_6_vs_main.spv";
-        ps_name = "base_ps_6_6_ps_main.spv";
-    }
-    else
-    {
-        vs_name = "base_vs_6_6_vs_main.dxil";
-        ps_name = "base_ps_6_6_ps_main.dxil";
-    }
-
-    auto load_shader = [&](const char* name, const qhenki::gfx::ShaderType type, qhenki::gfx::Shader* out) -> bool
-    {
-        const auto path = qhenki::util::format_string("compiled-shaders/%s/%s", subdir, name);
-
-        void* raw = nullptr;
-        size_t size = 0;
-        if (!qhenki::util::read_file(path.buffer.data(), &raw, &size))
-        {
-            return false;
-        }
-        const std::unique_ptr<std::byte, void (*)(void*)> data(static_cast<std::byte*>(raw), free);
-        return m_context->create_shader(data.get(), size, type, out);
-    };
-
-    THROW_IF_FALSE(load_shader(vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
-    THROW_IF_FALSE(load_shader(ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
+    const char* vs_base_name = use_dx11 ? "base_vs_5_0_vs_main" : "base_vs_6_6_vs_main";
+    const char* ps_base_name = use_dx11 ? "base_ps_5_0_ps_main" : "base_ps_6_6_ps_main";
+    char vs_name[64] = {};
+    char ps_name[64] = {};
+    THROW_IF_FALSE(append_shader_extension(api, vs_base_name, vs_name, sizeof(vs_name)));
+    THROW_IF_FALSE(append_shader_extension(api, ps_base_name, ps_name, sizeof(ps_name)));
+    THROW_IF_FALSE(load_compiled_shader(
+        *m_context, api, vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
+    THROW_IF_FALSE(load_compiled_shader(
+        *m_context, api, ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
 
     // Create pipeline layout
     qhenki::gfx::LayoutBinding b1 // Constant buffer for camera matrix

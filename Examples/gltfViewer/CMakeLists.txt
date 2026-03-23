@@ -14,6 +14,8 @@ source_group("config" FILES ${CONFIG_FILE})
 add_executable(gltfViewer
     main.cpp
     gltf_loader.cpp
+    ${REPO_ROOT}/Examples/common/cli_args.cpp
+    ${REPO_ROOT}/Examples/common/shader_loader.cpp
     gltf_loader.h
     gltf_model.h
     gltf_viewer_app.cpp
