@@ -16,10 +16,8 @@ void ImGUIExampleApp::create()
     char ps_name[64] = {};
     THROW_IF_FALSE(append_shader_extension(api, vs_base_name, vs_name, sizeof(vs_name)));
     THROW_IF_FALSE(append_shader_extension(api, ps_base_name, ps_name, sizeof(ps_name)));
-    THROW_IF_FALSE(load_compiled_shader(
-        *m_context, api, vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
-    THROW_IF_FALSE(
-        load_compiled_shader(*m_context, api, ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, vs_name, qhenki::gfx::VERTEX_SHADER, &m_vertex_shader));
+    THROW_IF_FALSE(load_compiled_shader(*m_context, api, ps_name, qhenki::gfx::PIXEL_SHADER, &m_pixel_shader));
 
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));

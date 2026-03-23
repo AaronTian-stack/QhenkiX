@@ -1,5 +1,5 @@
-#include "gltf_viewer_app.h"
 #include "example_shared/cli_args.h"
+#include "gltf_viewer_app.h"
 
 int main(int argc, char* argv[])
 {

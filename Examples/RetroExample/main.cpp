@@ -1,5 +1,5 @@
-#include "retro_example_app.h"
 #include "example_shared/cli_args.h"
+#include "retro_example_app.h"
 
 int main(int argc, char* argv[])
 {

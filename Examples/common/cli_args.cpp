@@ -33,7 +33,7 @@ bool parse_cli_args(int argc, char* argv[], const char* program_name, CliOptions
     }
 
     out_options->api = program.get<bool>("-dx11") ? qhenki::gfx::API::D3D11
-                    : program.get<bool>("-dx12") ? qhenki::gfx::API::D3D12
+                     : program.get<bool>("-dx12") ? qhenki::gfx::API::D3D12
                                                   : qhenki::gfx::API::D3D12;
     out_options->debug_layer = program.get<bool>("--debug");
     out_options->tearing = program.get<bool>("--tearing");
