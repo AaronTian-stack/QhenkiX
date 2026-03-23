@@ -189,13 +189,14 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     volkLoadInstanceOnly(m_instance.instance);
 
     // Since this is Vulkan 1.4 most of the stuff we need is core
-    std::array<const char*, 6> device_extensions{
+    std::array<const char*, 7> device_extensions{
         VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
         VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
         VK_KHR_MAINTENANCE_9_EXTENSION_NAME,
         VK_GOOGLE_HLSL_FUNCTIONALITY_1_EXTENSION_NAME,
         VK_GOOGLE_USER_TYPE_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
+        VK_KHR_ROBUSTNESS_2_EXTENSION_NAME,
     };
 
     vkb::PhysicalDeviceSelector selector{m_instance};
@@ -270,6 +271,10 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT,
         .descriptorHeap = VK_TRUE,
     };
+    VkPhysicalDeviceRobustness2FeaturesEXT robustness2_features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+        .nullDescriptor = VK_TRUE,
+    };
 
     auto phys_ret = selector.defer_surface_initialization()
                         .set_minimum_version(major, minor)
@@ -280,6 +285,7 @@ std::string VulkanContext::create(const bool enable_debug_layer)
                         .set_required_features_13(features13)
                         .set_required_features_14(features14)
                         .add_required_extension_features(descriptor_heap_features)
+                        .add_required_extension_features(robustness2_features)
                         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
                         .select();
 
