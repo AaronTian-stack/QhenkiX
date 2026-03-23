@@ -4,6 +4,7 @@
 #include <qhenki/utility/string_util.h>
 
 #include <cstdio>
+#include <utility>
 
 const char* get_shader_subdir(const qhenki::gfx::API api)
 {
@@ -19,7 +20,9 @@ const char* get_shader_subdir(const qhenki::gfx::API api)
     }
 }
 
-static const char* get_shader_extension(const qhenki::gfx::API api)
+namespace
+{
+const char* get_shader_extension(const qhenki::gfx::API api)
 {
     switch (api)
     {
@@ -32,6 +35,7 @@ static const char* get_shader_extension(const qhenki::gfx::API api)
         return "dxil";
     }
 }
+} // namespace
 
 bool append_shader_extension(const qhenki::gfx::API api,
                              const char* shader_name_no_ext,
@@ -44,7 +48,7 @@ bool append_shader_extension(const qhenki::gfx::API api,
     }
 
     const int written = std::snprintf(out_name, out_name_size, "%s.%s", shader_name_no_ext, get_shader_extension(api));
-    return written > 0 && static_cast<size_t>(written) < out_name_size;
+    return written > 0 && std::cmp_less(written, out_name_size);
 }
 
 bool read_compiled_shader_bytes(const qhenki::gfx::API api,
@@ -69,20 +73,4 @@ bool read_compiled_shader_bytes(const qhenki::gfx::API api,
     *out_data = uPtr<std::byte, void (*)(void*)>(static_cast<std::byte*>(raw), free);
     *out_size = size;
     return true;
-}
-
-bool load_compiled_shader(qhenki::gfx::Context& context,
-                          const qhenki::gfx::API api,
-                          const char* name,
-                          const qhenki::gfx::ShaderType type,
-                          qhenki::gfx::Shader* out_shader)
-{
-    uPtr<std::byte, void (*)(void*)> data(nullptr, free);
-    size_t size = 0;
-    if (!read_compiled_shader_bytes(api, name, &data, &size))
-    {
-        return false;
-    }
-
-    return context.create_shader(data.get(), size, type, out_shader);
 }

@@ -8,6 +8,8 @@
 #include "qhenki/RHI/shader.h"
 #include "qhenki/utility/math_util.h"
 
+struct IDxcBlob;
+
 struct NonOwning
 {
     const std::string_view path;
@@ -74,9 +76,7 @@ struct CompilerInput
 struct CompilerOutput
 {
     std::string error_message;
-    size_t shader_size;
-    const void* shader_data;
-    sPtr<void> internal_state;
+    IDxcBlob* blob;
 };
 
 class ShaderCompiler

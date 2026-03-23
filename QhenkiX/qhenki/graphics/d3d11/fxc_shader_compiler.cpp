@@ -18,7 +18,7 @@ using namespace qhenki::gfx;
 using namespace qhenki::util;
 
 // Static implementation
-bool FXCShaderCompiler::get_compiler_path(char* buffer, size_t length)
+bool FXCShaderCompiler::get_compiler_path(char* buffer, const size_t length)
 {
     if (const HMODULE d3d_compiler = GetModuleHandleA("d3dcompiler_47.dll"))
     {
@@ -102,11 +102,11 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     MultiIncludeHandler handler(input.includes, input.get_path());
 
-    ComPtr<ID3DBlob> shader_blob;
     // TODO: d3dcompiler_47.dll should be linked with the application
     // TODO: custom include handler
 
     ComPtr<ID3DBlob> error_blob;
+    ComPtr<ID3DBlob> compiled_blob;
     Utf8To16Scoped path_buffer(input.get_path());
     const HRESULT hr = D3DCompileFromFile(path_buffer.c_str(),
                                           macros,
@@ -115,7 +115,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
                                           target.c_str(),
                                           flags,
                                           0,
-                                          shader_blob.ReleaseAndGetAddressOf(),
+                                          compiled_blob.GetAddressOf(),
                                           error_blob.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
@@ -126,19 +126,12 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         return false;
     }
 
-    output.internal_state = mkS<FXCShaderOutput>();
-    output.shader_size = shader_blob->GetBufferSize();
-    output.shader_data = shader_blob->GetBufferPointer();
-
-    const auto fxc_shader_output = static_cast<FXCShaderOutput*>(output.internal_state.get());
-    fxc_shader_output->shader_blob = shader_blob;
-
     if (input.flags & CompilerInput::DEBUG)
     {
         ComPtr<ID3DBlob> debug_info_path;
         ComPtr<ID3DBlob> debug_info_blob;
-        const auto pdb_result = D3DGetBlobPart(shader_blob->GetBufferPointer(),
-                                               shader_blob->GetBufferSize(),
+        const auto pdb_result = D3DGetBlobPart(compiled_blob->GetBufferPointer(),
+                                               compiled_blob->GetBufferSize(),
                                                D3D_BLOB_PDB,
                                                0,
                                                debug_info_blob.ReleaseAndGetAddressOf());
@@ -149,8 +142,8 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         }
 
         // Generated PDB path
-        const auto pdb_path = D3DGetBlobPart(shader_blob->GetBufferPointer(),
-                                             shader_blob->GetBufferSize(),
+        const auto pdb_path = D3DGetBlobPart(compiled_blob->GetBufferPointer(),
+                                             compiled_blob->GetBufferSize(),
                                              D3D_BLOB_DEBUG_NAME,
                                              0,
                                              debug_info_path.ReleaseAndGetAddressOf());
@@ -169,6 +162,9 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
             return false;
         }
     }
+
+    // ID3DBlob and IDxcBlob are aliases
+    output.blob = reinterpret_cast<IDxcBlob*>(compiled_blob.Detach());
 
     return true;
 }

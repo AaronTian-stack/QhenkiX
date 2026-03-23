@@ -29,13 +29,6 @@ ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
     return d3d11_buffer;
 }
 
-D3D11Shader* to_internal(const Shader& ext)
-{
-    const auto d3d11_shader = static_cast<D3D11Shader*>(ext.internal_state.get());
-    assert(d3d11_shader);
-    return d3d11_shader;
-}
-
 D3D11GraphicsPipeline* to_internal(const GraphicsPipeline& ext)
 {
     const auto d3d11_pipeline = static_cast<D3D11GraphicsPipeline*>(ext.internal_state.get());
@@ -337,37 +330,42 @@ bool D3D11Context::acquire_swapchain_image()
 
 unsigned D3D11Context::get_frame_slot(const unsigned slot_count) const
 {
-    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
-}
-
-bool D3D11Context::create_shader(void* data, size_t size, ShaderType type, Shader* shader)
-{
-    bool result = true;
-    shader->internal_state = mkS<D3D11Shader>(m_device.Get(), type, data, size, nullptr, &result);
-    return result;
+    return slot_count > 0 ? m_frame_count % slot_count : 0;
 }
 
 bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                    GraphicsPipeline* pipeline,
-                                   const Shader& vertex_shader,
-                                   const Shader& pixel_shader,
+                                   const Shader vertex_shader,
+                                   const Shader pixel_shader,
                                    PipelineLayout* in_layout,
                                    const char* debug_name)
 {
-    auto d3d11_pipeline = mkS<D3D11GraphicsPipeline>();
-    const auto d3d11_vertex_shader = to_internal(vertex_shader);
+    pipeline->internal_state = mkS<D3D11GraphicsPipeline>();
 
-    d3d11_pipeline->vertex_shader = vertex_shader.internal_state.get();
-    d3d11_pipeline->pixel_shader = pixel_shader.internal_state.get();
+    const auto d3d11_pipeline = to_internal(*pipeline);
 
-    const auto true_vs = std::get_if<D3D11VertexShader>(&d3d11_vertex_shader->m_shader);
-    assert(true_vs);
+    if (FAILED(m_device->CreateVertexShader(
+            vertex_shader.data, vertex_shader.size, nullptr, d3d11_pipeline->vertex_shader.ReleaseAndGetAddressOf())))
+    {
+        pipeline->internal_state.reset();
+        return false;
+    }
+    set_debug_name(d3d11_pipeline->vertex_shader.Get(), debug_name);
 
-    ID3D11InputLayout* input_layout_ = m_layout_assembler.create_input_layout_reflection(
-        m_device.Get(), true_vs->vertex_shader_blob.Get(), desc.increment_slot);
-    d3d11_pipeline->input_layout = input_layout_;
+    if (FAILED(m_device->CreatePixelShader(
+            pixel_shader.data, pixel_shader.size, nullptr, d3d11_pipeline->pixel_shader.ReleaseAndGetAddressOf())))
+    {
+        pipeline->internal_state.reset();
+        return false;
+    }
+    set_debug_name(d3d11_pipeline->pixel_shader.Get(), debug_name);
 
-    bool succeeded = input_layout_ != nullptr;
+    ID3D11InputLayout* input_layout =
+        m_layout_assembler.create_input_layout_reflection(m_device.Get(), vertex_shader, desc.increment_slot);
+
+    d3d11_pipeline->input_layout = input_layout;
+
+    bool succeeded = input_layout != nullptr;
 
     const RasterizerDesc rs = desc.rasterizer_state.value_or(RasterizerDesc{});
     D3D11_RASTERIZER_DESC rasterizer_desc = {
@@ -444,10 +442,11 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
         }
     }
 
-    if (succeeded)
+    if (!succeeded)
     {
-        pipeline->internal_state = std::move(d3d11_pipeline);
+        pipeline->internal_state.reset();
     }
+
     return succeeded;
 }
 

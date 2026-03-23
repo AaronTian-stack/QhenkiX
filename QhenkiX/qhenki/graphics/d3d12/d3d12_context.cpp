@@ -434,30 +434,7 @@ bool D3D12Context::acquire_swapchain_image()
 
 unsigned D3D12Context::get_frame_slot(const unsigned slot_count) const
 {
-    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
-}
-
-bool D3D12Context::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
-{
-    ComPtr<IDxcBlobEncoding> container_blob_enc;
-    if (FAILED(m_library->CreateBlob(data, static_cast<UINT32>(size), 0, container_blob_enc.ReleaseAndGetAddressOf())))
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create DXC blob from memory\n");
-        return false;
-    }
-    ComPtr<IDxcBlob> container_blob;
-    if (FAILED(container_blob_enc.As(&container_blob)))
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to cast encoding blob to IDxcBlob\n");
-        return false;
-    }
-
-    shader->type = type;
-    shader->internal_state = mkS<DXCShaderOutput>();
-    auto* out = static_cast<DXCShaderOutput*>(shader->internal_state.get());
-    out->shader_blob = container_blob;
-
-    return true;
+    return slot_count > 0 ? m_frame_count % slot_count : 0;
 }
 
 D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
@@ -498,8 +475,8 @@ D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection
 
 bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                                    GraphicsPipeline* const pipeline,
-                                   const Shader& vertex_shader,
-                                   const Shader& pixel_shader,
+                                   const Shader vertex_shader,
+                                   const Shader pixel_shader,
                                    PipelineLayout* in_layout,
                                    const char* debug_name)
 {
@@ -512,23 +489,14 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     auto d3d12_pipeline = to_internal(*pipeline);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
-
-    const DXCShaderOutput* vs12;
-
     ComPtr<ID3D12ShaderReflection> shader_reflection;
     D3D12_SHADER_DESC shader_desc{};
     D3D12_INPUT_ELEMENT_DESC* input_layout_desc = nullptr;
+
+    const DxcBuffer vs_container_buffer = {.Ptr = vertex_shader.data, .Size = vertex_shader.size, .Encoding = 0};
+
     // SM >= 6.0
     {
-        vs12 = static_cast<DXCShaderOutput*>(vertex_shader.internal_state.get());
-        const auto ps12 = static_cast<DXCShaderOutput*>(pixel_shader.internal_state.get());
-        assert(vs12);
-        assert(ps12);
-
-        // Build reflection from the DXIL container directly
-        const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
-                                               static_cast<UINT32>(vs12->shader_blob->GetBufferSize()),
-                                               0};
         // Prefer reflecting from the RDAT part if available to avoid scanning the container
         void* rdat_ptr = nullptr;
         UINT32 rdat_size = 0;
@@ -559,21 +527,15 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
         input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
 
-        pso_desc.VS = {.pShaderBytecode = vs12->shader_blob->GetBufferPointer(),
-                       .BytecodeLength = vs12->shader_blob->GetBufferSize()};
-        pso_desc.PS = {.pShaderBytecode = ps12->shader_blob->GetBufferPointer(),
-                       .BytecodeLength = ps12->shader_blob->GetBufferSize()};
+        pso_desc.VS = {.pShaderBytecode = vertex_shader.data, .BytecodeLength = vertex_shader.size};
+        pso_desc.PS = {.pShaderBytecode = pixel_shader.data, .BytecodeLength = pixel_shader.size};
     }
 
     pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc, .NumElements = shader_desc.InputParameters};
 
     // Prefer root signature embedded in shader container if present
     ComPtr<ID3D12RootSignature> root_signature;
-    if (vs12)
     {
-        const DxcBuffer vs_container_buffer = {vs12->shader_blob->GetBufferPointer(),
-                                               static_cast<UINT32>(vs12->shader_blob->GetBufferSize()),
-                                               0};
         void* rsig_ptr = nullptr;
         UINT32 rsig_size = 0;
         if (SUCCEEDED(m_library->GetDxilContainerPart(

@@ -17,7 +17,6 @@
 #include "vulkan_descriptor_heap.h"
 #include "vulkan_pipeline.h"
 #include "vulkan_root_signature.h"
-#include "vulkan_shader.h"
 #include "vulkan_texture.h"
 
 #include <spirv_glsl.hpp>
@@ -88,13 +87,6 @@ VkCommandBuffer* to_internal(const CommandList& ext)
     const auto vulkan_command_buffer = static_cast<VkCommandBuffer*>(ext.internal_state.get());
     assert(vulkan_command_buffer);
     return vulkan_command_buffer;
-}
-
-VulkanShader* to_internal(const Shader& ext)
-{
-    const auto vulkan_shader = static_cast<VulkanShader*>(ext.internal_state.get());
-    assert(vulkan_shader);
-    return vulkan_shader;
 }
 
 void set_debug_name(const VkDevice device, const VkObjectType type, const uint64_t handle, const char* name)
@@ -655,31 +647,7 @@ bool VulkanContext::present(const Swapchain& swapchain)
 
 unsigned VulkanContext::get_frame_slot(const unsigned slot_count) const
 {
-    return slot_count > 0 ? (m_frame_count % slot_count) : 0;
-}
-
-bool VulkanContext::create_shader(void* data, const size_t size, const ShaderType type, Shader* shader)
-{
-    auto state = mkS<VulkanShader>();
-    state->spirv.resize(size / sizeof(uint32_t));
-    memcpy(state->spirv.data(), data, size);
-
-    const VkShaderModuleCreateInfo shader_module_info{
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = size,
-        .pCode = state->spirv.data(),
-    };
-
-    if (VK_FAILED(vkCreateShaderModule(m_device.device, &shader_module_info, nullptr, &state->module)))
-    {
-        state.reset();
-        return false;
-    }
-
-    shader->type = type;
-    shader->internal_state = std::move(state);
-
-    return true;
+    return slot_count > 0 ? m_frame_count % slot_count : 0;
 }
 
 namespace
@@ -750,8 +718,8 @@ uint32_t vertex_attribute_size_from_spirv_type(const spirv_cross::SPIRType& type
 
 bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
                                     GraphicsPipeline* pipeline,
-                                    const Shader& vertex_shader,
-                                    const Shader& pixel_shader,
+                                    const Shader vertex_shader,
+                                    const Shader pixel_shader,
                                     PipelineLayout* in_layout,
                                     const char* debug_name)
 {
@@ -762,8 +730,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
-    const auto vk_vertex_shader = to_internal(vertex_shader);
-    const spirv_cross::CompilerGLSL vs_reflect(vk_vertex_shader->spirv);
+    const spirv_cross::CompilerGLSL vs_reflect(static_cast<uint32_t*>(vertex_shader.data), vertex_shader.size / 4u);
     spirv_cross::ShaderResources resources = vs_reflect.get_shader_resources();
 
     const auto vs_entry_name = vs_reflect.get_entry_points_and_stages()[0].name;
@@ -830,8 +797,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         };
     }
 
-    const auto ps_vk_pixel_shader = to_internal(pixel_shader);
-    const spirv_cross::CompilerGLSL ps_reflect(ps_vk_pixel_shader->spirv);
+    const spirv_cross::CompilerGLSL ps_reflect(static_cast<uint32_t*>(pixel_shader.data), pixel_shader.size / 4u);
     const auto ps_entry_name = ps_reflect.get_entry_points_and_stages()[0].name;
 
     const auto vk_root_signature = to_internal(*in_layout);
@@ -841,14 +807,14 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .pNext = &vk_root_signature->layout,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
-        .module = vk_vertex_shader->module,
+        //.module = vk_vertex_shader->module,
         .pName = vs_entry_name.c_str(),
     };
     shader_stages[1] = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .pNext = &vk_root_signature->layout,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .module = ps_vk_pixel_shader->module,
+        //.module = ps_vk_pixel_shader->module,
         .pName = ps_entry_name.c_str(),
     };
 

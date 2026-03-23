@@ -166,7 +166,7 @@ void gltfViewerApp::create()
         .increment_slot = true,
     };
     THROW_IF_FALSE(m_context->create_pipeline(
-        pipeline_desc, &m_pipeline, m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "Triangle pipeline"));
+            pipeline_desc, &m_pipeline, m_vertex_shader, m_pixel_shader, &m_pipeline_layout, "Triangle pipeline"));
 
     // A graphics queue is already given to the application by the context
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <d3dcommon.h>
 #include <wrl/client.h>
 
 #include "qhenki/RHI/shader_compiler.h"
@@ -17,11 +16,6 @@ struct ShaderDebugName
     // Followed by NameLength bytes of the UTF-8-encoded name.
     // Followed by a null terminator.
     // Followed by [0-3] zero bytes to align to a 4-byte boundary.
-};
-
-struct FXCShaderOutput
-{
-    ComPtr<ID3DBlob> shader_blob;
 };
 
 class FXCShaderCompiler : public ShaderCompiler
