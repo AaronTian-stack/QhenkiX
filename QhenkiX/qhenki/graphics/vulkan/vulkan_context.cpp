@@ -2621,7 +2621,11 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         if (needs_transition)
         {
             auto const textures = arena.alloc_array<Texture*>(number_of_textures_to_transition);
-            const auto texture_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
+            size_t texture_count = 0;
+            while (texture_count == 0)
+            {
+                texture_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
+            }
             assert(texture_count == number_of_textures_to_transition);
 
             const auto image_barriers = arena.alloc_array<VkImageMemoryBarrier2>(texture_count);
