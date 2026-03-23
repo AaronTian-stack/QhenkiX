@@ -59,6 +59,9 @@ class VulkanContext : public Context
 
     DeferredDescriptorCopier m_descriptor_copier;
 
+    // TODO: Remove this
+    uint32_t m_bound_push_range_count = 0;
+
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
