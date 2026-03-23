@@ -723,8 +723,6 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
                                     PipelineLayout* in_layout,
                                     const char* debug_name)
 {
-    assert(pipeline);
-    assert(in_layout);
     if (desc.num_render_targets > MAX_RENDER_TARGETS)
     {
         return false;
@@ -802,19 +800,31 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
 
     const auto vk_root_signature = to_internal(*in_layout);
 
+    VkShaderModuleCreateInfo vs_module_info{
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .pNext = &vk_root_signature->layout,
+        .codeSize = vertex_shader.size,
+        .pCode = static_cast<const uint32_t*>(vertex_shader.data),
+    };
+
+    VkShaderModuleCreateInfo ps_module_info{
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .pNext = &vk_root_signature->layout,
+        .codeSize = pixel_shader.size,
+        .pCode = static_cast<const uint32_t*>(pixel_shader.data),
+    };
+
     std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages;
     shader_stages[0] = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext = &vk_root_signature->layout,
+        .pNext = &vs_module_info,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
-        //.module = vk_vertex_shader->module,
         .pName = vs_entry_name.c_str(),
     };
     shader_stages[1] = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext = &vk_root_signature->layout,
+        .pNext = &ps_module_info,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-        //.module = ps_vk_pixel_shader->module,
         .pName = ps_entry_name.c_str(),
     };
 
