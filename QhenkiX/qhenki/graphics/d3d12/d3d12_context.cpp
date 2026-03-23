@@ -1270,11 +1270,10 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
         return false;
     }
 
-    if (buffer.desc.stride == 0)
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Buffer stride is zero, cannot create shader resource view\n");
-        return false;
-    }
+    const auto is_raw = buffer.desc.stride == 0;
+    const auto num_elements = is_raw ? buffer.desc.size / 4u : buffer.desc.size / buffer.desc.stride;
+
+    assert(num_elements < std::numeric_limits<UINT>::max());
 
     const D3D12_SHADER_RESOURCE_VIEW_DESC desc{
         .Format = DXGI_FORMAT_UNKNOWN,
@@ -1283,9 +1282,9 @@ bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
         .Buffer =
             {
                 .FirstElement = 0,
-                .NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
+                .NumElements = static_cast<UINT>(num_elements),
                 .StructureByteStride = static_cast<UINT>(buffer.desc.stride),
-                .Flags = D3D12_BUFFER_SRV_FLAG_NONE, // No raw buffer
+                .Flags = is_raw ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE,
             },
     };
 

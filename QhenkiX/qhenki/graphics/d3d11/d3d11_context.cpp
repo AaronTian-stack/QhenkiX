@@ -552,28 +552,20 @@ size_t D3D11Context::get_descriptor_alignment(Descriptor::Type type) const
 
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
-    assert(buffer);
-    if (desc.usage & BufferUsage::CONSTANT)
-    {
-        if (desc.size > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
-        {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
-            return false;
-        }
-        if (desc.size % 16 != 0)
-        {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Constant buffer size is not aligned to 16 bytes\n");
-            return false;
-        }
-    }
-
-    assert(desc.size <= UINT_MAX);
-    assert(desc.stride <= UINT_MAX);
-
     D3D11_BUFFER_DESC buffer_info{
         .ByteWidth = static_cast<UINT>(desc.size),
         .StructureByteStride = static_cast<UINT>(desc.stride),
     };
+
+    if (desc.usage & BufferUsage::CONSTANT)
+    {
+        buffer_info.ByteWidth = util::align_u(buffer_info.ByteWidth, 16u);
+        if (buffer_info.ByteWidth > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
+        {
+            OutputDebugStringA("Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
+            return false;
+        }
+    }
 
     if (desc.usage & BufferUsage::VERTEX)
     {
@@ -595,16 +587,40 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     {
         buffer_info.BindFlags |= D3D11_BIND_UNORDERED_ACCESS; // TODO: Check this
     }
+
     if (buffer_info.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
     {
         buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
-        buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED | D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+        if (buffer_info.StructureByteStride > 0)
+        {
+            buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+        }
+        else
+        {
+            buffer_info.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+        }
     }
 
     if (desc.visibility & CPU_SEQUENTIAL)
     {
-        buffer_info.Usage = D3D11_USAGE_DYNAMIC;
-        buffer_info.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        buffer_info.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+        if (buffer_info.BindFlags == 0)
+        {
+            buffer_info.Usage = D3D11_USAGE_STAGING;
+        }
+        else if (buffer_info.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+        {
+            // DYNAMIC buffers cannot be UAV bound
+            // This prevents staging buffers from being used directly
+            // TODO: Revisit this
+            buffer_info.Usage = D3D11_USAGE_DEFAULT;
+            buffer_info.CPUAccessFlags = 0;
+        }
+        else
+        {
+            buffer_info.Usage = D3D11_USAGE_DYNAMIC;
+            buffer_info.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        }
     }
     else
     {
@@ -654,16 +670,35 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
         }
     }
 
+    const auto is_raw = buffer.desc.stride == 0;
+
     ComPtr<ID3D11ShaderResourceView> view;
-    const D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{
-        .Format = DXGI_FORMAT_UNKNOWN,
-        .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
-        .Buffer =
-            {
-                .FirstElement = 0,
-                .NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
-            },
-    };
+    D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+    if (is_raw)
+    {
+        srv_desc = {
+            .Format = DXGI_FORMAT_R32_TYPELESS,
+            .ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX,
+            .BufferEx =
+                {
+                    .FirstElement = 0,
+                    .NumElements = static_cast<UINT>(buffer.desc.size / 4u),
+                    .Flags = D3D11_BUFFEREX_SRV_FLAG_RAW,
+                },
+        };
+    }
+    else
+    {
+        srv_desc = {
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
+            .Buffer =
+                {
+                    .FirstElement = 0,
+                    .NumElements = static_cast<UINT>(buffer.desc.size / buffer.desc.stride),
+                },
+        };
+    }
     if (FAILED(m_device->CreateShaderResourceView(buffer_d3d11->Get(), &srv_desc, view.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
