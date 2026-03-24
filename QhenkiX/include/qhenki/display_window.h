@@ -1,7 +1,7 @@
 #pragma once
 
 #define SDL_MAIN_HANDLED
-#include <DirectXMath.h>
+#include "qhenki/utility/directxmath_compat.h"
 #include <SDL3/SDL.h>
 #if defined(_WIN32) || defined(_WIN64)
 #ifndef NOMINMAX

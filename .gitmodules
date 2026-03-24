@@ -24,3 +24,6 @@
 [submodule "QhenkiX/external/SPIRV-Cross"]
 	path = QhenkiX/external/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross.git
+[submodule "QhenkiX/external/DirectXMath"]
+	path = QhenkiX/external/DirectXMath
+	url = https://github.com/microsoft/DirectXMath.git

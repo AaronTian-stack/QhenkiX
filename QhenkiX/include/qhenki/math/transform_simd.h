@@ -1,6 +1,6 @@
 #pragma once
 
-#include <DirectXMath.h>
+#include "qhenki/utility/directxmath_compat.h"
 
 #include "transform.h"
 

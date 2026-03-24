@@ -1,6 +1,6 @@
 #pragma once
 
-#include <DirectXCollision.h>
+#include "qhenki/utility/directxmath_compat.h"
 #include "camera.h"
 
 namespace qhenki::component

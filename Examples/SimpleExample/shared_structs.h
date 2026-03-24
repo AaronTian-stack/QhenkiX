@@ -4,7 +4,7 @@
 #include <qhenki/utility/hlsl_compat.h>
 
 #ifdef __cplusplus
-#include <DirectXMath.h>
+#include <qhenki/utility/directxmath_compat.h>
 using namespace DirectX;
 #endif
 
