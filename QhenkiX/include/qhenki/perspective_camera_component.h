@@ -1,7 +1,7 @@
 #pragma once
 
-#include "qhenki/utility/directxmath_compat.h"
 #include "camera.h"
+#include "qhenki/utility/directxmath_compat.h"
 
 namespace qhenki::component
 {
