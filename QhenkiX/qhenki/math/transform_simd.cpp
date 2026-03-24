@@ -30,7 +30,8 @@ TransformSIMD TransformSIMD::operator*(const TransformSIMD& rhs) const
 {
     TransformSIMD result;
     result.rotation = XMQuaternionMultiply(rotation, rhs.rotation);
-    result.scale = rhs.scale * scale;
-    result.translation = XMVector3Rotate(translation * rhs.scale, rhs.rotation) + rhs.translation;
+    result.scale = XMVectorMultiply(rhs.scale, scale);
+    result.translation = XMVectorAdd(XMVector3Rotate(XMVectorMultiply(translation, rhs.scale), rhs.rotation),
+                                     rhs.translation);
     return result;
 }

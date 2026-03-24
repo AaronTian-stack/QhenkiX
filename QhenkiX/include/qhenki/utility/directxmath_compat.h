@@ -9,4 +9,9 @@
 #endif
 #endif
 
+// clang-format off
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
+#include <DirectXColors.h>
+#include <DirectXPackedVector.h>
+// clang-format on
