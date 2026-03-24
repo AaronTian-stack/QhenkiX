@@ -1,4 +1,5 @@
 #include "example_shared/cli_args.h"
+#include "example_shared/window_init.h"
 #include "gltf_viewer_app.h"
 
 int main(int argc, char* argv[])
@@ -19,7 +20,7 @@ int main(int argc, char* argv[])
         .tearing = options.tearing,
     };
 
-    gltfViewerApp::Payload payload{options.fullscreen};
+    WindowInitPayload payload{options.fullscreen};
     app.run(options.api, options.debug_layer, &payload, swapchain_desc);
 
     return 0;

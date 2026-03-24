@@ -1,9 +1,15 @@
 #include "imgui_example_app.h"
 #include "example_shared/shader_loader.h"
+#include "example_shared/window_init.h"
 
 #include <imgui/imgui.h>
 
 #include <array>
+
+void ImGUIExampleApp::init_display_window(void* payload)
+{
+    init_display_window_with_name(*this, m_window, "ImGUI Example", payload);
+}
 
 void ImGUIExampleApp::create()
 {

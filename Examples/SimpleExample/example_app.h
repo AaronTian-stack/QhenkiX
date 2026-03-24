@@ -31,6 +31,7 @@ class ExampleApp : public qhenki::Application
     CameraMatrices m_matrices{};
 
 protected:
+    void init_display_window(void* payload) override;
     void create() override;
     void render() override;
     void resize(unsigned width, unsigned height) override;

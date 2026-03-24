@@ -1,5 +1,6 @@
 #include "example_app.h"
 #include "example_shared/cli_args.h"
+#include "example_shared/window_init.h"
 
 int main(int argc, char* argv[])
 {
@@ -18,7 +19,8 @@ int main(int argc, char* argv[])
     };
 
     ExampleApp app;
-    app.run(options.api, options.debug_layer, nullptr, swapchain_desc);
+    WindowInitPayload payload{options.fullscreen};
+    app.run(options.api, options.debug_layer, &payload, swapchain_desc);
 
     return 0;
 }
