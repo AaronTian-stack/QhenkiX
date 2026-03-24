@@ -17,7 +17,9 @@ A more advanced example demonstrating loading and rendering of glTF 3D models.
 
 ## Command Line Arguments
 
-- `-dx12` - Use DirectX 12 (Default)
+- `-dx12` - Use DirectX 12 (default)
 - `-dx11` - Use DirectX 11
-- `-t` `--tearing` - flag to enable tearing
-- `-f` `--fullscreen` - flag to enable fullscreen
+- `-vk`, `--vulkan` - Use Vulkan
+- `-d`, `--debug` - Enable graphics API debug layer
+- `-t`, `--tearing` - Enable tearing (vsync off)
+- `-f`, `--fullscreen` - Start in fullscreen mode

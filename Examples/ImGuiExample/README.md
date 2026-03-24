@@ -11,5 +11,9 @@
 
 ## Command Line Arguments
 
-- `-dx12` - Use DirectX 12 (Default)
+- `-dx12` - Use DirectX 12 (default)
 - `-dx11` - Use DirectX 11
+- `-vk`, `--vulkan` - Use Vulkan
+- `-d`, `--debug` - Enable graphics API debug layer
+- `-t`, `--tearing` - Enable tearing (vsync off)
+- `-f`, `--fullscreen` - Start in fullscreen mode

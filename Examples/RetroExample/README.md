@@ -1,6 +1,6 @@
 # Retro Example
 
-Rendering example demonstrating graphics techniques such as stencil operations, multiple render passes and render targets, and more advanced shaders.
+Rendering example demonstrating graphics techniques such as stencil operations, multiple render passes and render targets, block compressed textures, and more advanced shaders.
 
 Inspired by [this demo](https://www.youtube.com/watch?v=XP8g2ngHftY&t=370s).
 
@@ -27,8 +27,9 @@ Art in skybox is from [32rogues asset pack](https://sethbb.itch.io/32rogues).
 
 ## Command Line Arguments
 
-- `-dx12` - Use DirectX 12 (Default)
+- `-dx12` - Use DirectX 12 (default)
 - `-dx11` - Use DirectX 11
-- `-d` `--debug` - flag to enable graphics API debug layer
-- `-t` `--tearing` - flag to enable tearing
-- `-f` `--fullscreen` - flag to enable fullscreen
+- `-vk`, `--vulkan` - Use Vulkan
+- `-d`, `--debug` - Enable graphics API debug layer
+- `-t`, `--tearing` - Enable tearing (vsync off)
+- `-f`, `--fullscreen` - Start in fullscreen mode
