@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <vector>
 
 #include "qhenki/RHI/descriptor.h"
@@ -28,7 +29,7 @@ public:
     void add_pending_descriptor_copy(size_t bytes, const Descriptor& src, const Descriptor& dst);
     size_t get_max_segments() const;
     size_t merge_regions();
-    const PendingDescriptorCopy* get_merged_regions(size_t* count) const;
+    std::span<const PendingDescriptorCopy> get_merged_regions() const;
     void reset();
 };
 

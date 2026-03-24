@@ -91,10 +91,9 @@ size_t DeferredDescriptorCopier::merge_regions()
     return pending_copies.size() - merged_copies.size();
 }
 
-const PendingDescriptorCopy* DeferredDescriptorCopier::get_merged_regions(size_t* count) const
+std::span<const PendingDescriptorCopy> DeferredDescriptorCopier::get_merged_regions() const
 {
-    *count = merged_copies.size();
-    return merged_copies.data();
+    return merged_copies;
 }
 
 void DeferredDescriptorCopier::reset()
