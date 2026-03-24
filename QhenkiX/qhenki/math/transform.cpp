@@ -6,7 +6,7 @@ using namespace qhenki::math;
 void Transform::invert()
 {
     const XMVECTOR inv_rot = XMQuaternionInverse(XMLoadFloat4(&rotation));
-    const XMVECTOR inv_trans = XMVector3Rotate(XMLoadFloat3(&translation) * -1.0f, inv_rot);
+    const XMVECTOR inv_trans = XMVector3Rotate(XMVectorNegate(XMLoadFloat3(&translation)), inv_rot);
     XMStoreFloat4(&rotation, inv_rot);
     XMStoreFloat3(&translation, inv_trans);
 }
@@ -23,7 +23,8 @@ void Transform::affine_invert()
     const XMVECTOR s = XMLoadFloat3(&scale);
     const XMVECTOR inv_scale = XMVectorReciprocal(s);
     const XMVECTOR inv_rot = XMQuaternionInverse(XMLoadFloat4(&rotation));
-    const XMVECTOR inv_trans = XMVector3Rotate(XMLoadFloat3(&translation), inv_rot) * -1.0f * inv_scale;
+    const XMVECTOR inv_trans = XMVectorMultiply(XMVectorNegate(XMVector3Rotate(XMLoadFloat3(&translation), inv_rot)),
+                                                inv_scale);
     XMStoreFloat3(&scale, inv_scale);
     XMStoreFloat4(&rotation, inv_rot);
     XMStoreFloat3(&translation, inv_trans);
@@ -61,9 +62,9 @@ XMVECTOR Transform::inverse_transform_point(const XMFLOAT3& p) const
 
 XMVECTOR Transform::inverse_transform_point(const XMVECTOR p) const
 {
-    XMVECTOR v = p - XMLoadFloat3(&translation);
+    XMVECTOR v = XMVectorSubtract(p, XMLoadFloat3(&translation));
     v = XMVector3Rotate(v, XMQuaternionInverse(XMLoadFloat4(&rotation)));
-    v = v * XMVectorReciprocal(XMLoadFloat3(&scale));
+    v = XMVectorMultiply(v, XMVectorReciprocal(XMLoadFloat3(&scale)));
     return v;
 }
 
@@ -75,7 +76,7 @@ XMVECTOR Transform::inverse_transform_vector(const XMFLOAT3& v) const
 XMVECTOR Transform::inverse_transform_vector(const XMVECTOR v) const
 {
     XMVECTOR result = XMVector3Rotate(v, XMQuaternionInverse(XMLoadFloat4(&rotation)));
-    result = result * XMVectorReciprocal(XMLoadFloat3(&scale));
+    result = XMVectorMultiply(result, XMVectorReciprocal(XMLoadFloat3(&scale)));
     return result;
 }
 
@@ -87,7 +88,7 @@ Transform& Transform::look_at(const XMFLOAT3& p, const XMFLOAT3& up)
 Transform& Transform::look_at(const XMVECTOR p, const XMVECTOR up)
 {
     const XMVECTOR pos = XMLoadFloat3(&translation);
-    const XMVECTOR forward = XMVector3Normalize(p - pos);
+    const XMVECTOR forward = XMVector3Normalize(XMVectorSubtract(p, pos));
     const XMVECTOR right = XMVector3Normalize(XMVector3Cross(up, forward));
     const XMVECTOR actual_up = XMVector3Cross(forward, right);
 
@@ -118,9 +119,9 @@ XMVECTOR Transform::transform_point(const XMFLOAT3& p) const
 
 XMVECTOR Transform::transform_point(const XMVECTOR p) const
 {
-    XMVECTOR v = p * XMLoadFloat3(&scale);
+    XMVECTOR v = XMVectorMultiply(p, XMLoadFloat3(&scale));
     v = XMVector3Rotate(v, XMLoadFloat4(&rotation));
-    v = v + XMLoadFloat3(&translation);
+    v = XMVectorAdd(v, XMLoadFloat3(&translation));
     return v;
 }
 
@@ -132,7 +133,7 @@ XMVECTOR Transform::transform_vector(const XMFLOAT3& v) const
 XMVECTOR Transform::transform_vector(const XMVECTOR v) const
 {
     XMVECTOR result = XMVector3Rotate(v, XMLoadFloat4(&rotation));
-    result = result * XMLoadFloat3(&scale);
+    result = XMVectorMultiply(result, XMLoadFloat3(&scale));
     return result;
 }
 
@@ -144,7 +145,7 @@ void Transform::translate_local(const XMFLOAT3& t)
 void Transform::translate_local(const XMVECTOR t)
 {
     const XMVECTOR offset = XMVector3Rotate(t, XMLoadFloat4(&rotation));
-    XMStoreFloat3(&translation, XMLoadFloat3(&translation) + offset);
+    XMStoreFloat3(&translation, XMVectorAdd(XMLoadFloat3(&translation), offset));
 }
 
 void Transform::translate_global(const XMFLOAT3& t)
@@ -154,7 +155,7 @@ void Transform::translate_global(const XMFLOAT3& t)
 
 void Transform::translate_global(const XMVECTOR t)
 {
-    XMStoreFloat3(&translation, XMLoadFloat3(&translation) + t);
+    XMStoreFloat3(&translation, XMVectorAdd(XMLoadFloat3(&translation), t));
 }
 
 XMVECTOR Transform::operator*(const XMFLOAT3& rhs) const

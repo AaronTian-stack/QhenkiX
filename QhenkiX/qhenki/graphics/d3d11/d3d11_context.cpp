@@ -6,7 +6,6 @@
 #include "qhenki/utility/string_util.h"
 
 #include <d3dcompiler.h>
-#include <DirectXMath.h>
 #include <DirectXTex.h>
 
 #include "d3d11_descriptor_heap.h"
