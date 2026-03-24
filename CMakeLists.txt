@@ -62,6 +62,15 @@ if(QHENKIX_PREBUILT_LIB)
             INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/DirectXTex/DirectXTex"
         )
         target_link_libraries(DirectXTex INTERFACE DirectX-Guids)
+
+        add_library(DirectXMath INTERFACE IMPORTED GLOBAL)
+        set_target_properties(DirectXMath PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/DirectXMath/Inc"
+            INTERFACE_COMPILE_DEFINITIONS "_XM_NO_XMVECTOR_OVERLOADS_"
+        )
+        if(NOT TARGET Microsoft::DirectXMath)
+            add_library(Microsoft::DirectXMath ALIAS DirectXMath)
+        endif()
     else()
         qhenkix_add_dependency_subdirectory(QhenkiX/external/DirectXMath ${CMAKE_BINARY_DIR}/DirectXMath)
         if(TARGET DirectXMath AND NOT TARGET Microsoft::DirectXMath)
@@ -149,7 +158,7 @@ if(QHENKIX_PREBUILT_LIB)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
     target_include_directories(QhenkiX INTERFACE ${QHENKIX_INCLUDE_DIRS})
     target_link_libraries(QhenkiX INTERFACE
-        Microsoft::DirectXMath
+        DirectXMath
         DirectXTex
         DirectX-Guids
         SDL3::SDL3
