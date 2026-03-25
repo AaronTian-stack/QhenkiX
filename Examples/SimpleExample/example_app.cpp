@@ -1,11 +1,17 @@
 #include "example_app.h"
 #include <wrl/client.h>
 #include "example_shared/shader_loader.h"
+#include "example_shared/window_init.h"
 
 #include "qhenki/utility/general_util.h"
 #include "qhenki/utility/math_util.h"
 
 #include <array>
+
+void ExampleApp::init_display_window(void* payload)
+{
+    init_display_window_with_name(*this, m_window, "Simple Example", payload);
+}
 
 void ExampleApp::create()
 {

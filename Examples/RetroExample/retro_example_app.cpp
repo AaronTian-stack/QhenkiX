@@ -1,5 +1,6 @@
 #include "retro_example_app.h"
 #include "example_shared/shader_loader.h"
+#include "example_shared/window_init.h"
 #include "shared_structs.h"
 
 #include <DirectXTex.h>
@@ -29,50 +30,7 @@
 
 void RetroExampleApp::init_display_window(void* payload)
 {
-    qhenki::util::FormatResult<256> result;
-    const char* title = "Retro Example";
-    switch (get_graphics_api())
-    {
-    case qhenki::gfx::API::D3D11:
-    {
-        result = qhenki::util::format_string("%s | DX11", title);
-        break;
-    }
-    case qhenki::gfx::API::D3D12:
-    {
-        result = qhenki::util::format_string("%s | DX12", title);
-        break;
-    }
-    case qhenki::gfx::API::Vulkan:
-    {
-        result = qhenki::util::format_string("%s | Vulkan", title);
-        break;
-    }
-    default:
-    {
-        result = qhenki::util::format_string("%s | undefined", title);
-        break;
-    }
-    }
-
-    bool fullscreen = false;
-    if (payload)
-    {
-        const auto p = static_cast<Payload*>(payload);
-        assert(p);
-        fullscreen = p->fullscreen;
-    }
-
-    const qhenki::DisplayInfo info{
-        .width = 1280,
-        .height = 720,
-        .fullscreen = fullscreen,
-        .undecorated = false,
-        .resizable = true,
-        .title = result.buffer.data(),
-    };
-
-    m_window.create_window(info, 0);
+    init_display_window_with_name(*this, m_window, "Retro Example", payload);
 }
 
 void RetroExampleApp::create()

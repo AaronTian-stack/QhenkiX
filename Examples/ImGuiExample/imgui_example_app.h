@@ -24,6 +24,7 @@ class ImGUIExampleApp : public qhenki::Application
     qhenki::gfx::DescriptorHeap m_GPU_heap{};
 
 protected:
+    void init_display_window(void* payload) override;
     void create() override;
     void render() override;
     void resize(unsigned width, unsigned height) override;

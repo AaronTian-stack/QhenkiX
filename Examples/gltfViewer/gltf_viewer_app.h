@@ -60,10 +60,4 @@ protected:
     void render() override;
     void resize(unsigned width, unsigned height) override;
     void destroy() override;
-
-public:
-    struct Payload
-    {
-        bool fullscreen;
-    };
 };
