@@ -6,20 +6,6 @@
 
 QhenkiX is a personal C++20 library for 3D software creation. It is centered around a render hardware interface (RHI) that abstracts graphics operations across multiple APIs. The project currently includes D3D12, D3D11, and Vulkan backend code paths, plus an examples workspace and a standalone shader compiler frontend ([SXC](SXC/README.md)). It aims to serve as a base for a game project while providing a way for me to experiment with graphics techniques and different graphics APIs.
 
-## System Requirements
-
-- D3D12/D3D11 backend: Windows 10/11.
-- Vulkan backend:
-    - Vulkan 1.4 core
-    - VK_EXT_DESCRIPTOR_HEAP_EXTENSION
-        - **This requires installing the latest beta graphics drivers from [NVIDIA](https://developer.nvidia.com/vulkan-driver) or [AMD Adrenalin Edition for Expanded Vulkan Extension](https://www.amd.com/en/resources/support-articles/release-notes/RN-RAD-WIN-VULKAN.html).**
-    - VK_EXT_MEMORY_BUDGET_EXTENSION,
-    - VK_EXT_MEMORY_PRIORITY_EXTENSION,
-    - VK_KHR_MAINTENANCE_9_EXTENSION,
-    - VK_GOOGLE_HLSL_FUNCTIONALITY_1_EXTENSION,
-    - VK_GOOGLE_USER_TYPE_EXTENSION,
-    - VK_KHR_ROBUSTNESS_2_EXTENSION,
-
 ## Features
 
 You can find the core RHI interfaces in the [RHI folder](QhenkiX/include/qhenki/RHI). Backend implementations live in [QhenkiX/qhenki/graphics](QhenkiX/qhenki/graphics).
@@ -44,6 +30,20 @@ Current highlights:
 
 See [Examples](Examples) for use cases of the library.
 
+## System Requirements
+
+- D3D12/D3D11 backend: Windows 10/11.
+- Vulkan backend:
+    - Vulkan 1.4 core
+    - VK_EXT_DESCRIPTOR_HEAP_EXTENSION
+        - **This requires installing the latest beta graphics drivers from [NVIDIA](https://developer.nvidia.com/vulkan-driver) or [AMD Adrenalin Edition for Expanded Vulkan Extension](https://www.amd.com/en/resources/support-articles/release-notes/RN-RAD-WIN-VULKAN.html).**
+    - VK_EXT_MEMORY_BUDGET_EXTENSION
+    - VK_EXT_MEMORY_PRIORITY_EXTENSION
+    - VK_KHR_MAINTENANCE_9_EXTENSION
+    - VK_KHR_ROBUSTNESS_2_EXTENSION
+    - VK_GOOGLE_HLSL_FUNCTIONALITY_1_EXTENSION
+    - VK_GOOGLE_USER_TYPE_EXTENSION
+    
 ## Installation / Build
 
 1. Clone the repository with submodules.
