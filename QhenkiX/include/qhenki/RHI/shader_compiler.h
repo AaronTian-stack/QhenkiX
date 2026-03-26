@@ -76,6 +76,7 @@ struct CompilerInput
 struct CompilerOutput
 {
     std::string error_message;
+    // Need to manually call Release on this blob when done
     IDxcBlob* blob;
 };
 
