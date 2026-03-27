@@ -1203,7 +1203,7 @@ bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline&
     vkCmdSetPrimitiveTopology(vk_cmd_list->cmd_buf, vk_pipeline->topology);
     vkCmdBindPipeline(vk_cmd_list->cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->pipeline);
 
-    vk_cmd_list->push_range_count = vk_pipeline->root_signature->push_range_count;
+    vk_cmd_list->root_signature = vk_pipeline->root_signature;
 
     return true;
 }
@@ -1366,8 +1366,12 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
     return true;
 }
 
-bool VulkanContext::set_pipeline_constant(
-    CommandList* cmd_list, unsigned param, const uint32_t offset, const unsigned size, void* data)
+bool VulkanContext::set_pipeline_constant(CommandList* cmd_list,
+                                          const PipelineLayout& layout,
+                                          unsigned param,
+                                          const uint32_t offset,
+                                          const unsigned size,
+                                          void* data)
 {
     if (offset % 4u != 0)
     {
@@ -1379,6 +1383,13 @@ bool VulkanContext::set_pipeline_constant(
     }
 
     const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_layout = to_internal(layout);
+
+    if (vk_cmd_list->root_signature != vk_layout)
+    {
+        return false;
+    }
+
     const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
                                            .offset = 0 + offset, // TODO: Use param to calculate offset
                                            .data = {.address = data, .size = size}};
@@ -1476,14 +1487,24 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     vkCmdBindSamplerHeapEXT(vk_cmd_list->cmd_buf, &sampler_bind_heap_info);
 }
 
-void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
+void VulkanContext::set_descriptor_table(CommandList* cmd_list,
+                                         const PipelineLayout& layout,
+                                         const unsigned index,
+                                         const Descriptor& gpu_descriptor)
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_layout = to_internal(layout);
+
+    if (vk_cmd_list->root_signature != vk_layout)
+    {
+        return;
+    }
+
     const auto vk_heap = to_internal(*gpu_descriptor.heap);
 
     // TODO: Return false if out of bounds
-    assert(index >= vk_cmd_list->push_range_count);
-    const unsigned table_index = index - vk_cmd_list->push_range_count;
+    assert(index >= vk_cmd_list->root_signature->push_range_count);
+    const unsigned table_index = index - vk_cmd_list->root_signature->push_range_count;
 
     // No way you will have a descriptor heap >2GB. This also doubles the amount of tables we can have from 16 -> 32
     // (128 / 4)

@@ -336,7 +336,7 @@ void ExampleApp::render()
         qhenki::gfx::Descriptor descriptor(&m_GPU_heap, 0);
 
         // Parameter 0 is table, set to start at beginning of GPU heap
-        m_context->set_descriptor_table(&cmd_list, 0, descriptor);
+        m_context->set_descriptor_table(&cmd_list, TODO, 0, descriptor);
 
         // Copy matrix and texture descriptors to GPU heap
         THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
@@ -352,7 +352,7 @@ void ExampleApp::render()
                                                    m_texture_descriptor,
                                                    descriptor));
 
-        m_context->set_descriptor_table(&cmd_list, 1, m_sampler_descriptor);
+        m_context->set_descriptor_table(&cmd_list, TODO, 1, m_sampler_descriptor);
     }
 
     constexpr uint64_t offset = 0;

@@ -859,11 +859,13 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     return true;
 }
 
-bool D3D12Context::set_pipeline_constant(
-    CommandList* cmd_list, const unsigned param, const uint32_t offset, const unsigned size, void* data)
+bool D3D12Context::set_pipeline_constant(CommandList* cmd_list,
+                                         const PipelineLayout& layout,
+                                         const unsigned param,
+                                         const uint32_t offset,
+                                         const unsigned size,
+                                         void* data)
 {
-    assert(data);
-
     if (size % 4u != 0)
     {
         return false;
@@ -874,6 +876,14 @@ bool D3D12Context::set_pipeline_constant(
     }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
+    const auto layout_d3d12 = to_internal(layout);
+
+    if (cmd_list_d3d12->root_signature != layout_d3d12->Get())
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Root signature mismatch when setting pipeline constant\n");
+        return false;
+    }
+
     cmd_list_d3d12->list.Get()->SetGraphicsRoot32BitConstants(param, size / 4u, data, offset / 4u);
     return true;
 }
@@ -994,10 +1004,19 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list,
     }
 }
 
-void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
+void D3D12Context::set_descriptor_table(CommandList* cmd_list,
+                                        const PipelineLayout& layout,
+                                        const unsigned index,
+                                        const Descriptor& gpu_descriptor)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    assert(gpu_descriptor.heap);
+    const auto layout_d3d12 = to_internal(layout);
+
+    if (cmd_list_d3d12->root_signature != layout_d3d12->Get())
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Root signature mismatch when setting descriptor table\n");
+        return;
+    }
 
     const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
