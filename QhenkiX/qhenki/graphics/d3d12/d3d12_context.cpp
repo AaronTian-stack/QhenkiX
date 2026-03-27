@@ -673,16 +673,11 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
 bool D3D12Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline)
 {
-    assert(cmd_list);
     const auto d3d12_pipeline = to_internal(pipeline);
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
 
     const auto pipeline_rs = d3d12_pipeline->root_signature.Get();
-    if (!pipeline_rs)
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Pipeline has no root signature\n");
-        return false;
-    }
+    assert(pipeline_rs);
     if (cmd_list_d3d12->root_signature != pipeline_rs)
     {
         cmd_list_d3d12->list.Get()->SetGraphicsRootSignature(pipeline_rs);
