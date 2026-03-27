@@ -79,7 +79,7 @@ public:
                                      const DescriptorHeap& heap,
                                      const DescriptorHeap& sampler_heap) = 0;
 
-    virtual void set_descriptor_table(CommandList* cmd_list,
+    virtual bool set_descriptor_table(CommandList* cmd_list,
                                       const PipelineLayout& layout,
                                       unsigned index,
                                       const Descriptor& gpu_descriptor) = 0;

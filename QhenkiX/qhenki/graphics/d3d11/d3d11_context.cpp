@@ -513,8 +513,12 @@ void D3D11Context::set_descriptor_heap(CommandList* cmd_list,
 {
 }
 
-void D3D11Context::set_descriptor_table(CommandList* cmd_list, const PipelineLayout& layout, unsigned index, const Descriptor& gpu_descriptor)
+bool D3D11Context::set_descriptor_table(CommandList* cmd_list,
+                                        const PipelineLayout& layout,
+                                        unsigned index,
+                                        const Descriptor& gpu_descriptor)
 {
+    return true;
 }
 
 bool D3D11Context::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)

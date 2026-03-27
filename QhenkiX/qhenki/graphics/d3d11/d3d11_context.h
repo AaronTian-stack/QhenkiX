@@ -59,7 +59,10 @@ public:
                              const DescriptorHeap& heap,
                              const DescriptorHeap& sampler_heap) override;
 
-    void set_descriptor_table(CommandList* cmd_list, const PipelineLayout& layout, unsigned index, const Descriptor& gpu_descriptor) override;
+    bool set_descriptor_table(CommandList* cmd_list,
+                              const PipelineLayout& layout,
+                              unsigned index,
+                              const Descriptor& gpu_descriptor) override;
 
     bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
 

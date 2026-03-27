@@ -1487,7 +1487,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
     vkCmdBindSamplerHeapEXT(vk_cmd_list->cmd_buf, &sampler_bind_heap_info);
 }
 
-void VulkanContext::set_descriptor_table(CommandList* cmd_list,
+bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
                                          const PipelineLayout& layout,
                                          const unsigned index,
                                          const Descriptor& gpu_descriptor)
@@ -1497,14 +1497,21 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list,
 
     if (vk_cmd_list->root_signature != vk_layout)
     {
-        return;
+        return false;
     }
 
     const auto vk_heap = to_internal(*gpu_descriptor.heap);
 
     // TODO: Return false if out of bounds
-    assert(index >= vk_cmd_list->root_signature->push_range_count);
+    if (index < vk_cmd_list->root_signature->push_range_count)
+    {
+        return false;
+    }
     const unsigned table_index = index - vk_cmd_list->root_signature->push_range_count;
+    if (table_index >= vk_cmd_list->root_signature->bindings.size())
+    {
+        return false;
+    }
 
     // No way you will have a descriptor heap >2GB. This also doubles the amount of tables we can have from 16 -> 32
     // (128 / 4)
@@ -1515,6 +1522,8 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list,
                                                                            table_index * sizeof(uint32_t)),
                                            .data = {.address = &absolute_offset, .size = sizeof(uint32_t)}};
     vkCmdPushDataEXT(vk_cmd_list->cmd_buf, &push_data_info);
+
+    return true;
 }
 
 bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)

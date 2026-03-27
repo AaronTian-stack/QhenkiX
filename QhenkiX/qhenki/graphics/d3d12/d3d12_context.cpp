@@ -1004,7 +1004,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list,
     }
 }
 
-void D3D12Context::set_descriptor_table(CommandList* cmd_list,
+bool D3D12Context::set_descriptor_table(CommandList* cmd_list,
                                         const PipelineLayout& layout,
                                         const unsigned index,
                                         const Descriptor& gpu_descriptor)
@@ -1015,17 +1015,18 @@ void D3D12Context::set_descriptor_table(CommandList* cmd_list,
     if (cmd_list_d3d12->root_signature != layout_d3d12->Get())
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Root signature mismatch when setting descriptor table\n");
-        return;
+        return false;
     }
 
     const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
     if (!heap_d3d12->get_GPU_descriptor(&gpu_handle, gpu_descriptor.offset))
     {
-        return;
+        return false;
     }
 
     cmd_list_d3d12->list.Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
+    return true;
 }
 
 bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
