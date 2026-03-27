@@ -10,6 +10,7 @@
 #include <D3D12DescriptorHelpers/RenderTargetHelper.hpp>
 
 #include "d3d12_descriptor_heap.h"
+#include "qhenki/graphics/shared/descriptor_flush.h"
 #include "qhenki/RHI/context.h"
 
 using Microsoft::WRL::ComPtr;
@@ -55,6 +56,8 @@ class D3D12Context : public Context
 
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
+
+    DeferredDescriptorCopier m_descriptor_copier;
 
 public:
     std::string create(bool enable_debug_layer) override;

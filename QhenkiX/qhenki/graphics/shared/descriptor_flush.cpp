@@ -42,18 +42,18 @@ bool can_merge_adjacent(const PendingDescriptorCopy& cur, const PendingDescripto
 }
 } // namespace
 
-void DeferredDescriptorCopier::add_pending_descriptor_copy(const size_t bytes,
+bool DeferredDescriptorCopier::add_pending_descriptor_copy(const size_t bytes,
                                                            const Descriptor& src,
                                                            const Descriptor& dst)
 {
+    if (src.heap->desc.type != dst.heap->desc.type)
+    {
+        return false;
+    }
     pending_copies.push_back({.src = {.heap = src.heap, .offset = src.offset},
                               .dst = {.heap = dst.heap, .offset = dst.offset},
                               .bytes = bytes});
-}
-
-size_t DeferredDescriptorCopier::get_max_segments() const
-{
-    return pending_copies.size();
+    return true;
 }
 
 size_t DeferredDescriptorCopier::merge_regions()

@@ -1030,14 +1030,7 @@ bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, c
         return false;
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE src_cpu_handle;
-    src_heap_d3d12->get_CPU_descriptor(&src_cpu_handle, src.offset);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
-    dst_heap_d3d12->get_CPU_descriptor(&dst_cpu_handle, dst.offset);
-
-    const auto descriptor_count = bytes / descriptor_size;
-    m_device->CopyDescriptorsSimple(descriptor_count, dst_cpu_handle, src_cpu_handle, src_heap_d3d12->desc.Type);
+    m_descriptor_copier.add_pending_descriptor_copy(bytes, src, dst);
 
     return true;
 }
@@ -1963,6 +1956,29 @@ bool D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const Que
             return false;
         }
     }
+
+    auto merge_count = m_descriptor_copier.merge_regions();
+    const auto descriptor_regions = m_descriptor_copier.get_merged_regions();
+    for (size_t i = 0; i < descriptor_regions.size(); i++)
+    {
+        const PendingDescriptorCopy& pending = descriptor_regions[i];
+        const auto src_heap = to_internal(*pending.src.heap);
+        const auto dst_heap = to_internal(*pending.dst.heap);
+
+        D3D12_CPU_DESCRIPTOR_HANDLE src_cpu_handle;
+        src_heap->get_CPU_descriptor(&src_cpu_handle, pending.src.offset);
+
+        D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu_handle;
+        dst_heap->get_CPU_descriptor(&dst_cpu_handle, pending.dst.offset);
+
+        assert(src_heap->desc.Type == dst_heap->desc.Type);
+        const auto size = pending.src.heap->desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV
+                            ? m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+                            : m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        const auto descriptor_count = pending.bytes / size;
+        m_device->CopyDescriptorsSimple(descriptor_count, dst_cpu_handle, src_cpu_handle, src_heap->desc.Type);
+    }
+    m_descriptor_copier.reset();
 
     auto& arena = acquire_arena(m_frame_count);
     auto cmd_list_ptrs = arena.alloc_array<ID3D12CommandList*>(submit_info.command_list_count);
