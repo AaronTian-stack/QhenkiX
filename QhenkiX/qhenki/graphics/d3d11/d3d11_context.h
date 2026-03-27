@@ -47,7 +47,6 @@ public:
     bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) override;
 
     bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) override;
-    void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override;
 
     bool set_pipeline_constant(
         CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;

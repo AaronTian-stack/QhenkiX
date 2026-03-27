@@ -551,14 +551,16 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                 return false;
             }
             pso_desc.pRootSignature = root_signature.Get();
+            d3d12_pipeline->root_signature = root_signature;
         }
     }
 
     if (!pso_desc.pRootSignature)
     {
-        const auto rs = static_cast<ComPtr<ID3D12RootSignature>*>(in_layout->internal_state.get())->Get();
+        const auto rs = to_internal(*in_layout)->Get();
         assert(rs);
         pso_desc.pRootSignature = rs;
+        d3d12_pipeline->root_signature = rs;
     }
 
     auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
@@ -673,8 +675,20 @@ bool D3D12Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& 
 {
     assert(cmd_list);
     const auto d3d12_pipeline = to_internal(pipeline);
-
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
+
+    const auto pipeline_rs = d3d12_pipeline->root_signature.Get();
+    if (!pipeline_rs)
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Pipeline has no root signature\n");
+        return false;
+    }
+    if (cmd_list_d3d12->root_signature != pipeline_rs)
+    {
+        cmd_list_d3d12->list.Get()->SetGraphicsRootSignature(pipeline_rs);
+        cmd_list_d3d12->root_signature = pipeline_rs;
+    }
+
     cmd_list_d3d12->list.Get()->IASetPrimitiveTopology(d3d12_pipeline->primitive_topology);
     cmd_list_d3d12->list.Get()->SetPipelineState(d3d12_pipeline->pipeline_state.Get());
 
@@ -843,14 +857,6 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     }
 
     return true;
-}
-
-void D3D12Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
-{
-    assert(cmd_list);
-    const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto layout_d3d12 = to_internal(layout);
-    cmd_list_d3d12->list.Get()->SetGraphicsRootSignature(layout_d3d12->Get());
 }
 
 bool D3D12Context::set_pipeline_constant(
@@ -1695,11 +1701,13 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueTyp
 
 bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
-    if (FAILED(to_internal(*cmd_list)->list.Get()->Reset(to_internal(command_pool)->Get(), nullptr)))
+    const auto cmd_list_d3d12 = to_internal(*cmd_list);
+    if (FAILED(cmd_list_d3d12->list.Get()->Reset(to_internal(command_pool)->Get(), nullptr)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reset command list");
         return false;
     }
+    cmd_list_d3d12->root_signature = nullptr;
     return true;
 }
 

@@ -1203,6 +1203,8 @@ bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline&
     vkCmdSetPrimitiveTopology(vk_cmd_list->cmd_buf, vk_pipeline->topology);
     vkCmdBindPipeline(vk_cmd_list->cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->pipeline);
 
+    vk_cmd_list->push_range_count = vk_pipeline->root_signature->push_range_count;
+
     return true;
 }
 
@@ -1364,13 +1366,6 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
     return true;
 }
 
-void VulkanContext::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
-{
-    // TODO: Delete this function and have it happen in pipeline binding for D3D12
-    const auto vk_root_signature = to_internal(layout);
-    m_bound_push_range_count = vk_root_signature->push_range_count;
-}
-
 bool VulkanContext::set_pipeline_constant(
     CommandList* cmd_list, unsigned param, const uint32_t offset, const unsigned size, void* data)
 {
@@ -1483,12 +1478,13 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
 
 void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
 {
-    // TODO: Return false if out of bounds
-    assert(index >= m_bound_push_range_count);
-    const unsigned table_index = index - m_bound_push_range_count;
-
     const auto vk_cmd_list = to_internal(*cmd_list);
     const auto vk_heap = to_internal(*gpu_descriptor.heap);
+
+    // TODO: Return false if out of bounds
+    assert(index >= vk_cmd_list->push_range_count);
+    const unsigned table_index = index - vk_cmd_list->push_range_count;
+
     // No way you will have a descriptor heap >2GB. This also doubles the amount of tables we can have from 16 -> 32
     // (128 / 4)
     const uint32_t absolute_offset = static_cast<uint32_t>(gpu_descriptor.offset + vk_heap->get_reserved_size());

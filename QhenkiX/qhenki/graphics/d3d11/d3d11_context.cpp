@@ -460,10 +460,6 @@ bool D3D11Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     return true;
 }
 
-void D3D11Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
-{
-}
-
 bool D3D11Context::set_pipeline_constant(
     CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data)
 {

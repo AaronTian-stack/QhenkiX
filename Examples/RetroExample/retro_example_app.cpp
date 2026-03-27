@@ -983,8 +983,6 @@ void RetroExampleApp::render()
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
 
-    m_context->bind_pipeline_layout(&cmd_list, m_pipeline_layout);
-
     m_context->set_descriptor_heap(&cmd_list, m_GPU_heap, m_sampler_heap);
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_skybox_pipeline));
@@ -992,8 +990,8 @@ void RetroExampleApp::render()
 
     auto place_gpu_descriptor = [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::Type type) -> size_t
     {
-        const size_t size = static_cast<size_t>(m_context->get_descriptor_size(type));
-        const size_t alignment = static_cast<size_t>(m_context->get_descriptor_alignment(type));
+        const size_t size = m_context->get_descriptor_size(type);
+        const size_t alignment = m_context->get_descriptor_alignment(type);
         gpu_descriptor_heap_index = qhenki::util::align_u(gpu_descriptor_heap_index, alignment);
         const size_t offset = gpu_descriptor_heap_index;
         gpu_descriptor_heap_index += size;
