@@ -2546,8 +2546,8 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     // Descriptor copies
     // TODO: Do it on compute queue?
     m_descriptor_copier.merge_regions();
-    size_t descriptor_region_count = 0;
     const auto descriptor_regions = m_descriptor_copier.get_merged_regions();
+    const auto descriptor_region_count = descriptor_regions.size();
     const bool needs_descriptor_copies = descriptor_region_count > 0;
 
     VkCommandBuffer internal_cmd = VK_NULL_HANDLE;
