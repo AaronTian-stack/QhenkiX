@@ -100,6 +100,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.h"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
     "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
+    "${QHENKIX_DIR}/graphics/d3d12/d3d12_command_list.h"
     "${QHENKIX_DIR}/utility/d3d_util.h"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
@@ -109,6 +110,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_texture.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_root_signature.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_pipeline.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_list.h"
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"
