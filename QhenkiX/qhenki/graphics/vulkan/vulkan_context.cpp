@@ -1203,6 +1203,7 @@ bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline&
     vkCmdSetPrimitiveTopology(vk_cmd_list->cmd_buf, vk_pipeline->topology);
     vkCmdBindPipeline(vk_cmd_list->cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->pipeline);
 
+    assert(vk_pipeline->root_signature);
     vk_cmd_list->root_signature = vk_pipeline->root_signature;
 
     return true;
@@ -1502,7 +1503,6 @@ bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
 
     const auto vk_heap = to_internal(*gpu_descriptor.heap);
 
-    // TODO: Return false if out of bounds
     if (index < vk_cmd_list->root_signature->push_range_count)
     {
         return false;
