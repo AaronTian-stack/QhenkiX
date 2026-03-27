@@ -780,9 +780,14 @@ void gltfViewerApp::render()
                     }
                     else
                     {
-                        m_context->set_pipeline_constant(&cmd_list, m_pipeline_layout, 0, 0, sizeof(XMFLOAT4X4), &global_4x4);
                         m_context->set_pipeline_constant(
-                            &cmd_list, m_pipeline_layout, 0, sizeof(XMFLOAT4X4), sizeof(XMFLOAT4X4), &global_4x4_inverse);
+                            &cmd_list, m_pipeline_layout, 0, 0, sizeof(XMFLOAT4X4), &global_4x4);
+                        m_context->set_pipeline_constant(&cmd_list,
+                                                         m_pipeline_layout,
+                                                         0,
+                                                         sizeof(XMFLOAT4X4),
+                                                         sizeof(XMFLOAT4X4),
+                                                         &global_4x4_inverse);
                         int material_index = prim.material_index;
                         m_context->set_pipeline_constant(
                             &cmd_list, m_pipeline_layout, 0, sizeof(XMFLOAT4X4) * 2, sizeof(int), &material_index);

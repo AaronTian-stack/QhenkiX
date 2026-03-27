@@ -1190,8 +1190,8 @@ void RetroExampleApp::render()
         THROW_IF_FALSE(m_context->copy_descriptors(tex_bytes,
                                                    m_offscreen_texture.srv_descriptor,
                                                    qhenki::gfx::Descriptor(&m_GPU_heap, lum_b1)));
-        THROW_IF_FALSE(
-            m_context->set_descriptor_table(&cmd_list, m_pipeline_layout, 1, qhenki::gfx::Descriptor(&m_GPU_heap, lum_b0)));
+        THROW_IF_FALSE(m_context->set_descriptor_table(
+            &cmd_list, m_pipeline_layout, 1, qhenki::gfx::Descriptor(&m_GPU_heap, lum_b0)));
     }
 
     m_context->draw(&cmd_list, 3, 0);
@@ -1290,8 +1290,12 @@ void RetroExampleApp::render()
         }
         else
         {
-            THROW_IF_FALSE(m_context->set_descriptor_table(
-                &cmd_list, m_pipeline_layout, 1, qhenki::gfx::Descriptor(&m_GPU_heap, blur_srv_start[1 - m_starting_bloom_index])));
+            THROW_IF_FALSE(
+                m_context->set_descriptor_table(&cmd_list,
+                                                m_pipeline_layout,
+                                                1,
+                                                qhenki::gfx::Descriptor(&m_GPU_heap,
+                                                                        blur_srv_start[1 - m_starting_bloom_index])));
         }
 
         m_context->draw(&cmd_list, 3, 0);
