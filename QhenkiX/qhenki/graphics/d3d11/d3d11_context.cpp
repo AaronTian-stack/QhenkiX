@@ -460,12 +460,12 @@ bool D3D11Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     return true;
 }
 
-void D3D11Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
-{
-}
-
-bool D3D11Context::set_pipeline_constant(
-    CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data)
+bool D3D11Context::set_pipeline_constant(CommandList* cmd_list,
+                                         const PipelineLayout& expected_layout,
+                                         unsigned param,
+                                         uint32_t offset,
+                                         unsigned size,
+                                         void* data)
 {
     // Return false instead of true like in other no ops
     // You shouldn't be calling this path in compatibility context
@@ -517,8 +517,12 @@ void D3D11Context::set_descriptor_heap(CommandList* cmd_list,
 {
 }
 
-void D3D11Context::set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor)
+bool D3D11Context::set_descriptor_table(CommandList* cmd_list,
+                                        const PipelineLayout& expected_layout,
+                                        unsigned index,
+                                        const Descriptor& gpu_descriptor)
 {
+    return true;
 }
 
 bool D3D11Context::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)

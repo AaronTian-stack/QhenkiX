@@ -24,6 +24,7 @@
 #include "qhenki/utility/math_util.h"
 #include "qhenki/utility/string_util.h"
 #include "qhenki/utility/vulkan_util.h"
+#include "vulkan_command_list.h"
 
 constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
 constexpr uint32_t MAX_VERTEX_SLOTS = 32u;
@@ -82,9 +83,9 @@ VulkanCommandPool* to_internal(const CommandPool& ext)
     return vulkan_command_pool;
 }
 
-VkCommandBuffer* to_internal(const CommandList& ext)
+VulkanCommandList* to_internal(const CommandList& ext)
 {
-    const auto vulkan_command_buffer = static_cast<VkCommandBuffer*>(ext.internal_state.get());
+    const auto vulkan_command_buffer = static_cast<VulkanCommandList*>(ext.internal_state.get());
     assert(vulkan_command_buffer);
     return vulkan_command_buffer;
 }
@@ -1199,8 +1200,11 @@ bool VulkanContext::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline&
     const auto vk_cmd_list = to_internal(*cmd_list);
     const auto vk_pipeline = to_internal(pipeline);
 
-    vkCmdSetPrimitiveTopology(*vk_cmd_list, vk_pipeline->topology);
-    vkCmdBindPipeline(*vk_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->pipeline);
+    vkCmdSetPrimitiveTopology(vk_cmd_list->cmd_buf, vk_pipeline->topology);
+    vkCmdBindPipeline(vk_cmd_list->cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->pipeline);
+
+    assert(vk_pipeline->root_signature);
+    vk_cmd_list->root_signature = vk_pipeline->root_signature;
 
     return true;
 }
@@ -1363,15 +1367,12 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
     return true;
 }
 
-void VulkanContext::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
-{
-    // TODO: Delete this function and have it happen in pipeline binding for D3D12
-    const auto vk_root_signature = to_internal(layout);
-    m_bound_push_range_count = vk_root_signature->push_range_count;
-}
-
-bool VulkanContext::set_pipeline_constant(
-    CommandList* cmd_list, unsigned param, const uint32_t offset, const unsigned size, void* data)
+bool VulkanContext::set_pipeline_constant(CommandList* cmd_list,
+                                          const PipelineLayout& expected_layout,
+                                          unsigned param,
+                                          const uint32_t offset,
+                                          const unsigned size,
+                                          void* data)
 {
     if (offset % 4u != 0)
     {
@@ -1383,11 +1384,18 @@ bool VulkanContext::set_pipeline_constant(
     }
 
     const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_layout = to_internal(expected_layout);
+
+    if (vk_cmd_list->root_signature != vk_layout)
+    {
+        return false;
+    }
+
     const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
                                            .offset = 0 + offset, // TODO: Use param to calculate offset
                                            .data = {.address = data, .size = size}};
     assert(push_data_info.offset % 4u == 0);
-    vkCmdPushDataEXT(*vk_cmd_list, &push_data_info);
+    vkCmdPushDataEXT(vk_cmd_list->cmd_buf, &push_data_info);
 
     return true;
 }
@@ -1440,7 +1448,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorH
 
     const auto vk_cmd_list = to_internal(*cmd_list);
 
-    vkCmdBindResourceHeapEXT(*vk_cmd_list, &bind_heap_info);
+    vkCmdBindResourceHeapEXT(vk_cmd_list->cmd_buf, &bind_heap_info);
 }
 
 void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
@@ -1476,18 +1484,35 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
 
     const auto vk_cmd_list = to_internal(*cmd_list);
 
-    vkCmdBindResourceHeapEXT(*vk_cmd_list, &bind_heap_info);
-    vkCmdBindSamplerHeapEXT(*vk_cmd_list, &sampler_bind_heap_info);
+    vkCmdBindResourceHeapEXT(vk_cmd_list->cmd_buf, &bind_heap_info);
+    vkCmdBindSamplerHeapEXT(vk_cmd_list->cmd_buf, &sampler_bind_heap_info);
 }
 
-void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
+bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
+                                         const PipelineLayout& expected_layout,
+                                         const unsigned index,
+                                         const Descriptor& gpu_descriptor)
 {
-    // TODO: Return false if out of bounds
-    assert(index >= m_bound_push_range_count);
-    const unsigned table_index = index - m_bound_push_range_count;
-
     const auto vk_cmd_list = to_internal(*cmd_list);
+    const auto vk_layout = to_internal(expected_layout);
+
+    if (vk_cmd_list->root_signature != vk_layout)
+    {
+        return false;
+    }
+
     const auto vk_heap = to_internal(*gpu_descriptor.heap);
+
+    if (index < vk_cmd_list->root_signature->push_range_count)
+    {
+        return false;
+    }
+    const unsigned table_index = index - vk_cmd_list->root_signature->push_range_count;
+    if (table_index >= vk_cmd_list->root_signature->bindings.size())
+    {
+        return false;
+    }
+
     // No way you will have a descriptor heap >2GB. This also doubles the amount of tables we can have from 16 -> 32
     // (128 / 4)
     const uint32_t absolute_offset = static_cast<uint32_t>(gpu_descriptor.offset + vk_heap->get_reserved_size());
@@ -1496,7 +1521,9 @@ void VulkanContext::set_descriptor_table(CommandList* cmd_list, const unsigned i
                                            .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET +
                                                                            table_index * sizeof(uint32_t)),
                                            .data = {.address = &absolute_offset, .size = sizeof(uint32_t)}};
-    vkCmdPushDataEXT(*vk_cmd_list, &push_data_info);
+    vkCmdPushDataEXT(vk_cmd_list->cmd_buf, &push_data_info);
+
+    return true;
 }
 
 bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
@@ -1668,7 +1695,7 @@ void VulkanContext::copy_buffer(
     assert(src_offset + bytes <= src.desc.size);
     assert(dst_offset + bytes <= dst->desc.size);
 
-    const auto vk_cmd = to_internal(*cmd_list);
+    const auto vk_cmd_list = to_internal(*cmd_list);
     const auto vk_src = to_internal(src);
     const auto vk_dst = to_internal(*dst);
 
@@ -1685,7 +1712,7 @@ void VulkanContext::copy_buffer(
         .regionCount = 1,
         .pRegions = &region,
     };
-    vkCmdCopyBuffer2(*vk_cmd, &copy_info);
+    vkCmdCopyBuffer2(vk_cmd_list->cmd_buf, &copy_info);
 }
 
 bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
@@ -2030,8 +2057,12 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
 
     const auto vk_cmd_list = to_internal(*cmd_list);
     const auto vk_buffer = to_internal(local_staging);
-    vkCmdCopyBufferToImage(
-        *vk_cmd_list, vk_buffer->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, num_subresources, regions);
+    vkCmdCopyBufferToImage(vk_cmd_list->cmd_buf,
+                           vk_buffer->buffer,
+                           tex->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           num_subresources,
+                           regions);
 
     *staging = std::move(local_staging);
 
@@ -2115,7 +2146,7 @@ bool VulkanContext::bind_vertex_buffers(CommandList* cmd_list,
         }
     }
 
-    vkCmdBindVertexBuffers2(*vk_cmd_list, start_slot, buffer_count, vk_buffers.data(), offsets, sizes, strides);
+    vkCmdBindVertexBuffers2(vk_cmd_list->cmd_buf, start_slot, buffer_count, vk_buffers.data(), offsets, sizes, strides);
     return true;
 }
 
@@ -2127,7 +2158,7 @@ void VulkanContext::bind_index_buffer(CommandList* cmd_list,
     const auto vk_cmd_list = to_internal(*cmd_list);
     const auto vk_buffer = to_internal(buffer);
 
-    vkCmdBindIndexBuffer2(*vk_cmd_list,
+    vkCmdBindIndexBuffer2(vk_cmd_list->cmd_buf,
                           vk_buffer->buffer,
                           offset,
                           VK_WHOLE_SIZE,
@@ -2212,7 +2243,7 @@ bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool&
         .pInheritanceInfo = nullptr,
     };
 
-    if (VK_FAILED(vkBeginCommandBuffer(*vk_cmd_list, &begin_info)))
+    if (VK_FAILED(vkBeginCommandBuffer(vk_cmd_list->cmd_buf, &begin_info)))
     {
         return false;
     }
@@ -2223,13 +2254,13 @@ bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool&
 bool VulkanContext::close_command_list(CommandList* cmd_list)
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
-    return VK_SUCCEEDED(vkEndCommandBuffer(*vk_cmd_list));
+    return VK_SUCCEEDED(vkEndCommandBuffer(vk_cmd_list->cmd_buf));
 }
 
 void VulkanContext::end_render_pass(CommandList* cmd_list)
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
-    vkCmdEndRendering(*vk_cmd_list);
+    vkCmdEndRendering(vk_cmd_list->cmd_buf);
 }
 
 bool VulkanContext::reset_command_pool(CommandPool* command_pool)
@@ -2390,7 +2421,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     };
 
     const auto vk_cmd_list = to_internal(*cmd_list);
-    vkCmdBeginRendering(*vk_cmd_list, &rendering_info);
+    vkCmdBeginRendering(vk_cmd_list->cmd_buf, &rendering_info);
 
     return true;
 }
@@ -2469,7 +2500,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     };
 
     const auto vk_cmd_list = to_internal(*cmd_list);
-    vkCmdBeginRendering(*vk_cmd_list, &rendering_info);
+    vkCmdBeginRendering(vk_cmd_list->cmd_buf, &rendering_info);
 
     return true;
 }
@@ -2490,7 +2521,7 @@ void VulkanContext::set_viewports(CommandList* list, const unsigned count, const
         };
     }
     const auto vk_cmd_list = to_internal(*list);
-    vkCmdSetViewportWithCount(*vk_cmd_list, count, vk_viewports.data());
+    vkCmdSetViewportWithCount(vk_cmd_list->cmd_buf, count, vk_viewports.data());
 }
 
 void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
@@ -2505,13 +2536,13 @@ void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, c
         };
     }
     const auto vk_cmd_list = to_internal(*list);
-    vkCmdSetScissorWithCount(*vk_cmd_list, count, vk_scissors.data());
+    vkCmdSetScissorWithCount(vk_cmd_list->cmd_buf, count, vk_scissors.data());
 }
 
 void VulkanContext::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
-    vkCmdDraw(*vk_cmd_list, vertex_count, 1, start_vertex_offset, 0);
+    vkCmdDraw(vk_cmd_list->cmd_buf, vertex_count, 1, start_vertex_offset, 0);
 }
 
 void VulkanContext::draw_indexed(CommandList* cmd_list,
@@ -2523,7 +2554,7 @@ void VulkanContext::draw_indexed(CommandList* cmd_list,
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
     vkCmdDrawIndexed(
-        *vk_cmd_list, index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
+        vk_cmd_list->cmd_buf, index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
 
 bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
@@ -2812,7 +2843,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         cmd_buffer_infos[cmd_idx++] = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-            .commandBuffer = *to_internal(submit_info.command_lists[i]),
+            .commandBuffer = to_internal(submit_info.command_lists[i])->cmd_buf,
         };
     }
 
@@ -2955,7 +2986,7 @@ void VulkanContext::set_barrier_resource(const unsigned count, ImageBarrier* bar
 
 bool VulkanContext::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
 {
-    const auto vk_cmd_buffer = to_internal(*cmd_list);
+    const auto vk_cmd_list = to_internal(*cmd_list);
     auto& arena = acquire_arena(m_frame_count);
     const auto vk_barriers = arena.alloc_array<VkImageMemoryBarrier2>(count);
 
@@ -2999,7 +3030,7 @@ bool VulkanContext::issue_barrier(CommandList* cmd_list, const unsigned count, c
         .imageMemoryBarrierCount = count,
         .pImageMemoryBarriers = vk_barriers,
     };
-    vkCmdPipelineBarrier2(*vk_cmd_buffer, &dep_info);
+    vkCmdPipelineBarrier2(vk_cmd_list->cmd_buf, &dep_info);
 
     return true;
 }
@@ -3057,8 +3088,8 @@ void VulkanContext::start_imgui_frame()
 
 void VulkanContext::render_imgui_draw_data(CommandList* cmd_list)
 {
-    const auto vk_cmd_buffer = to_internal(*cmd_list);
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *vk_cmd_buffer);
+    const auto vk_cmd_list = to_internal(*cmd_list);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), vk_cmd_list->cmd_buf);
 }
 
 void VulkanContext::destroy_imgui()

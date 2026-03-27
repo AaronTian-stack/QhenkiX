@@ -309,8 +309,6 @@ void ExampleApp::render()
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
 
-    m_context->bind_pipeline_layout(&cmd_list, m_pipeline_layout);
-
     m_context->set_descriptor_heap(&cmd_list, m_GPU_heap, m_sampler_heap);
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_pipeline));
@@ -338,7 +336,7 @@ void ExampleApp::render()
         qhenki::gfx::Descriptor descriptor(&m_GPU_heap, 0);
 
         // Parameter 0 is table, set to start at beginning of GPU heap
-        m_context->set_descriptor_table(&cmd_list, 0, descriptor);
+        THROW_IF_FALSE(m_context->set_descriptor_table(&cmd_list, m_pipeline_layout, 0, descriptor));
 
         // Copy matrix and texture descriptors to GPU heap
         THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
@@ -354,7 +352,7 @@ void ExampleApp::render()
                                                    m_texture_descriptor,
                                                    descriptor));
 
-        m_context->set_descriptor_table(&cmd_list, 1, m_sampler_descriptor);
+        THROW_IF_FALSE(m_context->set_descriptor_table(&cmd_list, m_pipeline_layout, 1, m_sampler_descriptor));
     }
 
     constexpr uint64_t offset = 0;

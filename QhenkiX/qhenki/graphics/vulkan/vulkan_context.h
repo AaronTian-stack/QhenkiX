@@ -59,9 +59,6 @@ class VulkanContext : public Context
 
     DeferredDescriptorCopier m_descriptor_copier;
 
-    // TODO: Remove this
-    uint32_t m_bound_push_range_count = 0;
-
 public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
@@ -81,10 +78,13 @@ public:
     bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) override;
 
     bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) override;
-    void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) override;
 
-    bool set_pipeline_constant(
-        CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) override;
+    bool set_pipeline_constant(CommandList* cmd_list,
+                               const PipelineLayout& expected_layout,
+                               unsigned param,
+                               uint32_t offset,
+                               unsigned size,
+                               void* data) override;
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
     size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
 
@@ -92,7 +92,10 @@ public:
     void set_descriptor_heap(CommandList* cmd_list,
                              const DescriptorHeap& heap,
                              const DescriptorHeap& sampler_heap) override;
-    void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) override;
+    bool set_descriptor_table(CommandList* cmd_list,
+                              const PipelineLayout& expected_layout,
+                              unsigned index,
+                              const Descriptor& gpu_descriptor) override;
 
     bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
 

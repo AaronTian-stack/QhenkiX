@@ -10,7 +10,8 @@ namespace qhenki::gfx
 {
 struct D3D12Pipeline
 {
-    ComPtr<ID3D12PipelineState> pipeline_state{};
+    ComPtr<ID3D12RootSignature> root_signature;
+    ComPtr<ID3D12PipelineState> pipeline_state;
     D3D12_PRIMITIVE_TOPOLOGY primitive_topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED; // Needed for command list
 };
 } // namespace qhenki::gfx

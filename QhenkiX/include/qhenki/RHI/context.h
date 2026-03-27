@@ -62,10 +62,13 @@ public:
     virtual bool bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline) = 0;
 
     virtual bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) = 0;
-    virtual void bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout) = 0;
 
-    virtual bool set_pipeline_constant(
-        CommandList* cmd_list, unsigned param, uint32_t offset, unsigned size, void* data) = 0;
+    virtual bool set_pipeline_constant(CommandList* cmd_list,
+                                       const PipelineLayout& expected_layout,
+                                       unsigned param,
+                                       uint32_t offset,
+                                       unsigned size,
+                                       void* data) = 0;
 
     virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc,
                                         DescriptorHeap* heap,
@@ -76,7 +79,10 @@ public:
                                      const DescriptorHeap& heap,
                                      const DescriptorHeap& sampler_heap) = 0;
 
-    virtual void set_descriptor_table(CommandList* cmd_list, unsigned index, const Descriptor& gpu_descriptor) = 0;
+    virtual bool set_descriptor_table(CommandList* cmd_list,
+                                      const PipelineLayout& expected_layout,
+                                      unsigned index,
+                                      const Descriptor& gpu_descriptor) = 0;
 
 
     /**

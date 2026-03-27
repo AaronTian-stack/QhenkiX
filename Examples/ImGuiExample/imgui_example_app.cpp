@@ -181,8 +181,6 @@ void ImGUIExampleApp::render()
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
 
-    m_context->bind_pipeline_layout(&cmd_list, m_pipeline_layout);
-
     m_context->set_descriptor_heap(&cmd_list, m_GPU_heap);
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_pipeline));

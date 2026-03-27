@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <boost/container/small_vector.hpp>
 
+#include "d3d12_command_list.h"
 #include "d3d12_pipeline.h"
 #include "dxc_shader_compiler.h"
 #include "qhenki/application.h"
@@ -50,9 +51,9 @@ D3D12Pipeline* to_internal(const GraphicsPipeline& ext)
     return d3d12_pipeline;
 }
 
-ComPtr<ID3D12GraphicsCommandList7>* to_internal(const CommandList& ext)
+D3D12CommandList* to_internal(const CommandList& ext)
 {
-    const auto d3d12_cmd_list = static_cast<ComPtr<ID3D12GraphicsCommandList7>*>(ext.internal_state.get());
+    const auto d3d12_cmd_list = static_cast<D3D12CommandList*>(ext.internal_state.get());
     assert(d3d12_cmd_list);
     return d3d12_cmd_list;
 }
@@ -550,14 +551,16 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                 return false;
             }
             pso_desc.pRootSignature = root_signature.Get();
+            d3d12_pipeline->root_signature = root_signature;
         }
     }
 
     if (!pso_desc.pRootSignature)
     {
-        const auto rs = static_cast<ComPtr<ID3D12RootSignature>*>(in_layout->internal_state.get())->Get();
+        const auto rs = to_internal(*in_layout)->Get();
         assert(rs);
         pso_desc.pRootSignature = rs;
+        d3d12_pipeline->root_signature = rs;
     }
 
     auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
@@ -670,12 +673,19 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
 bool D3D12Context::bind_pipeline(CommandList* cmd_list, const GraphicsPipeline& pipeline)
 {
-    assert(cmd_list);
     const auto d3d12_pipeline = to_internal(pipeline);
-
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    cmd_list_d3d12->Get()->IASetPrimitiveTopology(d3d12_pipeline->primitive_topology);
-    cmd_list_d3d12->Get()->SetPipelineState(d3d12_pipeline->pipeline_state.Get());
+
+    const auto pipeline_rs = d3d12_pipeline->root_signature.Get();
+    assert(pipeline_rs);
+    if (cmd_list_d3d12->root_signature != pipeline_rs)
+    {
+        cmd_list_d3d12->list.Get()->SetGraphicsRootSignature(pipeline_rs);
+        cmd_list_d3d12->root_signature = pipeline_rs;
+    }
+
+    cmd_list_d3d12->list.Get()->IASetPrimitiveTopology(d3d12_pipeline->primitive_topology);
+    cmd_list_d3d12->list.Get()->SetPipelineState(d3d12_pipeline->pipeline_state.Get());
 
     return true;
 }
@@ -844,19 +854,13 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
     return true;
 }
 
-void D3D12Context::bind_pipeline_layout(CommandList* cmd_list, const PipelineLayout& layout)
+bool D3D12Context::set_pipeline_constant(CommandList* cmd_list,
+                                         const PipelineLayout& expected_layout,
+                                         const unsigned param,
+                                         const uint32_t offset,
+                                         const unsigned size,
+                                         void* data)
 {
-    assert(cmd_list);
-    const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto layout_d3d12 = to_internal(layout);
-    cmd_list_d3d12->Get()->SetGraphicsRootSignature(layout_d3d12->Get());
-}
-
-bool D3D12Context::set_pipeline_constant(
-    CommandList* cmd_list, const unsigned param, const uint32_t offset, const unsigned size, void* data)
-{
-    assert(data);
-
     if (size % 4u != 0)
     {
         return false;
@@ -867,7 +871,15 @@ bool D3D12Context::set_pipeline_constant(
     }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    cmd_list_d3d12->Get()->SetGraphicsRoot32BitConstants(param, size / 4u, data, offset / 4u);
+    const auto layout_d3d12 = to_internal(expected_layout);
+
+    if (cmd_list_d3d12->root_signature != layout_d3d12->Get())
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Root signature mismatch when setting pipeline constant\n");
+        return false;
+    }
+
+    cmd_list_d3d12->list.Get()->SetGraphicsRoot32BitConstants(param, size / 4u, data, offset / 4u);
     return true;
 }
 
@@ -961,7 +973,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHe
     const auto heap_d3d12 = to_internal(heap);
     if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV || heap.desc.type == DescriptorHeapDesc::Type::SAMPLER)
     {
-        cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heap_d3d12->get().GetAddressOf());
+        cmd_list_d3d12->list.Get()->SetDescriptorHeaps(1, heap_d3d12->get().GetAddressOf());
     }
     else
     {
@@ -979,7 +991,7 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list,
     if (heap.desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
     {
         const std::array heaps = {heap_d3d12->get().Get(), sampler_heap_d3d12->get().Get()};
-        cmd_list_d3d12->Get()->SetDescriptorHeaps(heaps.size(), heaps.data());
+        cmd_list_d3d12->list.Get()->SetDescriptorHeaps(heaps.size(), heaps.data());
     }
     else
     {
@@ -987,19 +999,29 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list,
     }
 }
 
-void D3D12Context::set_descriptor_table(CommandList* cmd_list, const unsigned index, const Descriptor& gpu_descriptor)
+bool D3D12Context::set_descriptor_table(CommandList* cmd_list,
+                                        const PipelineLayout& expected_layout,
+                                        const unsigned index,
+                                        const Descriptor& gpu_descriptor)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    assert(gpu_descriptor.heap);
+    const auto layout_d3d12 = to_internal(expected_layout);
+
+    if (cmd_list_d3d12->root_signature != layout_d3d12->Get())
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Root signature mismatch when setting descriptor table\n");
+        return false;
+    }
 
     const auto heap_d3d12 = to_internal(*gpu_descriptor.heap);
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
     if (!heap_d3d12->get_GPU_descriptor(&gpu_handle, gpu_descriptor.offset))
     {
-        return;
+        return false;
     }
 
-    cmd_list_d3d12->Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
+    cmd_list_d3d12->list.Get()->SetGraphicsRootDescriptorTable(index, gpu_handle);
+    return true;
 }
 
 bool D3D12Context::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
@@ -1263,7 +1285,7 @@ void D3D12Context::copy_buffer(CommandList* cmd_list,
     const auto dst_resource = dst_allocation->Get()->GetResource();
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    cmd_list_d3d12->Get()->CopyBufferRegion(dst_resource, dst_offset, src_resource, src_offset, bytes);
+    cmd_list_d3d12->list.Get()->CopyBufferRegion(dst_resource, dst_offset, src_resource, src_offset, bytes);
 }
 
 bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
@@ -1524,7 +1546,7 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
             .PlacedFootprint = layouts[subresource_index],
             // PlacedFootprint offset is 0 since handled by allocator
         };
-        cmd_list_d3d12->Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+        cmd_list_d3d12->list.Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
     }
 
     *staging = std::move(local_staging);
@@ -1621,7 +1643,7 @@ bool D3D12Context::bind_vertex_buffers(CommandList* cmd_list,
     }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
 
     std::array<D3D12_VERTEX_BUFFER_VIEW, D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertex_buffer_views;
     for (unsigned i = 0; i < buffer_count; i++)
@@ -1647,7 +1669,7 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list,
                                      uint64_t offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
 
     const auto allocation = to_internal(buffer);
     const auto resource = allocation->Get()->GetResource();
@@ -1694,11 +1716,13 @@ bool D3D12Context::create_command_pool(CommandPool* command_pool, const QueueTyp
 
 bool D3D12Context::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
-    if (FAILED(to_internal(*cmd_list)->Get()->Reset(to_internal(command_pool)->Get(), nullptr)))
+    const auto cmd_list_d3d12 = to_internal(*cmd_list);
+    if (FAILED(cmd_list_d3d12->list.Get()->Reset(to_internal(command_pool)->Get(), nullptr)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reset command list");
         return false;
     }
+    cmd_list_d3d12->root_signature = nullptr;
     return true;
 }
 
@@ -1718,9 +1742,11 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
         break;
     }
 
-    cmd_list->internal_state = mkS<ComPtr<ID3D12GraphicsCommandList7>>();
-    if (FAILED(m_device->CreateCommandList1(
-            0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(to_internal(*cmd_list)->ReleaseAndGetAddressOf()))))
+    cmd_list->internal_state = mkS<D3D12CommandList>();
+    if (FAILED(m_device->CreateCommandList1(0,
+                                            type,
+                                            D3D12_COMMAND_LIST_FLAG_NONE,
+                                            IID_PPV_ARGS(to_internal(*cmd_list)->list.ReleaseAndGetAddressOf()))))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create command list\n");
         cmd_list->internal_state.reset();
@@ -1733,7 +1759,7 @@ bool D3D12Context::create_command_list(CommandList* cmd_list, const CommandPool&
 bool D3D12Context::close_command_list(CommandList* cmd_list)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    if (FAILED(cmd_list_d3d12->Get()->Close()))
+    if (FAILED(cmd_list_d3d12->list.Get()->Close()))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to close command list\n");
         return false;
@@ -1812,7 +1838,7 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
                                      const RenderTarget* const depth_stencil)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
 
     HRESULT success;
     auto& render_target_helper = get_render_target_helper(m_device.Get(), &success);
@@ -1852,7 +1878,7 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
 
     std::array<ID3D12Resource*, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> d3d12_textures;
     for (unsigned i = 0; i < rt_count; i++)
@@ -1899,7 +1925,7 @@ void D3D12Context::set_viewports(CommandList* list, const unsigned count, const 
 {
     assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
     const auto cmd_list_d3d12 = to_internal(*list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
     command_list->RSSetViewports(count, viewport);
 }
 
@@ -1907,7 +1933,7 @@ void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, co
 {
     assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
     const auto cmd_list_d3d12 = to_internal(*list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
     command_list->RSSetScissorRects(count, scissor_rect);
 }
 
@@ -1918,7 +1944,7 @@ void D3D12Context::end_render_pass(CommandList* cmd_list)
 void D3D12Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
     command_list->DrawInstanced(vertex_count, 1, start_vertex_offset, 0);
 }
 
@@ -1930,7 +1956,7 @@ void D3D12Context::draw_indexed(CommandList* cmd_list,
                                 const uint32_t instance_offset)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
     command_list->DrawIndexedInstanced(
         index_count, instance_count, start_index_offset, base_vertex_offset, instance_offset);
 }
@@ -1986,7 +2012,7 @@ bool D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const Que
     for (unsigned i = 0; i < submit_info.command_list_count; i++)
     {
         const auto cmd_list_d3d12 = to_internal(submit_info.command_lists[i]);
-        cmd_list_ptrs[i] = cmd_list_d3d12->Get();
+        cmd_list_ptrs[i] = cmd_list_d3d12->list.Get();
     }
 
     const auto q = get_command_queue(queue);
@@ -2079,7 +2105,7 @@ void D3D12Context::set_barrier_resource(const unsigned count, ImageBarrier* barr
 bool D3D12Context::issue_barrier(CommandList* cmd_list, const unsigned count, const ImageBarrier* barriers)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto command_list = cmd_list_d3d12->Get();
+    const auto command_list = cmd_list_d3d12->list.Get();
 
     auto& arena = acquire_arena(m_frame_count);
     auto d3d12_barriers = arena.alloc_array<D3D12_TEXTURE_BARRIER>(count);
@@ -2195,8 +2221,8 @@ void D3D12Context::render_imgui_draw_data(CommandList* cmd_list)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     ID3D12DescriptorHeap* heaps[] = {m_imgui_heap.get().Get()};
-    cmd_list_d3d12->Get()->SetDescriptorHeaps(1, heaps);
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd_list_d3d12->Get());
+    cmd_list_d3d12->list.Get()->SetDescriptorHeaps(1, heaps);
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd_list_d3d12->list.Get());
 }
 
 void D3D12Context::destroy_imgui()
