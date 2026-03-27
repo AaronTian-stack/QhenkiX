@@ -855,7 +855,7 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
 }
 
 bool D3D12Context::set_pipeline_constant(CommandList* cmd_list,
-                                         const PipelineLayout& layout,
+                                         const PipelineLayout& expected_layout,
                                          const unsigned param,
                                          const uint32_t offset,
                                          const unsigned size,
@@ -871,7 +871,7 @@ bool D3D12Context::set_pipeline_constant(CommandList* cmd_list,
     }
 
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto layout_d3d12 = to_internal(layout);
+    const auto layout_d3d12 = to_internal(expected_layout);
 
     if (cmd_list_d3d12->root_signature != layout_d3d12->Get())
     {
@@ -1000,12 +1000,12 @@ void D3D12Context::set_descriptor_heap(CommandList* cmd_list,
 }
 
 bool D3D12Context::set_descriptor_table(CommandList* cmd_list,
-                                        const PipelineLayout& layout,
+                                        const PipelineLayout& expected_layout,
                                         const unsigned index,
                                         const Descriptor& gpu_descriptor)
 {
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
-    const auto layout_d3d12 = to_internal(layout);
+    const auto layout_d3d12 = to_internal(expected_layout);
 
     if (cmd_list_d3d12->root_signature != layout_d3d12->Get())
     {

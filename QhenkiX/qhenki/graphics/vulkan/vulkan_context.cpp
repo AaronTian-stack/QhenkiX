@@ -1367,7 +1367,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
 }
 
 bool VulkanContext::set_pipeline_constant(CommandList* cmd_list,
-                                          const PipelineLayout& layout,
+                                          const PipelineLayout& expected_layout,
                                           unsigned param,
                                           const uint32_t offset,
                                           const unsigned size,
@@ -1383,7 +1383,7 @@ bool VulkanContext::set_pipeline_constant(CommandList* cmd_list,
     }
 
     const auto vk_cmd_list = to_internal(*cmd_list);
-    const auto vk_layout = to_internal(layout);
+    const auto vk_layout = to_internal(expected_layout);
 
     if (vk_cmd_list->root_signature != vk_layout)
     {
@@ -1488,12 +1488,12 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
 }
 
 bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
-                                         const PipelineLayout& layout,
+                                         const PipelineLayout& expected_layout,
                                          const unsigned index,
                                          const Descriptor& gpu_descriptor)
 {
     const auto vk_cmd_list = to_internal(*cmd_list);
-    const auto vk_layout = to_internal(layout);
+    const auto vk_layout = to_internal(expected_layout);
 
     if (vk_cmd_list->root_signature != vk_layout)
     {

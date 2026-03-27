@@ -49,7 +49,7 @@ public:
     bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) override;
 
     bool set_pipeline_constant(
-        CommandList* cmd_list, const PipelineLayout& layout, unsigned param, uint32_t offset, unsigned size, void* data) override;
+        CommandList* cmd_list, const PipelineLayout& expected_layout, unsigned param, uint32_t offset, unsigned size, void* data) override;
 
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
     size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
@@ -60,7 +60,7 @@ public:
                              const DescriptorHeap& sampler_heap) override;
 
     bool set_descriptor_table(CommandList* cmd_list,
-                              const PipelineLayout& layout,
+                              const PipelineLayout& expected_layout,
                               unsigned index,
                               const Descriptor& gpu_descriptor) override;
 

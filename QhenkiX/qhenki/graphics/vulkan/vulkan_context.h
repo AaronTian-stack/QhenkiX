@@ -80,7 +80,7 @@ public:
     bool create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLayout* layout) override;
 
     bool set_pipeline_constant(CommandList* cmd_list,
-                               const PipelineLayout& layout,
+                               const PipelineLayout& expected_layout,
                                unsigned param,
                                uint32_t offset,
                                unsigned size,
@@ -93,7 +93,7 @@ public:
                              const DescriptorHeap& heap,
                              const DescriptorHeap& sampler_heap) override;
     bool set_descriptor_table(CommandList* cmd_list,
-                              const PipelineLayout& layout,
+                              const PipelineLayout& expected_layout,
                               unsigned index,
                               const Descriptor& gpu_descriptor) override;
 
