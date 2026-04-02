@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "enums.h"
+#include "qhenki/utility/math_util.h"
 
 namespace qhenki::gfx
 {
@@ -54,7 +55,16 @@ struct GraphicsPipelineDesc
     std::array<DXGI_FORMAT, MAX_RENDER_TARGETS> rtv_formats{};
     std::optional<RasterizerDesc> rasterizer_state;
     std::optional<InputLayoutDesc> input_layout;
-    unsigned sample_count = 1;
+    enum class SampleCount
+    {
+        SAMPLE_COUNT_1 = BIT(0),
+        SAMPLE_COUNT_2 = BIT(1),
+        SAMPLE_COUNT_4 = BIT(2),
+        SAMPLE_COUNT_8 = BIT(3),
+        SAMPLE_COUNT_16 = BIT(4),
+        SAMPLE_COUNT_32 = BIT(5),
+        SAMPLE_COUNT_64 = BIT(6),
+    } sample_count = SampleCount::SAMPLE_COUNT_1;
     unsigned num_render_targets = 0;
     DXGI_FORMAT dsv_format{};
     PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;

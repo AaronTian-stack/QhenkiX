@@ -917,8 +917,6 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         alpha_to_coverage = desc.blend_desc->AlphaToCoverageEnable ? VK_TRUE : VK_FALSE;
     }
 
-    // TODO: Replace with enum
-    assert(util::is_power_of_two(desc.sample_count) && desc.sample_count <= VK_SAMPLE_COUNT_64_BIT);
     VkPipelineMultisampleStateCreateInfo multisample_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples = static_cast<VkSampleCountFlagBits>(desc.sample_count),

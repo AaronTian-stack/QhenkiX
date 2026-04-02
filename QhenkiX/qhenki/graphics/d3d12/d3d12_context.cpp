@@ -652,7 +652,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     pso_desc.NumRenderTargets = desc.num_render_targets;
 
-    pso_desc.SampleDesc = DXGI_SAMPLE_DESC{desc.sample_count, 0};
+    pso_desc.SampleDesc = DXGI_SAMPLE_DESC{static_cast<UINT>(desc.sample_count), 0};
 
     for (unsigned i = 0; i < desc.num_render_targets; i++)
     {
@@ -2203,7 +2203,6 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
                                        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
                                        D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle)
     {
-        // TODO
         OutputDebugStringA("WARNING: ImGui descriptors not freed\n");
     };
     ImGui_ImplSDL3_InitForD3D(window.get_window());

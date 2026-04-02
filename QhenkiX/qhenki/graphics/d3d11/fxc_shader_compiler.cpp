@@ -103,7 +103,6 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     MultiIncludeHandler handler(input.includes, input.get_path());
 
     // TODO: d3dcompiler_47.dll should be linked with the application
-    // TODO: custom include handler
 
     ComPtr<ID3DBlob> error_blob;
     ComPtr<ID3DBlob> compiled_blob;
