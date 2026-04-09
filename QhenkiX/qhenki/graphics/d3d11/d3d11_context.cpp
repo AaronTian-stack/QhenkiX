@@ -3,7 +3,6 @@
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_sdl3.h>
-#include "qhenki/utility/string_util.h"
 
 #include <d3dcompiler.h>
 #include <DirectXTex.h>
@@ -13,8 +12,11 @@
 #include "d3d11_sampler_heap.h"
 #include "d3d11_srv_uav_heap.h"
 #include "d3d11_texture.h"
+
 #include "qhenki/application.h"
 #include "qhenki/utility/d3d_util.h"
+#include "qhenki/utility/gfx_util.h"
+#include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
 
@@ -95,7 +97,7 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
     ID3D11DepthStencilView* ds = nullptr;
     if (depth_stencil)
     {
-        assert(is_depth_stencil_format(depth_stencil->texture->desc.format));
+        assert(IsDepthStencil(dxgi_format(depth_stencil->texture->desc.format)));
         if (depth_stencil->clear_type != RenderTarget::ClearType::NONE)
         {
             const auto state = to_internal(*depth_stencil->texture);
@@ -254,7 +256,7 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window, const Swapchain
     const DXGI_SWAP_CHAIN_DESC1 dxgi_desc = {
         .Width = static_cast<UINT>(swapchain_desc.width),
         .Height = static_cast<UINT>(swapchain_desc.height),
-        .Format = swapchain_desc.format,
+        .Format = dxgi_format(swapchain_desc.format),
         .SampleDesc = {.Count = 1, .Quality = 0},
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
         .BufferCount = swapchain_desc.buffer_count,
@@ -294,7 +296,7 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain, const int width,
     {
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
-    if (FAILED(m_swapchain->ResizeBuffers(0, width, height, swapchain->format, resize_flags)))
+    if (FAILED(m_swapchain->ResizeBuffers(0, width, height, dxgi_format(swapchain->format), resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to resize Swapchain buffers\n");
         return false;
@@ -780,13 +782,15 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
 
     assert(bind_flags);
 
+    const auto format = dxgi_format(desc.format);
+
     if (desc.dimension == TextureDimension::TEXTURE_1D)
     {
         const D3D11_TEXTURE1D_DESC texture_desc{
             .Width = desc.width,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
-            .Format = desc.format,
+            .Format = format,
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
             .CPUAccessFlags = 0,
@@ -819,7 +823,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .Height = desc.height,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
-            .Format = desc.format,
+            .Format = format,
             .SampleDesc = {.Count = desc.sample_count, .Quality = 0},
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
@@ -844,7 +848,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .Height = static_cast<UINT>(desc.height),
             .Depth = static_cast<UINT>(desc.depth_or_array_size),
             .MipLevels = desc.mip_levels,
-            .Format = desc.format,
+            .Format = format,
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
             .CPUAccessFlags = 0,
@@ -928,7 +932,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
 
         size_t row_pitch = 0;
         size_t slice_pitch = 0;
-        if (FAILED(ComputePitch(texture->desc.format, mip_width, mip_height, row_pitch, slice_pitch)))
+        if (FAILED(ComputePitch(dxgi_format(texture->desc.format), mip_width, mip_height, row_pitch, slice_pitch)))
         {
             // If failed texture is partially updated but this branch shouldn't happen
             return false;
@@ -1036,7 +1040,7 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list,
 {
     const auto buffer_d3d11 = to_internal(buffer);
     assert(offset <= std::numeric_limits<UINT>::max());
-    m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
+    m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), dxgi_format(format), offset);
 }
 
 bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)

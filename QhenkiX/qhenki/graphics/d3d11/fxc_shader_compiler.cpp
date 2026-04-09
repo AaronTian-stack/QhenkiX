@@ -98,7 +98,7 @@ bool FXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     }
     macros[macros_idx++] = {.Name = nullptr, .Definition = nullptr};
 
-    const auto target = get_shader_model_char(input.shader_type, input.shader_model);
+    const auto target = shader_model_char(input.shader_type, input.shader_model);
 
     MultiIncludeHandler handler(input.includes, input.get_path());
 

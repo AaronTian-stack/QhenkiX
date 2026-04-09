@@ -13,9 +13,9 @@ using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-std::wstring get_shader_model_wchar(ShaderType type, ShaderModel model);
-std::string get_shader_model_char(ShaderType type, ShaderModel model);
-DXGI_FORMAT get_dxgi_format(IndexType format);
+std::wstring shader_model_wchar(ShaderType type, ShaderModel model);
+std::string shader_model_char(ShaderType type, ShaderModel model);
+DXGI_FORMAT dxgi_format(IndexType format);
 
 D3D12_BARRIER_SYNC sync_stage(SyncStage stage);
 D3D12_BARRIER_ACCESS access_flags(AccessFlags access);
@@ -29,6 +29,4 @@ D3D12_BLEND blend(Blend blend);
 
 // D3D12_LOGIC_OP = D3D11_LOGIC_OP
 D3D12_LOGIC_OP logic_op(LogicOp logic_op);
-
-bool is_depth_stencil_format(DXGI_FORMAT format);
 } // namespace qhenki::gfx

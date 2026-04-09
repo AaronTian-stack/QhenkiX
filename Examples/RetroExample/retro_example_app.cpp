@@ -8,6 +8,7 @@
 #include <imgui/imgui.h>
 
 #include <qhenki/utility/general_util.h>
+#include <qhenki/utility/gfx_util.h>
 #include <qhenki/utility/math_util.h>
 #include <qhenki/utility/shader_blob.h>
 #include <qhenki/utility/string_util.h>
@@ -308,7 +309,7 @@ void RetroExampleApp::create()
         .height = static_cast<uint32_t>(meta.height),
         .depth_or_array_size = static_cast<uint16_t>(meta.arraySize),
         .mip_levels = static_cast<uint16_t>(meta.mipLevels),
-        .format = meta.format,
+        .format = qhenki::gfx::format_from_dxgi(meta.format),
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .is_cube = meta.IsCubemap(),
         .initial_layout = qhenki::gfx::Layout::COPY_DEST,
@@ -658,13 +659,13 @@ void RetroExampleApp::create()
         qhenki::gfx::GraphicsPipelineDesc blit_pipeline_desc = {
             .rtv_formats = {m_offscreen_rt_format},
             .num_render_targets = 1,
-            .dsv_format = DXGI_FORMAT_UNKNOWN,
+            .dsv_format = qhenki::gfx::Format::UNKNOWN,
             .increment_slot = true,
         };
         qhenki::gfx::GraphicsPipelineDesc blit_copy_pipeline_desc = {
             .rtv_formats = {m_swapchain.format},
             .num_render_targets = 1,
-            .dsv_format = DXGI_FORMAT_UNKNOWN,
+            .dsv_format = qhenki::gfx::Format::UNKNOWN,
             .increment_slot = true,
         };
         THROW_IF_FALSE(m_context->create_pipeline(blit_copy_pipeline_desc,

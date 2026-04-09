@@ -1,6 +1,5 @@
 #pragma once
 
-#include <directx/dxgiformat.h>
 #include <vulkan/vulkan.h>
 
 #include "qhenki/RHI/barrier.h"
@@ -10,7 +9,7 @@
 
 namespace qhenki::gfx
 {
-VkFormat convert_format(DXGI_FORMAT format);
+VkFormat convert_format(Format format);
 
 VkFormat get_vk_index_format(IndexType format);
 VkPrimitiveTopology get_primitive_topology(PrimitiveTopology topology);

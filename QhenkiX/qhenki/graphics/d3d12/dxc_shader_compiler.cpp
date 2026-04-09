@@ -278,7 +278,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
 
     // Set target profile
     args[args_idx++] = L"-T";
-    const auto sm = get_shader_model_wchar(input.shader_type, input.shader_model);
+    const auto sm = shader_model_wchar(input.shader_type, input.shader_model);
     args[args_idx++] = sm.c_str();
 
     if (output_spirv)

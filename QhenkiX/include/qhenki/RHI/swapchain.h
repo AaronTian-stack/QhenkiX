@@ -10,7 +10,7 @@ struct SwapchainDesc
 {
     unsigned width;
     unsigned height;
-    DXGI_FORMAT format;
+    Format format;
     unsigned buffer_count;
     bool tearing;
 };

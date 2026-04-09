@@ -131,9 +131,9 @@ void gltfViewerApp::create()
     // Create pipeline
     qhenki::gfx::GraphicsPipelineDesc pipeline_desc = {
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rtv_formats = {qhenki::gfx::Format::R8G8B8A8_UNORM},
         .num_render_targets = 1,
-        .dsv_format = DXGI_FORMAT_D32_FLOAT,
+        .dsv_format = qhenki::gfx::Format::D32_FLOAT,
         .increment_slot = true,
     };
     THROW_IF_FALSE(m_context->create_pipeline(
@@ -863,7 +863,7 @@ void gltfViewerApp::resize(const unsigned width, const unsigned height)
     const qhenki::gfx::TextureDesc depth_desc{
         .width = static_cast<uint64_t>(width),
         .height = height,
-        .format = DXGI_FORMAT_D32_FLOAT,
+        .format = qhenki::gfx::Format::D32_FLOAT,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::DEPTH_STENCIL_WRITE,
         .usage = qhenki::gfx::TextureDesc::DEPTH_STENCIL,

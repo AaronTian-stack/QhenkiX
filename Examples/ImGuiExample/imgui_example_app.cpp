@@ -54,7 +54,7 @@ void ImGUIExampleApp::create()
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap));
 
     qhenki::gfx::GraphicsPipelineDesc pipeline_desc = {
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rtv_formats = {qhenki::gfx::Format::R8G8B8A8_UNORM},
         .num_render_targets = 1,
         .increment_slot = false,
     };

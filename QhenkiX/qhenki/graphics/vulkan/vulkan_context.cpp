@@ -922,7 +922,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
     const bool has_depth_stencil_desc = desc.depth_stencil_state.has_value();
     VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
-    if (desc.dsv_format != DXGI_FORMAT_UNKNOWN)
+    if (desc.dsv_format != Format::UNKNOWN)
     {
         depth_stencil_format = convert_format(desc.dsv_format);
     }

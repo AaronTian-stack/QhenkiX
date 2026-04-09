@@ -72,6 +72,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/memory/arena.cpp"
 
     "${QHENKIX_DIR}/utility/d3d_util.cpp"
+    "${QHENKIX_DIR}/utility/gfx_util.cpp"
     "${QHENKIX_DIR}/utility/file_util.cpp"
     "${QHENKIX_DIR}/utility/vulkan_util.cpp"  
 
@@ -128,6 +129,7 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/2d/spritebatch.h"
 
     "${QHENKIX_PUBLIC_DIR}/utility/file_util.h"
+    "${QHENKIX_PUBLIC_DIR}/utility/gfx_util.h"
     "${QHENKIX_PUBLIC_DIR}/utility/general_util.h"
     "${QHENKIX_PUBLIC_DIR}/utility/directxmath_compat.h"
     "${QHENKIX_PUBLIC_DIR}/utility/math_util.h"

@@ -22,6 +22,7 @@
 #include "d3d12_texture.h"
 
 #include "qhenki/utility/d3d_util.h"
+#include "qhenki/utility/gfx_util.h"
 #include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
@@ -316,7 +317,7 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window, const Swapchain
     const DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor = {
         .Width = swapchain_desc.width,
         .Height = swapchain_desc.height,
-        .Format = swapchain_desc.format,
+        .Format = dxgi_format(swapchain_desc.format),
         .SampleDesc = {.Count = 1, // MSAA Count
                        .Quality = 0},
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
@@ -387,7 +388,8 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain, const int width,
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
 
-    if (FAILED(m_swapchain->ResizeBuffers(swapchain->buffer_count, width, height, swapchain->format, resize_flags)))
+    if (FAILED(m_swapchain->ResizeBuffers(
+            swapchain->buffer_count, width, height, dxgi_format(swapchain->format), resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to resize swap chain buffers\n");
         return false;
@@ -696,9 +698,9 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     for (unsigned i = 0; i < desc.num_render_targets; i++)
     {
-        pso_desc.RTVFormats[i] = desc.rtv_formats[i];
+        pso_desc.RTVFormats[i] = dxgi_format(desc.rtv_formats[i]);
     }
-    pso_desc.DSVFormat = desc.dsv_format;
+    pso_desc.DSVFormat = dxgi_format(desc.dsv_format);
     if (const auto hr = m_device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state));
         FAILED(hr))
     {
@@ -1350,13 +1352,15 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         }
     }
 
+    const auto format = dxgi_format(desc.format);
+
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Alignment = 0,
         .Width = desc.width,
         .Height = desc.height,
         .DepthOrArraySize = desc.depth_or_array_size,
         .MipLevels = desc.mip_levels,
-        .Format = desc.format,
+        .Format = format,
         .SampleDesc =
             {
                 .Count = desc.sample_count,
@@ -1367,7 +1371,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         //.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
     };
     D3D12_CLEAR_VALUE clear{
-        .Format = desc.format,
+        .Format = format,
     };
     const D3D12_CLEAR_VALUE* clear_ptr = nullptr;
 
@@ -1541,7 +1545,8 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
 
         size_t src_row_pitch = 0;
         size_t src_slice_pitch = 0;
-        if (FAILED(ComputePitch(texture->desc.format, mip_width, mip_height, src_row_pitch, src_slice_pitch)))
+        if (FAILED(
+                ComputePitch(dxgi_format(texture->desc.format), mip_width, mip_height, src_row_pitch, src_slice_pitch)))
         {
             return false;
         }
@@ -1719,7 +1724,7 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list,
     const D3D12_INDEX_BUFFER_VIEW view = {
         .BufferLocation = resource->GetGPUVirtualAddress() + offset,
         .SizeInBytes = static_cast<UINT>(buffer.desc.size - offset),
-        .Format = get_dxgi_format(format),
+        .Format = dxgi_format(format),
     };
 
     command_list->IASetIndexBuffer(&view);
@@ -2233,7 +2238,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
     init_info.Device = m_device.Get();
     init_info.CommandQueue = m_graphics_queue.Get();
     init_info.NumFramesInFlight = static_cast<unsigned>(swapchain.buffer_count);
-    init_info.RTVFormat = swapchain.format;
+    init_info.RTVFormat = dxgi_format(swapchain.format);
     init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
     init_info.SrvDescriptorHeap = m_imgui_heap.get().Get();
 

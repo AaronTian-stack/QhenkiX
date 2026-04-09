@@ -1,7 +1,5 @@
 #pragma once
 
-#include <directx/dxgiformat.h>
-
 #include <array>
 #include <optional>
 
@@ -69,11 +67,11 @@ struct GraphicsPipelineDesc
 {
     std::optional<BlendDesc> blend_desc;
     std::optional<DepthStencilDesc> depth_stencil_state;
-    std::array<DXGI_FORMAT, MAX_RENDER_TARGETS> rtv_formats{};
+    std::array<Format, MAX_RENDER_TARGETS> rtv_formats{};
     std::optional<RasterizerDesc> rasterizer_state;
     SampleCount sample_count = SAMPLE_COUNT_1;
     unsigned num_render_targets = 0;
-    DXGI_FORMAT dsv_format{};
+    Format dsv_format{};
     PrimitiveTopology topology = TRIANGLE_LIST;
     bool increment_slot = false; // Whether to increment slot of input, used during reflection
 };

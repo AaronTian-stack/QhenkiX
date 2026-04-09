@@ -97,8 +97,8 @@ class RetroExampleApp : public qhenki::Application
 
     unsigned m_active_camera_index = 1;
 
-    static const DXGI_FORMAT m_offscreen_rt_format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    static const DXGI_FORMAT m_depth_format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    static constexpr qhenki::gfx::Format m_offscreen_rt_format = qhenki::gfx::Format::R16G16B16A16_FLOAT;
+    static constexpr qhenki::gfx::Format m_depth_format = qhenki::gfx::Format::D24_UNORM_S8_UINT;
 
 protected:
     void init_display_window(void* payload) override;

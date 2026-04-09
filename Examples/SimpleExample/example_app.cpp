@@ -88,7 +88,7 @@ void ExampleApp::create()
 
     // Create pipeline
     qhenki::gfx::GraphicsPipelineDesc pipeline_desc = {
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rtv_formats = {qhenki::gfx::Format::R8G8B8A8_UNORM},
         .num_render_targets = 1,
         .increment_slot = false,
     };
@@ -149,7 +149,7 @@ void ExampleApp::create()
         .width = 4,
         .height = 4,
         .mip_levels = 3,
-        .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+        .format = qhenki::gfx::Format::R8G8B8A8_UNORM,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
         .initial_layout = qhenki::gfx::Layout::COPY_DEST,
         .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,

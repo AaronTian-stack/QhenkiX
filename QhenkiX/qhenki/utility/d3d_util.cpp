@@ -90,44 +90,44 @@ namespace qhenki::gfx
     X(COMPUTE_QUEUE_COPY_SOURCE, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE)           \
     X(COMPUTE_QUEUE_COPY_DEST, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST)
 
-#define BLEND_MAP(X)                          \
-    X(ZERO, D3D12_BLEND_ZERO)                 \
-    X(ONE, D3D12_BLEND_ONE)                   \
-    X(SRC_COLOR, D3D12_BLEND_SRC_COLOR)       \
-    X(INVERT_SRC_COLOR, D3D12_BLEND_INV_SRC_COLOR) \
-    X(SRC_ALPHA, D3D12_BLEND_SRC_ALPHA)       \
-    X(INV_SRC_ALPHA, D3D12_BLEND_INV_SRC_ALPHA) \
-    X(DEST_ALPHA, D3D12_BLEND_DEST_ALPHA)     \
-    X(INVERT_DEST_ALPHA, D3D12_BLEND_INV_DEST_ALPHA) \
-    X(DEST_COLOR, D3D12_BLEND_DEST_COLOR)     \
-    X(INVERT_DEST_COLOR, D3D12_BLEND_INV_DEST_COLOR) \
-    X(SRC_ALPHA_CLAMP, D3D12_BLEND_SRC_ALPHA_SAT) \
-    X(CONSTANT_COLOR, D3D12_BLEND_BLEND_FACTOR) \
+#define BLEND_MAP(X)                                       \
+    X(ZERO, D3D12_BLEND_ZERO)                              \
+    X(ONE, D3D12_BLEND_ONE)                                \
+    X(SRC_COLOR, D3D12_BLEND_SRC_COLOR)                    \
+    X(INVERT_SRC_COLOR, D3D12_BLEND_INV_SRC_COLOR)         \
+    X(SRC_ALPHA, D3D12_BLEND_SRC_ALPHA)                    \
+    X(INV_SRC_ALPHA, D3D12_BLEND_INV_SRC_ALPHA)            \
+    X(DEST_ALPHA, D3D12_BLEND_DEST_ALPHA)                  \
+    X(INVERT_DEST_ALPHA, D3D12_BLEND_INV_DEST_ALPHA)       \
+    X(DEST_COLOR, D3D12_BLEND_DEST_COLOR)                  \
+    X(INVERT_DEST_COLOR, D3D12_BLEND_INV_DEST_COLOR)       \
+    X(SRC_ALPHA_CLAMP, D3D12_BLEND_SRC_ALPHA_SAT)          \
+    X(CONSTANT_COLOR, D3D12_BLEND_BLEND_FACTOR)            \
     X(INVERT_CONSTANT_COLOR, D3D12_BLEND_INV_BLEND_FACTOR) \
-    X(SRC1_COLOR, D3D12_BLEND_SRC1_COLOR)     \
-    X(INVERT_SRC1_COLOR, D3D12_BLEND_INV_SRC1_COLOR) \
-    X(SRC1_ALPHA, D3D12_BLEND_SRC1_ALPHA)     \
+    X(SRC1_COLOR, D3D12_BLEND_SRC1_COLOR)                  \
+    X(INVERT_SRC1_COLOR, D3D12_BLEND_INV_SRC1_COLOR)       \
+    X(SRC1_ALPHA, D3D12_BLEND_SRC1_ALPHA)                  \
     X(INVERT_SRC1_ALPHA, D3D12_BLEND_INV_SRC1_ALPHA)
 
-#define LOGIC_OP_MAP(X)                       \
-    X(CLEAR, D3D12_LOGIC_OP_CLEAR)            \
-    X(SET, D3D12_LOGIC_OP_SET)                \
-    X(COPY, D3D12_LOGIC_OP_COPY)              \
+#define LOGIC_OP_MAP(X)                            \
+    X(CLEAR, D3D12_LOGIC_OP_CLEAR)                 \
+    X(SET, D3D12_LOGIC_OP_SET)                     \
+    X(COPY, D3D12_LOGIC_OP_COPY)                   \
     X(COPY_INVERTED, D3D12_LOGIC_OP_COPY_INVERTED) \
-    X(NOOP, D3D12_LOGIC_OP_NOOP)              \
-    X(INVERT, D3D12_LOGIC_OP_INVERT)          \
-    X(AND, D3D12_LOGIC_OP_AND)                \
-    X(NAND, D3D12_LOGIC_OP_NAND)              \
-    X(OR, D3D12_LOGIC_OP_OR)                  \
-    X(NOR, D3D12_LOGIC_OP_NOR)                \
-    X(XOR, D3D12_LOGIC_OP_XOR)                \
-    X(EQUIV, D3D12_LOGIC_OP_EQUIV)            \
-    X(AND_REVERSE, D3D12_LOGIC_OP_AND_REVERSE) \
-    X(AND_INVERTED, D3D12_LOGIC_OP_AND_INVERTED) \
-    X(OR_REVERSE, D3D12_LOGIC_OP_OR_REVERSE)  \
+    X(NOOP, D3D12_LOGIC_OP_NOOP)                   \
+    X(INVERT, D3D12_LOGIC_OP_INVERT)               \
+    X(AND, D3D12_LOGIC_OP_AND)                     \
+    X(NAND, D3D12_LOGIC_OP_NAND)                   \
+    X(OR, D3D12_LOGIC_OP_OR)                       \
+    X(NOR, D3D12_LOGIC_OP_NOR)                     \
+    X(XOR, D3D12_LOGIC_OP_XOR)                     \
+    X(EQUIV, D3D12_LOGIC_OP_EQUIV)                 \
+    X(AND_REVERSE, D3D12_LOGIC_OP_AND_REVERSE)     \
+    X(AND_INVERTED, D3D12_LOGIC_OP_AND_INVERTED)   \
+    X(OR_REVERSE, D3D12_LOGIC_OP_OR_REVERSE)       \
     X(OR_INVERTED, D3D12_LOGIC_OP_OR_INVERTED)
 
-std::wstring get_shader_model_wchar(const ShaderType type, const ShaderModel model)
+std::wstring shader_model_wchar(const ShaderType type, const ShaderModel model)
 {
     auto sm = magic_enum::enum_name(model);
     assert(sm.size() == 6);
@@ -164,7 +164,7 @@ std::wstring get_shader_model_wchar(const ShaderType type, const ShaderModel mod
     return smc;
 }
 
-std::string get_shader_model_char(const ShaderType type, const ShaderModel model)
+std::string shader_model_char(const ShaderType type, const ShaderModel model)
 {
     auto sm = magic_enum::enum_name(model);
     assert(sm.size() == 6);
@@ -201,7 +201,7 @@ std::string get_shader_model_char(const ShaderType type, const ShaderModel model
     return smc;
 }
 
-DXGI_FORMAT get_dxgi_format(const IndexType format)
+DXGI_FORMAT dxgi_format(const IndexType format)
 {
     if (format == IndexType::UINT16)
     {
@@ -299,20 +299,6 @@ D3D12_LOGIC_OP logic_op(const LogicOp logic_op)
     return D3D12_LOGIC_OP_NOOP;
 
 #undef MAP_LOGIC_OP
-}
-
-bool is_depth_stencil_format(const DXGI_FORMAT format)
-{
-    switch (format)
-    {
-    case DXGI_FORMAT_D16_UNORM:
-    case DXGI_FORMAT_D24_UNORM_S8_UINT:
-    case DXGI_FORMAT_D32_FLOAT:
-    case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-        return true;
-    default:
-        return false;
-    }
 }
 
 } // namespace qhenki::gfx

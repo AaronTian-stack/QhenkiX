@@ -100,7 +100,7 @@ void Application::run(const gfx::API api,
         m_swapchain = {
             .width = m_window.m_display_info.width,
             .height = m_window.m_display_info.height,
-            .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .format = gfx::Format::R8G8B8A8_UNORM,
             .buffer_count = m_frames_in_flight,
             .tearing = true,
         };
