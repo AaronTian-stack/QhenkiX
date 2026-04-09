@@ -370,27 +370,27 @@ void RetroExampleApp::create()
     read_compiled_shader_bytes(api, skybox_ps_name, &skybox_ps_data, &skybox_pixel_shader.size);
     skybox_pixel_shader.data = skybox_ps_data.get();
 
-    D3D12_BLEND_DESC skybox_blend_desc{
-        .AlphaToCoverageEnable = FALSE,
-        .IndependentBlendEnable = FALSE,
-        .RenderTarget =
+    qhenki::gfx::BlendDesc skybox_blend_desc{
+        .alpha_to_coverage_enable = false,
+        .independent_blend_enable = false,
+        .render_target =
             {
                 {
-                    .BlendEnable = TRUE,
-                    .LogicOpEnable = FALSE,
-                    .SrcBlend = D3D12_BLEND_SRC_ALPHA,
-                    .DestBlend = D3D12_BLEND_INV_SRC_ALPHA,
-                    .BlendOp = D3D12_BLEND_OP_ADD,
-                    .SrcBlendAlpha = D3D12_BLEND_ONE,
-                    .DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA,
-                    .BlendOpAlpha = D3D12_BLEND_OP_ADD,
-                    .LogicOp = D3D12_LOGIC_OP_NOOP,
-                    .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+                    .blend_enable = true,
+                    .logic_op_enable = false,
+                    .src_blend = qhenki::gfx::Blend::SRC_ALPHA,
+                    .dst_blend = qhenki::gfx::Blend::INV_SRC_ALPHA,
+                    .blend_op = qhenki::gfx::BlendOp::ADD,
+                    .src_blend_alpha = qhenki::gfx::Blend::ONE,
+                    .dst_blend_alpha = qhenki::gfx::Blend::INV_SRC_ALPHA,
+                    .blend_op_alpha = qhenki::gfx::BlendOp::ADD,
+                    .logic_op = qhenki::gfx::LogicOp::NOOP,
+                    .render_target_write_mask = 0xF,
                 },
             },
     };
     qhenki::gfx::DepthStencilDesc skybox_depth_desc{};
-    skybox_depth_desc.depth_func = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    skybox_depth_desc.depth_func = qhenki::gfx::ComparisonFunc::LESS_OR_EQUAL;
     qhenki::gfx::GraphicsPipelineDesc skybox_pipeline_desc = {
         .blend_desc = skybox_blend_desc,
         .depth_stencil_state = skybox_depth_desc,
@@ -460,22 +460,22 @@ void RetroExampleApp::create()
     read_compiled_shader_bytes(api, stencil_ps_name, &stencil_ps_data, &stencil_pixel_shader.size);
     stencil_pixel_shader.data = stencil_ps_data.get();
 
-    D3D12_BLEND_DESC stencil_blend_desc{
-        .AlphaToCoverageEnable = FALSE,
-        .IndependentBlendEnable = FALSE,
-        .RenderTarget =
+    qhenki::gfx::BlendDesc stencil_blend_desc{
+        .alpha_to_coverage_enable = false,
+        .independent_blend_enable = false,
+        .render_target =
             {
                 {
-                    .BlendEnable = FALSE,
-                    .LogicOpEnable = FALSE,
-                    .SrcBlend = D3D12_BLEND_ONE,
-                    .DestBlend = D3D12_BLEND_ZERO,
-                    .BlendOp = D3D12_BLEND_OP_ADD,
-                    .SrcBlendAlpha = D3D12_BLEND_ONE,
-                    .DestBlendAlpha = D3D12_BLEND_ZERO,
-                    .BlendOpAlpha = D3D12_BLEND_OP_ADD,
-                    .LogicOp = D3D12_LOGIC_OP_NOOP,
-                    .RenderTargetWriteMask = 0,
+                    .blend_enable = false,
+                    .logic_op_enable = false,
+                    .src_blend = qhenki::gfx::Blend::ONE,
+                    .dst_blend = qhenki::gfx::Blend::ZERO,
+                    .blend_op = qhenki::gfx::BlendOp::ADD,
+                    .src_blend_alpha = qhenki::gfx::Blend::ONE,
+                    .dst_blend_alpha = qhenki::gfx::Blend::ZERO,
+                    .blend_op_alpha = qhenki::gfx::BlendOp::ADD,
+                    .logic_op = qhenki::gfx::LogicOp::NOOP,
+                    .render_target_write_mask = 0,
                 },
             },
     };
@@ -486,20 +486,20 @@ void RetroExampleApp::create()
             qhenki::gfx::DepthStencilDesc{
                 .front_face =
                     {
-                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilPassOp = D3D12_STENCIL_OP_INCR_SAT,
-                        .StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS,
+                        .fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .depth_fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .pass_op = qhenki::gfx::StencilOp::INCREMENT_AND_CLAMP,
+                        .func = qhenki::gfx::ComparisonFunc::ALWAYS,
                     },
                 .back_face =
                     {
-                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilPassOp = D3D12_STENCIL_OP_INCR_SAT,
-                        .StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS,
+                        .fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .depth_fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .pass_op = qhenki::gfx::StencilOp::INCREMENT_AND_CLAMP,
+                        .func = qhenki::gfx::ComparisonFunc::ALWAYS,
                     },
-                .depth_write_mask = D3D12_DEPTH_WRITE_MASK_ZERO,
-                .depth_func = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+                .depth_write_enable = false,
+                .depth_func = qhenki::gfx::ComparisonFunc::LESS_OR_EQUAL,
                 .stencil_read_mask = 0xFF,
                 .stencil_write_mask = 0xFF,
                 .depth_enable = true,
@@ -508,7 +508,7 @@ void RetroExampleApp::create()
         .rtv_formats = {m_offscreen_rt_format},
         .rasterizer_state =
             qhenki::gfx::RasterizerDesc{
-                .cull_mode = D3D12_CULL_MODE_BACK,
+                .cull_mode = qhenki::gfx::CullMode::BACK,
                 .front_counter_clockwise = false,
             },
         .num_render_targets = 1,
@@ -550,20 +550,20 @@ void RetroExampleApp::create()
             qhenki::gfx::DepthStencilDesc{
                 .front_face =
                     {
-                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilPassOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilFunc = D3D12_COMPARISON_FUNC_EQUAL,
+                        .fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .depth_fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .pass_op = qhenki::gfx::StencilOp::KEEP,
+                        .func = qhenki::gfx::ComparisonFunc::EQUAL,
                     },
                 .back_face =
                     {
-                        .StencilFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilPassOp = D3D12_STENCIL_OP_KEEP,
-                        .StencilFunc = D3D12_COMPARISON_FUNC_EQUAL,
+                        .fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .depth_fail_op = qhenki::gfx::StencilOp::KEEP,
+                        .pass_op = qhenki::gfx::StencilOp::KEEP,
+                        .func = qhenki::gfx::ComparisonFunc::EQUAL,
                     },
-                .depth_write_mask = D3D12_DEPTH_WRITE_MASK_ALL,
-                .depth_func = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+                .depth_write_enable = true,
+                .depth_func = qhenki::gfx::ComparisonFunc::LESS_OR_EQUAL,
                 .stencil_read_mask = 0xFF,
                 .stencil_write_mask = 0x00,
                 .depth_enable = true,
@@ -572,7 +572,7 @@ void RetroExampleApp::create()
         .rtv_formats = {m_offscreen_rt_format},
         .rasterizer_state =
             qhenki::gfx::RasterizerDesc{
-                .cull_mode = D3D12_CULL_MODE_BACK,
+                .cull_mode = qhenki::gfx::CullMode::BACK,
                 .front_counter_clockwise = false,
             },
         .num_render_targets = 1,

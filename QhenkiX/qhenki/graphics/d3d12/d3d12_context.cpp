@@ -565,24 +565,47 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
     {
-        return D3D12_RASTERIZER_DESC{r.fill_mode,
-                                     r.cull_mode,
-                                     r.front_counter_clockwise,
-                                     r.depth_bias,
-                                     r.depth_bias_clamp,
-                                     r.slope_scaled_depth_bias,
-                                     r.depth_clip_enable,
-                                     FALSE, // MultisampleEnable
-                                     FALSE, // AntialiasedLineEnable
-                                     0,     // ForcedSampleCount
-                                     D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF};
+        return D3D12_RASTERIZER_DESC{
+            // Directly compatible
+            static_cast<D3D12_FILL_MODE>(r.fill_mode),
+            static_cast<D3D12_CULL_MODE>(r.cull_mode),
+            r.front_counter_clockwise,
+            r.depth_bias,
+            r.depth_bias_clamp,
+            r.slope_scaled_depth_bias,
+            r.depth_clip_enable,
+            FALSE, // MultisampleEnable
+            FALSE, // AntialiasedLineEnable
+            0,     // ForcedSampleCount
+            D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
+        };
     };
 
     pso_desc.RasterizerState = make_d3d12_rasterizer_desc(desc.rasterizer_state.value_or(RasterizerDesc{}));
 
     if (desc.blend_desc.has_value())
     {
-        pso_desc.BlendState = *desc.blend_desc;
+        pso_desc.BlendState = {
+            .AlphaToCoverageEnable = desc.blend_desc->alpha_to_coverage_enable,
+            .IndependentBlendEnable = desc.blend_desc->independent_blend_enable,
+        };
+        for (unsigned i = 0; i < desc.num_render_targets; i++)
+        {
+            const auto& rt_blend_desc = desc.blend_desc->render_target[i];
+            pso_desc.BlendState.RenderTarget[i] = D3D12_RENDER_TARGET_BLEND_DESC{
+                .BlendEnable = rt_blend_desc.blend_enable,
+                .LogicOpEnable = rt_blend_desc.logic_op_enable,
+                .SrcBlend = blend(rt_blend_desc.src_blend),
+                .DestBlend = blend(rt_blend_desc.dst_blend),
+                // Directly compatible
+                .BlendOp = static_cast<D3D12_BLEND_OP>(rt_blend_desc.blend_op),
+                .SrcBlendAlpha = blend(rt_blend_desc.src_blend_alpha),
+                .DestBlendAlpha = blend(rt_blend_desc.dst_blend_alpha),
+                .BlendOpAlpha = static_cast<D3D12_BLEND_OP>(rt_blend_desc.blend_op_alpha),
+                .LogicOp = static_cast<D3D12_LOGIC_OP>(rt_blend_desc.logic_op),
+                .RenderTargetWriteMask = rt_blend_desc.render_target_write_mask,
+            };
+        }
     }
     else
     {
@@ -611,13 +634,28 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         auto& depth_stencil_state = desc.depth_stencil_state.value();
         pso_desc.DepthStencilState = {
             .DepthEnable = static_cast<INT>(depth_stencil_state.depth_enable),
-            .DepthWriteMask = depth_stencil_state.depth_write_mask,
-            .DepthFunc = depth_stencil_state.depth_func,
+            // Directly compatible since mask is binary 0 or 1
+            .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depth_stencil_state.depth_write_enable),
+            .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depth_stencil_state.depth_func),
             .StencilEnable = depth_stencil_state.stencil_enable,
             .StencilReadMask = depth_stencil_state.stencil_read_mask,
             .StencilWriteMask = depth_stencil_state.stencil_write_mask,
-            .FrontFace = depth_stencil_state.front_face,
-            .BackFace = depth_stencil_state.back_face,
+            // Directly compatible
+            .FrontFace =
+                {
+                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.fail_op),
+                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.depth_fail_op),
+                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.pass_op),
+                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(depth_stencil_state.front_face.func),
+
+                },
+            .BackFace =
+                {
+                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.back_face.fail_op),
+                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.back_face.depth_fail_op),
+                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.back_face.pass_op),
+                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(depth_stencil_state.back_face.func),
+                },
         };
     }
     else
@@ -629,30 +667,32 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     pso_desc.SampleMask = UINT_MAX;
 
     D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type;
-    d3d12_pipeline->primitive_topology = get_primitive_topology(desc.topology);
+    d3d12_pipeline->primitive_topology = static_cast<D3D12_PRIMITIVE_TOPOLOGY>(desc.topology);
 
     switch (desc.topology)
     {
-    case PrimitiveTopology::POINT_LIST:
+    case POINT_LIST:
         topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
         break;
-    case PrimitiveTopology::TRIANGLE_LIST:
-    case PrimitiveTopology::TRIANGLE_STRIP:
+    case TRIANGLE_LIST:
+    case TRIANGLE_STRIP:
         topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         break;
-    case PrimitiveTopology::LINE_LIST:
-    case PrimitiveTopology::LINE_STRIP:
+    case LINE_LIST:
+    case LINE_STRIP:
         topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
         break;
     default:
-        throw std::runtime_error("D3D12: Invalid primitive topology");
+        // This should be exhaustive
+        assert(false);
+        topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
     }
 
     pso_desc.PrimitiveTopologyType = topology_type;
 
     pso_desc.NumRenderTargets = desc.num_render_targets;
 
-    pso_desc.SampleDesc = DXGI_SAMPLE_DESC{static_cast<UINT>(desc.sample_count), 0};
+    pso_desc.SampleDesc = DXGI_SAMPLE_DESC{desc.sample_count, 0};
 
     for (unsigned i = 0; i < desc.num_render_targets; i++)
     {
@@ -1576,13 +1616,16 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
     heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset);
     const D3D12_SAMPLER_DESC sampler_desc{
-        .Filter = filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
-        .AddressU = texture_address_mode(desc.address_mode_u),
-        .AddressV = texture_address_mode(desc.address_mode_v),
-        .AddressW = texture_address_mode(desc.address_mode_w),
+        .Filter =
+            filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_enable, desc.max_anisotropy),
+        // Directly compatible
+        .AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(desc.address_mode_u),
+        .AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(desc.address_mode_v),
+        .AddressW = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(desc.address_mode_w),
         .MipLODBias = desc.mip_lod_bias,
         .MaxAnisotropy = desc.max_anisotropy,
-        .ComparisonFunc = comparison_func(desc.comparison_func),
+        // Directly compatible
+        .ComparisonFunc = static_cast<D3D12_COMPARISON_FUNC>(desc.comparison_func),
         .BorderColor = {desc.border_color[0], desc.border_color[1], desc.border_color[2], desc.border_color[3]},
         .MinLOD = desc.min_lod,
         .MaxLOD = desc.max_lod,

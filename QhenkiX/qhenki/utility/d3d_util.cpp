@@ -6,7 +6,6 @@
 
 namespace qhenki::gfx
 {
-
 #define SYNC_STAGE_MAP(X)                                                                                       \
     X(SYNC_NONE, D3D12_BARRIER_SYNC_NONE)                                                                       \
     X(SYNC_ALL, D3D12_BARRIER_SYNC_ALL)                                                                         \
@@ -91,29 +90,42 @@ namespace qhenki::gfx
     X(COMPUTE_QUEUE_COPY_SOURCE, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE)           \
     X(COMPUTE_QUEUE_COPY_DEST, D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST)
 
-#define PRIMITIVE_TOPOLOGY_MAP(X)                         \
-    X(POINT_LIST, D3D_PRIMITIVE_TOPOLOGY_POINTLIST)       \
-    X(LINE_LIST, D3D_PRIMITIVE_TOPOLOGY_LINELIST)         \
-    X(LINE_STRIP, D3D_PRIMITIVE_TOPOLOGY_LINESTRIP)       \
-    X(TRIANGLE_LIST, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) \
-    X(TRIANGLE_STRIP, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP)
+#define BLEND_MAP(X)                          \
+    X(ZERO, D3D12_BLEND_ZERO)                 \
+    X(ONE, D3D12_BLEND_ONE)                   \
+    X(SRC_COLOR, D3D12_BLEND_SRC_COLOR)       \
+    X(INVERT_SRC_COLOR, D3D12_BLEND_INV_SRC_COLOR) \
+    X(SRC_ALPHA, D3D12_BLEND_SRC_ALPHA)       \
+    X(INV_SRC_ALPHA, D3D12_BLEND_INV_SRC_ALPHA) \
+    X(DEST_ALPHA, D3D12_BLEND_DEST_ALPHA)     \
+    X(INVERT_DEST_ALPHA, D3D12_BLEND_INV_DEST_ALPHA) \
+    X(DEST_COLOR, D3D12_BLEND_DEST_COLOR)     \
+    X(INVERT_DEST_COLOR, D3D12_BLEND_INV_DEST_COLOR) \
+    X(SRC_ALPHA_CLAMP, D3D12_BLEND_SRC_ALPHA_SAT) \
+    X(CONSTANT_COLOR, D3D12_BLEND_BLEND_FACTOR) \
+    X(INVERT_CONSTANT_COLOR, D3D12_BLEND_INV_BLEND_FACTOR) \
+    X(SRC1_COLOR, D3D12_BLEND_SRC1_COLOR)     \
+    X(INVERT_SRC1_COLOR, D3D12_BLEND_INV_SRC1_COLOR) \
+    X(SRC1_ALPHA, D3D12_BLEND_SRC1_ALPHA)     \
+    X(INVERT_SRC1_ALPHA, D3D12_BLEND_INV_SRC1_ALPHA)
 
-#define ADDRESS_MODE_MAP(X)                      \
-    X(WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP)     \
-    X(MIRROR, D3D12_TEXTURE_ADDRESS_MODE_MIRROR) \
-    X(CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP)   \
-    X(BORDER, D3D12_TEXTURE_ADDRESS_MODE_BORDER)
-
-#define COMPARISON_FUNC_MAP(X)                               \
-    X(NONE, D3D12_COMPARISON_FUNC_NONE)                      \
-    X(NEVER, D3D12_COMPARISON_FUNC_NEVER)                    \
-    X(LESS, D3D12_COMPARISON_FUNC_LESS)                      \
-    X(EQUAL, D3D12_COMPARISON_FUNC_EQUAL)                    \
-    X(LESS_OR_EQUAL, D3D12_COMPARISON_FUNC_LESS_EQUAL)       \
-    X(GREATER, D3D12_COMPARISON_FUNC_GREATER)                \
-    X(NOT_EQUAL, D3D12_COMPARISON_FUNC_NOT_EQUAL)            \
-    X(GREATER_OR_EQUAL, D3D12_COMPARISON_FUNC_GREATER_EQUAL) \
-    X(ALWAYS, D3D12_COMPARISON_FUNC_ALWAYS)
+#define LOGIC_OP_MAP(X)                       \
+    X(CLEAR, D3D12_LOGIC_OP_CLEAR)            \
+    X(SET, D3D12_LOGIC_OP_SET)                \
+    X(COPY, D3D12_LOGIC_OP_COPY)              \
+    X(COPY_INVERTED, D3D12_LOGIC_OP_COPY_INVERTED) \
+    X(NOOP, D3D12_LOGIC_OP_NOOP)              \
+    X(INVERT, D3D12_LOGIC_OP_INVERT)          \
+    X(AND, D3D12_LOGIC_OP_AND)                \
+    X(NAND, D3D12_LOGIC_OP_NAND)              \
+    X(OR, D3D12_LOGIC_OP_OR)                  \
+    X(NOR, D3D12_LOGIC_OP_NOR)                \
+    X(XOR, D3D12_LOGIC_OP_XOR)                \
+    X(EQUIV, D3D12_LOGIC_OP_EQUIV)            \
+    X(AND_REVERSE, D3D12_LOGIC_OP_AND_REVERSE) \
+    X(AND_INVERTED, D3D12_LOGIC_OP_AND_INVERTED) \
+    X(OR_REVERSE, D3D12_LOGIC_OP_OR_REVERSE)  \
+    X(OR_INVERTED, D3D12_LOGIC_OP_OR_INVERTED)
 
 std::wstring get_shader_model_wchar(const ShaderType type, const ShaderModel model)
 {
@@ -198,23 +210,6 @@ DXGI_FORMAT get_dxgi_format(const IndexType format)
     return DXGI_FORMAT_R32_UINT;
 }
 
-D3D12_PRIMITIVE_TOPOLOGY get_primitive_topology(const PrimitiveTopology topology)
-{
-#define MAP_TOPOLOGY(our, d3d)   \
-    case PrimitiveTopology::our: \
-        return d3d;
-
-    switch (topology)
-    {
-        PRIMITIVE_TOPOLOGY_MAP(MAP_TOPOLOGY)
-    default:
-        assert(false);
-        return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
-    }
-
-#undef MAP_TOPOLOGY
-}
-
 D3D12_BARRIER_SYNC sync_stage(const SyncStage stage)
 {
 #define MAP_SYNC(our, d3d) \
@@ -257,73 +252,53 @@ D3D12_BARRIER_LAYOUT layout(const Layout layout)
 }
 
 D3D12_FILTER filter(
-    const Filter min, const Filter mag, const Filter mip, const ComparisonFunc func, const UINT max_anisotropy)
+    const Filter min, const Filter mag, const Filter mip, const bool comparison_enable, const UINT max_anisotropy)
 {
-    // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter
-    // Assemble the bitmask ourselves
-    UINT filter = 0;
-    // If linear then set bit to 1 in MIN MAG MIP
-    // Why does Microsoft leave a 0 in between each bitmask bit???
-    if (max_anisotropy == 0)
+    const D3D12_FILTER_REDUCTION_TYPE reduction_type = comparison_enable ? D3D12_FILTER_REDUCTION_TYPE_COMPARISON
+                                                                         : D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+
+    if (max_anisotropy > 1)
     {
-        if (mip == Filter::LINEAR)
-        {
-            filter |= D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-        }
-        if (min == Filter::LINEAR)
-        {
-            filter |= D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
-        }
-        if (mag == Filter::LINEAR)
-        {
-            filter |= D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
-        }
-        if (func != ComparisonFunc::NONE)
-        {
-            filter |= D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
-        }
+        return D3D12_ENCODE_ANISOTROPIC_FILTER(reduction_type);
     }
-    else
-    {
-        if (func == ComparisonFunc::NONE)
-        {
-            return D3D12_FILTER_ANISOTROPIC;
-        }
-        return D3D12_FILTER_COMPARISON_ANISOTROPIC;
-    }
-    return static_cast<D3D12_FILTER>(filter);
+
+    const D3D12_FILTER_TYPE min_type = min == Filter::LINEAR ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT;
+    const D3D12_FILTER_TYPE mag_type = mag == Filter::LINEAR ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT;
+    const D3D12_FILTER_TYPE mip_type = mip == Filter::LINEAR ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT;
+
+    return D3D12_ENCODE_BASIC_FILTER(min_type, mag_type, mip_type, reduction_type);
 }
 
-D3D12_TEXTURE_ADDRESS_MODE texture_address_mode(const AddressMode mode)
+D3D12_BLEND blend(const Blend blend)
 {
-#define MAP_ADDRESS(our, d3d) \
-    case AddressMode::our:    \
+#define MAP_BLEND(our, d3d) \
+    case Blend::our:        \
         return d3d;
 
-    switch (mode)
+    switch (blend)
     {
-        ADDRESS_MODE_MAP(MAP_ADDRESS)
+        BLEND_MAP(MAP_BLEND)
     }
+    assert(false); // This should be exhaustive
+    return D3D12_BLEND_ZERO;
 
-    return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-
-#undef MAP_ADDRESS
+#undef MAP_BLEND
 }
 
-D3D12_COMPARISON_FUNC comparison_func(const ComparisonFunc func)
+D3D12_LOGIC_OP logic_op(const LogicOp logic_op)
 {
-#define MAP_COMPARISON(our, d3d) \
-    case ComparisonFunc::our:    \
+#define MAP_LOGIC_OP(our, d3d) \
+    case LogicOp::our:         \
         return d3d;
 
-    switch (func)
+    switch (logic_op)
     {
-        COMPARISON_FUNC_MAP(MAP_COMPARISON)
+        LOGIC_OP_MAP(MAP_LOGIC_OP)
     }
+    assert(false); // This should be exhaustive
+    return D3D12_LOGIC_OP_NOOP;
 
-    return D3D12_COMPARISON_FUNC_NONE;
-
-#undef MAP_COMPARISON
+#undef MAP_LOGIC_OP
 }
 
 bool is_depth_stencil_format(const DXGI_FORMAT format)
@@ -344,6 +319,8 @@ bool is_depth_stencil_format(const DXGI_FORMAT format)
 #undef SYNC_STAGE_MAP
 #undef ACCESS_FLAGS_MAP
 #undef LAYOUT_MAP
+#undef BLEND_MAP
+#undef LOGIC_OP_MAP
 #undef PRIMITIVE_TOPOLOGY_MAP
 #undef ADDRESS_MODE_MAP
 #undef COMPARISON_FUNC_MAP

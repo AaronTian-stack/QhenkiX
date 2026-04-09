@@ -4,8 +4,6 @@
 #include <string>
 
 #include "qhenki/display_window.h"
-#include "shader.h"
-#include "swapchain.h"
 
 #include "barrier.h"
 #include "buffer.h"
@@ -18,7 +16,9 @@
 #include "queue.h"
 #include "render_target.h"
 #include "sampler.h"
+#include "shader.h"
 #include "submission.h"
+#include "swapchain.h"
 #include "texture.h"
 #include "viewport.h"
 

@@ -175,15 +175,14 @@ namespace qhenki::gfx
     X(CLAMP, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)    \
     X(BORDER, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
 
-#define COMPARISON_FUNC_MAP(X)                                \
-    X(NONE, VK_COMPARE_OP_NEVER) /* No comparison sampling */ \
-    X(NEVER, VK_COMPARE_OP_NEVER)                             \
-    X(LESS, VK_COMPARE_OP_LESS)                               \
-    X(EQUAL, VK_COMPARE_OP_EQUAL)                             \
-    X(LESS_OR_EQUAL, VK_COMPARE_OP_LESS_OR_EQUAL)             \
-    X(GREATER, VK_COMPARE_OP_GREATER)                         \
-    X(NOT_EQUAL, VK_COMPARE_OP_NOT_EQUAL)                     \
-    X(GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL)       \
+#define COMPARISON_FUNC_MAP(X)                          \
+    X(NEVER, VK_COMPARE_OP_NEVER)                       \
+    X(LESS, VK_COMPARE_OP_LESS)                         \
+    X(EQUAL, VK_COMPARE_OP_EQUAL)                       \
+    X(LESS_OR_EQUAL, VK_COMPARE_OP_LESS_OR_EQUAL)       \
+    X(GREATER, VK_COMPARE_OP_GREATER)                   \
+    X(NOT_EQUAL, VK_COMPARE_OP_NOT_EQUAL)               \
+    X(GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL) \
     X(ALWAYS, VK_COMPARE_OP_ALWAYS)
 
 VkFormat convert_format(const DXGI_FORMAT format)
