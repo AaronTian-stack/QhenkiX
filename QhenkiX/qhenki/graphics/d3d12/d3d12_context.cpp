@@ -604,7 +604,7 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                 .SrcBlendAlpha = blend(rt_blend_desc.src_blend_alpha),
                 .DestBlendAlpha = blend(rt_blend_desc.dst_blend_alpha),
                 .BlendOpAlpha = static_cast<D3D12_BLEND_OP>(rt_blend_desc.blend_op_alpha),
-                .LogicOp = static_cast<D3D12_LOGIC_OP>(rt_blend_desc.logic_op),
+                .LogicOp = logic_op(rt_blend_desc.logic_op),
                 .RenderTargetWriteMask = rt_blend_desc.render_target_write_mask,
             };
         }
