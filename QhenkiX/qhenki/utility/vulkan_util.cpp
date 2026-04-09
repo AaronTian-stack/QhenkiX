@@ -90,63 +90,63 @@ namespace qhenki::gfx
     X(COMPUTE_QUEUE_COPY_SOURCE, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)                   \
     X(COMPUTE_QUEUE_COPY_DEST, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 
-#define FORMAT_VK_MAP(X)                                                    \
-    X(UNKNOWN, VK_FORMAT_UNDEFINED)                                         \
-    X(R32G32B32A32_FLOAT, VK_FORMAT_R32G32B32A32_SFLOAT)                    \
-    X(R32G32B32A32_UINT, VK_FORMAT_R32G32B32A32_UINT)                         \
-    X(R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SINT)                         \
-    X(R32G32B32_FLOAT, VK_FORMAT_R32G32B32_SFLOAT)                          \
-    X(R32G32B32_UINT, VK_FORMAT_R32G32B32_UINT)                             \
-    X(R32G32B32_SINT, VK_FORMAT_R32G32B32_SINT)                             \
-    X(R16G16B16A16_FLOAT, VK_FORMAT_R16G16B16A16_SFLOAT)                    \
-    X(R16G16B16A16_UNORM, VK_FORMAT_R16G16B16A16_UNORM)                       \
-    X(R16G16B16A16_UINT, VK_FORMAT_R16G16B16A16_UINT)                         \
-    X(R16G16B16A16_SNORM, VK_FORMAT_R16G16B16A16_SNORM)                     \
-    X(R16G16B16A16_SINT, VK_FORMAT_R16G16B16A16_SINT)                         \
-    X(R32G32_FLOAT, VK_FORMAT_R32G32_SFLOAT)                                \
-    X(R32G32_UINT, VK_FORMAT_R32G32_UINT)                                   \
-    X(R32G32_SINT, VK_FORMAT_R32G32_SINT)                                   \
-    X(R10G10B10A2_UNORM, VK_FORMAT_A2B10G10R10_UNORM_PACK32)                  \
-    X(R10G10B10A2_UINT, VK_FORMAT_A2B10G10R10_UINT_PACK32)                    \
-    X(R11G11B10_FLOAT, VK_FORMAT_B10G11R11_UFLOAT_PACK32)                   \
-    X(R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM)                               \
-    X(R8G8B8A8_UNORM_SRGB, VK_FORMAT_R8G8B8A8_SRGB)                           \
-    X(R8G8B8A8_UINT, VK_FORMAT_R8G8B8A8_UINT)                                 \
-    X(R8G8B8A8_SNORM, VK_FORMAT_R8G8B8A8_SNORM)                             \
-    X(R8G8B8A8_SINT, VK_FORMAT_R8G8B8A8_SINT)                               \
-    X(R16G16_FLOAT, VK_FORMAT_R16G16_SFLOAT)                                \
-    X(R16G16_UNORM, VK_FORMAT_R16G16_UNORM)                                 \
-    X(R16G16_UINT, VK_FORMAT_R16G16_UINT)                                   \
-    X(R16G16_SNORM, VK_FORMAT_R16G16_SNORM)                                 \
-    X(R16G16_SINT, VK_FORMAT_R16G16_SINT)                                   \
-    X(D32_FLOAT, VK_FORMAT_D32_SFLOAT)                                      \
-    X(R32_FLOAT, VK_FORMAT_R32_SFLOAT)                                      \
-    X(R32_UINT, VK_FORMAT_R32_UINT)                                         \
-    X(R32_SINT, VK_FORMAT_R32_SINT)                                         \
-    X(D24_UNORM_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT)                       \
-    X(R8G8_UNORM, VK_FORMAT_R8G8_UNORM)                                     \
-    X(R8G8_UINT, VK_FORMAT_R8G8_UINT)                                       \
-    X(R8G8_SNORM, VK_FORMAT_R8G8_SNORM)                                     \
-    X(R8G8_SINT, VK_FORMAT_R8G8_SINT)                                       \
-    X(R16_FLOAT, VK_FORMAT_R16_SFLOAT)                                      \
-    X(D16_UNORM, VK_FORMAT_D16_UNORM)                                       \
-    X(R16_UNORM, VK_FORMAT_R16_UNORM)                                       \
-    X(R16_UINT, VK_FORMAT_R16_UINT)                                         \
-    X(R16_SNORM, VK_FORMAT_R16_SNORM)                                       \
-    X(R16_SINT, VK_FORMAT_R16_SINT)                                         \
-    X(R8_UNORM, VK_FORMAT_R8_UNORM)                                         \
-    X(BC1_UNORM_SRGB, VK_FORMAT_BC1_RGBA_SRGB_BLOCK)                          \
-    X(BC2_UNORM, VK_FORMAT_BC2_UNORM_BLOCK)                                 \
-    X(BC2_UNORM_SRGB, VK_FORMAT_BC2_SRGB_BLOCK)                             \
-    X(BC3_UNORM, VK_FORMAT_BC3_UNORM_BLOCK)                                 \
-    X(BC3_UNORM_SRGB, VK_FORMAT_BC3_SRGB_BLOCK)                             \
-    X(BC4_UNORM, VK_FORMAT_BC4_UNORM_BLOCK)                                 \
-    X(BC4_SNORM, VK_FORMAT_BC4_SNORM_BLOCK)                                 \
-    X(BC5_UNORM, VK_FORMAT_BC5_UNORM_BLOCK)                                 \
-    X(BC5_SNORM, VK_FORMAT_BC5_SNORM_BLOCK)                                 \
-    X(BC6H_UF16, VK_FORMAT_BC6H_UFLOAT_BLOCK)                               \
-    X(BC6H_SF16, VK_FORMAT_BC6H_SFLOAT_BLOCK)                               \
-    X(BC7_UNORM, VK_FORMAT_BC7_UNORM_BLOCK)                                 \
+#define FORMAT_VK_MAP(X)                                     \
+    X(UNKNOWN, VK_FORMAT_UNDEFINED)                          \
+    X(R32G32B32A32_FLOAT, VK_FORMAT_R32G32B32A32_SFLOAT)     \
+    X(R32G32B32A32_UINT, VK_FORMAT_R32G32B32A32_UINT)        \
+    X(R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SINT)        \
+    X(R32G32B32_FLOAT, VK_FORMAT_R32G32B32_SFLOAT)           \
+    X(R32G32B32_UINT, VK_FORMAT_R32G32B32_UINT)              \
+    X(R32G32B32_SINT, VK_FORMAT_R32G32B32_SINT)              \
+    X(R16G16B16A16_FLOAT, VK_FORMAT_R16G16B16A16_SFLOAT)     \
+    X(R16G16B16A16_UNORM, VK_FORMAT_R16G16B16A16_UNORM)      \
+    X(R16G16B16A16_UINT, VK_FORMAT_R16G16B16A16_UINT)        \
+    X(R16G16B16A16_SNORM, VK_FORMAT_R16G16B16A16_SNORM)      \
+    X(R16G16B16A16_SINT, VK_FORMAT_R16G16B16A16_SINT)        \
+    X(R32G32_FLOAT, VK_FORMAT_R32G32_SFLOAT)                 \
+    X(R32G32_UINT, VK_FORMAT_R32G32_UINT)                    \
+    X(R32G32_SINT, VK_FORMAT_R32G32_SINT)                    \
+    X(R10G10B10A2_UNORM, VK_FORMAT_A2B10G10R10_UNORM_PACK32) \
+    X(R10G10B10A2_UINT, VK_FORMAT_A2B10G10R10_UINT_PACK32)   \
+    X(R11G11B10_FLOAT, VK_FORMAT_B10G11R11_UFLOAT_PACK32)    \
+    X(R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM)              \
+    X(R8G8B8A8_UNORM_SRGB, VK_FORMAT_R8G8B8A8_SRGB)          \
+    X(R8G8B8A8_UINT, VK_FORMAT_R8G8B8A8_UINT)                \
+    X(R8G8B8A8_SNORM, VK_FORMAT_R8G8B8A8_SNORM)              \
+    X(R8G8B8A8_SINT, VK_FORMAT_R8G8B8A8_SINT)                \
+    X(R16G16_FLOAT, VK_FORMAT_R16G16_SFLOAT)                 \
+    X(R16G16_UNORM, VK_FORMAT_R16G16_UNORM)                  \
+    X(R16G16_UINT, VK_FORMAT_R16G16_UINT)                    \
+    X(R16G16_SNORM, VK_FORMAT_R16G16_SNORM)                  \
+    X(R16G16_SINT, VK_FORMAT_R16G16_SINT)                    \
+    X(D32_FLOAT, VK_FORMAT_D32_SFLOAT)                       \
+    X(R32_FLOAT, VK_FORMAT_R32_SFLOAT)                       \
+    X(R32_UINT, VK_FORMAT_R32_UINT)                          \
+    X(R32_SINT, VK_FORMAT_R32_SINT)                          \
+    X(D24_UNORM_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT)        \
+    X(R8G8_UNORM, VK_FORMAT_R8G8_UNORM)                      \
+    X(R8G8_UINT, VK_FORMAT_R8G8_UINT)                        \
+    X(R8G8_SNORM, VK_FORMAT_R8G8_SNORM)                      \
+    X(R8G8_SINT, VK_FORMAT_R8G8_SINT)                        \
+    X(R16_FLOAT, VK_FORMAT_R16_SFLOAT)                       \
+    X(D16_UNORM, VK_FORMAT_D16_UNORM)                        \
+    X(R16_UNORM, VK_FORMAT_R16_UNORM)                        \
+    X(R16_UINT, VK_FORMAT_R16_UINT)                          \
+    X(R16_SNORM, VK_FORMAT_R16_SNORM)                        \
+    X(R16_SINT, VK_FORMAT_R16_SINT)                          \
+    X(R8_UNORM, VK_FORMAT_R8_UNORM)                          \
+    X(BC1_UNORM_SRGB, VK_FORMAT_BC1_RGBA_SRGB_BLOCK)         \
+    X(BC2_UNORM, VK_FORMAT_BC2_UNORM_BLOCK)                  \
+    X(BC2_UNORM_SRGB, VK_FORMAT_BC2_SRGB_BLOCK)              \
+    X(BC3_UNORM, VK_FORMAT_BC3_UNORM_BLOCK)                  \
+    X(BC3_UNORM_SRGB, VK_FORMAT_BC3_SRGB_BLOCK)              \
+    X(BC4_UNORM, VK_FORMAT_BC4_UNORM_BLOCK)                  \
+    X(BC4_SNORM, VK_FORMAT_BC4_SNORM_BLOCK)                  \
+    X(BC5_UNORM, VK_FORMAT_BC5_UNORM_BLOCK)                  \
+    X(BC5_SNORM, VK_FORMAT_BC5_SNORM_BLOCK)                  \
+    X(BC6H_UF16, VK_FORMAT_BC6H_UFLOAT_BLOCK)                \
+    X(BC6H_SF16, VK_FORMAT_BC6H_SFLOAT_BLOCK)                \
+    X(BC7_UNORM, VK_FORMAT_BC7_UNORM_BLOCK)                  \
     X(BC7_UNORM_SRGB, VK_FORMAT_BC7_SRGB_BLOCK)
 
 #define PRIMITIVE_TOPOLOGY_MAP(X)                         \
@@ -172,23 +172,23 @@ namespace qhenki::gfx
     X(GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL) \
     X(ALWAYS, VK_COMPARE_OP_ALWAYS)
 
-#define BLEND_FACTOR_MAP(X)                                \
-    X(ZERO, VK_BLEND_FACTOR_ZERO)                          \
-    X(ONE, VK_BLEND_FACTOR_ONE)                            \
-    X(SRC_COLOR, VK_BLEND_FACTOR_SRC_COLOR)                \
-    X(INVERT_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR) \
-    X(SRC_ALPHA, VK_BLEND_FACTOR_SRC_ALPHA)                \
-    X(INV_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)  \
-    X(DEST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA)               \
-    X(INVERT_DEST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA) \
-    X(DEST_COLOR, VK_BLEND_FACTOR_DST_COLOR)               \
-    X(INVERT_DEST_COLOR, VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR) \
-    X(SRC_ALPHA_CLAMP, VK_BLEND_FACTOR_SRC_ALPHA_SATURATE) \
-    X(CONSTANT_COLOR, VK_BLEND_FACTOR_CONSTANT_COLOR)      \
+#define BLEND_FACTOR_MAP(X)                                            \
+    X(ZERO, VK_BLEND_FACTOR_ZERO)                                      \
+    X(ONE, VK_BLEND_FACTOR_ONE)                                        \
+    X(SRC_COLOR, VK_BLEND_FACTOR_SRC_COLOR)                            \
+    X(INVERT_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR)           \
+    X(SRC_ALPHA, VK_BLEND_FACTOR_SRC_ALPHA)                            \
+    X(INV_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)              \
+    X(DEST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA)                           \
+    X(INVERT_DEST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA)          \
+    X(DEST_COLOR, VK_BLEND_FACTOR_DST_COLOR)                           \
+    X(INVERT_DEST_COLOR, VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR)          \
+    X(SRC_ALPHA_CLAMP, VK_BLEND_FACTOR_SRC_ALPHA_SATURATE)             \
+    X(CONSTANT_COLOR, VK_BLEND_FACTOR_CONSTANT_COLOR)                  \
     X(INVERT_CONSTANT_COLOR, VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR) \
-    X(SRC1_COLOR, VK_BLEND_FACTOR_SRC1_COLOR)              \
-    X(INVERT_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR) \
-    X(SRC1_ALPHA, VK_BLEND_FACTOR_SRC1_ALPHA)              \
+    X(SRC1_COLOR, VK_BLEND_FACTOR_SRC1_COLOR)                          \
+    X(INVERT_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR)         \
+    X(SRC1_ALPHA, VK_BLEND_FACTOR_SRC1_ALPHA)                          \
     X(INVERT_SRC1_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA)
 
 VkFormat convert_format(const Format format)

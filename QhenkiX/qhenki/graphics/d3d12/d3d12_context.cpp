@@ -649,7 +649,6 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
                     .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.depth_fail_op),
                     .StencilPassOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.pass_op),
                     .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(depth_stencil_state.front_face.func),
-
                 },
             .BackFace =
                 {
