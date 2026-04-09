@@ -185,6 +185,25 @@ namespace qhenki::gfx
     X(GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL) \
     X(ALWAYS, VK_COMPARE_OP_ALWAYS)
 
+#define BLEND_FACTOR_MAP(X)                                \
+    X(ZERO, VK_BLEND_FACTOR_ZERO)                          \
+    X(ONE, VK_BLEND_FACTOR_ONE)                            \
+    X(SRC_COLOR, VK_BLEND_FACTOR_SRC_COLOR)                \
+    X(INVERT_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR) \
+    X(SRC_ALPHA, VK_BLEND_FACTOR_SRC_ALPHA)                \
+    X(INV_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)  \
+    X(DEST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA)               \
+    X(INVERT_DEST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA) \
+    X(DEST_COLOR, VK_BLEND_FACTOR_DST_COLOR)               \
+    X(INVERT_DEST_COLOR, VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR) \
+    X(SRC_ALPHA_CLAMP, VK_BLEND_FACTOR_SRC_ALPHA_SATURATE) \
+    X(CONSTANT_COLOR, VK_BLEND_FACTOR_CONSTANT_COLOR)      \
+    X(INVERT_CONSTANT_COLOR, VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR) \
+    X(SRC1_COLOR, VK_BLEND_FACTOR_SRC1_COLOR)              \
+    X(INVERT_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR) \
+    X(SRC1_ALPHA, VK_BLEND_FACTOR_SRC1_ALPHA)              \
+    X(INVERT_SRC1_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA)
+
 VkFormat convert_format(const DXGI_FORMAT format)
 {
 #define MAP_DXGI_TO_VK(dxgi, vk) \
@@ -257,6 +276,22 @@ VkCompareOp comparison_func(const ComparisonFunc func)
     return VK_COMPARE_OP_NEVER;
 
 #undef MAP_COMPARISON
+}
+
+VkBlendFactor blend_factor(const Blend b)
+{
+#define MAP_BLEND_FACTOR(our, vk) \
+    case Blend::our:              \
+        return vk;
+
+    switch (b)
+    {
+        BLEND_FACTOR_MAP(MAP_BLEND_FACTOR)
+    }
+    assert(false);
+    return VK_BLEND_FACTOR_ONE;
+
+#undef MAP_BLEND_FACTOR
 }
 
 VkImageViewType view_type_from_desc(const TextureDesc& desc)
@@ -367,3 +402,4 @@ VkImageLayout layout(const Layout layout)
 #undef PRIMITIVE_TOPOLOGY_MAP
 #undef ADDRESS_MODE_MAP
 #undef COMPARISON_FUNC_MAP
+#undef BLEND_FACTOR_MAP

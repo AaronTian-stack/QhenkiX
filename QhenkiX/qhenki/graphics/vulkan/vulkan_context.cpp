@@ -961,50 +961,6 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     }
 
     // Color blend state
-    auto map_blend_factor = [](const Blend b)
-    {
-        switch (b)
-        {
-        case Blend::ZERO:
-            return VK_BLEND_FACTOR_ZERO;
-        case Blend::ONE:
-            return VK_BLEND_FACTOR_ONE;
-        case Blend::SRC_COLOR:
-            return VK_BLEND_FACTOR_SRC_COLOR;
-        case Blend::INVERT_SRC_COLOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-        case Blend::SRC_ALPHA:
-            return VK_BLEND_FACTOR_SRC_ALPHA;
-        case Blend::INV_SRC_ALPHA:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        case Blend::DEST_ALPHA:
-            return VK_BLEND_FACTOR_DST_ALPHA;
-        case Blend::INVERT_DEST_ALPHA:
-            return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-        case Blend::DEST_COLOR:
-            return VK_BLEND_FACTOR_DST_COLOR;
-        case Blend::INVERT_DEST_COLOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-        case Blend::SRC_ALPHA_CLAMP:
-            return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-        case Blend::CONSTANT_COLOR:
-            return VK_BLEND_FACTOR_CONSTANT_COLOR;
-        case Blend::INVERT_CONSTANT_COLOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-        case Blend::SRC1_COLOR:
-            return VK_BLEND_FACTOR_SRC1_COLOR;
-        case Blend::INVERT_SRC1_COLOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
-        case Blend::SRC1_ALPHA:
-            return VK_BLEND_FACTOR_SRC1_ALPHA;
-        case Blend::INVERT_SRC1_ALPHA:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
-        default:
-            // This should be exhaustive
-            assert(false);
-            return VK_BLEND_FACTOR_ONE;
-        }
-    };
 
     auto map_blend_op = [](const BlendOp op)
     {
@@ -1019,11 +975,11 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         {
             const auto& rt = desc.blend_desc->render_target[i];
             attachment.blendEnable = rt.blend_enable;
-            attachment.srcColorBlendFactor = map_blend_factor(rt.src_blend);
-            attachment.dstColorBlendFactor = map_blend_factor(rt.dst_blend);
+            attachment.srcColorBlendFactor = blend_factor(rt.src_blend);
+            attachment.dstColorBlendFactor = blend_factor(rt.dst_blend);
             attachment.colorBlendOp = map_blend_op(rt.blend_op);
-            attachment.srcAlphaBlendFactor = map_blend_factor(rt.src_blend_alpha);
-            attachment.dstAlphaBlendFactor = map_blend_factor(rt.dst_blend_alpha);
+            attachment.srcAlphaBlendFactor = blend_factor(rt.src_blend_alpha);
+            attachment.dstAlphaBlendFactor = blend_factor(rt.dst_blend_alpha);
             attachment.alphaBlendOp = map_blend_op(rt.blend_op_alpha);
             // Directly compatible since DX and VK use same bitmask
             attachment.colorWriteMask = rt.render_target_write_mask;
