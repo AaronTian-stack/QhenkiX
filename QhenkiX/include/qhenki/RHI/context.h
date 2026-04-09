@@ -20,10 +20,10 @@
 #include "sampler.h"
 #include "submission.h"
 #include "texture.h"
+#include "viewport.h"
 
 namespace qhenki::gfx
 {
-// TODO: replace all D3D types with qhenki::gfx types
 class Context
 {
 public:
@@ -208,8 +208,8 @@ public:
                                    const RenderTarget* depth_stencil) = 0;
     virtual void end_render_pass(CommandList* cmd_list) = 0;
 
-    virtual void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) = 0;
-    virtual void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) = 0;
+    virtual void set_viewports(CommandList* list, unsigned count, const Viewport* viewport) = 0;
+    virtual void set_scissor_rects(CommandList* list, unsigned count, const Rect* scissor_rect) = 0;
 
     virtual void draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) = 0;
     virtual void draw_indexed(CommandList* cmd_list,

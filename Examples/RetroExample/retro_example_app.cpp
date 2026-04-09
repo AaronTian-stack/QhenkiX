@@ -966,19 +966,21 @@ void RetroExampleApp::render()
     };
     m_context->start_render_pass(&cmd_list, 1, &color, &depth);
 
-    const D3D12_VIEWPORT viewport{
-        .TopLeftX = 0,
-        .TopLeftY = 0,
-        .Width = static_cast<float>(dim.x),
-        .Height = static_cast<float>(dim.y),
-        .MinDepth = 0.0f,
-        .MaxDepth = 1.0f,
+    const qhenki::gfx::Viewport viewport{
+        .top_left_x = 0,
+        .top_left_y = 0,
+        .width = static_cast<float>(dim.x),
+        .height = static_cast<float>(dim.y),
+        .min_depth = 0.0f,
+        .max_depth = 1.0f,
     };
-    const D3D12_RECT scissor_rect{
+    const qhenki::gfx::Rect scissor_rect{
         .left = 0,
         .top = 0,
-        .right = static_cast<LONG>(dim.x),
-        .bottom = static_cast<LONG>(dim.y),
+        .front = 0,
+        .right = static_cast<long>(dim.x),
+        .bottom = static_cast<long>(dim.y),
+        .back = 0,
     };
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
@@ -1152,19 +1154,21 @@ void RetroExampleApp::render()
     m_context->start_render_pass(&cmd_list, 1, &blit_target, nullptr);
     const unsigned bloom_w = m_bloom_textures.front().tex.desc.width;
     const unsigned bloom_h = m_bloom_textures.front().tex.desc.height;
-    const D3D12_VIEWPORT bloom_viewport{
-        .TopLeftX = 0,
-        .TopLeftY = 0,
-        .Width = static_cast<float>(bloom_w),
-        .Height = static_cast<float>(bloom_h),
-        .MinDepth = 0.0f,
-        .MaxDepth = 1.0f,
+    const qhenki::gfx::Viewport bloom_viewport{
+        .top_left_x = 0,
+        .top_left_y = 0,
+        .width = static_cast<float>(bloom_w),
+        .height = static_cast<float>(bloom_h),
+        .min_depth = 0.0f,
+        .max_depth = 1.0f,
     };
-    const D3D12_RECT bloom_scissor{
+    const qhenki::gfx::Rect bloom_scissor{
         .left = 0,
         .top = 0,
-        .right = static_cast<LONG>(bloom_w),
-        .bottom = static_cast<LONG>(bloom_h),
+        .front = 0,
+        .right = static_cast<long>(bloom_w),
+        .bottom = static_cast<long>(bloom_h),
+        .back = 0,
     };
     m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &bloom_scissor);

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 namespace qhenki::gfx
 {
 enum class IndexType : uint8_t

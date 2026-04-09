@@ -1921,20 +1921,42 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     return true;
 }
 
-void D3D12Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
+void D3D12Context::set_viewports(CommandList* list, const unsigned count, const Viewport* viewport)
 {
-    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
+    std::array<D3D12_VIEWPORT, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> d3d12_viewports;
+    for (unsigned i = 0; i < count; i++)
+    {
+        d3d12_viewports[i] = {
+            .TopLeftX = viewport[i].top_left_x,
+            .TopLeftY = viewport[i].top_left_y,
+            .Width = viewport[i].width,
+            .Height = viewport[i].height,
+            .MinDepth = viewport[i].min_depth,
+            .MaxDepth = viewport[i].max_depth,
+        };
+    }
+
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->list.Get();
-    command_list->RSSetViewports(count, viewport);
+    command_list->RSSetViewports(count, d3d12_viewports.data());
 }
 
-void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
+void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, const Rect* scissor_rect)
 {
-    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
+    std::array<D3D12_RECT, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> d3d12_rects;
+    for (unsigned i = 0; i < count; i++)
+    {
+        d3d12_rects[i] = {
+            .left = scissor_rect[i].left,
+            .top = scissor_rect[i].top,
+            .right = scissor_rect[i].right,
+            .bottom = scissor_rect[i].bottom,
+        };
+    }
+
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->list.Get();
-    command_list->RSSetScissorRects(count, scissor_rect);
+    command_list->RSSetScissorRects(count, d3d12_rects.data());
 }
 
 void D3D12Context::end_render_pass(CommandList* cmd_list)

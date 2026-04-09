@@ -2503,26 +2503,26 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     return true;
 }
 
-void VulkanContext::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
+void VulkanContext::set_viewports(CommandList* list, const unsigned count, const Viewport* viewport)
 {
     // D3D12_VIEWPORT == VkViewport
     std::array<VkViewport, MAX_VIEWPORTS_SCISSORS> vk_viewports;
     for (unsigned i = 0; i < count; i++)
     {
         vk_viewports[i] = {
-            .x = viewport[i].TopLeftX,
-            .y = viewport[i].TopLeftY,
-            .width = viewport[i].Width,
-            .height = viewport[i].Height,
-            .minDepth = viewport[i].MinDepth,
-            .maxDepth = viewport[i].MaxDepth,
+            .x = viewport[i].top_left_x,
+            .y = viewport[i].top_left_y,
+            .width = viewport[i].width,
+            .height = viewport[i].height,
+            .minDepth = viewport[i].min_depth,
+            .maxDepth = viewport[i].max_depth,
         };
     }
     const auto vk_cmd_list = to_internal(*list);
     vkCmdSetViewportWithCount(vk_cmd_list->cmd_buf, count, vk_viewports.data());
 }
 
-void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
+void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, const Rect* scissor_rect)
 {
     std::array<VkRect2D, MAX_VIEWPORTS_SCISSORS> vk_scissors;
     for (unsigned i = 0; i < count; i++)

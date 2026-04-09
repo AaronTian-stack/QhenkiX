@@ -1128,26 +1128,36 @@ void D3D11Context::end_render_pass(CommandList* cmd_list)
 {
 }
 
-void D3D11Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
+void D3D11Context::set_viewports(CommandList* list, const unsigned count, const Viewport* viewport)
 {
+    std::array<D3D11_VIEWPORT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports{};
     for (unsigned int i = 0; i < count; i++)
     {
-        m_viewports[i] = {
-            .TopLeftX = viewport[i].TopLeftX,
-            .TopLeftY = viewport[i].TopLeftY,
-            .Width = viewport[i].Width,
-            .Height = viewport[i].Height,
-            .MinDepth = viewport[i].MinDepth,
-            .MaxDepth = viewport[i].MaxDepth,
+        viewports[i] = {
+            .TopLeftX = viewport[i].top_left_x,
+            .TopLeftY = viewport[i].top_left_y,
+            .Width = viewport[i].width,
+            .Height = viewport[i].height,
+            .MinDepth = viewport[i].min_depth,
+            .MaxDepth = viewport[i].max_depth,
         };
     }
-    m_device_context->RSSetViewports(count, m_viewports.data());
+    m_device_context->RSSetViewports(count, viewports.data());
 }
 
-void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
+void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, const Rect* scissor_rect)
 {
-    // D3D12_RECT = D3D11_RECT = RECT
-    m_device_context->RSSetScissorRects(count, scissor_rect);
+    std::array<D3D11_RECT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> d3d11_rects{};
+    for (unsigned int i = 0; i < count; i++)
+    {
+        d3d11_rects[i] = {
+            .left = scissor_rect[i].left,
+            .top = scissor_rect[i].top,
+            .right = scissor_rect[i].right,
+            .bottom = scissor_rect[i].bottom,
+        };
+    }
+    m_device_context->RSSetScissorRects(count, d3d11_rects.data());
 }
 
 void D3D11Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)

@@ -159,6 +159,7 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/RHI/swapchain.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/sync.h"
     "${QHENKIX_PUBLIC_DIR}/RHI/texture.h"
+    "${QHENKIX_PUBLIC_DIR}/RHI/viewport.h"
 
     "${QHENKIX_PUBLIC_DIR}/utility/shader_blob.h"
     "${QHENKIX_PUBLIC_DIR}/utility/hlsl_compat.h"
