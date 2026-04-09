@@ -2,9 +2,12 @@
 
 #include "vulkan_root_signature.h"
 
+namespace qhenki::gfx
+{
 struct VulkanPipeline
 {
     VkPipeline pipeline;
     VkPrimitiveTopology topology;
-    qhenki::gfx::VulkanRootSignature* root_signature;
+    VulkanRootSignature* root_signature;
 };
+} // namespace qhenki::gfx

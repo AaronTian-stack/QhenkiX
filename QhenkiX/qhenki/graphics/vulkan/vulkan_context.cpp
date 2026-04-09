@@ -1095,7 +1095,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
-    pipeline->internal_state = mkS<VulkanPipeline>(vk_pipeline, primitive_topology);
+    pipeline->internal_state = mkS<VulkanPipeline>(vk_pipeline, primitive_topology, vk_root_signature);
 
     set_debug_name(m_device.device, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(vk_pipeline), debug_name);
 
@@ -2126,7 +2126,7 @@ bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool
     {
         return false;
     }
-    cmd_list->internal_state = mkS<VkCommandBuffer>(cmd_buffer);
+    cmd_list->internal_state = mkS<VulkanCommandList>(cmd_buffer);
 
     const auto vk_cmd_list = to_internal(*cmd_list);
 
@@ -2143,12 +2143,14 @@ bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool
 
 bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
-    const auto vk_cmd_list = to_internal(*cmd_list);
+    auto vk_cmd_list = to_internal(*cmd_list);
 
     if (!create_command_list(cmd_list, command_pool, vk_cmd_list->debug_name.data()))
     {
         return false;
     }
+
+    vk_cmd_list = to_internal(*cmd_list);
 
     constexpr VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
