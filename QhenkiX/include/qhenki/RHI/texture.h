@@ -37,7 +37,7 @@ struct TextureDesc
     uint32_t height = 0;
     uint16_t depth_or_array_size = 1;
     uint16_t mip_levels = 1;
-    DXGI_FORMAT format; // TODO: replace type
+    Format format;
     uint16_t sample_count = 1;
     TextureDimension dimension;
     bool is_cube = false;

@@ -22,6 +22,7 @@
 #include "d3d12_texture.h"
 
 #include "qhenki/utility/d3d_util.h"
+#include "qhenki/utility/gfx_util.h"
 #include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
@@ -316,7 +317,7 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window, const Swapchain
     const DXGI_SWAP_CHAIN_DESC1 swap_chain_descriptor = {
         .Width = swapchain_desc.width,
         .Height = swapchain_desc.height,
-        .Format = swapchain_desc.format,
+        .Format = dxgi_format(swapchain_desc.format),
         .SampleDesc = {.Count = 1, // MSAA Count
                        .Quality = 0},
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
@@ -387,7 +388,8 @@ bool D3D12Context::resize_swapchain(Swapchain* const swapchain, const int width,
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
 
-    if (FAILED(m_swapchain->ResizeBuffers(swapchain->buffer_count, width, height, swapchain->format, resize_flags)))
+    if (FAILED(m_swapchain->ResizeBuffers(
+            swapchain->buffer_count, width, height, dxgi_format(swapchain->format), resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Failed to resize swap chain buffers\n");
         return false;
@@ -565,24 +567,47 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
     {
-        return D3D12_RASTERIZER_DESC{r.fill_mode,
-                                     r.cull_mode,
-                                     r.front_counter_clockwise,
-                                     r.depth_bias,
-                                     r.depth_bias_clamp,
-                                     r.slope_scaled_depth_bias,
-                                     r.depth_clip_enable,
-                                     FALSE, // MultisampleEnable
-                                     FALSE, // AntialiasedLineEnable
-                                     0,     // ForcedSampleCount
-                                     D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF};
+        return D3D12_RASTERIZER_DESC{
+            // Directly compatible
+            static_cast<D3D12_FILL_MODE>(r.fill_mode),
+            static_cast<D3D12_CULL_MODE>(r.cull_mode),
+            r.front_counter_clockwise,
+            r.depth_bias,
+            r.depth_bias_clamp,
+            r.slope_scaled_depth_bias,
+            r.depth_clip_enable,
+            FALSE, // MultisampleEnable
+            FALSE, // AntialiasedLineEnable
+            0,     // ForcedSampleCount
+            D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
+        };
     };
 
     pso_desc.RasterizerState = make_d3d12_rasterizer_desc(desc.rasterizer_state.value_or(RasterizerDesc{}));
 
     if (desc.blend_desc.has_value())
     {
-        pso_desc.BlendState = *desc.blend_desc;
+        pso_desc.BlendState = {
+            .AlphaToCoverageEnable = desc.blend_desc->alpha_to_coverage_enable,
+            .IndependentBlendEnable = desc.blend_desc->independent_blend_enable,
+        };
+        for (unsigned i = 0; i < desc.num_render_targets; i++)
+        {
+            const auto& rt_blend_desc = desc.blend_desc->render_target[i];
+            pso_desc.BlendState.RenderTarget[i] = D3D12_RENDER_TARGET_BLEND_DESC{
+                .BlendEnable = rt_blend_desc.blend_enable,
+                .LogicOpEnable = rt_blend_desc.logic_op_enable,
+                .SrcBlend = blend(rt_blend_desc.src_blend),
+                .DestBlend = blend(rt_blend_desc.dst_blend),
+                // Directly compatible
+                .BlendOp = static_cast<D3D12_BLEND_OP>(rt_blend_desc.blend_op),
+                .SrcBlendAlpha = blend(rt_blend_desc.src_blend_alpha),
+                .DestBlendAlpha = blend(rt_blend_desc.dst_blend_alpha),
+                .BlendOpAlpha = static_cast<D3D12_BLEND_OP>(rt_blend_desc.blend_op_alpha),
+                .LogicOp = logic_op(rt_blend_desc.logic_op),
+                .RenderTargetWriteMask = rt_blend_desc.render_target_write_mask,
+            };
+        }
     }
     else
     {
@@ -611,13 +636,27 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         auto& depth_stencil_state = desc.depth_stencil_state.value();
         pso_desc.DepthStencilState = {
             .DepthEnable = static_cast<INT>(depth_stencil_state.depth_enable),
-            .DepthWriteMask = depth_stencil_state.depth_write_mask,
-            .DepthFunc = depth_stencil_state.depth_func,
+            // Directly compatible since mask is binary 0 or 1
+            .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depth_stencil_state.depth_write_enable),
+            .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depth_stencil_state.depth_func),
             .StencilEnable = depth_stencil_state.stencil_enable,
             .StencilReadMask = depth_stencil_state.stencil_read_mask,
             .StencilWriteMask = depth_stencil_state.stencil_write_mask,
-            .FrontFace = depth_stencil_state.front_face,
-            .BackFace = depth_stencil_state.back_face,
+            // Directly compatible
+            .FrontFace =
+                {
+                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.fail_op),
+                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.depth_fail_op),
+                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.front_face.pass_op),
+                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(depth_stencil_state.front_face.func),
+                },
+            .BackFace =
+                {
+                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.back_face.fail_op),
+                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.back_face.depth_fail_op),
+                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(depth_stencil_state.back_face.pass_op),
+                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(depth_stencil_state.back_face.func),
+                },
         };
     }
     else
@@ -629,23 +668,25 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     pso_desc.SampleMask = UINT_MAX;
 
     D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type;
-    d3d12_pipeline->primitive_topology = get_primitive_topology(desc.topology);
+    d3d12_pipeline->primitive_topology = static_cast<D3D12_PRIMITIVE_TOPOLOGY>(desc.topology);
 
     switch (desc.topology)
     {
-    case PrimitiveTopology::POINT_LIST:
+    case POINT_LIST:
         topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
         break;
-    case PrimitiveTopology::TRIANGLE_LIST:
-    case PrimitiveTopology::TRIANGLE_STRIP:
+    case TRIANGLE_LIST:
+    case TRIANGLE_STRIP:
         topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         break;
-    case PrimitiveTopology::LINE_LIST:
-    case PrimitiveTopology::LINE_STRIP:
+    case LINE_LIST:
+    case LINE_STRIP:
         topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
         break;
     default:
-        throw std::runtime_error("D3D12: Invalid primitive topology");
+        // This should be exhaustive
+        assert(false);
+        topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
     }
 
     pso_desc.PrimitiveTopologyType = topology_type;
@@ -656,9 +697,9 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     for (unsigned i = 0; i < desc.num_render_targets; i++)
     {
-        pso_desc.RTVFormats[i] = desc.rtv_formats[i];
+        pso_desc.RTVFormats[i] = dxgi_format(desc.rtv_formats[i]);
     }
-    pso_desc.DSVFormat = desc.dsv_format;
+    pso_desc.DSVFormat = dxgi_format(desc.dsv_format);
     if (const auto hr = m_device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&d3d12_pipeline->pipeline_state));
         FAILED(hr))
     {
@@ -1310,13 +1351,15 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         }
     }
 
+    const auto format = dxgi_format(desc.format);
+
     D3D12_RESOURCE_DESC1 resource_desc = {
         .Alignment = 0,
         .Width = desc.width,
         .Height = desc.height,
         .DepthOrArraySize = desc.depth_or_array_size,
         .MipLevels = desc.mip_levels,
-        .Format = desc.format,
+        .Format = format,
         .SampleDesc =
             {
                 .Count = desc.sample_count,
@@ -1327,7 +1370,7 @@ bool D3D12Context::create_texture(const TextureDesc& desc, Texture* texture, con
         //.SamplerFeedbackMipRegion // TODO: sampler feedback mip region?
     };
     D3D12_CLEAR_VALUE clear{
-        .Format = desc.format,
+        .Format = format,
     };
     const D3D12_CLEAR_VALUE* clear_ptr = nullptr;
 
@@ -1501,7 +1544,8 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
 
         size_t src_row_pitch = 0;
         size_t src_slice_pitch = 0;
-        if (FAILED(ComputePitch(texture->desc.format, mip_width, mip_height, src_row_pitch, src_slice_pitch)))
+        if (FAILED(
+                ComputePitch(dxgi_format(texture->desc.format), mip_width, mip_height, src_row_pitch, src_slice_pitch)))
         {
             return false;
         }
@@ -1576,13 +1620,16 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
     heap_d3d12->get_CPU_descriptor(&cpu_handle, descriptor->offset);
     const D3D12_SAMPLER_DESC sampler_desc{
-        .Filter = filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_func, desc.max_anisotropy),
-        .AddressU = texture_address_mode(desc.address_mode_u),
-        .AddressV = texture_address_mode(desc.address_mode_v),
-        .AddressW = texture_address_mode(desc.address_mode_w),
+        .Filter =
+            filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_enable, desc.max_anisotropy),
+        // Directly compatible
+        .AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(desc.address_mode_u),
+        .AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(desc.address_mode_v),
+        .AddressW = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(desc.address_mode_w),
         .MipLODBias = desc.mip_lod_bias,
         .MaxAnisotropy = desc.max_anisotropy,
-        .ComparisonFunc = comparison_func(desc.comparison_func),
+        // Directly compatible
+        .ComparisonFunc = static_cast<D3D12_COMPARISON_FUNC>(desc.comparison_func),
         .BorderColor = {desc.border_color[0], desc.border_color[1], desc.border_color[2], desc.border_color[3]},
         .MinLOD = desc.min_lod,
         .MaxLOD = desc.max_lod,
@@ -1676,7 +1723,7 @@ void D3D12Context::bind_index_buffer(CommandList* cmd_list,
     const D3D12_INDEX_BUFFER_VIEW view = {
         .BufferLocation = resource->GetGPUVirtualAddress() + offset,
         .SizeInBytes = static_cast<UINT>(buffer.desc.size - offset),
-        .Format = get_dxgi_format(format),
+        .Format = dxgi_format(format),
     };
 
     command_list->IASetIndexBuffer(&view);
@@ -1921,20 +1968,42 @@ bool D3D12Context::start_render_pass(CommandList* cmd_list,
     return true;
 }
 
-void D3D12Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
+void D3D12Context::set_viewports(CommandList* list, const unsigned count, const Viewport* viewport)
 {
-    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
+    std::array<D3D12_VIEWPORT, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> d3d12_viewports;
+    for (unsigned i = 0; i < count; i++)
+    {
+        d3d12_viewports[i] = {
+            .TopLeftX = viewport[i].top_left_x,
+            .TopLeftY = viewport[i].top_left_y,
+            .Width = viewport[i].width,
+            .Height = viewport[i].height,
+            .MinDepth = viewport[i].min_depth,
+            .MaxDepth = viewport[i].max_depth,
+        };
+    }
+
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->list.Get();
-    command_list->RSSetViewports(count, viewport);
+    command_list->RSSetViewports(count, d3d12_viewports.data());
 }
 
-void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
+void D3D12Context::set_scissor_rects(CommandList* list, const unsigned count, const Rect* scissor_rect)
 {
-    assert(count <= D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
+    std::array<D3D12_RECT, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> d3d12_rects;
+    for (unsigned i = 0; i < count; i++)
+    {
+        d3d12_rects[i] = {
+            .left = scissor_rect[i].left,
+            .top = scissor_rect[i].top,
+            .right = scissor_rect[i].right,
+            .bottom = scissor_rect[i].bottom,
+        };
+    }
+
     const auto cmd_list_d3d12 = to_internal(*list);
     const auto command_list = cmd_list_d3d12->list.Get();
-    command_list->RSSetScissorRects(count, scissor_rect);
+    command_list->RSSetScissorRects(count, d3d12_rects.data());
 }
 
 void D3D12Context::end_render_pass(CommandList* cmd_list)
@@ -2168,7 +2237,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
     init_info.Device = m_device.Get();
     init_info.CommandQueue = m_graphics_queue.Get();
     init_info.NumFramesInFlight = static_cast<unsigned>(swapchain.buffer_count);
-    init_info.RTVFormat = swapchain.format;
+    init_info.RTVFormat = dxgi_format(swapchain.format);
     init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
     init_info.SrvDescriptorHeap = m_imgui_heap.get().Get();
 
@@ -2203,7 +2272,6 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
                                        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
                                        D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle)
     {
-        // TODO
         OutputDebugStringA("WARNING: ImGui descriptors not freed\n");
     };
     ImGui_ImplSDL3_InitForD3D(window.get_window());

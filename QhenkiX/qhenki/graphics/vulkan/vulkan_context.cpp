@@ -384,6 +384,10 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     {
         return "Vulkan: Device does not support required number of viewports";
     }
+    if (limits.maxBoundDescriptorSets < MAX_SPACES)
+    {
+        return "Vulkan: Device does not support required number of spaces";
+    }
 
     const VkSemaphoreTypeCreateInfo internal_semaphore_type{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -863,32 +867,9 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
 
     auto make_vk_rasterizer_state = [](const RasterizerDesc& r)
     {
-        VkPolygonMode polygon_mode;
-        switch (r.fill_mode)
-        {
-        case D3D12_FILL_MODE_WIREFRAME:
-            polygon_mode = VK_POLYGON_MODE_LINE;
-            break;
-        case D3D12_FILL_MODE_SOLID:
-        default:
-            polygon_mode = VK_POLYGON_MODE_FILL;
-            break;
-        }
+        const auto polygon_mode = static_cast<VkPolygonMode>(1 - (r.fill_mode - 2));
 
-        VkCullModeFlags cull_mode;
-        switch (r.cull_mode)
-        {
-        case D3D12_CULL_MODE_FRONT:
-            cull_mode = VK_CULL_MODE_FRONT_BIT;
-            break;
-        case D3D12_CULL_MODE_BACK:
-            cull_mode = VK_CULL_MODE_BACK_BIT;
-            break;
-        case D3D12_CULL_MODE_NONE:
-        default:
-            cull_mode = VK_CULL_MODE_NONE;
-            break;
-        }
+        VkCullModeFlags cull_mode = static_cast<VkCullModeFlags>(r.cull_mode - 1);
 
         const VkPipelineRasterizationStateCreateInfo raster{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -914,11 +895,9 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     VkBool32 alpha_to_coverage = VK_FALSE;
     if (desc.blend_desc.has_value())
     {
-        alpha_to_coverage = desc.blend_desc->AlphaToCoverageEnable ? VK_TRUE : VK_FALSE;
+        alpha_to_coverage = desc.blend_desc->alpha_to_coverage_enable;
     }
 
-    // TODO: Replace with enum
-    assert(util::is_power_of_two(desc.sample_count) && desc.sample_count <= VK_SAMPLE_COUNT_64_BIT);
     VkPipelineMultisampleStateCreateInfo multisample_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples = static_cast<VkSampleCountFlagBits>(desc.sample_count),
@@ -929,60 +908,21 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .alphaToOneEnable = VK_FALSE,
     };
 
-    auto map_stencil_op = [](const D3D12_STENCIL_OP op)
+    auto map_stencil_op = [](const StencilOp op)
     {
-        switch (op)
-        {
-        case D3D12_STENCIL_OP_KEEP:
-            return VK_STENCIL_OP_KEEP;
-        case D3D12_STENCIL_OP_ZERO:
-            return VK_STENCIL_OP_ZERO;
-        case D3D12_STENCIL_OP_REPLACE:
-            return VK_STENCIL_OP_REPLACE;
-        case D3D12_STENCIL_OP_INCR_SAT:
-            return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-        case D3D12_STENCIL_OP_DECR_SAT:
-            return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
-        case D3D12_STENCIL_OP_INVERT:
-            return VK_STENCIL_OP_INVERT;
-        case D3D12_STENCIL_OP_INCR:
-            return VK_STENCIL_OP_INCREMENT_AND_WRAP;
-        case D3D12_STENCIL_OP_DECR:
-            return VK_STENCIL_OP_DECREMENT_AND_WRAP;
-        default:
-            return VK_STENCIL_OP_KEEP;
-        }
+        return static_cast<VkStencilOp>(op - 1);
     };
 
-    auto map_compare_func = [](const D3D12_COMPARISON_FUNC func)
+    auto map_compare_func = [](const ComparisonFunc func)
     {
-        switch (func)
-        {
-        case D3D12_COMPARISON_FUNC_NEVER:
-            return VK_COMPARE_OP_NEVER;
-        case D3D12_COMPARISON_FUNC_LESS:
-            return VK_COMPARE_OP_LESS;
-        case D3D12_COMPARISON_FUNC_EQUAL:
-            return VK_COMPARE_OP_EQUAL;
-        case D3D12_COMPARISON_FUNC_LESS_EQUAL:
-            return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case D3D12_COMPARISON_FUNC_GREATER:
-            return VK_COMPARE_OP_GREATER;
-        case D3D12_COMPARISON_FUNC_NOT_EQUAL:
-            return VK_COMPARE_OP_NOT_EQUAL;
-        case D3D12_COMPARISON_FUNC_GREATER_EQUAL:
-            return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        case D3D12_COMPARISON_FUNC_ALWAYS:
-        default:
-            return VK_COMPARE_OP_ALWAYS;
-        }
+        return static_cast<VkCompareOp>(func - 1);
     };
 
     VkPipelineDepthStencilStateCreateInfo depth_stencil_info{
         VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
     const bool has_depth_stencil_desc = desc.depth_stencil_state.has_value();
     VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
-    if (desc.dsv_format != DXGI_FORMAT_UNKNOWN)
+    if (desc.dsv_format != Format::UNKNOWN)
     {
         depth_stencil_format = convert_format(desc.dsv_format);
     }
@@ -994,13 +934,13 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     {
         const auto& ds = *desc.depth_stencil_state;
 
-        const auto make_stencil_state = [&](const D3D12_DEPTH_STENCILOP_DESC& op)
+        const auto make_stencil_state = [&](const DepthStencilOpDesc& op)
         {
             VkStencilOpState state;
-            state.failOp = map_stencil_op(op.StencilFailOp);
-            state.passOp = map_stencil_op(op.StencilPassOp);
-            state.depthFailOp = map_stencil_op(op.StencilDepthFailOp);
-            state.compareOp = map_compare_func(op.StencilFunc);
+            state.failOp = map_stencil_op(op.fail_op);
+            state.passOp = map_stencil_op(op.pass_op);
+            state.depthFailOp = map_stencil_op(op.depth_fail_op);
+            state.compareOp = map_compare_func(op.func);
             state.compareMask = ds.stencil_read_mask;
             state.writeMask = ds.stencil_write_mask;
             state.reference = 0;
@@ -1009,7 +949,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
 
         depth_stencil_info = {
             .depthTestEnable = ds.depth_enable ? VK_TRUE : VK_FALSE,
-            .depthWriteEnable = ds.depth_write_mask == D3D12_DEPTH_WRITE_MASK_ZERO ? VK_FALSE : VK_TRUE,
+            .depthWriteEnable = ds.depth_write_enable,
             .depthCompareOp = map_compare_func(ds.depth_func),
             .depthBoundsTestEnable = VK_FALSE,
             .stencilTestEnable = ds.stencil_enable ? VK_TRUE : VK_FALSE,
@@ -1021,88 +961,10 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
     }
 
     // Color blend state
-    auto map_blend_factor = [](const D3D12_BLEND b)
-    {
-        switch (b)
-        {
-        case D3D12_BLEND_ZERO:
-            return VK_BLEND_FACTOR_ZERO;
-        case D3D12_BLEND_ONE:
-            return VK_BLEND_FACTOR_ONE;
-        case D3D12_BLEND_SRC_COLOR:
-            return VK_BLEND_FACTOR_SRC_COLOR;
-        case D3D12_BLEND_INV_SRC_COLOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-        case D3D12_BLEND_SRC_ALPHA:
-            return VK_BLEND_FACTOR_SRC_ALPHA;
-        case D3D12_BLEND_INV_SRC_ALPHA:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        case D3D12_BLEND_DEST_ALPHA:
-            return VK_BLEND_FACTOR_DST_ALPHA;
-        case D3D12_BLEND_INV_DEST_ALPHA:
-            return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-        case D3D12_BLEND_DEST_COLOR:
-            return VK_BLEND_FACTOR_DST_COLOR;
-        case D3D12_BLEND_INV_DEST_COLOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-        case D3D12_BLEND_SRC_ALPHA_SAT:
-            return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-        case D3D12_BLEND_BLEND_FACTOR:
-            return VK_BLEND_FACTOR_CONSTANT_COLOR;
-        case D3D12_BLEND_INV_BLEND_FACTOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-        case D3D12_BLEND_SRC1_COLOR:
-            return VK_BLEND_FACTOR_SRC1_COLOR;
-        case D3D12_BLEND_INV_SRC1_COLOR:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
-        case D3D12_BLEND_SRC1_ALPHA:
-            return VK_BLEND_FACTOR_SRC1_ALPHA;
-        case D3D12_BLEND_INV_SRC1_ALPHA:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
-        default:
-            return VK_BLEND_FACTOR_ONE;
-        }
-    };
 
-    auto map_blend_op = [](const D3D12_BLEND_OP op)
+    auto map_blend_op = [](const BlendOp op)
     {
-        switch (op)
-        {
-        case D3D12_BLEND_OP_ADD:
-            return VK_BLEND_OP_ADD;
-        case D3D12_BLEND_OP_SUBTRACT:
-            return VK_BLEND_OP_SUBTRACT;
-        case D3D12_BLEND_OP_REV_SUBTRACT:
-            return VK_BLEND_OP_REVERSE_SUBTRACT;
-        case D3D12_BLEND_OP_MIN:
-            return VK_BLEND_OP_MIN;
-        case D3D12_BLEND_OP_MAX:
-            return VK_BLEND_OP_MAX;
-        default:
-            return VK_BLEND_OP_ADD;
-        }
-    };
-
-    auto map_color_write_mask = [](const UINT8 mask)
-    {
-        VkColorComponentFlags flags = 0;
-        if (mask & D3D12_COLOR_WRITE_ENABLE_RED)
-        {
-            flags |= VK_COLOR_COMPONENT_R_BIT;
-        }
-        if (mask & D3D12_COLOR_WRITE_ENABLE_GREEN)
-        {
-            flags |= VK_COLOR_COMPONENT_G_BIT;
-        }
-        if (mask & D3D12_COLOR_WRITE_ENABLE_BLUE)
-        {
-            flags |= VK_COLOR_COMPONENT_B_BIT;
-        }
-        if (mask & D3D12_COLOR_WRITE_ENABLE_ALPHA)
-        {
-            flags |= VK_COLOR_COMPONENT_A_BIT;
-        }
-        return flags;
+        return static_cast<VkBlendOp>(op - 1);
     };
 
     std::array<VkPipelineColorBlendAttachmentState, MAX_RENDER_TARGETS> color_attachments{};
@@ -1111,15 +973,16 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         VkPipelineColorBlendAttachmentState attachment{};
         if (desc.blend_desc.has_value())
         {
-            const auto& rt = desc.blend_desc->RenderTarget[i];
-            attachment.blendEnable = rt.BlendEnable ? VK_TRUE : VK_FALSE;
-            attachment.srcColorBlendFactor = map_blend_factor(rt.SrcBlend);
-            attachment.dstColorBlendFactor = map_blend_factor(rt.DestBlend);
-            attachment.colorBlendOp = map_blend_op(rt.BlendOp);
-            attachment.srcAlphaBlendFactor = map_blend_factor(rt.SrcBlendAlpha);
-            attachment.dstAlphaBlendFactor = map_blend_factor(rt.DestBlendAlpha);
-            attachment.alphaBlendOp = map_blend_op(rt.BlendOpAlpha);
-            attachment.colorWriteMask = map_color_write_mask(rt.RenderTargetWriteMask);
+            const auto& rt = desc.blend_desc->render_target[i];
+            attachment.blendEnable = rt.blend_enable;
+            attachment.srcColorBlendFactor = blend_factor(rt.src_blend);
+            attachment.dstColorBlendFactor = blend_factor(rt.dst_blend);
+            attachment.colorBlendOp = map_blend_op(rt.blend_op);
+            attachment.srcAlphaBlendFactor = blend_factor(rt.src_blend_alpha);
+            attachment.dstAlphaBlendFactor = blend_factor(rt.dst_blend_alpha);
+            attachment.alphaBlendOp = map_blend_op(rt.blend_op_alpha);
+            // Directly compatible since DX and VK use same bitmask
+            attachment.colorWriteMask = rt.render_target_write_mask;
         }
         else
         {
@@ -1188,7 +1051,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
-    pipeline->internal_state = mkS<VulkanPipeline>(vk_pipeline, primitive_topology);
+    pipeline->internal_state = mkS<VulkanPipeline>(vk_pipeline, primitive_topology, vk_root_signature);
 
     set_debug_name(m_device.device, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(vk_pipeline), debug_name);
 
@@ -2080,17 +1943,18 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
 
     const VkSamplerCreateInfo sampler_info{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = get_vk_filter(desc.mag_filter),
-        .minFilter = get_vk_filter(desc.min_filter),
-        .mipmapMode = get_vk_sampler_mipmap_mode(desc.mip_filter),
+        // Directly compatible
+        .magFilter = static_cast<VkFilter>(desc.mag_filter),
+        .minFilter = static_cast<VkFilter>(desc.min_filter),
+        .mipmapMode = static_cast<VkSamplerMipmapMode>(desc.mip_filter),
         .addressModeU = texture_address_mode(desc.address_mode_u),
         .addressModeV = texture_address_mode(desc.address_mode_v),
         .addressModeW = texture_address_mode(desc.address_mode_w),
         .mipLodBias = desc.mip_lod_bias,
         .anisotropyEnable = desc.max_anisotropy > 0,
         .maxAnisotropy = static_cast<float>(desc.max_anisotropy),
-        .compareEnable = desc.comparison_func != ComparisonFunc::NONE,
-        .compareOp = comparison_func(desc.comparison_func),
+        .compareEnable = desc.comparison_enable,
+        .compareOp = static_cast<VkCompareOp>(desc.comparison_func - 1),
         .minLod = desc.min_lod,
         .maxLod = desc.max_lod,
     };
@@ -2219,7 +2083,15 @@ bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool
     {
         return false;
     }
-    cmd_list->internal_state = mkS<VkCommandBuffer>(cmd_buffer);
+    cmd_list->internal_state = mkS<VulkanCommandList>(cmd_buffer);
+
+    const auto vk_cmd_list = to_internal(*cmd_list);
+
+    if (debug_name)
+    {
+        strncpy(vk_cmd_list->debug_name.data(), debug_name, vk_cmd_list->debug_name.size() - 1);
+        vk_cmd_list->debug_name.back() = '\0';
+    }
 
     set_debug_name(m_device.device, VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<uint64_t>(cmd_buffer), debug_name);
 
@@ -2228,13 +2100,14 @@ bool VulkanContext::create_command_list(CommandList* cmd_list, const CommandPool
 
 bool VulkanContext::reset_command_list(CommandList* cmd_list, const CommandPool& command_pool)
 {
-    // TODO: Somehow keep same debug name
-    if (!create_command_list(cmd_list, command_pool, nullptr))
+    auto vk_cmd_list = to_internal(*cmd_list);
+
+    if (!create_command_list(cmd_list, command_pool, vk_cmd_list->debug_name.data()))
     {
         return false;
     }
 
-    const auto vk_cmd_list = to_internal(*cmd_list);
+    vk_cmd_list = to_internal(*cmd_list);
 
     constexpr VkCommandBufferBeginInfo begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -2505,26 +2378,25 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
     return true;
 }
 
-void VulkanContext::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
+void VulkanContext::set_viewports(CommandList* list, const unsigned count, const Viewport* viewport)
 {
-    // D3D12_VIEWPORT == VkViewport
     std::array<VkViewport, MAX_VIEWPORTS_SCISSORS> vk_viewports;
     for (unsigned i = 0; i < count; i++)
     {
         vk_viewports[i] = {
-            .x = viewport[i].TopLeftX,
-            .y = viewport[i].TopLeftY,
-            .width = viewport[i].Width,
-            .height = viewport[i].Height,
-            .minDepth = viewport[i].MinDepth,
-            .maxDepth = viewport[i].MaxDepth,
+            .x = viewport[i].top_left_x,
+            .y = viewport[i].top_left_y,
+            .width = viewport[i].width,
+            .height = viewport[i].height,
+            .minDepth = viewport[i].min_depth,
+            .maxDepth = viewport[i].max_depth,
         };
     }
     const auto vk_cmd_list = to_internal(*list);
     vkCmdSetViewportWithCount(vk_cmd_list->cmd_buf, count, vk_viewports.data());
 }
 
-void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
+void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, const Rect* scissor_rect)
 {
     std::array<VkRect2D, MAX_VIEWPORTS_SCISSORS> vk_scissors;
     for (unsigned i = 0; i < count; i++)

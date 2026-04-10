@@ -150,8 +150,8 @@ public:
                            const RenderTarget* depth_stencil) override;
     void end_render_pass(CommandList* cmd_list) override;
 
-    void set_viewports(CommandList* list, unsigned count, const D3D12_VIEWPORT* viewport) override;
-    void set_scissor_rects(CommandList* list, unsigned count, const D3D12_RECT* scissor_rect) override;
+    void set_viewports(CommandList* list, unsigned count, const Viewport* viewport) override;
+    void set_scissor_rects(CommandList* list, unsigned count, const Rect* scissor_rect) override;
 
     void draw(CommandList* cmd_list, uint32_t vertex_count, uint32_t start_vertex_offset) override;
     void draw_indexed(CommandList* cmd_list,

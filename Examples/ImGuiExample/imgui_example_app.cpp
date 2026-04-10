@@ -54,7 +54,7 @@ void ImGUIExampleApp::create()
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap));
 
     qhenki::gfx::GraphicsPipelineDesc pipeline_desc = {
-        .rtv_formats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+        .rtv_formats = {qhenki::gfx::Format::R8G8B8A8_UNORM},
         .num_render_targets = 1,
         .increment_slot = false,
     };
@@ -164,19 +164,21 @@ void ImGUIExampleApp::render()
     m_context->start_render_pass(&cmd_list, clear_values.data(), nullptr);
 
     // Set viewport
-    const D3D12_VIEWPORT viewport{
-        .TopLeftX = 0,
-        .TopLeftY = 0,
-        .Width = static_cast<float>(dim.x),
-        .Height = static_cast<float>(dim.y),
-        .MinDepth = 0.0f,
-        .MaxDepth = 1.0f,
+    const qhenki::gfx::Viewport viewport{
+        .top_left_x = 0,
+        .top_left_y = 0,
+        .width = static_cast<float>(dim.x),
+        .height = static_cast<float>(dim.y),
+        .min_depth = 0.0f,
+        .max_depth = 1.0f,
     };
-    const D3D12_RECT scissor_rect{
+    const qhenki::gfx::Rect scissor_rect{
         .left = 0,
         .top = 0,
-        .right = static_cast<LONG>(dim.x),
-        .bottom = static_cast<LONG>(dim.y),
+        .front = 0,
+        .right = static_cast<long>(dim.x),
+        .bottom = static_cast<long>(dim.y),
+        .back = 0,
     };
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);

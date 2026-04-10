@@ -368,9 +368,9 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
         model->images.back().desc = {
             .width = static_cast<uint32_t>(tiny_image.width),
             .height = static_cast<uint32_t>(tiny_image.height),
-            .depth_or_array_size = 1,             // glTF images are 2D
-            .mip_levels = 1,                      // TODO: generate mip maps in compute shader
-            .format = DXGI_FORMAT_R8G8B8A8_UNORM, // From above assumptions
+            .depth_or_array_size = 1,                      // glTF images are 2D
+            .mip_levels = 1,                               // TODO: generate mip maps in compute shader
+            .format = qhenki::gfx::Format::R8G8B8A8_UNORM, // From above assumptions
             .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
             .initial_layout = qhenki::gfx::Layout::COPY_DEST,
             .usage = qhenki::gfx::TextureDesc::COPY_DEST | qhenki::gfx::TextureDesc::SHADER_RESOURCE,

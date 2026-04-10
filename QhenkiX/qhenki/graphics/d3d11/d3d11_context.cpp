@@ -3,7 +3,6 @@
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_sdl3.h>
-#include "qhenki/utility/string_util.h"
 
 #include <d3dcompiler.h>
 #include <DirectXTex.h>
@@ -13,8 +12,11 @@
 #include "d3d11_sampler_heap.h"
 #include "d3d11_srv_uav_heap.h"
 #include "d3d11_texture.h"
+
 #include "qhenki/application.h"
 #include "qhenki/utility/d3d_util.h"
+#include "qhenki/utility/gfx_util.h"
+#include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
 
@@ -95,7 +97,7 @@ ID3D11DepthStencilView* D3D11Context::start_dsv(const RenderTarget* const depth_
     ID3D11DepthStencilView* ds = nullptr;
     if (depth_stencil)
     {
-        assert(is_depth_stencil_format(depth_stencil->texture->desc.format));
+        assert(IsDepthStencil(dxgi_format(depth_stencil->texture->desc.format)));
         if (depth_stencil->clear_type != RenderTarget::ClearType::NONE)
         {
             const auto state = to_internal(*depth_stencil->texture);
@@ -254,7 +256,7 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window, const Swapchain
     const DXGI_SWAP_CHAIN_DESC1 dxgi_desc = {
         .Width = static_cast<UINT>(swapchain_desc.width),
         .Height = static_cast<UINT>(swapchain_desc.height),
-        .Format = swapchain_desc.format,
+        .Format = dxgi_format(swapchain_desc.format),
         .SampleDesc = {.Count = 1, .Quality = 0},
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
         .BufferCount = swapchain_desc.buffer_count,
@@ -294,7 +296,7 @@ bool D3D11Context::resize_swapchain(Swapchain* const swapchain, const int width,
     {
         resize_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     }
-    if (FAILED(m_swapchain->ResizeBuffers(0, width, height, swapchain->format, resize_flags)))
+    if (FAILED(m_swapchain->ResizeBuffers(0, width, height, dxgi_format(swapchain->format), resize_flags)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to resize Swapchain buffers\n");
         return false;
@@ -366,7 +368,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
     bool succeeded = input_layout != nullptr;
 
     const RasterizerDesc rs = desc.rasterizer_state.value_or(RasterizerDesc{});
-    D3D11_RASTERIZER_DESC rasterizer_desc = {
+    const D3D11_RASTERIZER_DESC rasterizer_desc = {
         .FillMode = static_cast<D3D11_FILL_MODE>(rs.fill_mode),
         .CullMode = static_cast<D3D11_CULL_MODE>(rs.cull_mode),
         .FrontCounterClockwise = rs.front_counter_clockwise,
@@ -374,7 +376,7 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
         .DepthBiasClamp = rs.depth_bias_clamp,
         .SlopeScaledDepthBias = rs.slope_scaled_depth_bias,
         .DepthClipEnable = rs.depth_clip_enable,
-        .ScissorEnable = FALSE,         // Scissor enable not included (TODO: add later?)
+        .ScissorEnable = TRUE,
         .MultisampleEnable = FALSE,     // Multisample enable not included (TODO: add later?)
         .AntialiasedLineEnable = FALSE, // Antialiased line not included (TODO: add later?)
     };
@@ -388,22 +390,24 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
     if (const auto& blend = desc.blend_desc; blend.has_value())
     {
         D3D11_BLEND_DESC blend_desc{
-            .AlphaToCoverageEnable = blend->AlphaToCoverageEnable,
-            .IndependentBlendEnable = blend->IndependentBlendEnable,
+            .AlphaToCoverageEnable = blend->alpha_to_coverage_enable,
+            .IndependentBlendEnable = blend->independent_blend_enable,
         };
-        for (int i = 0; i < 8; i++)
+        assert(MAX_RENDER_TARGETS <= D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT);
+        for (unsigned i = 0; i < MAX_RENDER_TARGETS; i++)
         {
-            // D3D11 does not have logic operations
-            assert(!(blend->RenderTarget[i].BlendEnable && blend->RenderTarget[i].LogicOpEnable));
+            // Only D3D11.1 has logic operations
+            // TODO: Upgrade?
+            assert(!blend->render_target[i].logic_op_enable);
             blend_desc.RenderTarget[i] = {
-                .BlendEnable = blend->RenderTarget[i].BlendEnable,
-                .SrcBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlend),
-                .DestBlend = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlend),
-                .BlendOp = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOp),
-                .SrcBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].SrcBlendAlpha),
-                .DestBlendAlpha = static_cast<D3D11_BLEND>(blend->RenderTarget[i].DestBlendAlpha),
-                .BlendOpAlpha = static_cast<D3D11_BLEND_OP>(blend->RenderTarget[i].BlendOpAlpha),
-                .RenderTargetWriteMask = blend->RenderTarget[i].RenderTargetWriteMask,
+                .BlendEnable = blend->render_target[i].blend_enable,
+                .SrcBlend = static_cast<D3D11_BLEND>(blend->render_target[i].src_blend),
+                .DestBlend = static_cast<D3D11_BLEND>(blend->render_target[i].dst_blend),
+                .BlendOp = static_cast<D3D11_BLEND_OP>(blend->render_target[i].blend_op),
+                .SrcBlendAlpha = static_cast<D3D11_BLEND>(blend->render_target[i].src_blend_alpha),
+                .DestBlendAlpha = static_cast<D3D11_BLEND>(blend->render_target[i].dst_blend_alpha),
+                .BlendOpAlpha = static_cast<D3D11_BLEND_OP>(blend->render_target[i].blend_op_alpha),
+                .RenderTargetWriteMask = blend->render_target[i].render_target_write_mask,
             };
         }
         if (FAILED(m_device->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state)))
@@ -415,21 +419,29 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
 
     if (const auto& ds = desc.depth_stencil_state; ds.has_value())
     {
-        D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {
-            .DepthEnable = static_cast<BOOL>(ds->depth_enable),
-            .DepthWriteMask = static_cast<D3D11_DEPTH_WRITE_MASK>(ds->depth_write_mask),
+        const D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {
+            .DepthEnable = ds->depth_enable,
+            // Directly compatible since mask is binary 0 or 1
+            .DepthWriteMask = static_cast<D3D11_DEPTH_WRITE_MASK>(ds->depth_write_enable),
             .DepthFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->depth_func),
             .StencilEnable = ds->stencil_enable,
             .StencilReadMask = ds->stencil_read_mask,
             .StencilWriteMask = ds->stencil_write_mask,
-            .FrontFace = {.StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilFailOp),
-                          .StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilDepthFailOp),
-                          .StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.StencilPassOp),
-                          .StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->front_face.StencilFunc)},
-            .BackFace = {.StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilFailOp),
-                         .StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilDepthFailOp),
-                         .StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.StencilPassOp),
-                         .StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->back_face.StencilFunc)},
+            // Directly compatible
+            .FrontFace =
+                {
+                    .StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.fail_op),
+                    .StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.depth_fail_op),
+                    .StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->front_face.pass_op),
+                    .StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->front_face.func),
+                },
+            .BackFace =
+                {
+                    .StencilFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.fail_op),
+                    .StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.depth_fail_op),
+                    .StencilPassOp = static_cast<D3D11_STENCIL_OP>(ds->back_face.pass_op),
+                    .StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(ds->back_face.func),
+                },
         };
 
         if (FAILED(m_device->CreateDepthStencilState(&depth_stencil_desc,
@@ -770,13 +782,15 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
 
     assert(bind_flags);
 
+    const auto format = dxgi_format(desc.format);
+
     if (desc.dimension == TextureDimension::TEXTURE_1D)
     {
         const D3D11_TEXTURE1D_DESC texture_desc{
             .Width = desc.width,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
-            .Format = desc.format,
+            .Format = format,
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
             .CPUAccessFlags = 0,
@@ -809,7 +823,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .Height = desc.height,
             .MipLevels = desc.mip_levels,
             .ArraySize = desc.depth_or_array_size,
-            .Format = desc.format,
+            .Format = format,
             .SampleDesc = {.Count = desc.sample_count, .Quality = 0},
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
@@ -834,7 +848,7 @@ bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, con
             .Height = static_cast<UINT>(desc.height),
             .Depth = static_cast<UINT>(desc.depth_or_array_size),
             .MipLevels = desc.mip_levels,
-            .Format = desc.format,
+            .Format = format,
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = bind_flags,
             .CPUAccessFlags = 0,
@@ -918,7 +932,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
 
         size_t row_pitch = 0;
         size_t slice_pitch = 0;
-        if (FAILED(ComputePitch(texture->desc.format, mip_width, mip_height, row_pitch, slice_pitch)))
+        if (FAILED(ComputePitch(dxgi_format(texture->desc.format), mip_width, mip_height, row_pitch, slice_pitch)))
         {
             // If failed texture is partially updated but this branch shouldn't happen
             return false;
@@ -937,21 +951,16 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
 bool D3D11Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* const heap, Descriptor* const descriptor)
 {
     const D3D11_SAMPLER_DESC sampler_desc{
-        .Filter = static_cast<D3D11_FILTER>(filter(desc.min_filter,
-                                                   desc.mag_filter,
-                                                   desc.mip_filter,
-                                                   desc.comparison_func,
-                                                   desc.max_anisotropy)), // Shared type values D3D12
-        .AddressU = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(
-            texture_address_mode(desc.address_mode_u)), // Same in D3D11, D3D12
-        .AddressV = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(texture_address_mode(desc.address_mode_v)),
-        .AddressW = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(texture_address_mode(desc.address_mode_w)),
+        // Directly compatible
+        .Filter = static_cast<D3D11_FILTER>(
+            filter(desc.min_filter, desc.mag_filter, desc.mip_filter, desc.comparison_enable, desc.max_anisotropy)),
+        .AddressU = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(desc.address_mode_u),
+        .AddressV = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(desc.address_mode_v),
+        .AddressW = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(desc.address_mode_w),
         .MipLODBias = desc.mip_lod_bias,
         .MaxAnisotropy = desc.max_anisotropy,
-        .ComparisonFunc = desc.comparison_func == ComparisonFunc::NONE
-                            ? D3D11_COMPARISON_NEVER
-                            : static_cast<D3D11_COMPARISON_FUNC>(
-                                  comparison_func(desc.comparison_func)), // D3D11 doesn't have NONE
+        // Directly compatible
+        .ComparisonFunc = static_cast<D3D11_COMPARISON_FUNC>(desc.comparison_func),
         .BorderColor = {desc.border_color[0], desc.border_color[1], desc.border_color[2], desc.border_color[3]},
         .MinLOD = desc.min_lod,
         .MaxLOD = desc.max_lod,
@@ -1031,7 +1040,7 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list,
 {
     const auto buffer_d3d11 = to_internal(buffer);
     assert(offset <= std::numeric_limits<UINT>::max());
-    m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), get_dxgi_format(format), offset);
+    m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), dxgi_format(format), offset);
 }
 
 bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)
@@ -1128,26 +1137,36 @@ void D3D11Context::end_render_pass(CommandList* cmd_list)
 {
 }
 
-void D3D11Context::set_viewports(CommandList* list, const unsigned count, const D3D12_VIEWPORT* viewport)
+void D3D11Context::set_viewports(CommandList* list, const unsigned count, const Viewport* viewport)
 {
+    std::array<D3D11_VIEWPORT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports{};
     for (unsigned int i = 0; i < count; i++)
     {
-        m_viewports[i] = {
-            .TopLeftX = viewport[i].TopLeftX,
-            .TopLeftY = viewport[i].TopLeftY,
-            .Width = viewport[i].Width,
-            .Height = viewport[i].Height,
-            .MinDepth = viewport[i].MinDepth,
-            .MaxDepth = viewport[i].MaxDepth,
+        viewports[i] = {
+            .TopLeftX = viewport[i].top_left_x,
+            .TopLeftY = viewport[i].top_left_y,
+            .Width = viewport[i].width,
+            .Height = viewport[i].height,
+            .MinDepth = viewport[i].min_depth,
+            .MaxDepth = viewport[i].max_depth,
         };
     }
-    m_device_context->RSSetViewports(count, m_viewports.data());
+    m_device_context->RSSetViewports(count, viewports.data());
 }
 
-void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, const D3D12_RECT* scissor_rect)
+void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, const Rect* scissor_rect)
 {
-    // D3D12_RECT = D3D11_RECT = RECT
-    m_device_context->RSSetScissorRects(count, scissor_rect);
+    std::array<D3D11_RECT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> d3d11_rects{};
+    for (unsigned int i = 0; i < count; i++)
+    {
+        d3d11_rects[i] = {
+            .left = scissor_rect[i].left,
+            .top = scissor_rect[i].top,
+            .right = scissor_rect[i].right,
+            .bottom = scissor_rect[i].bottom,
+        };
+    }
+    m_device_context->RSSetScissorRects(count, d3d11_rects.data());
 }
 
 void D3D11Context::draw(CommandList* cmd_list, const uint32_t vertex_count, const uint32_t start_vertex_offset)

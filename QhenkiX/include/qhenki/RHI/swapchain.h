@@ -1,7 +1,5 @@
 #pragma once
 
-#include <directx/dxgiformat.h>
-
 namespace qhenki::gfx
 {
 // Swapchains are managed internally within the context, so there is no data held here.
@@ -10,7 +8,7 @@ struct SwapchainDesc
 {
     unsigned width;
     unsigned height;
-    DXGI_FORMAT format;
+    Format format;
     unsigned buffer_count;
     bool tearing;
 };
