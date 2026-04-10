@@ -14,7 +14,6 @@ VkFormat convert_format(Format format);
 VkFormat get_vk_index_format(IndexType format);
 VkPrimitiveTopology get_primitive_topology(PrimitiveTopology topology);
 VkSamplerAddressMode texture_address_mode(AddressMode mode);
-VkCompareOp comparison_func(ComparisonFunc func);
 VkBlendFactor blend_factor(Blend b);
 VkImageViewType view_type_from_desc(const TextureDesc& desc);
 VkFilter get_vk_filter(Filter f);

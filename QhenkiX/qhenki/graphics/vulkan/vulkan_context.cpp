@@ -1953,7 +1953,7 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
         .anisotropyEnable = desc.max_anisotropy > 0,
         .maxAnisotropy = static_cast<float>(desc.max_anisotropy),
         .compareEnable = desc.comparison_enable,
-        .compareOp = comparison_func(desc.comparison_func),
+        .compareOp = static_cast<VkCompareOp>(desc.comparison_func - 1),
         .minLod = desc.min_lod,
         .maxLod = desc.max_lod,
     };

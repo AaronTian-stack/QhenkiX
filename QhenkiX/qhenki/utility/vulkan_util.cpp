@@ -162,16 +162,6 @@ namespace qhenki::gfx
     X(CLAMP, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)    \
     X(BORDER, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
 
-#define COMPARISON_FUNC_MAP(X)                          \
-    X(NEVER, VK_COMPARE_OP_NEVER)                       \
-    X(LESS, VK_COMPARE_OP_LESS)                         \
-    X(EQUAL, VK_COMPARE_OP_EQUAL)                       \
-    X(LESS_OR_EQUAL, VK_COMPARE_OP_LESS_OR_EQUAL)       \
-    X(GREATER, VK_COMPARE_OP_GREATER)                   \
-    X(NOT_EQUAL, VK_COMPARE_OP_NOT_EQUAL)               \
-    X(GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL) \
-    X(ALWAYS, VK_COMPARE_OP_ALWAYS)
-
 #define BLEND_FACTOR_MAP(X)                                            \
     X(ZERO, VK_BLEND_FACTOR_ZERO)                                      \
     X(ONE, VK_BLEND_FACTOR_ONE)                                        \
@@ -246,22 +236,6 @@ VkSamplerAddressMode texture_address_mode(const AddressMode mode)
     return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
 #undef MAP_ADDRESS
-}
-
-VkCompareOp comparison_func(const ComparisonFunc func)
-{
-#define MAP_COMPARISON(our, vk) \
-    case ComparisonFunc::our:   \
-        return vk;
-
-    switch (func)
-    {
-        COMPARISON_FUNC_MAP(MAP_COMPARISON)
-    }
-    assert(false);
-    return VK_COMPARE_OP_NEVER;
-
-#undef MAP_COMPARISON
 }
 
 VkBlendFactor blend_factor(const Blend b)
@@ -387,5 +361,4 @@ VkImageLayout layout(const Layout layout)
 #undef FORMAT_VK_MAP
 #undef PRIMITIVE_TOPOLOGY_MAP
 #undef ADDRESS_MODE_MAP
-#undef COMPARISON_FUNC_MAP
 #undef BLEND_FACTOR_MAP
