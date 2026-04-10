@@ -16,8 +16,6 @@ VkPrimitiveTopology get_primitive_topology(PrimitiveTopology topology);
 VkSamplerAddressMode texture_address_mode(AddressMode mode);
 VkBlendFactor blend_factor(Blend b);
 VkImageViewType view_type_from_desc(const TextureDesc& desc);
-VkFilter get_vk_filter(Filter f);
-VkSamplerMipmapMode get_vk_sampler_mipmap_mode(Filter f);
 bool is_depth_stencil_format(VkFormat format);
 VkImageAspectFlags get_image_aspect_mask(VkFormat format);
 

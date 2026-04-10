@@ -262,11 +262,7 @@ D3D12_FILTER filter(
         return D3D12_ENCODE_ANISOTROPIC_FILTER(reduction_type);
     }
 
-    const D3D12_FILTER_TYPE min_type = min == Filter::LINEAR ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT;
-    const D3D12_FILTER_TYPE mag_type = mag == Filter::LINEAR ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT;
-    const D3D12_FILTER_TYPE mip_type = mip == Filter::LINEAR ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT;
-
-    return D3D12_ENCODE_BASIC_FILTER(min_type, mag_type, mip_type, reduction_type);
+    return D3D12_ENCODE_BASIC_FILTER(min, mag, mip, reduction_type);
 }
 
 D3D12_BLEND blend(const Blend blend)

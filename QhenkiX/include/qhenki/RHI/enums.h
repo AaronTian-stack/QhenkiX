@@ -185,10 +185,10 @@ enum SampleCount : uint8_t
     SAMPLE_COUNT_64 = BIT(6),
 };
 
-enum class Filter : uint8_t
+enum Filter : uint8_t
 {
-    NEAREST,
-    LINEAR,
+    NEAREST = 0,
+    LINEAR = 1,
 };
 
 enum AddressMode : uint8_t

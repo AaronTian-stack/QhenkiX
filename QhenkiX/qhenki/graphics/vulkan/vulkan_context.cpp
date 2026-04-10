@@ -1943,9 +1943,10 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
 
     const VkSamplerCreateInfo sampler_info{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = get_vk_filter(desc.mag_filter),
-        .minFilter = get_vk_filter(desc.min_filter),
-        .mipmapMode = get_vk_sampler_mipmap_mode(desc.mip_filter),
+        // Directly compatible
+        .magFilter = static_cast<VkFilter>(desc.mag_filter),
+        .minFilter = static_cast<VkFilter>(desc.min_filter),
+        .mipmapMode = static_cast<VkSamplerMipmapMode>(desc.mip_filter),
         .addressModeU = texture_address_mode(desc.address_mode_u),
         .addressModeV = texture_address_mode(desc.address_mode_v),
         .addressModeW = texture_address_mode(desc.address_mode_w),

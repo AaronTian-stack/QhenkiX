@@ -273,16 +273,6 @@ VkImageViewType view_type_from_desc(const TextureDesc& desc)
     return VK_IMAGE_VIEW_TYPE_2D;
 }
 
-VkFilter get_vk_filter(const Filter f)
-{
-    return f == Filter::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-}
-
-VkSamplerMipmapMode get_vk_sampler_mipmap_mode(const Filter f)
-{
-    return f == Filter::LINEAR ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
-}
-
 bool is_depth_stencil_format(const VkFormat format)
 {
     switch (format)
