@@ -4,7 +4,6 @@
 
 #include "qhenki/RHI/barrier.h"
 #include "qhenki/RHI/enums.h"
-#include "qhenki/RHI/sampler.h"
 #include "qhenki/RHI/texture.h"
 
 namespace qhenki::gfx
