@@ -1256,7 +1256,7 @@ bool VulkanContext::create_descriptor_heap(const DescriptorHeapDesc& desc, Descr
     VulkanDescriptorHeapInitInfo init_info{
         .allocator = m_allocator,
     };
-    if (heap->desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
+    if (desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
     {
         init_info.heap_info = {
             .reserved_size = properties.minResourceHeapReservedRange,
@@ -3031,11 +3031,13 @@ bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
         .size = buffer.desc.size,
     };
 
-    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
-                                                    .type = type,
-                                                    .data{
-                                                        .pAddressRange = &address_range,
-                                                    }};
+    const VkResourceDescriptorInfoEXT resource_info{
+        .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+        .type = type,
+        .data{
+            .pAddressRange = &address_range,
+        },
+    };
 
     const auto address = vk_heap->get_cpu_pointer(descriptor->offset * m_bloated_resource_descriptor_size);
     const VkHostAddressRangeEXT range{
@@ -3089,11 +3091,13 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
         .layout = descriptor_access_layout,
     };
 
-    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
-                                                    .type = type,
-                                                    .data{
-                                                        .pImage = &image_info,
-                                                    }};
+    const VkResourceDescriptorInfoEXT resource_info{
+        .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+        .type = type,
+        .data{
+            .pImage = &image_info,
+        },
+    };
 
     const auto address = vk_heap->get_cpu_pointer(descriptor->offset * m_bloated_resource_descriptor_size);
     const VkHostAddressRangeEXT range{
