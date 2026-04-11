@@ -159,6 +159,7 @@ enum class Format
     R16_SNORM,
     R16_SINT,
     R8_UNORM,
+    BC1_UNORM,
     BC1_UNORM_SRGB,
     BC2_UNORM,
     BC2_UNORM_SRGB,

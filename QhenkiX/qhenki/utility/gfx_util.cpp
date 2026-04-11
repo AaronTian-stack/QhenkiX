@@ -49,6 +49,7 @@ namespace qhenki::gfx
     X(R16_SNORM, DXGI_FORMAT_R16_SNORM)                     \
     X(R16_SINT, DXGI_FORMAT_R16_SINT)                       \
     X(R8_UNORM, DXGI_FORMAT_R8_UNORM)                       \
+    X(BC1_UNORM, DXGI_FORMAT_BC1_UNORM)                     \
     X(BC1_UNORM_SRGB, DXGI_FORMAT_BC1_UNORM_SRGB)           \
     X(BC2_UNORM, DXGI_FORMAT_BC2_UNORM)                     \
     X(BC2_UNORM_SRGB, DXGI_FORMAT_BC2_UNORM_SRGB)           \
