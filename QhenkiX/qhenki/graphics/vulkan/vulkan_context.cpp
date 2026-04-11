@@ -1177,8 +1177,6 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                 }
             }
 
-            const uint32_t range_heap_start = heap_offset;
-
             const uint32_t heap_array_stride = binding.count > 1 ? descriptor_size : 0u;
 
             params.push_back({
@@ -1191,7 +1189,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                 .sourceData =
                     {
                         .pushIndex{
-                            .heapOffset = range_heap_start,
+                            .heapOffset = heap_offset,
                             // We rely on 256 byte minimum push constant size, second half is used for internal logic
                             .pushOffset = push_offset,
                             .heapIndexStride = 1,
@@ -1200,7 +1198,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                     },
             });
 
-            heap_offset = range_heap_start + binding.count * descriptor_size;
+            heap_offset += binding.count * descriptor_size;
         }
         push_offset += sizeof(uint32_t);
 
@@ -1374,10 +1372,12 @@ bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
         return false;
     }
 
-    // No way you will have a descriptor heap >2GB
-    // This also doubles the amount of tables we can have from 16 -> 32 (128 / 4)
-    const uint32_t absolute_offset = static_cast<uint32_t>(gpu_descriptor.offset +
-                                                           get_reserved_range(gpu_descriptor.heap->desc.type));
+    const auto reserved = get_reserved_range(gpu_descriptor.heap->desc.type);
+    const auto stride = gpu_descriptor.heap->desc.type == DescriptorHeapDesc::Type::SAMPLER
+                          ? m_bloated_sampler_descriptor_size
+                          : m_bloated_resource_descriptor_size;
+    const auto byte_offset = reserved + gpu_descriptor.offset * stride;
+    const uint32_t absolute_offset = static_cast<uint32_t>(byte_offset);
 
     const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
                                            .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET +
@@ -1529,7 +1529,6 @@ void VulkanContext::copy_buffer(
 
 bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
 {
-    assert(texture);
     if (desc.height > 1 && desc.dimension == TextureDimension::TEXTURE_1D)
     {
         return false;
@@ -1728,13 +1727,22 @@ bool get_vk_format_info(const VkFormat format, FormatInfo* out)
         *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 8};
         return true;
 
+    case VK_FORMAT_BC2_UNORM_BLOCK:
+    case VK_FORMAT_BC2_SRGB_BLOCK:
     case VK_FORMAT_BC3_UNORM_BLOCK:
     case VK_FORMAT_BC3_SRGB_BLOCK:
     case VK_FORMAT_BC5_UNORM_BLOCK:
     case VK_FORMAT_BC5_SNORM_BLOCK:
+    case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+    case VK_FORMAT_BC6H_SFLOAT_BLOCK:
     case VK_FORMAT_BC7_UNORM_BLOCK:
     case VK_FORMAT_BC7_SRGB_BLOCK:
         *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 16};
+        return true;
+
+    case VK_FORMAT_BC4_UNORM_BLOCK:
+    case VK_FORMAT_BC4_SNORM_BLOCK:
+        *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 8};
         return true;
 
     default:
@@ -3032,7 +3040,7 @@ bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
     const auto address = vk_heap->get_cpu_pointer(descriptor->offset * m_bloated_resource_descriptor_size);
     const VkHostAddressRangeEXT range{
         .address = address,
-        .size = get_reserved_range(DescriptorHeapDesc::Type::CBV_SRV_UAV),
+        .size = m_capabilities.descriptor_heap_properties.bufferDescriptorSize,
     };
 
     const auto result = VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
@@ -3090,7 +3098,7 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
     const auto address = vk_heap->get_cpu_pointer(descriptor->offset * m_bloated_resource_descriptor_size);
     const VkHostAddressRangeEXT range{
         .address = address,
-        .size = get_reserved_range(DescriptorHeapDesc::Type::CBV_SRV_UAV),
+        .size = m_capabilities.descriptor_heap_properties.imageDescriptorSize,
     };
 
     const auto result = VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
