@@ -17,7 +17,7 @@ struct PendingDescriptorCopy
 {
     MinimalDescriptor src;
     MinimalDescriptor dst;
-    size_t bytes;
+    size_t descriptors;
 };
 
 class DeferredDescriptorCopier
@@ -26,7 +26,7 @@ class DeferredDescriptorCopier
     std::vector<PendingDescriptorCopy> merged_copies;
 
 public:
-    bool add_pending_descriptor_copy(size_t bytes, const Descriptor& src, const Descriptor& dst);
+    bool add_pending_descriptor_copy(size_t descriptors, const Descriptor& src, const Descriptor& dst);
     size_t merge_regions();
     std::span<const PendingDescriptorCopy> get_merged_regions() const;
     void reset();

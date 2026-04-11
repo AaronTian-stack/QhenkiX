@@ -73,7 +73,6 @@ public:
     virtual bool create_descriptor_heap(const DescriptorHeapDesc& desc,
                                         DescriptorHeap* heap,
                                         const char* debug_name = nullptr) = 0;
-    virtual size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const = 0;
     virtual void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) = 0;
     virtual void set_descriptor_heap(CommandList* cmd_list,
                                      const DescriptorHeap& heap,
@@ -84,27 +83,15 @@ public:
                                       unsigned index,
                                       const Descriptor& gpu_descriptor) = 0;
 
-
     /**
-     * Copies bytes of descriptors from source descriptor to destination descriptor. The descriptors must be in heaps of
+     * Copies descriptors from source descriptor to destination descriptor. The descriptors must be in heaps of
      * the same type, and the source descriptor must refer to a CPU descriptor heap. Not thread safe.
-     * @param bytes Number of bytes to copy.
+     * @param num_descriptors Number of descriptors to copy.
      * @param src Source descriptor to start copying from.
      * @param dst Destination descriptor to start copying to.
      * @return True if the operation succeeded, false otherwise.
      */
-    virtual bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) = 0;
-
-    /**
-     * Free descriptor from the descriptor heap, allowing another descriptor to be created at the same offset. Only call
-     * this function if you are using create_descriptor exclusively with CREATE_NEW_DESCRIPTOR, otherwise the behavior
-     * is undefined.
-     * @param descriptor Descriptor to free.
-     * @return True if the operation succeeded, false otherwise.
-     */
-    virtual bool free_descriptor(Descriptor* descriptor) = 0;
-    virtual size_t get_descriptor_size(Descriptor::DescriptorType type) const = 0;
-    virtual size_t get_descriptor_alignment(Descriptor::DescriptorType type) const = 0;
+    virtual bool copy_descriptors(size_t num_descriptors, const Descriptor& src, const Descriptor& dst) = 0;
 
     /**
      * Creates a buffer with specified description.

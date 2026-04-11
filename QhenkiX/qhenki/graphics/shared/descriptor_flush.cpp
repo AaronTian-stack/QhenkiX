@@ -30,11 +30,11 @@ bool can_merge_adjacent(const PendingDescriptorCopy& cur, const PendingDescripto
     {
         return false;
     }
-    if (cur.src.offset + cur.bytes != next.src.offset)
+    if (cur.src.offset + cur.descriptors != next.src.offset)
     {
         return false;
     }
-    if (cur.dst.offset + cur.bytes != next.dst.offset)
+    if (cur.dst.offset + cur.descriptors != next.dst.offset)
     {
         return false;
     }
@@ -42,7 +42,7 @@ bool can_merge_adjacent(const PendingDescriptorCopy& cur, const PendingDescripto
 }
 } // namespace
 
-bool DeferredDescriptorCopier::add_pending_descriptor_copy(const size_t bytes,
+bool DeferredDescriptorCopier::add_pending_descriptor_copy(const size_t descriptors,
                                                            const Descriptor& src,
                                                            const Descriptor& dst)
 {
@@ -52,7 +52,7 @@ bool DeferredDescriptorCopier::add_pending_descriptor_copy(const size_t bytes,
     }
     pending_copies.push_back({.src = {.heap = src.heap, .offset = src.offset},
                               .dst = {.heap = dst.heap, .offset = dst.offset},
-                              .bytes = bytes});
+                              .descriptors = descriptors});
     return true;
 }
 
@@ -80,7 +80,7 @@ size_t DeferredDescriptorCopier::merge_regions()
 
         if (can_merge_adjacent(cur, next))
         {
-            cur.bytes += next.bytes;
+            cur.descriptors += next.descriptors;
         }
         else
         {
