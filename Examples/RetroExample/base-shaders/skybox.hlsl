@@ -57,7 +57,7 @@ float4 ps_main(PSInput input)
     float dot_radius = 0.3;
     float dotted = 1.0 - step(dot_radius, dist);
 
-    float3 tex = g_texture.Sample(samp_linear, p).rgb;
+    float3 tex = g_texture.Sample(samp, p).rgb;
 
     float dist_from_mid = 2.0 * abs(uv.y - 0.5);
     float alpha_fade = 1.0 - smoothstep(0.5, 1.0, dist_from_mid);
