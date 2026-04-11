@@ -387,27 +387,27 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
         succeeded = false;
     }
 
-    if (const auto& blend = desc.blend_desc; blend.has_value())
+    if (const auto& desc_blend = desc.blend_desc; desc_blend.has_value())
     {
         D3D11_BLEND_DESC blend_desc{
-            .AlphaToCoverageEnable = blend->alpha_to_coverage_enable,
-            .IndependentBlendEnable = blend->independent_blend_enable,
+            .AlphaToCoverageEnable = desc_blend->alpha_to_coverage_enable,
+            .IndependentBlendEnable = desc_blend->independent_blend_enable,
         };
         assert(MAX_RENDER_TARGETS <= D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT);
         for (unsigned i = 0; i < MAX_RENDER_TARGETS; i++)
         {
             // Only D3D11.1 has logic operations
             // TODO: Upgrade?
-            assert(!blend->render_target[i].logic_op_enable);
+            assert(!desc_blend->render_target[i].logic_op_enable);
             blend_desc.RenderTarget[i] = {
-                .BlendEnable = blend->render_target[i].blend_enable,
-                .SrcBlend = static_cast<D3D11_BLEND>(blend->render_target[i].src_blend),
-                .DestBlend = static_cast<D3D11_BLEND>(blend->render_target[i].dst_blend),
-                .BlendOp = static_cast<D3D11_BLEND_OP>(blend->render_target[i].blend_op),
-                .SrcBlendAlpha = static_cast<D3D11_BLEND>(blend->render_target[i].src_blend_alpha),
-                .DestBlendAlpha = static_cast<D3D11_BLEND>(blend->render_target[i].dst_blend_alpha),
-                .BlendOpAlpha = static_cast<D3D11_BLEND_OP>(blend->render_target[i].blend_op_alpha),
-                .RenderTargetWriteMask = blend->render_target[i].render_target_write_mask,
+                .BlendEnable = desc_blend->render_target[i].blend_enable,
+                .SrcBlend = static_cast<D3D11_BLEND>(blend(desc_blend->render_target[i].src_blend)),
+                .DestBlend = static_cast<D3D11_BLEND>(blend(desc_blend->render_target[i].dst_blend)),
+                .BlendOp = static_cast<D3D11_BLEND_OP>(desc_blend->render_target[i].blend_op),
+                .SrcBlendAlpha = static_cast<D3D11_BLEND>(blend(desc_blend->render_target[i].src_blend_alpha)),
+                .DestBlendAlpha = static_cast<D3D11_BLEND>(blend(desc_blend->render_target[i].dst_blend_alpha)),
+                .BlendOpAlpha = static_cast<D3D11_BLEND_OP>(desc_blend->render_target[i].blend_op_alpha),
+                .RenderTargetWriteMask = desc_blend->render_target[i].render_target_write_mask,
             };
         }
         if (FAILED(m_device->CreateBlendState(&blend_desc, &d3d11_pipeline->blend_state)))
