@@ -1156,17 +1156,17 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             case LayoutBinding::RangeType::SRV_BUFFER:
             case LayoutBinding::RangeType::UAV_BUFFER:
             case LayoutBinding::RangeType::CBV:
-                descriptor_size = get_descriptor_size(Descriptor::Type::BUFFER);
-                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::BUFFER);
+                descriptor_size = get_descriptor_size(Descriptor::DescriptorType::BUFFER);
+                descriptor_alignment = get_descriptor_alignment(Descriptor::DescriptorType::BUFFER);
                 break;
             case LayoutBinding::RangeType::SRV_TEXTURE:
             case LayoutBinding::RangeType::UAV_TEXTURE:
-                descriptor_size = get_descriptor_size(Descriptor::Type::TEXTURE);
-                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::TEXTURE);
+                descriptor_size = get_descriptor_size(Descriptor::DescriptorType::TEXTURE);
+                descriptor_alignment = get_descriptor_alignment(Descriptor::DescriptorType::TEXTURE);
                 break;
             case LayoutBinding::RangeType::SAMPLER:
-                descriptor_size = get_descriptor_size(Descriptor::Type::SAMPLER);
-                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::SAMPLER);
+                descriptor_size = get_descriptor_size(Descriptor::DescriptorType::SAMPLER);
+                descriptor_alignment = get_descriptor_alignment(Descriptor::DescriptorType::SAMPLER);
                 break;
             }
 
@@ -1427,7 +1427,7 @@ bool VulkanContext::free_descriptor(Descriptor* descriptor)
     return true;
 }
 
-size_t VulkanContext::get_descriptor_size(const Descriptor::Type type) const
+size_t VulkanContext::get_descriptor_size(const Descriptor::DescriptorType type) const
 {
     switch (type)
     {
@@ -1441,7 +1441,7 @@ size_t VulkanContext::get_descriptor_size(const Descriptor::Type type) const
     return 0;
 }
 
-size_t VulkanContext::get_descriptor_alignment(const Descriptor::Type type) const
+size_t VulkanContext::get_descriptor_alignment(const Descriptor::DescriptorType type) const
 {
     switch (type)
     {
@@ -1936,7 +1936,7 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
 {
     const auto vk_heap = to_internal(*heap);
 
-    if (!allocate_descriptor(heap, vk_heap, DescriptorHeapDesc::Type::SAMPLER, descriptor, Descriptor::Type::SAMPLER))
+    if (!allocate_descriptor(heap, vk_heap, DescriptorHeapDesc::Type::SAMPLER, descriptor, Descriptor::DescriptorType::SAMPLER))
     {
         return false;
     }
@@ -1962,7 +1962,7 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
     const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
     const VkHostAddressRangeEXT range{
         .address = address,
-        .size = get_descriptor_size(Descriptor::Type::SAMPLER),
+        .size = get_descriptor_size(Descriptor::DescriptorType::SAMPLER),
     };
 
     return VK_SUCCEEDED(vkWriteSamplerDescriptorsEXT(m_device.device, 1, &sampler_info, &range));
@@ -3058,7 +3058,7 @@ bool VulkanContext::allocate_descriptor(DescriptorHeap* const heap,
                                         const VulkanDescriptorHeap* const vk_heap,
                                         const DescriptorHeapDesc::Type expected_heap_type,
                                         Descriptor* const descriptor,
-                                        const Descriptor::Type descriptor_type) const
+                                        const Descriptor::DescriptorType descriptor_type) const
 {
     if (heap->desc.type != expected_heap_type)
     {
@@ -3094,7 +3094,7 @@ bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
     const auto vk_heap = to_internal(*heap);
 
     if (!allocate_descriptor(
-            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::BUFFER))
+            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::DescriptorType::BUFFER))
     {
         return false;
     }
@@ -3115,7 +3115,7 @@ bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
     const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
     const VkHostAddressRangeEXT range{
         .address = address,
-        .size = get_descriptor_size(Descriptor::Type::BUFFER),
+        .size = get_descriptor_size(Descriptor::DescriptorType::BUFFER),
     };
 
     return VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
@@ -3129,7 +3129,7 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
     const auto vk_heap = to_internal(*heap);
 
     if (!allocate_descriptor(
-            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::TEXTURE))
+            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::DescriptorType::TEXTURE))
     {
         return false;
     }
@@ -3173,7 +3173,7 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
     const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
     const VkHostAddressRangeEXT range{
         .address = address,
-        .size = get_descriptor_size(Descriptor::Type::TEXTURE),
+        .size = get_descriptor_size(Descriptor::DescriptorType::TEXTURE),
     };
 
     return VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));

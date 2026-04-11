@@ -115,7 +115,7 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanCo
     return true;
 }
 
-bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va, const Descriptor::Type type, VkDeviceSize* offset) const
+bool VulkanDescriptorHeap::allocate(VmaVirtualAllocation* va, const Descriptor::DescriptorType type, VkDeviceSize* offset) const
 {
     const auto& properties = m_context->m_capabilities.descriptor_heap_properties;
 

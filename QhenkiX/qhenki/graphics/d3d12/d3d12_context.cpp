@@ -1110,7 +1110,7 @@ bool D3D12Context::free_descriptor(Descriptor* descriptor)
     return true;
 }
 
-size_t D3D12Context::get_descriptor_size(const Descriptor::Type type) const
+size_t D3D12Context::get_descriptor_size(const Descriptor::DescriptorType type) const
 {
     D3D12_DESCRIPTOR_HEAP_TYPE t{};
     switch (type)
@@ -1126,7 +1126,7 @@ size_t D3D12Context::get_descriptor_size(const Descriptor::Type type) const
     return m_device->GetDescriptorHandleIncrementSize(t);
 }
 
-size_t D3D12Context::get_descriptor_alignment(const Descriptor::Type type) const
+size_t D3D12Context::get_descriptor_alignment(const Descriptor::DescriptorType type) const
 {
     return get_descriptor_size(type);
 }

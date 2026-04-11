@@ -198,4 +198,11 @@ enum AddressMode : uint8_t
     CLAMP = 3,
     BORDER = 4,
 };
+
+enum DescriptorType : uint8_t
+{
+    BUFFER,
+    TEXTURE,
+    SAMPLER,
+};
 } // namespace qhenki::gfx

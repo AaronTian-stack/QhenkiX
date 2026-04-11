@@ -553,12 +553,12 @@ bool D3D11Context::free_descriptor(Descriptor* descriptor)
     return true;
 }
 
-size_t D3D11Context::get_descriptor_size(Descriptor::Type type) const
+size_t D3D11Context::get_descriptor_size(Descriptor::DescriptorType type) const
 {
     return 1;
 }
 
-size_t D3D11Context::get_descriptor_alignment(Descriptor::Type type) const
+size_t D3D11Context::get_descriptor_alignment(Descriptor::DescriptorType type) const
 {
     return 0;
 }

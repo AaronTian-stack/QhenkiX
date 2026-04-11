@@ -991,7 +991,7 @@ void RetroExampleApp::render()
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_skybox_pipeline));
     size_t gpu_descriptor_heap_index = 0;
 
-    auto place_gpu_descriptor = [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::Type type) -> size_t
+    auto place_gpu_descriptor = [&gpu_descriptor_heap_index, this](const qhenki::gfx::Descriptor::DescriptorType type) -> size_t
     {
         const size_t size = m_context->get_descriptor_size(type);
         const size_t alignment = m_context->get_descriptor_alignment(type);

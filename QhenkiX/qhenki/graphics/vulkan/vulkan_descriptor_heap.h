@@ -26,7 +26,7 @@ public:
     ~VulkanDescriptorHeap();
 
     bool create(const DescriptorHeapDesc& desc, const VulkanContext& context);
-    bool allocate(VmaVirtualAllocation* va, Descriptor::Type type, VkDeviceSize* offset) const;
+    bool allocate(VmaVirtualAllocation* va, Descriptor::DescriptorType type, VkDeviceSize* offset) const;
     void deallocate(VmaVirtualAllocation va) const;
     void* get_cpu_pointer(size_t offset) const;
     VkBuffer get_buffer() const;

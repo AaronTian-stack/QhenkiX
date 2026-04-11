@@ -103,8 +103,8 @@ public:
      * @return True if the operation succeeded, false otherwise.
      */
     virtual bool free_descriptor(Descriptor* descriptor) = 0;
-    virtual size_t get_descriptor_size(Descriptor::Type type) const = 0;
-    virtual size_t get_descriptor_alignment(Descriptor::Type type) const = 0;
+    virtual size_t get_descriptor_size(Descriptor::DescriptorType type) const = 0;
+    virtual size_t get_descriptor_alignment(Descriptor::DescriptorType type) const = 0;
 
     /**
      * Creates a buffer with specified description.

@@ -18,12 +18,6 @@ struct Descriptor
     DescriptorHeap* heap = nullptr;
     // Offset into heap in bytes, or offset into list of views for compatibility mode
     size_t offset = CREATE_NEW_DESCRIPTOR;
-    enum Type : uint8_t
-    {
-        BUFFER,
-        TEXTURE,
-        SAMPLER,
-    };
 
     Descriptor() = default;
 
