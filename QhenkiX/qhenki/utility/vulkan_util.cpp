@@ -179,6 +179,25 @@ namespace qhenki::gfx
     X(INVERT_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR) \
     X(SRC1_ALPHA, VK_BLEND_FACTOR_SRC1_ALPHA)                  \
     X(INVERT_SRC1_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA)
+
+#define LOGIC_OP_MAP(X)                         \
+    X(CLEAR, VK_LOGIC_OP_CLEAR)                 \
+    X(SET, VK_LOGIC_OP_SET)                     \
+    X(COPY, VK_LOGIC_OP_COPY)                   \
+    X(COPY_INVERTED, VK_LOGIC_OP_COPY_INVERTED) \
+    X(NOOP, VK_LOGIC_OP_NO_OP)                  \
+    X(INVERT, VK_LOGIC_OP_INVERT)               \
+    X(AND, VK_LOGIC_OP_AND)                     \
+    X(NAND, VK_LOGIC_OP_NAND)                   \
+    X(OR, VK_LOGIC_OP_OR)                       \
+    X(NOR, VK_LOGIC_OP_NOR)                     \
+    X(XOR, VK_LOGIC_OP_XOR)                     \
+    X(EQUIV, VK_LOGIC_OP_EQUIVALENT)            \
+    X(AND_REVERSE, VK_LOGIC_OP_AND_REVERSE)     \
+    X(AND_INVERTED, VK_LOGIC_OP_AND_INVERTED)   \
+    X(OR_REVERSE, VK_LOGIC_OP_OR_REVERSE)       \
+    X(OR_INVERTED, VK_LOGIC_OP_OR_INVERTED)
+
 // TODO: Add support for blend factor
 /*
  X(CONSTANT_COLOR, VK_BLEND_FACTOR_CONSTANT_COLOR)                  \
@@ -256,6 +275,22 @@ VkBlendFactor blend_factor(const Blend b)
     return VK_BLEND_FACTOR_ONE;
 
 #undef MAP_BLEND_FACTOR
+}
+
+VkLogicOp vk_logic_op(const LogicOp op)
+{
+#define MAP_LOGIC_OP(our, vk) \
+    case LogicOp::our:        \
+        return vk;
+
+    switch (op)
+    {
+        LOGIC_OP_MAP(MAP_LOGIC_OP)
+    }
+
+#undef MAP_LOGIC_OP
+    assert(false);
+    return VK_LOGIC_OP_COPY;
 }
 
 VkImageViewType view_type_from_desc(const TextureDesc& desc)
