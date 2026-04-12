@@ -513,12 +513,6 @@ bool D3D11Context::create_descriptor_heap(const DescriptorHeapDesc& desc,
     return true;
 }
 
-size_t D3D11Context::get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const
-{
-    // TODO: Return D3D12 limits?
-    return std::numeric_limits<size_t>::max();
-}
-
 void D3D11Context::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
 {
 }
@@ -537,30 +531,9 @@ bool D3D11Context::set_descriptor_table(CommandList* cmd_list,
     return true;
 }
 
-bool D3D11Context::copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst)
+bool D3D11Context::copy_descriptors(size_t num_descriptors, const Descriptor& src, const Descriptor& dst)
 {
     return true;
-}
-
-bool D3D11Context::free_descriptor(Descriptor* descriptor)
-{
-    // Could be CBV which has nothing so check heap
-    if (descriptor->heap)
-    {
-        const auto heap = to_internal(*descriptor->heap);
-        heap->deallocate(descriptor->offset);
-    }
-    return true;
-}
-
-size_t D3D11Context::get_descriptor_size(Descriptor::Type type) const
-{
-    return 1;
-}
-
-size_t D3D11Context::get_descriptor_alignment(Descriptor::Type type) const
-{
-    return 0;
 }
 
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
@@ -673,15 +646,6 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
 {
     const auto buffer_d3d11 = to_internal(buffer);
     const auto heap_d3d11 = to_internal_srv_uav(*heap);
-
-    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
-    {
-        if (!heap_d3d11->allocate(&descriptor->offset))
-        {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to allocate descriptor from heap\n");
-            return false;
-        }
-    }
 
     const auto is_raw = buffer.desc.stride == 0;
 
@@ -878,15 +842,6 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     const auto texture_d3d11 = to_internal(texture);
     const auto heap_d3d11 = to_internal_srv_uav(*heap);
 
-    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
-    {
-        if (!heap_d3d11->allocate(&descriptor->offset))
-        {
-            OutputDebugStringA("Qhenki D3D11 ERROR: Failed to allocate descriptor from heap\n");
-            return false;
-        }
-    }
-
     const auto resource = get_texture_resource(*texture_d3d11);
     assert(resource);
 
@@ -973,9 +928,7 @@ bool D3D11Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
         return false;
     }
 
-    auto d3d11_heap = to_internal_sampler(*heap);
-
-    d3d11_heap->allocate(&descriptor->offset);
+    const auto d3d11_heap = to_internal_sampler(*heap);
 
     d3d11_heap->place_sampler(descriptor->offset, std::move(sampler_state));
 

@@ -366,6 +366,16 @@ std::string VulkanContext::create(const bool enable_debug_layer)
 
     vkGetPhysicalDeviceProperties2(m_device.physical_device, &m_capabilities.properties);
 
+    const auto& descriptor_properties = m_capabilities.descriptor_heap_properties;
+    const auto required_alignment = std::max(descriptor_properties.bufferDescriptorAlignment,
+                                             descriptor_properties.imageDescriptorAlignment);
+    m_bloated_resource_descriptor_size = std::max(
+        {util::align_u(descriptor_properties.bufferDescriptorSize, required_alignment),
+         util::align_u(descriptor_properties.imageDescriptorSize, required_alignment)});
+
+    m_bloated_sampler_descriptor_size = util::align_u(descriptor_properties.samplerDescriptorSize,
+                                                      descriptor_properties.samplerDescriptorAlignment);
+
     const auto& limits = m_capabilities.properties.properties.limits;
     if (limits.maxPushConstantsSize < PUSH_RESERVED_START_OFFSET)
     {
@@ -450,6 +460,9 @@ std::string VulkanContext::create(const bool enable_debug_layer)
                        reinterpret_cast<uint64_t>(m_render_finished_semaphores[i]),
                        finished_name);
     }
+
+    assert(m_bloated_resource_descriptor_size);
+    assert(m_bloated_sampler_descriptor_size);
 
     return "";
 }
@@ -1131,65 +1144,40 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
             assert(j == space.size() - 1 || binding.count != INFINITE_DESCRIPTORS);
 
             VkSpirvResourceTypeFlagsEXT mask = 0;
-            uint32_t descriptor_size = 0;
-            uint32_t descriptor_alignment = 0;
+            const uint32_t descriptor_size = binding.type == LayoutBinding::SAMPLER
+                                               ? m_bloated_sampler_descriptor_size
+                                               : m_bloated_resource_descriptor_size;
 
             switch (binding.type)
             {
-            case LayoutBinding::RangeType::SRV_BUFFER:
-            case LayoutBinding::RangeType::SRV_TEXTURE:
+            case LayoutBinding::SRV:
                 mask = srv_mask;
                 break;
-            case LayoutBinding::RangeType::UAV_BUFFER:
-            case LayoutBinding::RangeType::UAV_TEXTURE:
+            case LayoutBinding::UAV:
                 mask = uav_mask;
                 break;
-            case LayoutBinding::RangeType::CBV:
+            case LayoutBinding::CBV:
                 mask = cbv_mask;
                 break;
-            case LayoutBinding::RangeType::SAMPLER:
+            case LayoutBinding::SAMPLER:
                 mask = sampler_mask;
-                break;
-            }
-            switch (binding.type)
-            {
-            case LayoutBinding::RangeType::SRV_BUFFER:
-            case LayoutBinding::RangeType::UAV_BUFFER:
-            case LayoutBinding::RangeType::CBV:
-                descriptor_size = get_descriptor_size(Descriptor::Type::BUFFER);
-                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::BUFFER);
-                break;
-            case LayoutBinding::RangeType::SRV_TEXTURE:
-            case LayoutBinding::RangeType::UAV_TEXTURE:
-                descriptor_size = get_descriptor_size(Descriptor::Type::TEXTURE);
-                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::TEXTURE);
-                break;
-            case LayoutBinding::RangeType::SAMPLER:
-                descriptor_size = get_descriptor_size(Descriptor::Type::SAMPLER);
-                descriptor_alignment = get_descriptor_alignment(Descriptor::Type::SAMPLER);
                 break;
             }
 
             assert(mask);
-            assert(descriptor_size);
-            assert(descriptor_alignment);
-            assert(qhenki::util::is_power_of_two(descriptor_alignment));
-
-            heap_offset = util::align_u(heap_offset, descriptor_alignment);
-
-            const uint32_t range_heap_start = heap_offset;
-
-            uint32_t heap_array_stride = 0;
-            if (binding.count > 1)
+            if (j != 0)
             {
-                uint32_t walk = range_heap_start;
-                walk = util::align_u(walk, descriptor_alignment);
-                const uint32_t first_desc_start = walk;
-                walk += descriptor_size;
-                walk = util::align_u(walk, descriptor_alignment);
-                const uint32_t second_desc_start = walk;
-                heap_array_stride = second_desc_start - first_desc_start;
+                const auto& prev_binding = space[j - 1];
+                const bool prev_sampler = prev_binding.type == LayoutBinding::SAMPLER;
+                const bool cur_sampler = binding.type == LayoutBinding::SAMPLER;
+                if (prev_sampler != cur_sampler)
+                {
+                    params.clear();
+                    return false;
+                }
             }
+
+            const uint32_t heap_array_stride = binding.count > 1 ? descriptor_size : 0u;
 
             params.push_back({
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT,
@@ -1201,7 +1189,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                 .sourceData =
                     {
                         .pushIndex{
-                            .heapOffset = range_heap_start,
+                            .heapOffset = heap_offset,
                             // We rely on 256 byte minimum push constant size, second half is used for internal logic
                             .pushOffset = push_offset,
                             .heapIndexStride = 1,
@@ -1210,11 +1198,7 @@ bool VulkanContext::create_pipeline_layout(PipelineLayoutDesc* desc, PipelineLay
                     },
             });
 
-            for (uint32_t k = 0; k < binding.count; k++)
-            {
-                heap_offset = util::align_u(heap_offset, descriptor_alignment);
-                heap_offset += descriptor_size;
-            }
+            heap_offset += binding.count * descriptor_size;
         }
         push_offset += sizeof(uint32_t);
 
@@ -1268,7 +1252,30 @@ bool VulkanContext::create_descriptor_heap(const DescriptorHeapDesc& desc, Descr
     heap->internal_state = mkS<VulkanDescriptorHeap>();
     const auto vk_heap = to_internal(*heap);
 
-    if (!vk_heap->create(desc, *this))
+    const auto& properties = m_capabilities.descriptor_heap_properties;
+    VulkanDescriptorHeapInitInfo init_info{
+        .allocator = m_allocator,
+    };
+    if (desc.type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
+    {
+        init_info.heap_info = {
+            .reserved_size = properties.minResourceHeapReservedRange,
+            .max_size = properties.maxResourceHeapSize,
+            .heap_alignment = properties.resourceHeapAlignment,
+            .descriptor_size = m_bloated_resource_descriptor_size,
+        };
+    }
+    else
+    {
+        init_info.heap_info = {
+            .reserved_size = properties.minSamplerHeapReservedRange,
+            .max_size = properties.maxSamplerHeapSize,
+            .heap_alignment = properties.samplerHeapAlignment,
+            .descriptor_size = m_bloated_sampler_descriptor_size,
+        };
+    }
+
+    if (!vk_heap->create(desc, init_info))
     {
         heap->internal_state.reset();
         return false;
@@ -1284,15 +1291,6 @@ bool VulkanContext::create_descriptor_heap(const DescriptorHeapDesc& desc, Descr
     return true;
 }
 
-size_t VulkanContext::get_descriptor_heap_max_size(const DescriptorHeapDesc::Type type) const
-{
-    if (type == DescriptorHeapDesc::Type::SAMPLER)
-    {
-        return m_capabilities.descriptor_heap_properties.maxSamplerHeapSize;
-    }
-    return m_capabilities.descriptor_heap_properties.maxResourceHeapSize;
-}
-
 void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap)
 {
     const auto vk_heap = to_internal(heap);
@@ -1306,7 +1304,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list, const DescriptorH
         .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
         .heapRange = heap_range,
         .reservedRangeOffset = 0,
-        .reservedRangeSize = vk_heap->get_reserved_size(),
+        .reservedRangeSize = m_capabilities.descriptor_heap_properties.minResourceHeapReservedRange,
     };
 
     const auto vk_cmd_list = to_internal(*cmd_list);
@@ -1330,7 +1328,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
         .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
         .heapRange = heap_range,
         .reservedRangeOffset = 0,
-        .reservedRangeSize = vk_heap->get_reserved_size(),
+        .reservedRangeSize = m_capabilities.descriptor_heap_properties.minResourceHeapReservedRange,
     };
 
     const VkDeviceAddressRangeEXT sampler_heap_range{
@@ -1342,7 +1340,7 @@ void VulkanContext::set_descriptor_heap(CommandList* cmd_list,
         .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
         .heapRange = sampler_heap_range,
         .reservedRangeOffset = 0,
-        .reservedRangeSize = vk_sampler_heap->get_reserved_size(),
+        .reservedRangeSize = m_capabilities.descriptor_heap_properties.minSamplerHeapReservedRange,
     };
 
     const auto vk_cmd_list = to_internal(*cmd_list);
@@ -1364,8 +1362,6 @@ bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
         return false;
     }
 
-    const auto vk_heap = to_internal(*gpu_descriptor.heap);
-
     if (index < vk_cmd_list->root_signature->push_range_count)
     {
         return false;
@@ -1376,9 +1372,12 @@ bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
         return false;
     }
 
-    // No way you will have a descriptor heap >2GB. This also doubles the amount of tables we can have from 16 -> 32
-    // (128 / 4)
-    const uint32_t absolute_offset = static_cast<uint32_t>(gpu_descriptor.offset + vk_heap->get_reserved_size());
+    const auto reserved = get_reserved_range(gpu_descriptor.heap->desc.type);
+    const auto stride = gpu_descriptor.heap->desc.type == DescriptorHeapDesc::Type::SAMPLER
+                          ? m_bloated_sampler_descriptor_size
+                          : m_bloated_resource_descriptor_size;
+    const auto byte_offset = reserved + gpu_descriptor.offset * stride;
+    const uint32_t absolute_offset = static_cast<uint32_t>(byte_offset);
 
     const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
                                            .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET +
@@ -1389,7 +1388,7 @@ bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
     return true;
 }
 
-bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, const Descriptor& dst)
+bool VulkanContext::copy_descriptors(const size_t num_descriptors, const Descriptor& src, const Descriptor& dst)
 {
     if (src.heap->desc.type != dst.heap->desc.type)
     {
@@ -1401,58 +1400,8 @@ bool VulkanContext::copy_descriptors(const size_t bytes, const Descriptor& src, 
         return false;
     }
 
-    const auto valid_size = bytes % get_descriptor_size(Descriptor::BUFFER) == 0 ||
-                            bytes % get_descriptor_size(Descriptor::TEXTURE) == 0 ||
-                            bytes % get_descriptor_size(Descriptor::SAMPLER) == 0;
-    const auto valid_alignment_src = src.offset % get_descriptor_alignment(Descriptor::BUFFER) == 0 ||
-                                     src.offset % get_descriptor_alignment(Descriptor::TEXTURE) == 0 ||
-                                     src.offset % get_descriptor_alignment(Descriptor::SAMPLER) == 0;
-    const auto valid_alignment_dst = dst.offset % get_descriptor_alignment(Descriptor::BUFFER) == 0 ||
-                                     dst.offset % get_descriptor_alignment(Descriptor::TEXTURE) == 0 ||
-                                     dst.offset % get_descriptor_alignment(Descriptor::SAMPLER) == 0;
-
-    if (!valid_size || !valid_alignment_src || !valid_alignment_dst)
-    {
-        return false;
-    }
-
-    m_descriptor_copier.add_pending_descriptor_copy(bytes, src, dst);
+    m_descriptor_copier.add_pending_descriptor_copy(num_descriptors, src, dst);
     return true;
-}
-
-bool VulkanContext::free_descriptor(Descriptor* descriptor)
-{
-    const auto vk_heap = to_internal(*descriptor->heap);
-    vk_heap->deallocate(descriptor->alloc);
-    return true;
-}
-
-size_t VulkanContext::get_descriptor_size(const Descriptor::Type type) const
-{
-    switch (type)
-    {
-    case Descriptor::BUFFER:
-        return m_capabilities.descriptor_heap_properties.bufferDescriptorSize;
-    case Descriptor::TEXTURE:
-        return m_capabilities.descriptor_heap_properties.imageDescriptorSize;
-    case Descriptor::SAMPLER:
-        return m_capabilities.descriptor_heap_properties.samplerDescriptorSize;
-    }
-    return 0;
-}
-
-size_t VulkanContext::get_descriptor_alignment(const Descriptor::Type type) const
-{
-    switch (type)
-    {
-    case Descriptor::BUFFER:
-        return m_capabilities.descriptor_heap_properties.bufferDescriptorAlignment;
-    case Descriptor::TEXTURE:
-        return m_capabilities.descriptor_heap_properties.imageDescriptorAlignment;
-    case Descriptor::SAMPLER:
-        return m_capabilities.descriptor_heap_properties.samplerDescriptorAlignment;
-    }
-    return 0;
 }
 
 bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
@@ -1580,7 +1529,6 @@ void VulkanContext::copy_buffer(
 
 bool VulkanContext::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
 {
-    assert(texture);
     if (desc.height > 1 && desc.dimension == TextureDimension::TEXTURE_1D)
     {
         return false;
@@ -1779,13 +1727,22 @@ bool get_vk_format_info(const VkFormat format, FormatInfo* out)
         *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 8};
         return true;
 
+    case VK_FORMAT_BC2_UNORM_BLOCK:
+    case VK_FORMAT_BC2_SRGB_BLOCK:
     case VK_FORMAT_BC3_UNORM_BLOCK:
     case VK_FORMAT_BC3_SRGB_BLOCK:
     case VK_FORMAT_BC5_UNORM_BLOCK:
     case VK_FORMAT_BC5_SNORM_BLOCK:
+    case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+    case VK_FORMAT_BC6H_SFLOAT_BLOCK:
     case VK_FORMAT_BC7_UNORM_BLOCK:
     case VK_FORMAT_BC7_SRGB_BLOCK:
         *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 16};
+        return true;
+
+    case VK_FORMAT_BC4_UNORM_BLOCK:
+    case VK_FORMAT_BC4_SNORM_BLOCK:
+        *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 8};
         return true;
 
     default:
@@ -1936,11 +1893,6 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
 {
     const auto vk_heap = to_internal(*heap);
 
-    if (!allocate_descriptor(heap, vk_heap, DescriptorHeapDesc::Type::SAMPLER, descriptor, Descriptor::Type::SAMPLER))
-    {
-        return false;
-    }
-
     const VkSamplerCreateInfo sampler_info{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         // Directly compatible
@@ -1959,11 +1911,13 @@ bool VulkanContext::create_descriptor(const SamplerDesc& desc, DescriptorHeap* h
         .maxLod = desc.max_lod,
     };
 
-    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
+    const auto address = vk_heap->get_cpu_pointer(descriptor->offset * m_bloated_sampler_descriptor_size);
     const VkHostAddressRangeEXT range{
         .address = address,
-        .size = get_descriptor_size(Descriptor::Type::SAMPLER),
+        .size = m_capabilities.descriptor_heap_properties.samplerDescriptorSize,
     };
+
+    descriptor->heap = heap;
 
     return VK_SUCCEEDED(vkWriteSamplerDescriptorsEXT(m_device.device, 1, &sampler_info, &range));
 }
@@ -2548,23 +2502,29 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
             for (size_t i = 0; i < descriptor_region_count; i++)
             {
                 const PendingDescriptorCopy& pending = descriptor_regions[i];
-                const auto src_reserved = to_internal(*pending.src.heap)->get_reserved_size();
-                const auto dst_reserved = to_internal(*pending.dst.heap)->get_reserved_size();
+
+                assert(pending.src.heap->desc.type == pending.dst.heap->desc.type);
+                const auto descriptor_size = pending.src.heap->desc.type == DescriptorHeapDesc::Type::SAMPLER
+                                               ? m_bloated_sampler_descriptor_size
+                                               : m_bloated_resource_descriptor_size;
+
+                const auto src_reserved = get_reserved_range(pending.src.heap->desc.type);
+                const auto dst_reserved = get_reserved_range(pending.dst.heap->desc.type);
                 vk_regions[i] = {
                     .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
-                    .srcOffset = static_cast<VkDeviceSize>(pending.src.offset) + src_reserved,
-                    .dstOffset = static_cast<VkDeviceSize>(pending.dst.offset) + dst_reserved,
-                    .size = static_cast<VkDeviceSize>(pending.bytes),
+                    .srcOffset = pending.src.offset * descriptor_size + src_reserved,
+                    .dstOffset = pending.dst.offset * descriptor_size + dst_reserved,
+                    .size = (pending.descriptors * descriptor_size),
                 };
             }
 
-            size_t run_start = 0;
+            uint32_t run_start = 0;
             while (run_start < descriptor_region_count)
             {
                 const VkBuffer src_buffer = to_internal(*descriptor_regions[run_start].src.heap)->get_buffer();
                 const VkBuffer dst_buffer = to_internal(*descriptor_regions[run_start].dst.heap)->get_buffer();
 
-                size_t run_end = run_start + 1;
+                uint32_t run_end = run_start + 1;
                 while (run_end < descriptor_region_count &&
                        to_internal(*descriptor_regions[run_end].src.heap)->get_buffer() == src_buffer &&
                        to_internal(*descriptor_regions[run_end].dst.heap)->get_buffer() == dst_buffer)
@@ -2576,7 +2536,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
                     .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
                     .srcBuffer = src_buffer,
                     .dstBuffer = dst_buffer,
-                    .regionCount = static_cast<uint32_t>(run_end - run_start),
+                    .regionCount = run_end - run_start,
                     .pRegions = &vk_regions[run_start],
                 };
                 vkCmdCopyBuffer2(internal_cmd, &copy_info);
@@ -2867,11 +2827,6 @@ bool VulkanContext::issue_barrier(CommandList* cmd_list, const unsigned count, c
         const auto& barrier = barriers[i];
         if (!barrier.resource)
         {
-#if defined(_WIN32) || defined(_WIN64)
-            OutputDebugStringA("Qhenki Vulkan ERROR: Barrier resource is null. Barrier was not issued\n");
-#else
-            printf("Qhenki Vulkan ERROR: Barrier resource is null. Barrier was not issued\n");
-#endif
             return false;
         }
 
@@ -3033,15 +2988,15 @@ VulkanContext::~VulkanContext()
     {
         vkb::destroy_surface(m_instance, m_surface);
     }
-    for (VulkanQueue* q : {&m_graphics_queue, &m_compute_queue, &m_transfer_queue})
+    for (const auto& q : {m_graphics_queue, m_compute_queue, m_transfer_queue})
     {
-        vkDestroySemaphore(m_device.device, q->semaphore, nullptr);
+        vkDestroySemaphore(m_device.device, q.semaphore, nullptr);
     }
-    for (VkSemaphore& sem : m_image_available_semaphores)
+    for (const auto& sem : m_image_available_semaphores)
     {
         vkDestroySemaphore(m_device.device, sem, nullptr);
     }
-    for (VkSemaphore& sem : m_render_finished_semaphores)
+    for (const auto& sem : m_render_finished_semaphores)
     {
         vkDestroySemaphore(m_device.device, sem, nullptr);
     }
@@ -3054,51 +3009,21 @@ VulkanContext::~VulkanContext()
     vkb::destroy_instance(m_instance);
 }
 
-bool VulkanContext::allocate_descriptor(DescriptorHeap* const heap,
-                                        const VulkanDescriptorHeap* const vk_heap,
-                                        const DescriptorHeapDesc::Type expected_heap_type,
-                                        Descriptor* const descriptor,
-                                        const Descriptor::Type descriptor_type) const
+VkDeviceSize VulkanContext::get_reserved_range(const DescriptorHeapDesc::Type type) const
 {
-    if (heap->desc.type != expected_heap_type)
+    if (type == DescriptorHeapDesc::Type::CBV_SRV_UAV)
     {
-        return false;
+        return m_capabilities.descriptor_heap_properties.minResourceHeapReservedRange;
     }
-    if (descriptor->offset == CREATE_NEW_DESCRIPTOR)
-    {
-        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
-        {
-            return false;
-        }
-    }
-
-    const auto info = vk_heap->get_allocation_info(descriptor->alloc);
-    if (info.size != get_descriptor_size(descriptor_type))
-    {
-        vk_heap->deallocate(descriptor->alloc);
-        if (!vk_heap->allocate(&descriptor->alloc, descriptor_type, &descriptor->offset))
-        {
-            return false;
-        }
-    }
-
-    descriptor->heap = heap;
-    return true;
+    return m_capabilities.descriptor_heap_properties.minSamplerHeapReservedRange;
 }
 
 bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
                                              DescriptorHeap* heap,
-                                             Descriptor* descriptor,
+                                             Descriptor* const descriptor,
                                              const VkDescriptorType type) const
 {
     const auto vk_heap = to_internal(*heap);
-
-    if (!allocate_descriptor(
-            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::BUFFER))
-    {
-        return false;
-    }
-
     const auto vk_buffer = to_internal(buffer);
 
     VkDeviceAddressRangeEXT address_range{
@@ -3106,19 +3031,28 @@ bool VulkanContext::create_descriptor_buffer(const Buffer& buffer,
         .size = buffer.desc.size,
     };
 
-    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
-                                                    .type = type,
-                                                    .data{
-                                                        .pAddressRange = &address_range,
-                                                    }};
-
-    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
-    const VkHostAddressRangeEXT range{
-        .address = address,
-        .size = get_descriptor_size(Descriptor::Type::BUFFER),
+    const VkResourceDescriptorInfoEXT resource_info{
+        .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+        .type = type,
+        .data{
+            .pAddressRange = &address_range,
+        },
     };
 
-    return VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
+    const auto address = vk_heap->get_cpu_pointer(descriptor->offset * m_bloated_resource_descriptor_size);
+    const VkHostAddressRangeEXT range{
+        .address = address,
+        .size = m_capabilities.descriptor_heap_properties.bufferDescriptorSize,
+    };
+
+    const auto result = VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
+
+    if (result)
+    {
+        descriptor->heap = heap;
+        return true;
+    }
+    return false;
 }
 
 bool VulkanContext::create_descriptor_texture(const Texture& texture,
@@ -3127,13 +3061,6 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
                                               const VkDescriptorType type) const
 {
     const auto vk_heap = to_internal(*heap);
-
-    if (!allocate_descriptor(
-            heap, vk_heap, DescriptorHeapDesc::Type::CBV_SRV_UAV, descriptor, Descriptor::Type::TEXTURE))
-    {
-        return false;
-    }
-
     const auto vk_texture = to_internal(texture);
 
     const VkFormat vk_format = convert_format(texture.desc.format);
@@ -3164,19 +3091,28 @@ bool VulkanContext::create_descriptor_texture(const Texture& texture,
         .layout = descriptor_access_layout,
     };
 
-    const VkResourceDescriptorInfoEXT resource_info{.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
-                                                    .type = type,
-                                                    .data{
-                                                        .pImage = &image_info,
-                                                    }};
-
-    const auto address = vk_heap->get_cpu_pointer(descriptor->offset);
-    const VkHostAddressRangeEXT range{
-        .address = address,
-        .size = get_descriptor_size(Descriptor::Type::TEXTURE),
+    const VkResourceDescriptorInfoEXT resource_info{
+        .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+        .type = type,
+        .data{
+            .pImage = &image_info,
+        },
     };
 
-    return VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
+    const auto address = vk_heap->get_cpu_pointer(descriptor->offset * m_bloated_resource_descriptor_size);
+    const VkHostAddressRangeEXT range{
+        .address = address,
+        .size = m_capabilities.descriptor_heap_properties.imageDescriptorSize,
+    };
+
+    const auto result = VK_SUCCEEDED(vkWriteResourceDescriptorsEXT(m_device.device, 1, &resource_info, &range));
+
+    if (result)
+    {
+        descriptor->heap = heap;
+        return true;
+    }
+    return false;
 }
 
 VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)

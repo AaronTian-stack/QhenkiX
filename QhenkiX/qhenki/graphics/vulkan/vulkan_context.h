@@ -57,6 +57,9 @@ class VulkanContext : public Context
     VkSemaphore m_internal_semaphore = VK_NULL_HANDLE;
     uint64_t m_internal_semaphore_value = 0;
 
+    uint32_t m_bloated_resource_descriptor_size = 0;
+    uint32_t m_bloated_sampler_descriptor_size = 0;
+
     DeferredDescriptorCopier m_descriptor_copier;
 
 public:
@@ -86,7 +89,6 @@ public:
                                unsigned size,
                                void* data) override;
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
-    size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
 
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
@@ -97,11 +99,7 @@ public:
                               unsigned index,
                               const Descriptor& gpu_descriptor) override;
 
-    bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
-
-    bool free_descriptor(Descriptor* descriptor) override;
-    size_t get_descriptor_size(Descriptor::Type type) const override;
-    size_t get_descriptor_alignment(Descriptor::Type type) const override;
+    bool copy_descriptors(size_t num_descriptors, const Descriptor& src, const Descriptor& dst) override;
 
     bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name) override;
     bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
@@ -206,12 +204,7 @@ public:
     friend class VulkanDescriptorHeap;
 
 private:
-    // Grab an offset from for the descriptor in the heap
-    bool allocate_descriptor(DescriptorHeap* heap,
-                             const VulkanDescriptorHeap* vk_heap,
-                             DescriptorHeapDesc::Type expected_heap_type,
-                             Descriptor* descriptor,
-                             Descriptor::Type descriptor_type) const;
+    VkDeviceSize get_reserved_range(DescriptorHeapDesc::Type type) const;
     bool create_descriptor_buffer(const Buffer& buffer,
                                   DescriptorHeap* heap,
                                   Descriptor* descriptor,

@@ -55,7 +55,6 @@ public:
                                void* data) override;
 
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
-    size_t get_descriptor_heap_max_size(DescriptorHeapDesc::Type type) const override;
     // Heaps only store views in D3D11
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
@@ -67,11 +66,7 @@ public:
                               unsigned index,
                               const Descriptor& gpu_descriptor) override;
 
-    bool copy_descriptors(size_t bytes, const Descriptor& src, const Descriptor& dst) override;
-
-    bool free_descriptor(Descriptor* descriptor) override;
-    size_t get_descriptor_size(Descriptor::Type type) const override;
-    size_t get_descriptor_alignment(Descriptor::Type type) const override;
+    bool copy_descriptors(size_t num_descriptors, const Descriptor& src, const Descriptor& dst) override;
 
     bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name) override;
     bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;

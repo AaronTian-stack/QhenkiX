@@ -4,7 +4,6 @@
 #include "example_shared/window_init.h"
 
 #include "qhenki/utility/general_util.h"
-#include "qhenki/utility/math_util.h"
 
 #include <array>
 
@@ -40,33 +39,30 @@ void ExampleApp::create()
         {
             .binding = 0,
             .count = 1,
-            .type = qhenki::gfx::LayoutBinding::RangeType::CBV,
+            .type = qhenki::gfx::LayoutBinding::CBV,
         };
     qhenki::gfx::LayoutBinding b2 // SRV for texture
         {
             .binding = 1, // TODO: figure out how to handle this for Vulkan
             .count = 1,
-            .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
+            .type = qhenki::gfx::LayoutBinding::SRV,
         };
     qhenki::gfx::LayoutBinding b3 // Sampler for texture
         {
             .binding = 0,
             .count = 1,
-            .type = qhenki::gfx::LayoutBinding::RangeType::SAMPLER,
+            .type = qhenki::gfx::LayoutBinding::SAMPLER,
         };
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     layout_desc.spaces[0] = {b1, b2};
     layout_desc.spaces[1] = {b3}; // Samplers need their own space/table
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
-    const auto bloated_descriptor_size = std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                  m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
-
     // Create GPU heap
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
-        .size = 256 * bloated_descriptor_size,
+        .num_descriptors = 256,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap));
 
@@ -74,7 +70,7 @@ void ExampleApp::create()
     qhenki::gfx::DescriptorHeapDesc heap_desc_CPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .size = heap_desc_GPU.size,
+        .num_descriptors = heap_desc_GPU.num_descriptors,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap));
 
@@ -82,7 +78,7 @@ void ExampleApp::create()
     qhenki::gfx::DescriptorHeapDesc sampler_heap_desc{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::SAMPLER,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU, // Create samplers directly on GPU heap
-        .size = 16 * m_context->get_descriptor_size(qhenki::gfx::Descriptor::SAMPLER),
+        .num_descriptors = 16,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap));
 
@@ -139,6 +135,7 @@ void ExampleApp::create()
     // TODO: Persistent mapping flag
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
+        m_matrix_descriptors[i].offset = i;
         THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], "Matrix Buffer"));
         THROW_IF_FALSE(
             m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap, &m_matrix_descriptors[i]));
@@ -157,6 +154,7 @@ void ExampleApp::create()
     THROW_IF_FALSE(m_context->create_texture(texture_desc, &m_texture, "Checkerboard Texture"));
 
     // Create CPU descriptor for texture
+    m_texture_descriptor.offset = m_frames_in_flight;
     THROW_IF_FALSE(m_context->create_descriptor_shader_view(m_texture, &m_CPU_heap, &m_texture_descriptor));
 
     // Create sampler
@@ -335,24 +333,20 @@ void ExampleApp::render()
     else
     {
         // Location of start of GPU heap
-        qhenki::gfx::Descriptor descriptor(&m_GPU_heap, 0);
+        qhenki::gfx::Descriptor descriptor{
+            .heap = &m_GPU_heap,
+            .offset = 0,
+        };
 
         // Parameter 0 is table, set to start at beginning of GPU heap
         THROW_IF_FALSE(m_context->set_descriptor_table(&cmd_list, m_pipeline_layout, 0, descriptor));
 
         // Copy matrix and texture descriptors to GPU heap
-        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                   m_matrix_descriptors[frame_slot],
-                                                   descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[frame_slot], descriptor));
 
-        descriptor.offset =
-            qhenki::util::align_u(descriptor.offset +
-                                      1 * m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                  m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::TEXTURE));
+        ++descriptor.offset;
 
-        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
-                                                   m_texture_descriptor,
-                                                   descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_texture_descriptor, descriptor));
 
         THROW_IF_FALSE(m_context->set_descriptor_table(&cmd_list, m_pipeline_layout, 1, m_sampler_descriptor));
     }

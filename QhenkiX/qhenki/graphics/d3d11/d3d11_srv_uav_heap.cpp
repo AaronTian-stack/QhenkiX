@@ -10,7 +10,7 @@ bool D3D11SRVUAVHeap::create(const DescriptorHeapDesc& desc)
     {
         return false;
     }
-    m_descriptors = mkU<SRV_UAV_Descriptor[]>(desc.size);
+    m_descriptors = mkU<SRV_UAV_Descriptor[]>(desc.num_descriptors);
     return true;
 }
 

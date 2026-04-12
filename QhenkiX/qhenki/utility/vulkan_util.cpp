@@ -135,6 +135,7 @@ namespace qhenki::gfx
     X(R16_SNORM, VK_FORMAT_R16_SNORM)                        \
     X(R16_SINT, VK_FORMAT_R16_SINT)                          \
     X(R8_UNORM, VK_FORMAT_R8_UNORM)                          \
+    X(BC1_UNORM, VK_FORMAT_BC1_RGBA_UNORM_BLOCK)             \
     X(BC1_UNORM_SRGB, VK_FORMAT_BC1_RGBA_SRGB_BLOCK)         \
     X(BC2_UNORM, VK_FORMAT_BC2_UNORM_BLOCK)                  \
     X(BC2_UNORM_SRGB, VK_FORMAT_BC2_SRGB_BLOCK)              \

@@ -77,13 +77,13 @@ void gltfViewerApp::create()
     qhenki::gfx::LayoutBinding material{
         .binding = 1,
         .count = 1,
-        .type = qhenki::gfx::LayoutBinding::RangeType::SRV_BUFFER,
+        .type = qhenki::gfx::LayoutBinding::RangeType::SRV,
     };
     qhenki::gfx::LayoutBinding textures // SRV for texture
         {
             .binding = 2,
             .count = 1000,
-            .type = qhenki::gfx::LayoutBinding::RangeType::SRV_TEXTURE,
+            .type = qhenki::gfx::LayoutBinding::RangeType::SRV,
         };
     qhenki::gfx::LayoutBinding samplers // Sampler for texture
         {
@@ -101,14 +101,11 @@ void gltfViewerApp::create()
     });
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
-    const auto bloated_descriptor_size = std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                  m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
-
     // Create GPU heap
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
-        .size = 256 * bloated_descriptor_size,
+        .num_descriptors = 256,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap, "GPU heap"));
 
@@ -116,7 +113,7 @@ void gltfViewerApp::create()
     qhenki::gfx::DescriptorHeapDesc heap_desc_CPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .size = heap_desc_GPU.size,
+        .num_descriptors = heap_desc_GPU.num_descriptors,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap, "CPU heap"));
 
@@ -124,7 +121,7 @@ void gltfViewerApp::create()
     qhenki::gfx::DescriptorHeapDesc sampler_heap_desc{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::SAMPLER,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU, // Create samplers directly on GPU heap
-        .size = 16 * m_context->get_descriptor_size(qhenki::gfx::Descriptor::SAMPLER),
+        .num_descriptors = 16,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(sampler_heap_desc, &m_sampler_heap, "Sampler heap"));
 
@@ -156,6 +153,7 @@ void gltfViewerApp::create()
     // TODO: persistent mapping flag
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {
+        m_matrix_descriptors[i].offset = i;
         THROW_IF_FALSE(m_context->create_buffer(matrix_desc, nullptr, &m_matrix_buffers[i], "Matrix Buffer"));
         THROW_IF_FALSE(
             m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap, &m_matrix_descriptors[i]));
@@ -167,6 +165,7 @@ void gltfViewerApp::create()
                                      .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                      .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
         THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, "Model Buffer"));
+        m_model_descriptor.offset = m_frames_in_flight;
         THROW_IF_FALSE(m_context->create_descriptor_constant_view(m_model_buffer, &m_CPU_heap, &m_model_descriptor));
     }
 
@@ -193,6 +192,7 @@ struct ContextModel
     GLTFModel* models;
     std::mutex* mutex;
     std::atomic_int* model_index_to_load_into;
+    size_t cpu_buffer_srv_base;
 
     struct HeapAndList
     {
@@ -256,12 +256,15 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
         auto& samp_descriptors = *context_model->sampler.descriptors;
         auto& samp_heap = *context_model->sampler.heap;
 
-        // glTF Texture Descriptor
+        const size_t base = context_model->cpu_buffer_srv_base;
+
         assert(mat_heap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
+        context_model->gltf_texture.descriptor->offset = base;
         context.create_descriptor_shader_view(model.texture_buffer, &mat_heap, context_model->gltf_texture.descriptor);
 
         // Material buffer Descriptor
         assert(mat_heap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
+        context_model->material.descriptor->offset = base + 1;
         context.create_descriptor_shader_view(model.material_buffer, &mat_heap, context_model->material.descriptor);
 
         // Texture Descriptors
@@ -272,7 +275,7 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
         for (size_t i = 0; i < model.images.size(); i++)
         {
             assert(tex_heap.desc.visibility == qhenki::gfx::DescriptorHeapDesc::Visibility::CPU);
-            // TODO: ensure range is contiguous if descriptors already exist
+            tex_descriptors[i].offset = base + 2 + i;
             context.create_descriptor_shader_view(model.images[i], &tex_heap, &tex_descriptors[i]);
         }
 
@@ -283,7 +286,7 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
         }
         for (size_t i = 0; i < model.samplers.size(); i++)
         {
-            // Should just be created from start of heap
+            samp_descriptors[i].offset = i;
             context.create_descriptor(model.samplers[i], &samp_heap, &samp_descriptors[i]);
         }
     }
@@ -365,6 +368,7 @@ void gltfViewerApp::render()
                     .models = m_models.data(),
                     .mutex = &m_model_mutex,
                     .model_index_to_load_into = &m_model_index_to_load_into,
+                    .cpu_buffer_srv_base = m_frames_in_flight + (m_context->is_compatibility() ? 1u : 0u),
                     .texture{
                         .heap = &m_CPU_heap, // Use same CPU heap as matrix descriptors
                         .descriptors = &m_model_texture_descriptors,
@@ -537,9 +541,7 @@ void gltfViewerApp::render()
         THROW_IF_FALSE(m_context->set_descriptor_table(&cmd_list, m_pipeline_layout, 1, descriptor));
 
         // Copy matrix descriptors to GPU heap
-        THROW_IF_FALSE(m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                   m_matrix_descriptors[frame_slot],
-                                                   descriptor));
+        THROW_IF_FALSE(m_context->copy_descriptors(1, m_matrix_descriptors[frame_slot], descriptor));
 
         // Sampler
         descriptor = qhenki::gfx::Descriptor(&m_sampler_heap, 0);
@@ -557,38 +559,22 @@ void gltfViewerApp::render()
             // Bindless bind textures, only need to do before all draws
             if (!m_context->is_compatibility()) // NOT compatibility
             {
-                qhenki::gfx::Descriptor descriptor(&m_GPU_heap,
-                                                   m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER));
+                // Start after matrix CBV at heap offset 0
+                qhenki::gfx::Descriptor descriptor(&m_GPU_heap, 1);
 
                 // Make sure the order matches in the shader
 
-                THROW_IF_FALSE(
-                    m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                m_model_gltfTexture_descriptor,
-                                                descriptor));
-                descriptor.offset =
-                    qhenki::util::align_u(descriptor.offset +
-                                              m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                          m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::BUFFER));
+                THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_gltfTexture_descriptor, descriptor));
+                ++descriptor.offset;
 
-                THROW_IF_FALSE(
-                    m_context->copy_descriptors(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                m_model_material_descriptor,
-                                                descriptor));
-                descriptor.offset =
-                    qhenki::util::align_u(descriptor.offset +
-                                              m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                          m_context->get_descriptor_alignment(qhenki::gfx::Descriptor::TEXTURE));
+                THROW_IF_FALSE(m_context->copy_descriptors(1, m_model_material_descriptor, descriptor));
+                ++descriptor.offset;
 
                 // TODO: check that CPU texture descriptors are contiguous, otherwise singular copy will not work
                 // Use the textures size, not descriptors because descriptors may be larger than texture count due to
                 // left over from old model
-                // TODO: Separate copies and let implementation merge
                 THROW_IF_FALSE(
-                    m_context->copy_descriptors(m_model.textures.size() *
-                                                    m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE),
-                                                m_model_texture_descriptors[0],
-                                                descriptor));
+                    m_context->copy_descriptors(m_model.textures.size(), m_model_texture_descriptors[0], descriptor));
             }
             // Compatibility will bind per draw call because we cannot bind all textures at once
 

@@ -36,20 +36,17 @@ void ImGUIExampleApp::create()
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
 
-    const auto bloated_descriptor_size = std::max(m_context->get_descriptor_size(qhenki::gfx::Descriptor::BUFFER),
-                                                  m_context->get_descriptor_size(qhenki::gfx::Descriptor::TEXTURE));
-
     qhenki::gfx::DescriptorHeapDesc heap_desc_GPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::GPU,
-        .size = 256 * bloated_descriptor_size,
+        .num_descriptors = 256,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_GPU, &m_GPU_heap));
 
     qhenki::gfx::DescriptorHeapDesc heap_desc_CPU{
         .type = qhenki::gfx::DescriptorHeapDesc::Type::CBV_SRV_UAV,
         .visibility = qhenki::gfx::DescriptorHeapDesc::Visibility::CPU,
-        .size = heap_desc_GPU.size,
+        .num_descriptors = heap_desc_GPU.num_descriptors,
     };
     THROW_IF_FALSE(m_context->create_descriptor_heap(heap_desc_CPU, &m_CPU_heap));
 

@@ -85,14 +85,12 @@ struct LayoutBinding
 {
     uint32_t binding;
     uint32_t count;
-    enum class RangeType : uint8_t
+    enum RangeType : uint8_t
     {
-        SRV_BUFFER,
-        SRV_TEXTURE,
-        UAV_BUFFER,
-        UAV_TEXTURE,
-        CBV,
-        SAMPLER,
+        SRV = 0,
+        UAV = SRV + 1,
+        CBV = UAV + 1,
+        SAMPLER = CBV + 1,
     } type;
 };
 

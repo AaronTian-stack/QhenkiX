@@ -10,7 +10,7 @@ bool D3D11SamplerHeap::create(const DescriptorHeapDesc& desc)
     {
         return false;
     }
-    sampler_states = mkU<ComPtr<ID3D11SamplerState>[]>(desc.size);
+    sampler_states = mkU<ComPtr<ID3D11SamplerState>[]>(desc.num_descriptors);
     return true;
 }
 
