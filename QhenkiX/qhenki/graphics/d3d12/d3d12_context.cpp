@@ -1897,6 +1897,7 @@ void D3D12Context::draw_indexed(CommandList* cmd_list,
 
 bool D3D12Context::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
 {
+    std::scoped_lock lock(m_submit_mutex);
     // Internally ordered within the same queue so treat this as an error
     for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
     {

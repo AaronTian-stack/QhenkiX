@@ -1,5 +1,8 @@
 #include "vulkan_descriptor_heap.h"
 
+#include <cassert>
+#include "vulkan_macros.h"
+
 using namespace qhenki::gfx;
 
 VulkanDescriptorHeap::~VulkanDescriptorHeap()
