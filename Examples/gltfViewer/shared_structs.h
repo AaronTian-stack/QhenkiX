@@ -27,6 +27,16 @@ struct CameraData
     XMFLOAT4X4 inv_view_proj;
     XMFLOAT3 position;
 };
+struct ModelConstants
+{
+    XMFLOAT4X3 model;
+    XMFLOAT4X3 inverse_model;
+    int material_index;
+};
+
+#ifdef __cplusplus
+static_assert(sizeof(ModelConstants) <= 128);
+#endif
 
 struct BaseColor
 {

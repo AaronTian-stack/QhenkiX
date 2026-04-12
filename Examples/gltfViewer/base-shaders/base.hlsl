@@ -8,14 +8,6 @@ cbuffer CameraBuffer : register(b0)
     CameraData camera_data;
 };
 
-// Per draw attributes
-struct ModelConstants
-{
-    float4x4 model;
-    float4x4 inverse_model;
-    int material_index;
-};
-
 #ifdef __spirv__
 [[vk::push_constant]]
 ModelConstants model_constants;
@@ -52,7 +44,7 @@ Texture2D emissive_tex : register(t7);
 #ifdef __spirv__
 [[vk::binding(3)]]
 #endif
-Texture2D<float4> g_textures[] : register(t3);
+Texture2D g_textures[] : register(t3);
 #endif
 
 #ifdef DX11
@@ -88,13 +80,26 @@ struct PSInput
     float3 camera_position : TEXCOORD2;
 };
 
+float4x4 convert(float4x3 M)
+{
+    return float4x4(
+        float4(M[0], 0),
+        float4(M[1], 0),
+        float4(M[2], 0),
+        float4(M[3], 1)
+    );
+}
+
 PSInput vs_main(VSInput input)
 {
     PSInput output;
 
-    float3x3 mat_n = transpose((float3x3) model_constants.inverse_model);
+    float4x4 model_mat = convert(model_constants.model);
+    float4x4 inverse_mat = convert(model_constants.inverse_model);
 
-    float4 model_position = mul(float4(input.position, 1.0), model_constants.model);
+    float3x3 mat_n = transpose((float3x3) inverse_mat);
+
+    float4 model_position = mul(float4(input.position, 1.0), model_mat);
 
     float4 world_position = mul(model_position, camera_data.view_proj);
 
@@ -104,7 +109,7 @@ PSInput vs_main(VSInput input)
     output.color = input.color;
     output.uv = input.uv;
 
-    output.camera_position = camera_data.position; // Camera position from the constant buffer
+    output.camera_position = camera_data.position;
 
     return output;
 }

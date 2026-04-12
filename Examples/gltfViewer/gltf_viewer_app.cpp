@@ -95,7 +95,7 @@ void gltfViewerApp::create()
     layout_desc.spaces[0] = {camera, material, textures};
     layout_desc.spaces[1] = {samplers}; // Samplers need their own space/table
     layout_desc.push_ranges.push_back(qhenki::gfx::PushRange{
-        .size = sizeof(XMFLOAT4X4) * 2 + sizeof(int),
+        .size = static_cast<uint32_t>(sizeof(ModelConstants)),
         .binding = 0,
         .space = 5,
     });
@@ -161,7 +161,7 @@ void gltfViewerApp::create()
 
     if (m_context->is_compatibility())
     {
-        qhenki::gfx::BufferDesc desc{.size = sizeof(XMFLOAT4X4) * 2 + sizeof(int),
+        qhenki::gfx::BufferDesc desc{.size = sizeof(ModelConstants),
                                      .usage = qhenki::gfx::BufferUsage::CONSTANT,
                                      .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
         THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_model_buffer, "Model Buffer"));
@@ -678,10 +678,13 @@ void gltfViewerApp::render()
 
                     if (m_context->is_compatibility())
                     {
+                        ModelConstants model_push{};
+                        memcpy(&model_push.model, &global_4x4, sizeof(XMFLOAT3X4));
+                        memcpy(&model_push.inverse_model, &global_4x4_inverse, sizeof(XMFLOAT3X4));
+                        model_push.material_index = prim.material_index;
+
                         const auto p = m_context->map_buffer(m_model_buffer);
-                        memcpy(p, &global_4x4, sizeof(XMFLOAT4X4));
-                        memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4), &global_4x4_inverse, sizeof(XMFLOAT4X4));
-                        memcpy(static_cast<uint8_t*>(p) + sizeof(XMFLOAT4X4) * 2, &prim.material_index, sizeof(int));
+                        memcpy(p, &model_push, sizeof(model_push));
                         m_context->unmap_buffer(m_model_buffer);
 
                         m_context->compatibility_set_constant_buffers(1,
@@ -768,17 +771,13 @@ void gltfViewerApp::render()
                     }
                     else
                     {
+                        ModelConstants model_push{};
+                        memcpy(&model_push.model, &global_4x4, sizeof(XMFLOAT4X3));
+                        memcpy(&model_push.inverse_model, &global_4x4_inverse, sizeof(XMFLOAT4X3));
+                        model_push.material_index = prim.material_index;
+
                         m_context->set_pipeline_constant(
-                            &cmd_list, m_pipeline_layout, 0, 0, sizeof(XMFLOAT4X4), &global_4x4);
-                        m_context->set_pipeline_constant(&cmd_list,
-                                                         m_pipeline_layout,
-                                                         0,
-                                                         sizeof(XMFLOAT4X4),
-                                                         sizeof(XMFLOAT4X4),
-                                                         &global_4x4_inverse);
-                        int material_index = prim.material_index;
-                        m_context->set_pipeline_constant(
-                            &cmd_list, m_pipeline_layout, 0, sizeof(XMFLOAT4X4) * 2, sizeof(int), &material_index);
+                            &cmd_list, m_pipeline_layout, 0, 0, sizeof(model_push), &model_push);
                     }
 
                     // Draw
@@ -847,7 +846,7 @@ void gltfViewerApp::resize(const unsigned width, const unsigned height)
 {
     m_context->wait_idle(qhenki::gfx::QueueType::GRAPHICS);
     const qhenki::gfx::TextureDesc depth_desc{
-        .width = static_cast<uint64_t>(width),
+        .width = width,
         .height = height,
         .format = qhenki::gfx::Format::D32_FLOAT,
         .dimension = qhenki::gfx::TextureDimension::TEXTURE_2D,
