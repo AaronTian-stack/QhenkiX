@@ -82,12 +82,7 @@ struct PSInput
 
 float4x4 convert(float4x3 M)
 {
-    return float4x4(
-        float4(M[0], 0),
-        float4(M[1], 0),
-        float4(M[2], 0),
-        float4(M[3], 1)
-    );
+    return float4x4(float4(M[0], 0), float4(M[1], 0), float4(M[2], 0), float4(M[3], 1));
 }
 
 PSInput vs_main(VSInput input)
@@ -129,8 +124,10 @@ void set_values(PSInput input,
     Material material = materials[model_constants.material_index];
     albedo = material.base_color.factor;
     normal = normalize(input.normal);
-    metallic_roughness =
-        float4(1.0, material.metallic_roughness.roughness_factor, material.metallic_roughness.metallic_factor, 1.0); // roughness G, metal B
+    metallic_roughness = float4(1.0,
+                                material.metallic_roughness.roughness_factor,
+                                material.metallic_roughness.metallic_factor,
+                                1.0); // roughness G, metal B
     AO = material.occlusion.strength;
     emissive = material.emissive.factor;
 
