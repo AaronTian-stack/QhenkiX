@@ -424,25 +424,6 @@ std::string VulkanContext::create(const bool enable_debug_layer)
                    reinterpret_cast<uint64_t>(m_internal_semaphore),
                    "Internal Timeline Semaphore");
 
-    const VkCommandPoolCreateInfo internal_pool_ci{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-        .queueFamilyIndex = m_graphics_queue.family_index,
-    };
-    for (size_t i = 0; i < m_internal_command_pools.size(); i++)
-    {
-        VkCommandPool cmd_pool;
-        if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &cmd_pool)))
-        {
-            return "Vulkan: Failed to create internal command pool";
-        }
-        set_debug_name(m_device.device,
-                       VK_OBJECT_TYPE_COMMAND_POOL,
-                       reinterpret_cast<uint64_t>(cmd_pool),
-                       "Internal Command Pool");
-        m_internal_command_pools[i].init(m_device.device, cmd_pool);
-    }
-
     const VkSemaphoreCreateInfo image_available_info{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
@@ -544,16 +525,19 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
 
     // Transition swapchain images from UNDEFINED to PRESENT_SRC_KHR
     {
-        auto& internal_pool = m_internal_command_pools[m_frame_count % m_internal_command_pools.size()];
+        auto& internal_pool = acquire_command_pool(GRAPHICS);
+        if (internal_pool.command_pool == VK_NULL_HANDLE)
+        {
+            return false;
+        }
 
-        VkCommandBuffer cmd;
-        const VkCommandBufferAllocateInfo alloc_info{
+        VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = internal_pool.command_pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
-        if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, &cmd)))
+        const auto cmd = internal_pool.create_command_buffer(alloc_info);
+        if (cmd == VK_NULL_HANDLE)
         {
             return false;
         }
@@ -2437,7 +2421,11 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     VkCommandBuffer internal_cmd = VK_NULL_HANDLE;
     if (needs_transition || needs_descriptor_copies)
     {
-        auto& internal_pool = m_internal_command_pools[m_frame_count % m_internal_command_pools.size()];
+        auto& internal_pool = acquire_command_pool(GRAPHICS);
+        if (internal_pool.command_pool == VK_NULL_HANDLE)
+        {
+            return false;
+        }
 
         internal_pool.reset();
 
@@ -3140,4 +3128,35 @@ VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
         assert(false);
         return m_graphics_queue;
     }
+}
+
+VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
+{
+    // One pool per thread that is double buffered
+    thread_local std::array<VulkanCommandPool, 2> thread_pools;
+    for (size_t i = 0; i < thread_pools.size(); i++)
+    {
+        const VkCommandPoolCreateInfo internal_pool_ci{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+            .queueFamilyIndex = get_queue(queue).family_index,
+        };
+        auto& pool = thread_pools[i];
+        if (pool.device == VK_NULL_HANDLE)
+        {
+            VkCommandPool cmd_pool;
+            if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &cmd_pool)))
+            {
+                pool.command_pool = VK_NULL_HANDLE;
+                return pool;
+            }
+            set_debug_name(m_device.device,
+                           VK_OBJECT_TYPE_COMMAND_POOL,
+                           reinterpret_cast<uint64_t>(cmd_pool),
+                           "Internal Command Pool");
+
+            pool.init(m_device.device, cmd_pool);
+        }
+    }
+    return thread_pools[m_frame_count % thread_pools.size()];
 }

@@ -51,8 +51,6 @@ class VulkanContext : public Context
 
     moodycamel::ConcurrentQueue<Texture*> m_texture_queue;
 
-    std::array<VulkanCommandPool, 2> m_internal_command_pools;
-
     VkSemaphore m_internal_semaphore = VK_NULL_HANDLE;
     uint64_t m_internal_semaphore_value = 0;
 
@@ -214,5 +212,7 @@ private:
                                    VkDescriptorType type) const;
 
     VulkanQueue& get_queue(QueueType queue);
+
+    VulkanCommandPool& acquire_command_pool(QueueType queue);
 };
 } // namespace qhenki::gfx
