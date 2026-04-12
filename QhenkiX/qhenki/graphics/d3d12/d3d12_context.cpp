@@ -1155,11 +1155,6 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
         return false;
     }
 
-    if (descriptor->heap)
-    {
-        return false;
-    }
-
     if (buffer.desc.size % 16 != 0)
     {
         OutputDebugStringA(
@@ -1187,11 +1182,6 @@ bool D3D12Context::create_descriptor_constant_view(const Buffer& buffer,
 bool D3D12Context::create_descriptor_shader_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor)
 {
     if (heap->desc.type != DescriptorHeapDesc::Type::CBV_SRV_UAV)
-    {
-        return false;
-    }
-
-    if (descriptor->heap)
     {
         return false;
     }
@@ -1484,11 +1474,6 @@ bool D3D12Context::create_descriptor(const SamplerDesc& desc, DescriptorHeap* co
     if (heap->desc.type != DescriptorHeapDesc::Type::SAMPLER)
     {
         OutputDebugStringA("Qhenki D3D12 ERROR: Invalid descriptor heap type\n");
-        return false;
-    }
-
-    if (descriptor->heap)
-    {
         return false;
     }
 
