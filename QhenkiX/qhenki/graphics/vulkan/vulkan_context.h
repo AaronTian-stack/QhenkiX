@@ -7,6 +7,7 @@
 #include "concurrentqueue.h"
 #include "qhenki/graphics/shared/descriptor_flush.h"
 #include "qhenki/RHI/context.h"
+#include "vulkan_command_pool.h"
 
 #define VK_SUCCEEDED(result) ((result) == VK_SUCCESS)
 #define VK_FAILED(result) ((result) != VK_SUCCESS)
@@ -52,8 +53,9 @@ class VulkanContext : public Context
     VulkanQueue m_transfer_queue;
 
     moodycamel::ConcurrentQueue<Texture*> m_texture_queue;
-    VkCommandPool m_internal_cmd_pool = VK_NULL_HANDLE;
-    std::vector<VkCommandBuffer> m_internal_cmd_buffers;
+
+    std::array<VulkanCommandPool, 2> m_internal_command_pools;
+
     VkSemaphore m_internal_semaphore = VK_NULL_HANDLE;
     uint64_t m_internal_semaphore_value = 0;
 
