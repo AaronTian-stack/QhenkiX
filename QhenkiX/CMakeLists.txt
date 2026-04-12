@@ -112,6 +112,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_root_signature.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_pipeline.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_list.h"
+    "${QHENKIX_DIR}/graphics/vulkan/vulkan_macros.h"
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"

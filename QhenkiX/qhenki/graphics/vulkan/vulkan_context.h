@@ -9,9 +9,6 @@
 #include "qhenki/RHI/context.h"
 #include "vulkan_command_pool.h"
 
-#define VK_SUCCEEDED(result) ((result) == VK_SUCCESS)
-#define VK_FAILED(result) ((result) != VK_SUCCESS)
-
 namespace qhenki::gfx
 {
 struct VulkanTexture;

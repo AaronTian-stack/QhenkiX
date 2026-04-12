@@ -15,6 +15,7 @@
 
 #include "vulkan_command_pool.h"
 #include "vulkan_descriptor_heap.h"
+#include "vulkan_macros.h"
 #include "vulkan_pipeline.h"
 #include "vulkan_root_signature.h"
 #include "vulkan_texture.h"
