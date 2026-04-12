@@ -91,8 +91,6 @@ void ExampleApp::create()
     THROW_IF_FALSE(m_context->create_pipeline(
         pipeline_desc, &m_pipeline, vertex_shader, pixel_shader, &m_pipeline_layout, "triangle_pipeline"));
 
-    // A graphics queue is already given to the application by the context
-
     // Allocate Command Pool(s)/Allocator(s) from queue
     for (unsigned i = 0; i < m_frames_in_flight; i++)
     {

@@ -203,7 +203,7 @@ void process_materials(const tinygltf::Model& tiny_model, GLTFModel* const model
         const auto& tiny_normal = tiny_mat.normalTexture;
         const auto& tiny_occlusion = tiny_mat.occlusionTexture;
         const auto& tiny_emissive = tiny_mat.emissiveTexture;
-        model->materials.emplace_back(GLTFModel::Material{
+        model->materials.emplace_back(Material{
             .base_color =
                 {
                     .factor =
@@ -250,8 +250,8 @@ void process_materials(const tinygltf::Model& tiny_model, GLTFModel* const model
 qhenki::gfx::Buffer copy_materials(GLTFModel* model, qhenki::gfx::Context& context, qhenki::gfx::CommandList* cmd_list)
 {
     qhenki::gfx::Buffer staging_buffer;
-    qhenki::gfx::BufferDesc desc{.size = sizeof(GLTFModel::Material) * model->materials.size(),
-                                 .stride = sizeof(GLTFModel::Material),
+    qhenki::gfx::BufferDesc desc{.size = sizeof(Material) * model->materials.size(),
+                                 .stride = sizeof(Material),
                                  .usage = qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL
 
@@ -340,13 +340,13 @@ std::vector<qhenki::gfx::Buffer> process_textures(const tinygltf::Model& tiny_mo
     for (int i = 0; i < tiny_model.textures.size(); i++)
     {
         const auto& tiny_texture = tiny_model.textures[i];
-        model->textures.emplace_back(GLTFModel::Texture{
+        model->textures.emplace_back(Texture{
             .image_index = tiny_texture.source,
             .sampler_index = tiny_texture.sampler,
         });
     }
-    qhenki::gfx::BufferDesc desc{.size = sizeof(GLTFModel::Texture) * model->textures.size(),
-                                 .stride = sizeof(GLTFModel::Texture),
+    qhenki::gfx::BufferDesc desc{.size = sizeof(Texture) * model->textures.size(),
+                                 .stride = sizeof(Texture),
                                  .usage = qhenki::gfx::BufferUsage::COPY_SRC,
                                  .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
     context.create_buffer(desc, model->textures.data(), &staging_buffers[0]);

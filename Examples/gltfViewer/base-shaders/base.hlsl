@@ -8,14 +8,6 @@ cbuffer CameraBuffer : register(b0)
     CameraData camera_data;
 };
 
-// Per draw attributes
-struct ModelConstants
-{
-    float4x4 model;
-    float4x4 inverse_model;
-    int material_index;
-};
-
 #ifdef __spirv__
 [[vk::push_constant]]
 ModelConstants model_constants;
@@ -31,41 +23,7 @@ cbuffer ModelBuffer
 };
 #endif
 
-struct Material
-{
-    float4 albedo_factor;
-    int albedo_index;
-    int albedo_txcs; // Texture coordinate set
-    // base_color;
-
-    float metallic_factor;
-    float roughness_factor;
-    int mr_index;
-    int mr_txcs;
-    // metallic_roughness;
-
-    int normal_index;
-    int texture_coordinate_set;
-    float scale;
-    // normal;
-
-    int occlusion_index;
-    int occlusion_txcs;
-    float occlusion_strength;
-    // occlusion;
-
-    float3 emissive_factor;
-    int emissive_index;
-    int emissive_txcs;
-    // emissive;
-};
-
 #ifndef DX11
-struct Texture
-{
-    int image_index;
-    int sampler_index;
-};
 #ifdef __spirv__
 [[vk::binding(1)]]
 #endif
@@ -86,7 +44,7 @@ Texture2D emissive_tex : register(t7);
 #ifdef __spirv__
 [[vk::binding(3)]]
 #endif
-Texture2D<float4> g_textures[] : register(t3);
+Texture2D g_textures[] : register(t3);
 #endif
 
 #ifdef DX11
@@ -119,16 +77,24 @@ struct PSInput
     float2 uv : TEXCOORD0;
 
     float3 position : POSITION;
-    float3 cameraPosition : TEXCOORD2;
+    float3 camera_position : TEXCOORD2;
 };
+
+float4x4 convert(float4x3 M)
+{
+    return float4x4(float4(M[0], 0), float4(M[1], 0), float4(M[2], 0), float4(M[3], 1));
+}
 
 PSInput vs_main(VSInput input)
 {
     PSInput output;
 
-    float3x3 mat_n = transpose((float3x3) model_constants.inverse_model);
+    float4x4 model_mat = convert(model_constants.model);
+    float4x4 inverse_mat = convert(model_constants.inverse_model);
 
-    float4 model_position = mul(float4(input.position, 1.0), model_constants.model);
+    float3x3 mat_n = transpose((float3x3) inverse_mat);
+
+    float4 model_position = mul(float4(input.position, 1.0), model_mat);
 
     float4 world_position = mul(model_position, camera_data.view_proj);
 
@@ -138,7 +104,7 @@ PSInput vs_main(VSInput input)
     output.color = input.color;
     output.uv = input.uv;
 
-    output.cameraPosition = camera_data.position; // Camera position from the constant buffer
+    output.camera_position = camera_data.position;
 
     return output;
 }
@@ -156,49 +122,52 @@ void set_values(PSInput input,
                 out float3 emissive)
 {
     Material material = materials[model_constants.material_index];
-    albedo = material.albedo_factor;
+    albedo = material.base_color.factor;
     normal = normalize(input.normal);
-    metallic_roughness = float4(1.0, material.roughness_factor, material.metallic_factor, 1.0); // roughness G, metal B
-    AO = material.occlusion_strength;
-    emissive = material.emissive_factor;
+    metallic_roughness = float4(1.0,
+                                material.metallic_roughness.roughness_factor,
+                                material.metallic_roughness.metallic_factor,
+                                1.0); // roughness G, metal B
+    AO = material.occlusion.strength;
+    emissive = material.emissive.factor;
 
-    if (material.albedo_index != -1)
+    if (material.base_color.index != -1)
     {
 #ifdef DX11
         albedo *= base_color_tex.Sample(base_color_samp, input.uv);
 #else
-        Texture t = textures[material.albedo_index];
+        Texture t = textures[material.base_color.index];
         albedo *= g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv);
 #endif
     }
-    if (material.normal_index != -1)
+    if (material.normal.index != -1)
     {
         // TBN transform
     }
-    if (material.mr_index != -1)
+    if (material.metallic_roughness.index != -1)
     {
 #ifdef DX11
         metallic_roughness *= metallic_roughness_tex.Sample(metallic_roughness_samp, input.uv);
 #else
-        Texture t = textures[material.mr_index];
+        Texture t = textures[material.metallic_roughness.index];
         metallic_roughness *= g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv);
 #endif
     }
-    if (material.occlusion_index != -1)
+    if (material.occlusion.index != -1)
     {
 #ifdef DX11
-        AO = occlusion_tex.Sample(occlusion_samp, input.uv).r * material.occlusion_strength;
+        AO = occlusion_tex.Sample(occlusion_samp, input.uv).r * material.occlusion.strength;
 #else
-        Texture t = textures[material.occlusion_index];
-        AO = g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv).r * material.occlusion_strength;
+        Texture t = textures[material.occlusion.index];
+        AO = g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv).r * material.occlusion.strength;
 #endif
     }
-    if (material.emissive_index != -1)
+    if (material.emissive.index != -1)
     {
 #ifdef DX11
         emissive *= emissive_tex.Sample(emissive_samp, input.uv).rgb;
 #else
-        Texture t = textures[material.emissive_index];
+        Texture t = textures[material.emissive.index];
         emissive *= g_textures[t.image_index].Sample(samps[t.sampler_index], input.uv).rgb;
 #endif
     }
@@ -209,7 +178,7 @@ PSOutput ps_main(PSInput input)
     PSOutput output;
 
     float3 N = normalize(input.normal);
-    float lambert = max(0.0, dot(N, normalize(input.cameraPosition - input.position)));
+    float lambert = max(0.0, dot(N, normalize(input.camera_position - input.position)));
 
     float4 albedo;
     float3 normal;
