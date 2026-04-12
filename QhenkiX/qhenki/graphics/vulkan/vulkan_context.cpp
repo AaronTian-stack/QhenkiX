@@ -2571,7 +2571,11 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     }
 
     const bool has_internal_cmd = internal_cmd != VK_NULL_HANDLE;
-    const uint64_t next_internal_signal_value = has_internal_cmd ? (m_internal_semaphore_value + 1) : 0u;
+    // Track the semaphore value so the recycling check knows when this is done
+    if (has_internal_cmd)
+    {
+        ++m_internal_semaphore_value;
+    }
 
     // If non-graphics: Submit separately on the graphics queue and synchronize
     // Otherwise avoid extra submission by adding into the same submit
@@ -2584,7 +2588,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         const VkSemaphoreSubmitInfo internal_signal{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = m_internal_semaphore,
-            .value = next_internal_signal_value,
+            .value = m_internal_semaphore_value,
             .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         };
         const VkSubmitInfo2 internal_submit{
@@ -2598,7 +2602,6 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         {
             return false;
         }
-        m_internal_semaphore_value = next_internal_signal_value;
     }
 
     // +1 for internal ordering, +1 optional swapchain, +1 optional internal semaphore
@@ -2644,7 +2647,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         wait_semaphore_infos[wait_idx++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = m_internal_semaphore,
-            .value = next_internal_signal_value,
+            .value = m_internal_semaphore_value,
             .stageMask = stage_mask,
         };
     }
@@ -2711,7 +2714,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         signal_semaphore_infos[signal_count++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = m_internal_semaphore,
-            .value = next_internal_signal_value,
+            .value = m_internal_semaphore_value,
             .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         };
     }
@@ -2737,11 +2740,6 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     if (VK_FAILED(vkQueueSubmit2(q.queue, 1, &submit, VK_NULL_HANDLE)))
     {
         return false;
-    }
-
-    if (has_internal_cmd && queue == GRAPHICS)
-    {
-        m_internal_semaphore_value = next_internal_signal_value;
     }
 
     return true;
