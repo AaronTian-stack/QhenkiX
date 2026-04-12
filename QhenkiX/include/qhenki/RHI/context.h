@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <stdexcept>
 #include <string>
 
@@ -257,6 +258,8 @@ protected:
     unsigned m_frame_count = 0;
     // For internal swapchain purposes
     unsigned m_swapchain_index = 0;
+
+    std::mutex m_submit_mutex;
 };
 
 inline memory::Arena& acquire_arena(const uint64_t current_frame)
