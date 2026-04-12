@@ -864,6 +864,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
         VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
         VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE,
+        VK_DYNAMIC_STATE_BLEND_CONSTANTS,
     };
     VkPipelineDynamicStateCreateInfo dynamic_state_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -1030,7 +1031,6 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         .logicOp = logic_op,
         .attachmentCount = desc.num_render_targets,
         .pAttachments = color_attachments.data(),
-        .blendConstants = {0.f, 0.f, 0.f, 0.f},
     };
 
     std::array<VkFormat, MAX_RENDER_TARGETS> color_formats{};
