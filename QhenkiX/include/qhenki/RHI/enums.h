@@ -76,8 +76,9 @@ enum class Blend : uint8_t
     DEST_COLOR,
     INVERT_DEST_COLOR,
     SRC_ALPHA_CLAMP,
-    CONSTANT_COLOR,
-    INVERT_CONSTANT_COLOR,
+    // TODO: Add support for blend factor
+    // CONSTANT_COLOR,
+    // INVERT_CONSTANT_COLOR,
     SRC1_COLOR,
     INVERT_SRC1_COLOR,
     SRC1_ALPHA,

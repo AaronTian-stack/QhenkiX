@@ -163,24 +163,46 @@ namespace qhenki::gfx
     X(CLAMP, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)    \
     X(BORDER, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
 
-#define BLEND_FACTOR_MAP(X)                                            \
-    X(ZERO, VK_BLEND_FACTOR_ZERO)                                      \
-    X(ONE, VK_BLEND_FACTOR_ONE)                                        \
-    X(SRC_COLOR, VK_BLEND_FACTOR_SRC_COLOR)                            \
-    X(INVERT_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR)           \
-    X(SRC_ALPHA, VK_BLEND_FACTOR_SRC_ALPHA)                            \
-    X(INV_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)              \
-    X(DEST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA)                           \
-    X(INVERT_DEST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA)          \
-    X(DEST_COLOR, VK_BLEND_FACTOR_DST_COLOR)                           \
-    X(INVERT_DEST_COLOR, VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR)          \
-    X(SRC_ALPHA_CLAMP, VK_BLEND_FACTOR_SRC_ALPHA_SATURATE)             \
-    X(CONSTANT_COLOR, VK_BLEND_FACTOR_CONSTANT_COLOR)                  \
-    X(INVERT_CONSTANT_COLOR, VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR) \
-    X(SRC1_COLOR, VK_BLEND_FACTOR_SRC1_COLOR)                          \
-    X(INVERT_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR)         \
-    X(SRC1_ALPHA, VK_BLEND_FACTOR_SRC1_ALPHA)                          \
+#define BLEND_FACTOR_MAP(X)                                    \
+    X(ZERO, VK_BLEND_FACTOR_ZERO)                              \
+    X(ONE, VK_BLEND_FACTOR_ONE)                                \
+    X(SRC_COLOR, VK_BLEND_FACTOR_SRC_COLOR)                    \
+    X(INVERT_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR)   \
+    X(SRC_ALPHA, VK_BLEND_FACTOR_SRC_ALPHA)                    \
+    X(INV_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)      \
+    X(DEST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA)                   \
+    X(INVERT_DEST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA)  \
+    X(DEST_COLOR, VK_BLEND_FACTOR_DST_COLOR)                   \
+    X(INVERT_DEST_COLOR, VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR)  \
+    X(SRC_ALPHA_CLAMP, VK_BLEND_FACTOR_SRC_ALPHA_SATURATE)     \
+    X(SRC1_COLOR, VK_BLEND_FACTOR_SRC1_COLOR)                  \
+    X(INVERT_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR) \
+    X(SRC1_ALPHA, VK_BLEND_FACTOR_SRC1_ALPHA)                  \
     X(INVERT_SRC1_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA)
+
+#define LOGIC_OP_MAP(X)                         \
+    X(CLEAR, VK_LOGIC_OP_CLEAR)                 \
+    X(SET, VK_LOGIC_OP_SET)                     \
+    X(COPY, VK_LOGIC_OP_COPY)                   \
+    X(COPY_INVERTED, VK_LOGIC_OP_COPY_INVERTED) \
+    X(NOOP, VK_LOGIC_OP_NO_OP)                  \
+    X(INVERT, VK_LOGIC_OP_INVERT)               \
+    X(AND, VK_LOGIC_OP_AND)                     \
+    X(NAND, VK_LOGIC_OP_NAND)                   \
+    X(OR, VK_LOGIC_OP_OR)                       \
+    X(NOR, VK_LOGIC_OP_NOR)                     \
+    X(XOR, VK_LOGIC_OP_XOR)                     \
+    X(EQUIV, VK_LOGIC_OP_EQUIVALENT)            \
+    X(AND_REVERSE, VK_LOGIC_OP_AND_REVERSE)     \
+    X(AND_INVERTED, VK_LOGIC_OP_AND_INVERTED)   \
+    X(OR_REVERSE, VK_LOGIC_OP_OR_REVERSE)       \
+    X(OR_INVERTED, VK_LOGIC_OP_OR_INVERTED)
+
+// TODO: Add support for blend factor
+/*
+ X(CONSTANT_COLOR, VK_BLEND_FACTOR_CONSTANT_COLOR)                  \
+ X(INVERT_CONSTANT_COLOR, VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR) \
+ */
 
 VkFormat convert_format(const Format format)
 {
@@ -253,6 +275,22 @@ VkBlendFactor blend_factor(const Blend b)
     return VK_BLEND_FACTOR_ONE;
 
 #undef MAP_BLEND_FACTOR
+}
+
+VkLogicOp vk_logic_op(const LogicOp op)
+{
+#define MAP_LOGIC_OP(our, vk) \
+    case LogicOp::our:        \
+        return vk;
+
+    switch (op)
+    {
+        LOGIC_OP_MAP(MAP_LOGIC_OP)
+    }
+
+#undef MAP_LOGIC_OP
+    assert(false);
+    return VK_LOGIC_OP_COPY;
 }
 
 VkImageViewType view_type_from_desc(const TextureDesc& desc)

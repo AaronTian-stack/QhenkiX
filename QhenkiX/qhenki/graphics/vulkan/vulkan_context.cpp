@@ -864,6 +864,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
         VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
         VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE,
+        VK_DYNAMIC_STATE_BLEND_CONSTANTS,
     };
     VkPipelineDynamicStateCreateInfo dynamic_state_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -986,8 +987,10 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         VkPipelineColorBlendAttachmentState attachment{};
         if (desc.blend_desc.has_value())
         {
-            const auto& rt = desc.blend_desc->render_target[i];
-            attachment.blendEnable = rt.blend_enable;
+            const auto& bd = *desc.blend_desc;
+            const auto& rt0 = bd.render_target[0];
+            const auto& rt = bd.independent_blend_enable ? bd.render_target[i] : rt0;
+            attachment.blendEnable = rt0.logic_op_enable ? VK_FALSE : (rt.blend_enable ? VK_TRUE : VK_FALSE);
             attachment.srcColorBlendFactor = blend_factor(rt.src_blend);
             attachment.dstColorBlendFactor = blend_factor(rt.dst_blend);
             attachment.colorBlendOp = map_blend_op(rt.blend_op);
@@ -1013,9 +1016,19 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         color_attachments[i] = attachment;
     }
 
+    VkBool32 logic_op_enable = VK_FALSE;
+    VkLogicOp logic_op = VK_LOGIC_OP_COPY;
+    if (desc.blend_desc.has_value() && desc.num_render_targets > 0)
+    {
+        const auto& rt0 = desc.blend_desc->render_target[0];
+        logic_op_enable = rt0.logic_op_enable ? VK_TRUE : VK_FALSE;
+        logic_op = vk_logic_op(rt0.logic_op);
+    }
+
     VkPipelineColorBlendStateCreateInfo color_blend_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .logicOpEnable = VK_FALSE,
+        .logicOpEnable = logic_op_enable,
+        .logicOp = logic_op,
         .attachmentCount = desc.num_render_targets,
         .pAttachments = color_attachments.data(),
     };
