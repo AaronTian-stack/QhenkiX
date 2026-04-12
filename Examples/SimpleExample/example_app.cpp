@@ -4,7 +4,6 @@
 #include "example_shared/window_init.h"
 
 #include "qhenki/utility/general_util.h"
-#include "qhenki/utility/math_util.h"
 
 #include <array>
 
