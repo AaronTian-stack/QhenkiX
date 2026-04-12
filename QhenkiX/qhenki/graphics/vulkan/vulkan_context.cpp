@@ -422,14 +422,19 @@ std::string VulkanContext::create(const bool enable_debug_layer)
         .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
         .queueFamilyIndex = m_graphics_queue.family_index,
     };
-    if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &m_internal_cmd_pool)))
+    for (size_t i = 0; i < m_internal_command_pools.size(); i++)
     {
-        return "Vulkan: Failed to create internal command pool";
+        VkCommandPool cmd_pool;
+        if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &cmd_pool)))
+        {
+            return "Vulkan: Failed to create internal command pool";
+        }
+        set_debug_name(m_device.device,
+                       VK_OBJECT_TYPE_COMMAND_POOL,
+                       reinterpret_cast<uint64_t>(cmd_pool),
+                       "Internal Command Pool");
+        m_internal_command_pools[i].init(m_device.device, cmd_pool);
     }
-    set_debug_name(m_device.device,
-                   VK_OBJECT_TYPE_COMMAND_POOL,
-                   reinterpret_cast<uint64_t>(m_internal_cmd_pool),
-                   "Internal Command Pool");
 
     const VkSemaphoreCreateInfo image_available_info{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -532,10 +537,12 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
 
     // Transition swapchain images from UNDEFINED to PRESENT_SRC_KHR
     {
+        auto& internal_pool = m_internal_command_pools[m_frame_count % m_internal_command_pools.size()];
+
         VkCommandBuffer cmd;
         const VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = m_internal_cmd_pool,
+            .commandPool = internal_pool.command_pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
@@ -616,8 +623,7 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
         };
         vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max());
 
-        vkFreeCommandBuffers(m_device.device, m_internal_cmd_pool, 1, &cmd);
-        vkResetCommandPool(m_device.device, m_internal_cmd_pool, 0);
+        internal_pool.reset();
     }
 
     return true;
@@ -2423,29 +2429,17 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     VkCommandBuffer internal_cmd = VK_NULL_HANDLE;
     if (needs_transition || needs_descriptor_copies)
     {
-        // Check if previous internal cmd buffers can be recycled
-        if (!m_internal_cmd_buffers.empty())
-        {
-            uint64_t sem_value = 0;
-            vkGetSemaphoreCounterValue(m_device.device, m_internal_semaphore, &sem_value);
-            if (sem_value >= m_internal_semaphore_value)
-            {
-                vkFreeCommandBuffers(m_device.device,
-                                     m_internal_cmd_pool,
-                                     static_cast<uint32_t>(m_internal_cmd_buffers.size()),
-                                     m_internal_cmd_buffers.data());
-                m_internal_cmd_buffers.clear();
-                vkResetCommandPool(m_device.device, m_internal_cmd_pool, 0);
-            }
-        }
+        auto& internal_pool = m_internal_command_pools[m_frame_count % m_internal_command_pools.size()];
 
-        const VkCommandBufferAllocateInfo alloc_info{
+        internal_pool.reset();
+
+        VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = m_internal_cmd_pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
         };
-        if (VK_FAILED(vkAllocateCommandBuffers(m_device.device, &alloc_info, &internal_cmd)))
+
+        internal_cmd = internal_pool.create_command_buffer(alloc_info);
+        if (internal_cmd == VK_NULL_HANDLE)
         {
             return false;
         }
@@ -2453,7 +2447,6 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
                        VK_OBJECT_TYPE_COMMAND_BUFFER,
                        reinterpret_cast<uint64_t>(internal_cmd),
                        "Internal Command Buffer");
-        m_internal_cmd_buffers.push_back(internal_cmd);
 
         constexpr VkCommandBufferBeginInfo begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -2582,12 +2575,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     }
 
     const bool has_internal_cmd = internal_cmd != VK_NULL_HANDLE;
-
-    // Track the semaphore value so the recycling check knows when this is done
-    if (has_internal_cmd)
-    {
-        ++m_internal_semaphore_value;
-    }
+    const uint64_t next_internal_signal_value = has_internal_cmd ? (m_internal_semaphore_value + 1) : 0u;
 
     // If non-graphics: Submit separately on the graphics queue and synchronize
     // Otherwise avoid extra submission by adding into the same submit
@@ -2600,7 +2588,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         const VkSemaphoreSubmitInfo internal_signal{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = m_internal_semaphore,
-            .value = m_internal_semaphore_value,
+            .value = next_internal_signal_value,
             .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         };
         const VkSubmitInfo2 internal_submit{
@@ -2614,6 +2602,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         {
             return false;
         }
+        m_internal_semaphore_value = next_internal_signal_value;
     }
 
     // +1 for internal ordering, +1 optional swapchain, +1 optional internal semaphore
@@ -2659,7 +2648,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         wait_semaphore_infos[wait_idx++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = m_internal_semaphore,
-            .value = m_internal_semaphore_value,
+            .value = next_internal_signal_value,
             .stageMask = stage_mask,
         };
     }
@@ -2726,7 +2715,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         signal_semaphore_infos[signal_count++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = m_internal_semaphore,
-            .value = m_internal_semaphore_value,
+            .value = next_internal_signal_value,
             .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         };
     }
@@ -2752,6 +2741,11 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     if (VK_FAILED(vkQueueSubmit2(q.queue, 1, &submit, VK_NULL_HANDLE)))
     {
         return false;
+    }
+
+    if (has_internal_cmd && queue == GRAPHICS)
+    {
+        m_internal_semaphore_value = next_internal_signal_value;
     }
 
     return true;
@@ -3012,10 +3006,6 @@ VulkanContext::~VulkanContext()
     for (const auto& sem : m_render_finished_semaphores)
     {
         vkDestroySemaphore(m_device.device, sem, nullptr);
-    }
-    if (m_internal_cmd_pool != VK_NULL_HANDLE)
-    {
-        vkDestroyCommandPool(m_device.device, m_internal_cmd_pool, nullptr);
     }
     vkDestroySemaphore(m_device.device, m_internal_semaphore, nullptr);
     vkb::destroy_device(m_device);
