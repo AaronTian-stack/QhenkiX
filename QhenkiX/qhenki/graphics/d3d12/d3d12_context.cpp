@@ -2114,6 +2114,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
         .heap = &m_imgui_heap,
         .descriptors = &m_imgui_descriptors,
     };
+    static unsigned descriptor_index = 0;
 
     init_info.UserData = &info;
 
@@ -2126,8 +2127,7 @@ void D3D12Context::init_imgui(const DisplayWindow& window, const Swapchain& swap
 
         auto& array = *qin->descriptors;
 
-        // TODO
-        // qin->heap->allocate(&array[index].offset);
+        array[index].offset = descriptor_index++;
 
         qin->heap->get_CPU_descriptor(out_cpu_handle, array[index].offset);
         qin->heap->get_GPU_descriptor(out_gpu_handle, array[index].offset);
