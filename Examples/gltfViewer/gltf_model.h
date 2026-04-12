@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shared_structs.h"
+
 #include <string>
 #include <vector>
 
@@ -32,51 +34,11 @@ struct GLTFModel
     // animations
     std::vector<qhenki::gfx::Buffer> buffers;
 
-    // This matches exactly with the HLSL structure layout. Just remove the anonymous structs
-    struct Material
-    {
-        struct
-        {
-            XMFLOAT4 factor;
-            int index = -1; // Texture index NOT image
-            int texture_coordinate_set = 0;
-        } base_color;
-        struct
-        {
-            float metallic_factor = 0.f;
-            float roughness_factor = 0.f;
-            int index = -1;
-            int texture_coordinate_set = 0;
-        } metallic_roughness;
-        struct
-        {
-            int index = -1;
-            int texture_coordinate_set = 0;
-            float scale = 1.f;
-        } normal;
-        struct
-        {
-            int index = -1;
-            int texture_coordinate_set = 0;
-            float strength = 1.f;
-        } occlusion;
-        struct
-        {
-            XMFLOAT3 factor;
-            int index = -1;
-            int texture_coordinate_set = 0;
-        } emissive;
-    };
     qhenki::gfx::Buffer material_buffer;
     std::vector<Material> materials;
 
     std::vector<qhenki::gfx::Texture> images; // NOT a glTF texture, but an image
     std::vector<qhenki::gfx::SamplerDesc> samplers;
-    struct Texture
-    {
-        int image_index = -1;
-        int sampler_index = -1;
-    };
     std::vector<Texture> textures;
     qhenki::gfx::Buffer texture_buffer; // glTF texture
 
