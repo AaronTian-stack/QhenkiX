@@ -465,24 +465,21 @@ bool VulkanContext::is_compatibility() const
     return false;
 }
 
-bool VulkanContext::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
+bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
 {
-    if (!SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface))
-    {
-        return false;
-    }
-
     vkb::SwapchainBuilder swapchain_builder{m_device, m_surface};
 
     const VkPresentModeKHR present_mode = swapchain_desc.tearing ? VK_PRESENT_MODE_IMMEDIATE_KHR
                                                                  : VK_PRESENT_MODE_FIFO_KHR;
-    auto swap_ret = swapchain_builder.set_desired_extent(swapchain_desc.width, swapchain_desc.height)
+    auto swap_ret = swapchain_builder.set_old_swapchain(m_swapchain.swapchain)
+                        .set_desired_extent(swapchain_desc.width, swapchain_desc.height)
                         .set_desired_present_mode(present_mode)
                         .set_required_min_image_count(swapchain_desc.buffer_count)
                         .set_desired_format({convert_format(swapchain_desc.format), VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
                         .build();
     if (!swap_ret)
     {
+        m_swapchain.swapchain.swapchain = VK_NULL_HANDLE;
         return false;
     }
     m_swapchain.swapchain = std::move(swap_ret.value());
@@ -620,8 +617,33 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
     return true;
 }
 
+bool VulkanContext::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
+{
+    if (!SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface))
+    {
+        return false;
+    }
+
+    return create_swapchain(swapchain_desc);
+}
+
 bool VulkanContext::resize_swapchain(Swapchain* swapchain, int width, int height)
 {
+    wait_idle(GRAPHICS);
+
+    m_swapchain.swapchain.destroy_image_views(m_swapchain.image_views);
+
+    SwapchainDesc desc = *swapchain;
+    desc.width = static_cast<unsigned>(width);
+    desc.height = static_cast<unsigned>(height);
+
+    if (!create_swapchain(desc))
+    {
+        return false;
+    }
+
+    *swapchain = desc;
+
     return true;
 }
 

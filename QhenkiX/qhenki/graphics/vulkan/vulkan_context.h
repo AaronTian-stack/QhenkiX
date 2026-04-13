@@ -201,6 +201,8 @@ public:
     friend class VulkanDescriptorHeap;
 
 private:
+    bool create_swapchain(const SwapchainDesc& swapchain_desc);
+
     VkDeviceSize get_reserved_range(DescriptorHeapDesc::Type type) const;
     bool create_descriptor_buffer(const Buffer& buffer,
                                   DescriptorHeap* heap,
