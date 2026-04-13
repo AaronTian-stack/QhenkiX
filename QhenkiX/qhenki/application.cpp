@@ -114,6 +114,7 @@ void Application::run(const gfx::API api,
     create();
     resize(m_window.m_display_info.width, m_window.m_display_info.height);
     // Starts the main loop
+    bool rendering = true;
     while (!m_QUIT)
     {
         m_input_manager.reset_mouse_scroll();
@@ -139,6 +140,14 @@ void Application::run(const gfx::API api,
                 }
                 resize(event.window.data1, event.window.data2);
             }
+            if (event.type == SDL_EVENT_WINDOW_MINIMIZED)
+            {
+                rendering = false;
+            }
+            if (event.type == SDL_EVENT_WINDOW_RESTORED)
+            {
+                rendering = true;
+            }
             m_input_manager.handle_extra_events(event);
             if (ImGui::GetCurrentContext())
             {
@@ -146,7 +155,10 @@ void Application::run(const gfx::API api,
             }
         }
         m_input_manager.update(m_window.get_window()); // After all SDL events
-        render();
+        if (rendering)
+        {
+            render();
+        }
     }
     m_context->wait_idle(gfx::QueueType::GRAPHICS);
     destroy();
