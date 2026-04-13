@@ -155,6 +155,7 @@ void Application::run(const gfx::API api,
             }
         }
         m_input_manager.update(m_window.get_window()); // After all SDL events
+        update();
         if (rendering)
         {
             render();

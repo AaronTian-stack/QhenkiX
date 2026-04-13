@@ -52,6 +52,9 @@ protected:
     virtual void create()
     {
     }
+    virtual void update()
+    {
+    }
     virtual void render()
     {
     }
