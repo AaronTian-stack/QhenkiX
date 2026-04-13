@@ -491,6 +491,7 @@ bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width,
     }
 
     *swapchain = desc;
+    m_swapchain_index = 0;
 
     return true;
 }
