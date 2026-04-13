@@ -465,6 +465,76 @@ bool VulkanContext::is_compatibility() const
     return false;
 }
 
+bool VulkanContext::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
+{
+    if (!SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface))
+    {
+        return false;
+    }
+
+    return create_swapchain(swapchain_desc);
+}
+
+bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, unsigned height)
+{
+    wait_idle(GRAPHICS);
+
+    m_swapchain.swapchain.destroy_image_views(m_swapchain.image_views);
+
+    SwapchainDesc desc = *swapchain;
+    desc.width = width;
+    desc.height = height;
+
+    if (!create_swapchain(desc))
+    {
+        return false;
+    }
+
+    *swapchain = desc;
+
+    return true;
+}
+
+bool VulkanContext::acquire_swapchain_image()
+{
+    const unsigned sem_index = m_frame_count % m_image_available_semaphores.size();
+    if (VK_FAILED(vkAcquireNextImageKHR(m_device.device,
+                                        m_swapchain.swapchain.swapchain,
+                                        std::numeric_limits<uint64_t>::max(),
+                                        m_image_available_semaphores[sem_index],
+                                        VK_NULL_HANDLE,
+                                        &m_swapchain_index)))
+    {
+        return false;
+    }
+    return true;
+}
+
+bool VulkanContext::present(const Swapchain& swapchain)
+{
+    const auto wait_semaphore = m_render_finished_semaphores[m_swapchain_index];
+    const VkPresentInfoKHR present_info{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &wait_semaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &m_swapchain.swapchain.swapchain,
+        .pImageIndices = &m_swapchain_index,
+    };
+    // TODO: Present on different queue?
+    if (VK_FAILED(vkQueuePresentKHR(m_graphics_queue.queue, &present_info)))
+    {
+        return false;
+    }
+    ++m_frame_count;
+    return true;
+}
+
+unsigned VulkanContext::get_frame_slot(const unsigned slot_count) const
+{
+    return slot_count > 0 ? m_frame_count % slot_count : 0;
+}
+
 bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
 {
     vkb::SwapchainBuilder swapchain_builder{m_device, m_surface};
@@ -615,76 +685,6 @@ bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
     }
 
     return true;
-}
-
-bool VulkanContext::create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc)
-{
-    if (!SDL_Vulkan_CreateSurface(window.get_window(), m_instance, nullptr, &m_surface))
-    {
-        return false;
-    }
-
-    return create_swapchain(swapchain_desc);
-}
-
-bool VulkanContext::resize_swapchain(Swapchain* swapchain, int width, int height)
-{
-    wait_idle(GRAPHICS);
-
-    m_swapchain.swapchain.destroy_image_views(m_swapchain.image_views);
-
-    SwapchainDesc desc = *swapchain;
-    desc.width = static_cast<unsigned>(width);
-    desc.height = static_cast<unsigned>(height);
-
-    if (!create_swapchain(desc))
-    {
-        return false;
-    }
-
-    *swapchain = desc;
-
-    return true;
-}
-
-bool VulkanContext::acquire_swapchain_image()
-{
-    const unsigned sem_index = m_frame_count % m_image_available_semaphores.size();
-    if (VK_FAILED(vkAcquireNextImageKHR(m_device.device,
-                                        m_swapchain.swapchain.swapchain,
-                                        std::numeric_limits<uint64_t>::max(),
-                                        m_image_available_semaphores[sem_index],
-                                        VK_NULL_HANDLE,
-                                        &m_swapchain_index)))
-    {
-        return false;
-    }
-    return true;
-}
-
-bool VulkanContext::present(const Swapchain& swapchain)
-{
-    const auto wait_semaphore = m_render_finished_semaphores[m_swapchain_index];
-    const VkPresentInfoKHR present_info{
-        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &wait_semaphore,
-        .swapchainCount = 1,
-        .pSwapchains = &m_swapchain.swapchain.swapchain,
-        .pImageIndices = &m_swapchain_index,
-    };
-    // TODO: Present on different queue?
-    if (VK_FAILED(vkQueuePresentKHR(m_graphics_queue.queue, &present_info)))
-    {
-        return false;
-    }
-    ++m_frame_count;
-    return true;
-}
-
-unsigned VulkanContext::get_frame_slot(const unsigned slot_count) const
-{
-    return slot_count > 0 ? m_frame_count % slot_count : 0;
 }
 
 namespace
