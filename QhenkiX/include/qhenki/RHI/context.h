@@ -37,7 +37,7 @@ public:
     virtual bool is_compatibility() const = 0;
 
     virtual bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc) = 0;
-    virtual bool resize_swapchain(Swapchain* swapchain, int width, int height) = 0;
+    virtual bool resize_swapchain(Swapchain* swapchain, unsigned width, unsigned height) = 0;
     /**
      * Update the internal index of the next available swapchain image to render to. This should be called once at the
      * beginning at each frame.

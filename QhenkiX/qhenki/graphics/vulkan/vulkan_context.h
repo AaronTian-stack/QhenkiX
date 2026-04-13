@@ -63,7 +63,7 @@ public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
     bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc) override;
-    bool resize_swapchain(Swapchain* swapchain, int width, int height) override;
+    bool resize_swapchain(Swapchain* swapchain, unsigned width, unsigned height) override;
     bool acquire_swapchain_image() override;
     bool present(const Swapchain& swapchain) override;
     unsigned get_frame_slot(unsigned slot_count) const override;
@@ -201,6 +201,8 @@ public:
     friend class VulkanDescriptorHeap;
 
 private:
+    bool create_swapchain(const SwapchainDesc& swapchain_desc);
+
     VkDeviceSize get_reserved_range(DescriptorHeapDesc::Type type) const;
     bool create_descriptor_buffer(const Buffer& buffer,
                                   DescriptorHeap* heap,

@@ -32,7 +32,7 @@ public:
     std::string create(bool enable_debug_layer) override;
     bool is_compatibility() const override;
     bool create_swapchain(const DisplayWindow& window, const SwapchainDesc& swapchain_desc) override;
-    bool resize_swapchain(Swapchain* swapchain, int width, int height) override;
+    bool resize_swapchain(Swapchain* swapchain, unsigned width, unsigned height) override;
     bool acquire_swapchain_image() override;
     bool present(const Swapchain& swapchain) override;
     unsigned get_frame_slot(unsigned slot_count) const override;

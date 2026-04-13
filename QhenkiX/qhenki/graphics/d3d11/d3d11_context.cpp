@@ -285,7 +285,7 @@ bool D3D11Context::create_swapchain(const DisplayWindow& window, const Swapchain
     return true;
 }
 
-bool D3D11Context::resize_swapchain(Swapchain* const swapchain, const int width, const int height)
+bool D3D11Context::resize_swapchain(Swapchain* const swapchain, const unsigned width, const unsigned height)
 {
     m_device_context->Flush();
 
