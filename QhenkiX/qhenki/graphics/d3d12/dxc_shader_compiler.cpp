@@ -295,6 +295,8 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
         args[args_idx++] = L"-fvk-use-dx-layout";
         args[args_idx++] = L"-fvk-use-dx-position-w";
         args[args_idx++] = L"-fspv-target-env=vulkan1.3";
+        args[args_idx++] = L"-fspv-preserve-bindings";
+        args[args_idx++] = L"-fspv-preserve-interface";
     }
 
     if (input.flags & CompilerInput::DEBUG)
