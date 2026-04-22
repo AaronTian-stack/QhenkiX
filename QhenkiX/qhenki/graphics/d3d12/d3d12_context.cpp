@@ -785,10 +785,10 @@ bool D3D12Context::create_pipeline_layout(PipelineLayoutDesc* const desc, Pipeli
         size += range.size;
         if (size > 128)
         {
-            // TODO: Ban this outright?
-            // Issue warning that this breaks Vulkan compability
+            // This breaks Vulkan compability
             OutputDebugStringA(
-                "Qhenki D3D12 WARNING: Root constant exceeds 128 bytes which breaks compability with Vulkan\n");
+                "Qhenki D3D12 ERROR: Root constant exceeds 128 bytes which breaks compability with Vulkan\n");
+            return false;
         }
     }
 
