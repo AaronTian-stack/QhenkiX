@@ -475,7 +475,7 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
     return create_swapchain(swapchain_desc);
 }
 
-bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, unsigned height)
+bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, const unsigned height)
 {
     wait_idle(GRAPHICS);
 
@@ -1415,7 +1415,10 @@ bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
     const VkPushDataInfoEXT push_data_info{.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
                                            .offset = static_cast<uint32_t>(PUSH_RESERVED_START_OFFSET +
                                                                            table_index * sizeof(uint32_t)),
-                                           .data = {.address = &absolute_offset, .size = sizeof(uint32_t)}};
+                                           .data = {
+                                               .address = &absolute_offset,
+                                               .size = sizeof(uint32_t),
+                                           }};
     vkCmdPushDataEXT(vk_cmd_list->cmd_buf, &push_data_info);
 
     return true;
