@@ -2,9 +2,10 @@
 
 #include "dxc_include_handler.h"
 
-#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
-#include <stdexcept>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
@@ -14,118 +15,12 @@
 
 #include <qhenki/memory/arena.h>
 
-#include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
+#include "qhenki/utility/shader_model_util.h"
 #include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
 using namespace qhenki::util;
-
-DXGI_FORMAT DXCShaderCompiler::mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type)
-{
-    switch (type)
-    {
-    case D3D_REGISTER_COMPONENT_UNKNOWN:
-        throw std::runtime_error("DXCShaderCompiler: mask_to_format: Unknown component type");
-    case D3D_REGISTER_COMPONENT_UINT32:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R32_UINT;
-        case 0x3:
-            return DXGI_FORMAT_R32G32_UINT;
-        case 0x7:
-            return DXGI_FORMAT_R32G32B32_UINT;
-        case 0xF:
-            return DXGI_FORMAT_R32G32B32A32_UINT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: uint32 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_SINT32:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R32_SINT;
-        case 0x3:
-            return DXGI_FORMAT_R32G32_SINT;
-        case 0x7:
-            return DXGI_FORMAT_R32G32B32_SINT;
-        case 0xF:
-            return DXGI_FORMAT_R32G32B32A32_SINT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: sint32 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_FLOAT32:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R32_FLOAT;
-        case 0x3:
-            return DXGI_FORMAT_R32G32_FLOAT;
-        case 0x7:
-            return DXGI_FORMAT_R32G32B32_FLOAT;
-        case 0xF:
-            return DXGI_FORMAT_R32G32B32A32_FLOAT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: float32 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_UINT16:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R16_UINT;
-        case 0x3:
-            return DXGI_FORMAT_R16G16_UINT;
-        case 0x7:
-            throw std::runtime_error("DXCShaderCompiler: 3 component uint16 mask");
-        case 0xF:
-            return DXGI_FORMAT_R16G16B16A16_UINT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: uint16 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_SINT16:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            throw std::runtime_error("DXCShaderCompiler: 1 component sint16 mask");
-        case 0x3:
-            return DXGI_FORMAT_R16G16_SINT;
-        case 0x7:
-            throw std::runtime_error("DXCShaderCompiler: 3 component sint16 mask");
-        case 0xF:
-            return DXGI_FORMAT_R16G16B16A16_SINT;
-        }
-    }
-    case D3D_REGISTER_COMPONENT_FLOAT16:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R16_FLOAT;
-        case 0x3:
-            return DXGI_FORMAT_R16G16_FLOAT;
-        case 0x7:
-            throw std::runtime_error("DXCShaderCompiler: 3 component float16 mask");
-        case 0xF:
-            return DXGI_FORMAT_R16G16B16A16_FLOAT;
-        }
-    }
-    case D3D_REGISTER_COMPONENT_UINT64:
-    case D3D_REGISTER_COMPONENT_SINT64:
-    case D3D_REGISTER_COMPONENT_FLOAT64:
-        throw std::runtime_error("DXCShaderCompiler: 64 bit component type not supported");
-    }
-    return DXGI_FORMAT_UNKNOWN;
-}
 
 DXCShaderCompiler::DXCShaderCompiler()
 {

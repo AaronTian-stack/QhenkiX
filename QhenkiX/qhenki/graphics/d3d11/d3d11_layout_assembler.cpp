@@ -1,5 +1,6 @@
 #include "d3d11_layout_assembler.h"
 
+#include "qhenki/utility/d3d_reflection_util.h"
 #include "qhenki/utility/string_util.h"
 
 #include <d3d11shader.h>
@@ -141,74 +142,16 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
             .InstanceDataStepRate = 0,
         };
 
-        if (param_desc.Mask == 1)
-        {
-            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32_UINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32_SINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32_FLOAT;
-            }
-        }
-        else if (param_desc.Mask <= 3)
-        {
-            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32_UINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32_SINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32_FLOAT;
-            }
-        }
-        else if (param_desc.Mask <= 7)
-        {
-            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32B32_UINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32B32_SINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-            }
-        }
-        else if (param_desc.Mask <= 15)
-        {
-            if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32B32A32_UINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32B32A32_SINT;
-            }
-            else if (param_desc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32)
-            {
-                element_desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-            }
-        }
-        else
+        element_desc.Format = qhenki::gfx::mask_to_format(param_desc.Mask, param_desc.ComponentType);
+        if (element_desc.Format == DXGI_FORMAT_UNKNOWN)
         {
             const auto error_msg =
-                qhenki::util::format_string<256>("D3D11: Unsupported input format for %s[%d] with mask %d\n",
+                util::format_string<256>("D3D11: Unsupported input format for %s[%d] with mask %d\n",
                                                  param_desc.SemanticName,
                                                  param_desc.SemanticIndex,
                                                  param_desc.Mask);
             OutputDebugStringA(error_msg.buffer.data());
+            continue;
         }
 
         if (increment_slot)
@@ -248,7 +191,6 @@ ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11De
     {
         return nullptr;
     }
-
 
     std::scoped_lock lock(m_layout_mutex);
     find_layout(input_layout_desc)

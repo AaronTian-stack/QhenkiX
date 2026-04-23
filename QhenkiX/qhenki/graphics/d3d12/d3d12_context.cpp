@@ -21,6 +21,7 @@
 #include "d3d12_fence.h"
 #include "d3d12_texture.h"
 
+#include "qhenki/utility/d3d_reflection_util.h"
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/gfx_util.h"
 #include "qhenki/utility/string_util.h"
@@ -457,14 +458,20 @@ D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection
 
             if (FAILED(hr))
             {
-                continue;
+                return nullptr;
+            }
+
+            const auto format = qhenki::gfx::mask_to_format(signature_parameter_desc.Mask,
+                                                            signature_parameter_desc.ComponentType);
+            if (format == DXGI_FORMAT_UNKNOWN)
+            {
+                return nullptr;
             }
 
             input_element_desc[parameter_index] = D3D12_INPUT_ELEMENT_DESC{
                 .SemanticName = signature_parameter_desc.SemanticName,
                 .SemanticIndex = signature_parameter_desc.SemanticIndex,
-                .Format = DXCShaderCompiler::mask_to_format(signature_parameter_desc.Mask,
-                                                            signature_parameter_desc.ComponentType),
+                .Format = format,
                 .InputSlot = increment_slot ? slot++ : 0u,
                 .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
                 .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -529,6 +536,11 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
         }
 
         input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
+        if (input_layout_desc == nullptr)
+        {
+            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get input layout description\n");
+            return false;
+        }
 
         pso_desc.VS = {.pShaderBytecode = vertex_shader.data, .BytecodeLength = vertex_shader.size};
         pso_desc.PS = {.pShaderBytecode = pixel_shader.data, .BytecodeLength = pixel_shader.size};

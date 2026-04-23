@@ -64,6 +64,7 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/memory/arena.cpp"
 
+    "${QHENKIX_DIR}/utility/d3d_reflection_util.cpp"
     "${QHENKIX_DIR}/utility/gfx_util.cpp"
     "${QHENKIX_DIR}/utility/file_util.cpp"
     "${QHENKIX_DIR}/utility/shader_model_util.cpp"
@@ -98,6 +99,8 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/dxc_com_ptr.h"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.h"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
+
+    "${QHENKIX_DIR}/utility/d3d_reflection_util.h"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
