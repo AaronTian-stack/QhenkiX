@@ -110,23 +110,6 @@ void RetroExampleApp::create()
     std::string err;
     std::string warn;
 
-    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "assets/cylinder.glb");
-    assert(model.meshes.size() == 1);
-    assert(model.meshes[0].primitives.size() == 1);
-    auto& prim = model.meshes[0].primitives[0];
-    if (!warn.empty())
-    {
-        printf("Warn: %s\n", warn.c_str());
-    }
-    if (!err.empty())
-    {
-        printf("Err: %s\n", err.c_str());
-    }
-    if (!ret)
-    {
-        printf("Failed to parse glTF\n");
-    }
-
     auto set_accessor = [&model, this](Mesh::AccessorBufferView* abv, const int accessor_idx)
     {
         const auto& accessor = model.accessors[accessor_idx];
@@ -143,6 +126,11 @@ void RetroExampleApp::create()
             .stride = buffer_view.byteStride,
         };
     };
+
+    THROW_IF_FALSE(loader.LoadBinaryFromFile(&model, &err, &warn, "assets/cylinder.glb"));
+    assert(model.meshes.size() == 1);
+    assert(model.meshes[0].primitives.size() == 1);
+    auto& prim = model.meshes[0].primitives[0];
 
     set_accessor(&m_skybox_mesh.position, prim.attributes.at("POSITION"));
     set_accessor(&m_skybox_mesh.index, prim.indices);
@@ -196,14 +184,11 @@ void RetroExampleApp::create()
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
     tinygltf::Model stencil_model;
-    bool stencil_ret = loader.LoadBinaryFromFile(&stencil_model, &err, &warn, "assets/cylinder_capped.glb");
+    THROW_IF_FALSE(loader.LoadBinaryFromFile(&stencil_model, &err, &warn, "assets/cylinder_capped.glb"));
     assert(stencil_model.meshes.size() == 1);
     assert(stencil_model.meshes[0].primitives.size() == 1);
     auto& stencil_prim = stencil_model.meshes[0].primitives[0];
-    if (!stencil_ret)
-    {
-        printf("Failed to parse cylinder_capped.glb: %s\n", err.c_str());
-    }
+
     auto set_accessor_stencil = [&stencil_model](Mesh::AccessorBufferView* abv, const int accessor_idx)
     {
         const auto& accessor = stencil_model.accessors[accessor_idx];
@@ -246,14 +231,11 @@ void RetroExampleApp::create()
     m_context->copy_buffer(&cmd_list_init, stencil_CPU, 0, &m_stencil_mesh.buffer, 0, stencil_buffer.data.size());
 
     tinygltf::Model cube_model;
-    bool cube_ret = loader.LoadBinaryFromFile(&cube_model, &err, &warn, "assets/bevel_cube.glb");
+    THROW_IF_FALSE(loader.LoadBinaryFromFile(&cube_model, &err, &warn, "assets/bevel_cube.glb"));
     assert(cube_model.meshes.size() == 1);
     assert(cube_model.meshes[0].primitives.size() == 1);
     auto& cube_prim = cube_model.meshes[0].primitives[0];
-    if (!cube_ret)
-    {
-        printf("Failed to parse bevel_cube.glb: %s\n", err.c_str());
-    }
+
     auto set_accessor_cube = [&cube_model](Mesh::AccessorBufferView* abv, const int accessor_idx)
     {
         const auto& accessor = cube_model.accessors[accessor_idx];
@@ -300,7 +282,7 @@ void RetroExampleApp::create()
 
     const wchar_t* skybox_path = L"assets/skybox.dds";
     ScratchImage scratch;
-    TexMetadata meta = {};
+    TexMetadata meta;
     const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
     THROW_IF_TRUE(FAILED(hr));
     assert(meta.width <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()));
