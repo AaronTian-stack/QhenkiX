@@ -230,9 +230,9 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     if (!is_library)
     {
         args[args_idx++] = L"-E";
-        utf8::utf8to16(input.entry_point.begin(),
-                       input.entry_point.end(),
-                       std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
+        utf8::unchecked::utf8to16(input.entry_point.begin(),
+                                  input.entry_point.end(),
+                                  std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
         args[args_idx++] = w_entry_point.c_str();
     }
 
@@ -254,7 +254,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
             output.error_message = "DXCShaderCompiler: Widen buffer overflow";
             return false;
         }
-        utf8::utf8to16(str.begin(), str.end(), w_buffer + w_buffer_p);
+        utf8::unchecked::utf8to16(str.begin(), str.end(), w_buffer + w_buffer_p);
         w_buffer[w_buffer_p + str.size()] = L'\0'; // Null terminate the string
         args[args_idx++] = w_buffer + w_buffer_p;
         w_buffer_p += 1 + str.size(); // Move pointer forward
