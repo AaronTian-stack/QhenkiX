@@ -166,7 +166,7 @@ if(QHENKIX_PREBUILT_LIB)
         spirv-cross-core
         spirv-cross-glsl
     )
-    if(WIN32)
+    if(QHENKIX_SYSTEM_LIBS)
         target_link_libraries(QhenkiX INTERFACE ${QHENKIX_SYSTEM_LIBS})
     endif()
 else()
