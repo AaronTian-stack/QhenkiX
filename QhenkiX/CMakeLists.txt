@@ -95,6 +95,7 @@ if(WIN32)
 endif()
 
 set(QHENKIX_PRIVATE_HEADERS
+    "${QHENKIX_DIR}/graphics/d3d12/dxc_com_ptr.h"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.h"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
 

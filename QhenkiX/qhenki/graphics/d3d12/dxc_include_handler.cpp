@@ -1,9 +1,6 @@
 #include "dxc_include_handler.h"
 
-#include <wrl/client.h>
 #include <filesystem>
-
-using Microsoft::WRL::ComPtr;
 
 namespace fs = std::filesystem;
 
