@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <concepts>
+#include <cstdint>
 
 namespace qhenki::util
 {
