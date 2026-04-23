@@ -4,7 +4,7 @@
 
 struct CliOptions
 {
-    qhenki::gfx::API api = qhenki::gfx::API::D3D12;
+    qhenki::gfx::API api;
     bool debug_layer = false;
     bool tearing = false;
     bool fullscreen = false;
