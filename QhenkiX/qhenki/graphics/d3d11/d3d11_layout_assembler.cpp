@@ -145,11 +145,10 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
         element_desc.Format = qhenki::gfx::mask_to_format(param_desc.Mask, param_desc.ComponentType);
         if (element_desc.Format == DXGI_FORMAT_UNKNOWN)
         {
-            const auto error_msg =
-                util::format_string<256>("D3D11: Unsupported input format for %s[%d] with mask %d\n",
-                                                 param_desc.SemanticName,
-                                                 param_desc.SemanticIndex,
-                                                 param_desc.Mask);
+            const auto error_msg = util::format_string<256>("D3D11: Unsupported input format for %s[%d] with mask %d\n",
+                                                            param_desc.SemanticName,
+                                                            param_desc.SemanticIndex,
+                                                            param_desc.Mask);
             OutputDebugStringA(error_msg.buffer.data());
             continue;
         }
