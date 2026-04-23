@@ -1,7 +1,9 @@
 #include "qhenki/application.h"
 
+#if defined(_WIN32) || defined(_WIN64)
 #include "graphics/d3d11/d3d11_context.h"
 #include "graphics/d3d12/d3d12_context.h"
+#endif
 #include "graphics/vulkan/vulkan_context.h"
 
 #include <imgui.h>
@@ -69,11 +71,27 @@ void Application::run(const gfx::API api,
     switch (api)
     {
     case gfx::API::D3D11:
+#if defined(_WIN32) || defined(_WIN64)
         m_context = mkU<gfx::D3D11Context>();
         break;
+#else
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                 "ERROR",
+                                 "D3D11 graphics backend is not available on this platform",
+                                 nullptr);
+        return;
+#endif
     case gfx::API::D3D12:
+#if defined(_WIN32) || defined(_WIN64)
         m_context = mkU<gfx::D3D12Context>();
         break;
+#else
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                 "ERROR",
+                                 "D3D12 graphics backend is not available on this platform",
+                                 nullptr);
+        return;
+#endif
     case gfx::API::Vulkan:
         m_context = mkU<gfx::VulkanContext>();
         break;
