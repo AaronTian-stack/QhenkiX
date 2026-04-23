@@ -36,13 +36,21 @@ bool parse_cli_args(int argc, char* argv[], const char* program_name, CliOptions
     {
         out_options->api = qhenki::gfx::API::D3D11;
     }
+    else if (program.get<bool>("-dx12"))
+    {
+        out_options->api = qhenki::gfx::API::D3D12;
+    }
     else if (program.get<bool>("-vk"))
     {
         out_options->api = qhenki::gfx::API::Vulkan;
     }
     else
     {
+#if defined(_WIN32) || defined(_WIN64)
         out_options->api = qhenki::gfx::API::D3D12;
+#else
+        out_options->api = qhenki::gfx::API::Vulkan;
+#endif
     }
 
     out_options->debug_layer = program.get<bool>("--debug");
