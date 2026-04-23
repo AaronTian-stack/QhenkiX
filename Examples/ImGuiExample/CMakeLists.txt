@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 project(ImGuiExample LANGUAGES CXX)
 
 include("${REPO_ROOT}/Examples/cmake/CompileShaders.cmake")
+include("${REPO_ROOT}/Examples/cmake/ExampleTarget.cmake")
 
 file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.hlsl")
 set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
@@ -36,11 +37,7 @@ target_include_directories(ImGuiExample PRIVATE
 
 target_link_libraries(ImGuiExample PRIVATE QhenkiX)
 
-# Set working directory for Visual Studio debugging
-set_target_properties(ImGuiExample PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    FOLDER "Examples"
-)
+qhenkix_configure_example_target(ImGuiExample)
 
 add_custom_command(TARGET ImGuiExample POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
