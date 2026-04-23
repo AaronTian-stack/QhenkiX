@@ -124,10 +124,17 @@ void Application::run(const gfx::API api,
         };
     }
 
-    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain));
+    if (!m_context->create_swapchain(m_window, m_swapchain))
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", "Failed to create swapchain", nullptr);
+        return;
+    }
 
-    // Create fences
-    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, 0));
+    if (!m_context->create_fence(&m_fence_frame_ready, 0))
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", "Failed to create fence", nullptr);
+        return;
+    }
 
     create();
     resize(m_window.m_display_info.width, m_window.m_display_info.height);
