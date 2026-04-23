@@ -10,7 +10,8 @@
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #elif defined(__APPLE__) || defined(__linux__)
-// TODO
+#include <dlfcn.h>
+#include <climits>
 #endif
 
 #include <qhenki/memory/arena.h>
@@ -26,11 +27,13 @@ DXCShaderCompiler::DXCShaderCompiler()
 {
     if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
     {
-        throw std::runtime_error("DXCShaderCompiler: Failed to create DxcLibrary");
+        fprintf(stderr, "DXCShaderCompiler: Failed to create DxcLibrary\n");
+        abort();
     }
     if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_compiler.ReleaseAndGetAddressOf()))))
     {
-        throw std::runtime_error("DXCShaderCompiler: Failed to create DxcCompiler");
+        fprintf(stderr, "DXCShaderCompiler: Failed to create DxcCompiler\n");
+        abort();
     }
 }
 
@@ -52,16 +55,30 @@ const char* get_dxc_library_name()
 
 bool DXCShaderCompiler::get_compiler_path(char* buffer, const size_t length)
 {
+    if (buffer == nullptr || length == 0)
+    {
+        return false;
+    }
 #if defined(_WIN32) || defined(_WIN64)
     if (const auto dx_compiler = GetModuleHandleA(get_dxc_library_name()))
     {
         return GetModuleFileNameA(dx_compiler, buffer, static_cast<DWORD>(length)) != 0;
     }
     return false;
-#elif defined(__APPLE__)
-    // TODO
-#elif defined(__linux__)
-    // TODO
+#elif defined(__APPLE__) || defined(__linux__)
+    Dl_info info{};
+    if (dladdr(reinterpret_cast<const void*>(&DxcCreateInstance), &info) == 0 || info.dli_fname == nullptr)
+    {
+        return false;
+    }
+
+    assert(length >= PATH_MAX);
+    if (realpath(info.dli_fname, buffer))
+    {
+        return true;
+    }
+
+    return false;
 #else
     return false;
 #endif
