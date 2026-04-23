@@ -1,4 +1,5 @@
 #include "gltf_loader.h"
+#include "example_shared/macros.h"
 #include "gltf_model.h"
 
 // Define these only in *one* .cc file.

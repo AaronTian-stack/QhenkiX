@@ -1,4 +1,5 @@
 #include "gltf_viewer_app.h"
+#include "example_shared/macros.h"
 #include "example_shared/shader_loader.h"
 #include "example_shared/window_init.h"
 #include "shared_structs.h"

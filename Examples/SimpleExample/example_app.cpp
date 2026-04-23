@@ -1,5 +1,6 @@
 #include "example_app.h"
 #include <wrl/client.h>
+#include "example_shared/macros.h"
 #include "example_shared/shader_loader.h"
 #include "example_shared/window_init.h"
 
