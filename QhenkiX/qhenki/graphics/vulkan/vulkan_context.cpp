@@ -2393,8 +2393,7 @@ void VulkanContext::set_scissor_rects(CommandList* list, const unsigned count, c
     {
         vk_scissors[i] = {
             .offset = {scissor_rect[i].left, scissor_rect[i].top},
-            .extent = {static_cast<uint32_t>(scissor_rect[i].right - scissor_rect[i].left),
-                       static_cast<uint32_t>(scissor_rect[i].bottom - scissor_rect[i].top)},
+            .extent = {scissor_rect[i].right - scissor_rect[i].left, scissor_rect[i].bottom - scissor_rect[i].top},
         };
     }
     const auto vk_cmd_list = to_internal(*list);

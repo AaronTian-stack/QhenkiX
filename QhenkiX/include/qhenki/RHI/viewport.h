@@ -14,11 +14,11 @@ struct Viewport
 
 struct Rect
 {
-    long left;
-    long top;
-    long front;
-    long right;
-    long bottom;
-    long back;
+    int32_t left;
+    int32_t top;
+    uint32_t front;
+    uint32_t right;
+    uint32_t bottom;
+    uint32_t back;
 };
 } // namespace qhenki::gfx

@@ -510,8 +510,8 @@ void gltfViewerApp::render()
         .left = 0,
         .top = 0,
         .front = 0,
-        .right = static_cast<long>(dim.x),
-        .bottom = static_cast<long>(dim.y),
+        .right = dim.x,
+        .bottom = dim.y,
         .back = 0,
     };
     m_context->set_viewports(&cmd_list, 1, &viewport);
