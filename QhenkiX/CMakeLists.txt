@@ -31,12 +31,17 @@ set(IMGUI_SOURCES
     "${IMGUI_DIR}/imgui_tables.cpp"
     "${IMGUI_DIR}/imgui_widgets.cpp"
     "${IMGUI_DIR}/imgui_demo.cpp"
-    "${IMGUI_DIR}/backends/imgui_impl_win32.cpp"
-    "${IMGUI_DIR}/backends/imgui_impl_dx11.cpp"
-    "${IMGUI_DIR}/backends/imgui_impl_dx12.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp"
 )
+if(WIN32)
+    list(APPEND IMGUI_SOURCES
+        "${IMGUI_DIR}/backends/imgui_impl_win32.cpp"
+        "${IMGUI_DIR}/backends/imgui_impl_dx11.cpp"
+        "${IMGUI_DIR}/backends/imgui_impl_dx12.cpp"
+    )
+endif()
+
 set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/application.cpp"
     "${QHENKIX_DIR}/graphics/camera.cpp"
@@ -45,18 +50,6 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/perspective_camera_component.cpp"
     "${QHENKIX_DIR}/graphics/2d/spritebatch.cpp"
 
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_context.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.cpp"
-    "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.cpp"
-
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.cpp"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.cpp"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.cpp"
 
@@ -71,38 +64,39 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/memory/arena.cpp"
 
-    "${QHENKIX_DIR}/utility/d3d_util.cpp"
     "${QHENKIX_DIR}/utility/gfx_util.cpp"
     "${QHENKIX_DIR}/utility/file_util.cpp"
-    "${QHENKIX_DIR}/utility/vulkan_util.cpp"  
-
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12DescriptorHelpers/RenderTargetHelper.cpp"
+    "${QHENKIX_DIR}/utility/shader_model_util.cpp"
+    "${QHENKIX_DIR}/utility/vulkan_util.cpp"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.cpp"
 )
 
-set(QHENKIX_PRIVATE_HEADERS
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_context.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_texture.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.h"
-    "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.h"
-    "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
-    "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
+if(WIN32)
+    list(APPEND QHENKIX_SOURCES
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_context.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.cpp"
+        "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.cpp"
 
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.h"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.h"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_fence.h"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_pipeline.h"
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.cpp"
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.cpp"
+
+        "${QHENKIX_DIR}/utility/d3d_util.cpp"
+
+        "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12DescriptorHelpers/RenderTargetHelper.cpp"
+    )
+endif()
+
+set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.h"
     "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
-    "${QHENKIX_DIR}/graphics/d3d12/d3d12_command_list.h"
-    "${QHENKIX_DIR}/utility/d3d_util.h"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
@@ -117,6 +111,29 @@ set(QHENKIX_PRIVATE_HEADERS
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"
 )
+
+if(WIN32)
+    list(APPEND QHENKIX_PRIVATE_HEADERS
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_context.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_layout_assembler.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_multithread.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_pipeline.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_texture.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.h"
+        "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
+        "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
+
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.h"
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.h"
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_fence.h"
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_pipeline.h"
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
+        "${QHENKIX_DIR}/graphics/d3d12/d3d12_command_list.h"
+        "${QHENKIX_DIR}/utility/d3d_util.h"
+    )
+endif()
 
 set(QHENKIX_PUBLIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/qhenki")
 
@@ -134,6 +151,7 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/utility/general_util.h"
     "${QHENKIX_PUBLIC_DIR}/utility/directxmath_compat.h"
     "${QHENKIX_PUBLIC_DIR}/utility/math_util.h"
+    "${QHENKIX_PUBLIC_DIR}/utility/shader_model_util.h"
     "${QHENKIX_PUBLIC_DIR}/utility/string_util.h"
 
     "${QHENKIX_PUBLIC_DIR}/input/input_manager.h"
@@ -200,6 +218,12 @@ if(TARGET DirectXMath AND NOT TARGET Microsoft::DirectXMath)
 endif()
 if(TARGET DirectXMath)
     target_compile_definitions(DirectXMath INTERFACE _XM_NO_XMVECTOR_OVERLOADS_)
+    # For sal.h at external/
+    if(NOT WIN32)
+        target_include_directories(DirectXMath
+            INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external>
+        )
+    endif()
 endif()
 set(directxmath_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH "" FORCE)
 
@@ -237,6 +261,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC vk-bootstrap::vk-bootstrap)
 set(SPIRV_CROSS_STATIC ON CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
+target_compile_definitions(${PROJECT_NAME} PRIVATE SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS)
 qhenkix_add_dependency_subdirectory(external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
 target_link_libraries(${PROJECT_NAME} PUBLIC spirv-cross-core spirv-cross-glsl)
 
