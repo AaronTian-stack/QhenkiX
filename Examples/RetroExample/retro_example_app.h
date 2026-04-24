@@ -25,11 +25,15 @@ class RetroExampleApp : public qhenki::Application
             size_t length = 0;
             size_t stride = 0;
         };
-        using AccessorBufferView = std::pair<Accessor, BufferView>;
-        AccessorBufferView position;
-        AccessorBufferView normal;
-        AccessorBufferView texcoord;
-        AccessorBufferView index;
+        struct AccessorBufferView
+        {
+            Accessor accessor{};
+            BufferView buffer_view{};
+        };
+        AccessorBufferView position{};
+        AccessorBufferView normal{};
+        AccessorBufferView texcoord{};
+        AccessorBufferView index{};
         qhenki::gfx::Buffer buffer{};
     };
 
