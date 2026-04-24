@@ -238,6 +238,9 @@ jobs:
         name: sxc-linux-${{ matrix.config }}
         path: prebuilt-sxc/
 
+    - name: Mark prebuilt SXC as executable
+      run: chmod +x prebuilt-sxc/SXC
+
     - name: Configure CMake
       run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-prebuilt-examples-debug' || 'linux-prebuilt-examples-release' }}
 
