@@ -961,10 +961,8 @@ void RetroExampleApp::render()
     const qhenki::gfx::Rect scissor_rect{
         .left = 0,
         .top = 0,
-        .front = 0,
-        .right = dim.x,
-        .bottom = dim.y,
-        .back = 0,
+        .width = dim.x,
+        .height = dim.y,
     };
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
@@ -1138,10 +1136,8 @@ void RetroExampleApp::render()
     const qhenki::gfx::Rect bloom_scissor{
         .left = 0,
         .top = 0,
-        .front = 0,
-        .right = bloom_w,
-        .bottom = bloom_h,
-        .back = 0,
+        .width = bloom_w,
+        .height = bloom_h,
     };
     m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &bloom_scissor);

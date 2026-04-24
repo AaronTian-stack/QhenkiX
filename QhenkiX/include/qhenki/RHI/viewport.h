@@ -16,9 +16,7 @@ struct Rect
 {
     int32_t left;
     int32_t top;
-    uint32_t front;
-    uint32_t right;
-    uint32_t bottom;
-    uint32_t back;
+    uint32_t width;
+    uint32_t height;
 };
 } // namespace qhenki::gfx

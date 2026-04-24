@@ -1115,8 +1115,8 @@ void D3D11Context::set_scissor_rects(CommandList* list, const unsigned count, co
         d3d11_rects[i] = {
             .left = scissor_rect[i].left,
             .top = scissor_rect[i].top,
-            .right = scissor_rect[i].right,
-            .bottom = scissor_rect[i].bottom,
+            .right = scissor_rect[i].left + static_cast<int32_t>(scissor_rect[i].width),
+            .bottom = scissor_rect[i].top + static_cast<int32_t>(scissor_rect[i].height),
         };
     }
     m_device_context->RSSetScissorRects(count, d3d11_rects.data());
