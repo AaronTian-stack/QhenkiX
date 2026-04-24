@@ -1,6 +1,7 @@
 #include <qhenki/RHI/shader_compiler.h>
 #include <qhenki/utility/string_util.h>
 #include <argparse/argparse.hpp>
+#include <cinttypes>
 #include <filesystem>
 #include <magic_enum/magic_enum.hpp>
 #include "compiler_job.h"
@@ -167,7 +168,7 @@ int main(int argc, char* argv[])
 
         const auto end = std::chrono::steady_clock::now();
 
-        printf("========== Build: %llu succeeded, %llu failed, %llu up-to-date ==========\n",
+        printf("========== Build: %" PRIu64 " succeeded, %" PRIu64 " failed, %" PRIu64 " up-to-date ==========\n",
                result_count.succeeded_count,
                result_count.failed_count,
                result_count.skipped_count);
