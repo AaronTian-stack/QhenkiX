@@ -1,4 +1,5 @@
 #include "retro_example_app.h"
+#include "example_shared/macros.h"
 #include "example_shared/shader_loader.h"
 #include "example_shared/window_init.h"
 #include "shared_structs.h"
@@ -109,39 +110,27 @@ void RetroExampleApp::create()
     std::string err;
     std::string warn;
 
-    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "assets/cylinder.glb");
-    assert(model.meshes.size() == 1);
-    assert(model.meshes[0].primitives.size() == 1);
-    auto& prim = model.meshes[0].primitives[0];
-    if (!warn.empty())
-    {
-        printf("Warn: %s\n", warn.c_str());
-    }
-    if (!err.empty())
-    {
-        printf("Err: %s\n", err.c_str());
-    }
-    if (!ret)
-    {
-        printf("Failed to parse glTF\n");
-    }
-
     auto set_accessor = [&model, this](Mesh::AccessorBufferView* abv, const int accessor_idx)
     {
         const auto& accessor = model.accessors[accessor_idx];
-        abv->first = {
+        abv->accessor = {
             .offset = accessor.byteOffset,
             .count = accessor.count,
             .type = accessor.type,
             .component_type = accessor.componentType,
         };
         const auto& buffer_view = model.bufferViews[accessor.bufferView];
-        abv->second = {
+        abv->buffer_view = {
             .offset = buffer_view.byteOffset,
             .length = buffer_view.byteLength,
             .stride = buffer_view.byteStride,
         };
     };
+
+    THROW_IF_FALSE(loader.LoadBinaryFromFile(&model, &err, &warn, "assets/cylinder.glb"));
+    assert(model.meshes.size() == 1);
+    assert(model.meshes[0].primitives.size() == 1);
+    auto& prim = model.meshes[0].primitives[0];
 
     set_accessor(&m_skybox_mesh.position, prim.attributes.at("POSITION"));
     set_accessor(&m_skybox_mesh.index, prim.indices);
@@ -195,25 +184,22 @@ void RetroExampleApp::create()
     m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
 
     tinygltf::Model stencil_model;
-    bool stencil_ret = loader.LoadBinaryFromFile(&stencil_model, &err, &warn, "assets/cylinder_capped.glb");
+    THROW_IF_FALSE(loader.LoadBinaryFromFile(&stencil_model, &err, &warn, "assets/cylinder_capped.glb"));
     assert(stencil_model.meshes.size() == 1);
     assert(stencil_model.meshes[0].primitives.size() == 1);
     auto& stencil_prim = stencil_model.meshes[0].primitives[0];
-    if (!stencil_ret)
-    {
-        printf("Failed to parse cylinder_capped.glb: %s\n", err.c_str());
-    }
+
     auto set_accessor_stencil = [&stencil_model](Mesh::AccessorBufferView* abv, const int accessor_idx)
     {
         const auto& accessor = stencil_model.accessors[accessor_idx];
-        abv->first = {
+        abv->accessor = {
             .offset = accessor.byteOffset,
             .count = accessor.count,
             .type = accessor.type,
             .component_type = accessor.componentType,
         };
         const auto& buffer_view = stencil_model.bufferViews[accessor.bufferView];
-        abv->second = {
+        abv->buffer_view = {
             .offset = buffer_view.byteOffset,
             .length = buffer_view.byteLength,
             .stride = buffer_view.byteStride,
@@ -245,25 +231,22 @@ void RetroExampleApp::create()
     m_context->copy_buffer(&cmd_list_init, stencil_CPU, 0, &m_stencil_mesh.buffer, 0, stencil_buffer.data.size());
 
     tinygltf::Model cube_model;
-    bool cube_ret = loader.LoadBinaryFromFile(&cube_model, &err, &warn, "assets/bevel_cube.glb");
+    THROW_IF_FALSE(loader.LoadBinaryFromFile(&cube_model, &err, &warn, "assets/bevel_cube.glb"));
     assert(cube_model.meshes.size() == 1);
     assert(cube_model.meshes[0].primitives.size() == 1);
     auto& cube_prim = cube_model.meshes[0].primitives[0];
-    if (!cube_ret)
-    {
-        printf("Failed to parse bevel_cube.glb: %s\n", err.c_str());
-    }
+
     auto set_accessor_cube = [&cube_model](Mesh::AccessorBufferView* abv, const int accessor_idx)
     {
         const auto& accessor = cube_model.accessors[accessor_idx];
-        abv->first = {
+        abv->accessor = {
             .offset = accessor.byteOffset,
             .count = accessor.count,
             .type = accessor.type,
             .component_type = accessor.componentType,
         };
         const auto& buffer_view = cube_model.bufferViews[accessor.bufferView];
-        abv->second = {
+        abv->buffer_view = {
             .offset = buffer_view.byteOffset,
             .length = buffer_view.byteLength,
             .stride = buffer_view.byteStride,
@@ -299,7 +282,7 @@ void RetroExampleApp::create()
 
     const wchar_t* skybox_path = L"assets/skybox.dds";
     ScratchImage scratch;
-    TexMetadata meta = {};
+    TexMetadata meta;
     const auto hr = LoadFromDDSFile(skybox_path, DDS_FLAGS_NONE, &meta, scratch);
     THROW_IF_TRUE(FAILED(hr));
     assert(meta.width <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()));
@@ -978,10 +961,8 @@ void RetroExampleApp::render()
     const qhenki::gfx::Rect scissor_rect{
         .left = 0,
         .top = 0,
-        .front = 0,
-        .right = static_cast<long>(dim.x),
-        .bottom = static_cast<long>(dim.y),
-        .back = 0,
+        .width = dim.x,
+        .height = dim.y,
     };
     m_context->set_viewports(&cmd_list, 1, &viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &scissor_rect);
@@ -1045,16 +1026,16 @@ void RetroExampleApp::render()
     };
     auto vb_offset = [](const Mesh::AccessorBufferView& abv)
     {
-        return abv.second.offset + abv.first.offset;
+        return abv.buffer_view.offset + abv.accessor.offset;
     };
     auto vb_length = [](const Mesh::AccessorBufferView& abv)
     {
-        return abv.second.length;
+        return abv.buffer_view.length;
     };
     auto vb_stride = [&stride_from_accessor](const Mesh::AccessorBufferView& abv)
     {
-        return abv.second.stride != 0 ? abv.second.stride
-                                      : stride_from_accessor(abv.first.component_type, abv.first.type);
+        return abv.buffer_view.stride != 0 ? abv.buffer_view.stride
+                                           : stride_from_accessor(abv.accessor.component_type, abv.accessor.type);
     };
     const std::array skybox_vbs = {&m_skybox_buffer};
     const std::array skybox_vb_offsets = {vb_offset(m_skybox_mesh.position)};
@@ -1067,13 +1048,13 @@ void RetroExampleApp::render()
                                    skybox_vb_lengths.data(),
                                    skybox_vb_strides.data(),
                                    skybox_vb_offsets.data());
-    const unsigned index_offset = static_cast<unsigned>(m_skybox_mesh.index.second.offset +
-                                                        m_skybox_mesh.index.first.offset);
-    const auto index_type = m_skybox_mesh.index.first.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+    const unsigned index_offset = static_cast<unsigned>(m_skybox_mesh.index.buffer_view.offset +
+                                                        m_skybox_mesh.index.accessor.offset);
+    const auto index_type = m_skybox_mesh.index.accessor.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
                               ? qhenki::gfx::IndexType::UINT16
                               : qhenki::gfx::IndexType::UINT32;
     m_context->bind_index_buffer(&cmd_list, m_skybox_buffer, index_type, index_offset);
-    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_skybox_mesh.index.first.count), 1, 0, 0, 0);
+    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_skybox_mesh.index.accessor.count), 1, 0, 0, 0);
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_cube_pipeline));
     m_context->draw(&cmd_list, 36u, 0);
@@ -1082,9 +1063,10 @@ void RetroExampleApp::render()
     const std::array bevel_vb_offsets = {vb_offset(m_bevel_cube_mesh.position), vb_offset(m_bevel_cube_mesh.normal)};
     const std::array bevel_vb_lengths = {vb_length(m_bevel_cube_mesh.position), vb_length(m_bevel_cube_mesh.normal)};
     const std::array bevel_vb_strides = {vb_stride(m_bevel_cube_mesh.position), vb_stride(m_bevel_cube_mesh.normal)};
-    const unsigned bevel_index_offset = static_cast<unsigned>(m_bevel_cube_mesh.index.second.offset +
-                                                              m_bevel_cube_mesh.index.first.offset);
-    const auto bevel_index_type = m_bevel_cube_mesh.index.first.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+    const unsigned bevel_index_offset = static_cast<unsigned>(m_bevel_cube_mesh.index.buffer_view.offset +
+                                                              m_bevel_cube_mesh.index.accessor.offset);
+    const auto bevel_index_type = m_bevel_cube_mesh.index.accessor.component_type ==
+                                          TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
                                     ? qhenki::gfx::IndexType::UINT16
                                     : qhenki::gfx::IndexType::UINT32;
 
@@ -1100,13 +1082,14 @@ void RetroExampleApp::render()
                                    stencil_vb_lengths.data(),
                                    stencil_vb_strides.data(),
                                    stencil_vb_offsets.data());
-    const unsigned stencil_index_offset = static_cast<unsigned>(m_stencil_mesh.index.second.offset +
-                                                                m_stencil_mesh.index.first.offset);
-    const auto stencil_index_type = m_stencil_mesh.index.first.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+    const unsigned stencil_index_offset = static_cast<unsigned>(m_stencil_mesh.index.buffer_view.offset +
+                                                                m_stencil_mesh.index.accessor.offset);
+    const auto stencil_index_type = m_stencil_mesh.index.accessor.component_type ==
+                                            TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
                                       ? qhenki::gfx::IndexType::UINT16
                                       : qhenki::gfx::IndexType::UINT32;
     m_context->bind_index_buffer(&cmd_list, m_stencil_mesh.buffer, stencil_index_type, stencil_index_offset);
-    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_stencil_mesh.index.first.count), 1, 0, 0, 0);
+    m_context->draw_indexed(&cmd_list, static_cast<unsigned>(m_stencil_mesh.index.accessor.count), 1, 0, 0, 0);
 
     THROW_IF_FALSE(m_context->bind_pipeline(&cmd_list, m_bevel_cube_pipeline));
     m_context->bind_vertex_buffers(&cmd_list,
@@ -1119,7 +1102,7 @@ void RetroExampleApp::render()
     m_context->bind_index_buffer(&cmd_list, m_bevel_cube_mesh.buffer, bevel_index_type, bevel_index_offset);
     constexpr unsigned bevel_instance_count = grid_size * grid_size;
     m_context->draw_indexed(
-        &cmd_list, static_cast<unsigned>(m_bevel_cube_mesh.index.first.count), bevel_instance_count, 0, 0, 0);
+        &cmd_list, static_cast<unsigned>(m_bevel_cube_mesh.index.accessor.count), bevel_instance_count, 0, 0, 0);
 
     m_context->end_render_pass(&cmd_list);
 
@@ -1153,10 +1136,8 @@ void RetroExampleApp::render()
     const qhenki::gfx::Rect bloom_scissor{
         .left = 0,
         .top = 0,
-        .front = 0,
-        .right = static_cast<long>(bloom_w),
-        .bottom = static_cast<long>(bloom_h),
-        .back = 0,
+        .width = bloom_w,
+        .height = bloom_h,
     };
     m_context->set_viewports(&cmd_list, 1, &bloom_viewport);
     m_context->set_scissor_rects(&cmd_list, 1, &bloom_scissor);

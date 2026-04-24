@@ -1,8 +1,7 @@
 #pragma once
 
-#include <directx/d3dcommon.h>
-#include <dxcapi.h>
-#include <wrl/client.h>
+#include "dxc_com_ptr.h"
+
 #include <atomic>
 #include <filesystem>
 #include <span>

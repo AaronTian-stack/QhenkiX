@@ -10,6 +10,7 @@
 #include "qhenki/memory/arena.h"
 #include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
+#include "qhenki/utility/shader_model_util.h"
 
 #include "qhenki/utility/string_util.h"
 

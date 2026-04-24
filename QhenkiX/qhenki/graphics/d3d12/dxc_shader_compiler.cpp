@@ -2,140 +2,38 @@
 
 #include "dxc_include_handler.h"
 
-#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
-#include <stdexcept>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #elif defined(__APPLE__) || defined(__linux__)
-// TODO
+#include <dlfcn.h>
+#include <climits>
 #endif
 
 #include <qhenki/memory/arena.h>
 
-#include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/file_util.h"
+#include "qhenki/utility/shader_model_util.h"
 #include "qhenki/utility/string_util.h"
 
 using namespace qhenki::gfx;
 using namespace qhenki::util;
 
-DXGI_FORMAT DXCShaderCompiler::mask_to_format(const uint32_t mask, const D3D_REGISTER_COMPONENT_TYPE type)
-{
-    switch (type)
-    {
-    case D3D_REGISTER_COMPONENT_UNKNOWN:
-        throw std::runtime_error("DXCShaderCompiler: mask_to_format: Unknown component type");
-    case D3D_REGISTER_COMPONENT_UINT32:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R32_UINT;
-        case 0x3:
-            return DXGI_FORMAT_R32G32_UINT;
-        case 0x7:
-            return DXGI_FORMAT_R32G32B32_UINT;
-        case 0xF:
-            return DXGI_FORMAT_R32G32B32A32_UINT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: uint32 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_SINT32:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R32_SINT;
-        case 0x3:
-            return DXGI_FORMAT_R32G32_SINT;
-        case 0x7:
-            return DXGI_FORMAT_R32G32B32_SINT;
-        case 0xF:
-            return DXGI_FORMAT_R32G32B32A32_SINT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: sint32 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_FLOAT32:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R32_FLOAT;
-        case 0x3:
-            return DXGI_FORMAT_R32G32_FLOAT;
-        case 0x7:
-            return DXGI_FORMAT_R32G32B32_FLOAT;
-        case 0xF:
-            return DXGI_FORMAT_R32G32B32A32_FLOAT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: float32 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_UINT16:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R16_UINT;
-        case 0x3:
-            return DXGI_FORMAT_R16G16_UINT;
-        case 0x7:
-            throw std::runtime_error("DXCShaderCompiler: 3 component uint16 mask");
-        case 0xF:
-            return DXGI_FORMAT_R16G16B16A16_UINT;
-        default:
-            throw std::runtime_error("DXCShaderCompiler: uint16 mask");
-        }
-    }
-    case D3D_REGISTER_COMPONENT_SINT16:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            throw std::runtime_error("DXCShaderCompiler: 1 component sint16 mask");
-        case 0x3:
-            return DXGI_FORMAT_R16G16_SINT;
-        case 0x7:
-            throw std::runtime_error("DXCShaderCompiler: 3 component sint16 mask");
-        case 0xF:
-            return DXGI_FORMAT_R16G16B16A16_SINT;
-        }
-    }
-    case D3D_REGISTER_COMPONENT_FLOAT16:
-    {
-        switch (mask)
-        {
-        case 0x1:
-            return DXGI_FORMAT_R16_FLOAT;
-        case 0x3:
-            return DXGI_FORMAT_R16G16_FLOAT;
-        case 0x7:
-            throw std::runtime_error("DXCShaderCompiler: 3 component float16 mask");
-        case 0xF:
-            return DXGI_FORMAT_R16G16B16A16_FLOAT;
-        }
-    }
-    case D3D_REGISTER_COMPONENT_UINT64:
-    case D3D_REGISTER_COMPONENT_SINT64:
-    case D3D_REGISTER_COMPONENT_FLOAT64:
-        throw std::runtime_error("DXCShaderCompiler: 64 bit component type not supported");
-    }
-    return DXGI_FORMAT_UNKNOWN;
-}
-
 DXCShaderCompiler::DXCShaderCompiler()
 {
     if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
     {
-        throw std::runtime_error("DXCShaderCompiler: Failed to create DxcLibrary");
+        fprintf(stderr, "DXCShaderCompiler: Failed to create DxcLibrary\n");
+        abort();
     }
     if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_compiler.ReleaseAndGetAddressOf()))))
     {
-        throw std::runtime_error("DXCShaderCompiler: Failed to create DxcCompiler");
+        fprintf(stderr, "DXCShaderCompiler: Failed to create DxcCompiler\n");
+        abort();
     }
 }
 
@@ -157,16 +55,30 @@ const char* get_dxc_library_name()
 
 bool DXCShaderCompiler::get_compiler_path(char* buffer, const size_t length)
 {
+    if (buffer == nullptr || length == 0)
+    {
+        return false;
+    }
 #if defined(_WIN32) || defined(_WIN64)
     if (const auto dx_compiler = GetModuleHandleA(get_dxc_library_name()))
     {
         return GetModuleFileNameA(dx_compiler, buffer, static_cast<DWORD>(length)) != 0;
     }
     return false;
-#elif defined(__APPLE__)
-    // TODO
-#elif defined(__linux__)
-    // TODO
+#elif defined(__APPLE__) || defined(__linux__)
+    Dl_info info{};
+    if (dladdr(reinterpret_cast<const void*>(&DxcCreateInstance), &info) == 0 || info.dli_fname == nullptr)
+    {
+        return false;
+    }
+
+    assert(length >= PATH_MAX);
+    if (realpath(info.dli_fname, buffer))
+    {
+        return true;
+    }
+
+    return false;
 #else
     return false;
 #endif
@@ -230,9 +142,9 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     if (!is_library)
     {
         args[args_idx++] = L"-E";
-        utf8::utf8to16(input.entry_point.begin(),
-                       input.entry_point.end(),
-                       std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
+        utf8::unchecked::utf8to16(input.entry_point.begin(),
+                                  input.entry_point.end(),
+                                  std::back_inserter(w_entry_point)); // Hopefully does not cause heap allocation
         args[args_idx++] = w_entry_point.c_str();
     }
 
@@ -254,7 +166,7 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
             output.error_message = "DXCShaderCompiler: Widen buffer overflow";
             return false;
         }
-        utf8::utf8to16(str.begin(), str.end(), w_buffer + w_buffer_p);
+        utf8::unchecked::utf8to16(str.begin(), str.end(), w_buffer + w_buffer_p);
         w_buffer[w_buffer_p + str.size()] = L'\0'; // Null terminate the string
         args[args_idx++] = w_buffer + w_buffer_p;
         w_buffer_p += 1 + str.size(); // Move pointer forward

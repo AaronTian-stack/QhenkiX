@@ -1,9 +1,6 @@
 #pragma once
 
-#include <directx/d3dcommon.h>
-#include <directx/dxgiformat.h>
-#include <dxcapi.h>
-#include <wrl/client.h>
+#include "dxc_com_ptr.h"
 
 #include "qhenki/RHI/shader_compiler.h"
 
@@ -25,8 +22,5 @@ public:
     ~DXCShaderCompiler() override = default;
 
     friend class D3D12Context;
-
-private:
-    static DXGI_FORMAT mask_to_format(uint32_t mask, D3D_REGISTER_COMPONENT_TYPE type);
 };
 } // namespace qhenki::gfx

@@ -21,3 +21,8 @@ jobs:
     needs: static-checks
     uses: ./.github/workflows/windows-build.yml
     secrets: inherit
+
+  linux-build:
+    needs: static-checks
+    uses: ./.github/workflows/linux-build.yml
+    secrets: inherit

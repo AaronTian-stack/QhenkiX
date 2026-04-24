@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utf8.h>
+#include <utf8/unchecked.h>
 #include <array>
 #include <cstdarg>
 #include <cstdio>
@@ -48,14 +48,14 @@ template<size_t StackCapacity> Utf8To16Scoped<StackCapacity>::Utf8To16Scoped(std
 {
     if (input.size() <= StackCapacity)
     {
-        utf8::utf8to16(input.begin(), input.end(), buffer.begin());
+        utf8::unchecked::utf8to16(input.begin(), input.end(), buffer.begin());
         buffer[input.size()] = L'\0';
         m_stack_buffer = true;
     }
     else
     {
         heap.resize(input.size() + 1);
-        utf8::utf8to16(input.begin(), input.end(), heap.begin());
+        utf8::unchecked::utf8to16(input.begin(), input.end(), heap.begin());
         heap[input.size()] = L'\0';
         m_stack_buffer = false;
     }

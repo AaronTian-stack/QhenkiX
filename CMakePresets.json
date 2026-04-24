@@ -1,0 +1,113 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build"
+    },
+    {
+      "name": "windows-debug",
+      "inherits": "windows-base"
+    },
+    {
+      "name": "windows-release",
+      "inherits": "windows-base"
+    },
+    {
+      "name": "windows-prebuilt-sxc-debug",
+      "inherits": "windows-debug",
+      "cacheVariables": {
+        "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/Debug/QhenkiX.lib",
+        "QHENKIX_PREBUILT_DIRECTXTEX_LIB": "${sourceDir}/prebuilt-qhenkix/lib/Debug/DirectXTex.lib",
+        "QHENKIX_PREBUILT_DIRECTXGUIDS_LIB": "${sourceDir}/prebuilt-qhenkix/DirectX-Headers/Debug/DirectX-Guids.lib",
+        "QHENKIX_PREBUILT_SDL_ROOT": "${sourceDir}/prebuilt-qhenkix"
+      }
+    },
+    {
+      "name": "windows-prebuilt-sxc-release",
+      "inherits": "windows-release",
+      "cacheVariables": {
+        "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/Release/QhenkiX.lib",
+        "QHENKIX_PREBUILT_DIRECTXTEX_LIB": "${sourceDir}/prebuilt-qhenkix/lib/Release/DirectXTex.lib",
+        "QHENKIX_PREBUILT_DIRECTXGUIDS_LIB": "${sourceDir}/prebuilt-qhenkix/DirectX-Headers/Release/DirectX-Guids.lib",
+        "QHENKIX_PREBUILT_SDL_ROOT": "${sourceDir}/prebuilt-qhenkix"
+      }
+    },
+    {
+      "name": "windows-prebuilt-examples-debug",
+      "inherits": "windows-prebuilt-sxc-debug",
+      "cacheVariables": {
+        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC.exe"
+      }
+    },
+    {
+      "name": "windows-prebuilt-examples-release",
+      "inherits": "windows-prebuilt-sxc-release",
+      "cacheVariables": {
+        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC.exe"
+      }
+    },
+    {
+      "name": "linux-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "environment": {
+        "CC": "clang",
+        "CXX": "clang++"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "inherits": "linux-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-release",
+      "inherits": "linux-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "linux-prebuilt-sxc-debug",
+      "inherits": "linux-debug",
+      "cacheVariables": {
+        "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/libQhenkiX.a",
+        "QHENKIX_PREBUILT_SDL_ROOT": "${sourceDir}/prebuilt-qhenkix"
+      }
+    },
+    {
+      "name": "linux-prebuilt-sxc-release",
+      "inherits": "linux-release",
+      "cacheVariables": {
+        "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/libQhenkiX.a",
+        "QHENKIX_PREBUILT_SDL_ROOT": "${sourceDir}/prebuilt-qhenkix"
+      }
+    },
+    {
+      "name": "linux-prebuilt-examples-debug",
+      "inherits": "linux-prebuilt-sxc-debug",
+      "cacheVariables": {
+        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC"
+      }
+    },
+    {
+      "name": "linux-prebuilt-examples-release",
+      "inherits": "linux-prebuilt-sxc-release",
+      "cacheVariables": {
+        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC"
+      }
+    }
+  ]
+}

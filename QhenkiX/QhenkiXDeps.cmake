@@ -56,12 +56,11 @@ else()
 
     if(UNIX)
         set(QHENKIX_DXC_ROOT "${QHENKIX_SRC_DIR}/external/DirectXShaderCompiler")
-        set(QHENKIX_DXC_INCLUDE_DIR "${QHENKIX_DXC_ROOT}/linux_dxc_2026_02_20.x86_64/include")
+        set(QHENKIX_DXC_INCLUDE_DIR "${QHENKIX_DXC_ROOT}/linux_dxc_2026_02_20.x86_64/include/dxc")
         list(APPEND QHENKIX_INCLUDE_DIRS "${QHENKIX_DXC_INCLUDE_DIR}")
 
         list(APPEND QHENKIX_SYSTEM_LIBS
             "${QHENKIX_DXC_ROOT}/linux_dxc_2026_02_20.x86_64/lib/libdxcompiler.so"
-            "${QHENKIX_DXC_ROOT}/linux_dxc_2026_02_20.x86_64/lib/libdxil.so"
         )
     endif()
 endif()

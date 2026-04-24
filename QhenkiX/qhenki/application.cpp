@@ -1,7 +1,9 @@
 #include "qhenki/application.h"
 
+#if defined(_WIN32) || defined(_WIN64)
 #include "graphics/d3d11/d3d11_context.h"
 #include "graphics/d3d12/d3d12_context.h"
+#endif
 #include "graphics/vulkan/vulkan_context.h"
 
 #include <imgui.h>
@@ -69,11 +71,27 @@ void Application::run(const gfx::API api,
     switch (api)
     {
     case gfx::API::D3D11:
+#if defined(_WIN32) || defined(_WIN64)
         m_context = mkU<gfx::D3D11Context>();
         break;
+#else
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                 "ERROR",
+                                 "D3D11 graphics backend is not available on this platform",
+                                 nullptr);
+        return;
+#endif
     case gfx::API::D3D12:
+#if defined(_WIN32) || defined(_WIN64)
         m_context = mkU<gfx::D3D12Context>();
         break;
+#else
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                 "ERROR",
+                                 "D3D12 graphics backend is not available on this platform",
+                                 nullptr);
+        return;
+#endif
     case gfx::API::Vulkan:
         m_context = mkU<gfx::VulkanContext>();
         break;
@@ -106,10 +124,17 @@ void Application::run(const gfx::API api,
         };
     }
 
-    THROW_IF_FALSE(m_context->create_swapchain(m_window, m_swapchain));
+    if (!m_context->create_swapchain(m_window, m_swapchain))
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", "Failed to create swapchain", nullptr);
+        return;
+    }
 
-    // Create fences
-    THROW_IF_FALSE(m_context->create_fence(&m_fence_frame_ready, 0));
+    if (!m_context->create_fence(&m_fence_frame_ready, 0))
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", "Failed to create fence", nullptr);
+        return;
+    }
 
     create();
     resize(m_window.m_display_info.width, m_window.m_display_info.height);

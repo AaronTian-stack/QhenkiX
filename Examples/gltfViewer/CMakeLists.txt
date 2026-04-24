@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 project(gltfViewer LANGUAGES CXX)
 
 include("${REPO_ROOT}/Examples/cmake/CompileShaders.cmake")
+include("${REPO_ROOT}/Examples/cmake/ExampleTarget.cmake")
 
 file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.hlsl")
 set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
@@ -42,11 +43,7 @@ target_include_directories(gltfViewer PRIVATE
 
 target_link_libraries(gltfViewer PRIVATE QhenkiX)
 
-# Set working directory for Visual Studio debugging
-set_target_properties(gltfViewer PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    FOLDER "Examples"
-)
+qhenkix_configure_example_target(gltfViewer)
 
 add_custom_command(TARGET gltfViewer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

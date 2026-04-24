@@ -37,19 +37,18 @@ set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 set(BUILD_DX11 OFF CACHE BOOL "" FORCE)
 set(BUILD_DX12 OFF CACHE BOOL "" FORCE)
 
-if(QHENKIX_PREBUILT_LIB)
-    include(QhenkiX/QhenkiXDeps.cmake)
+function(qhenkix_require_existing _path _var_name)
+    if(NOT EXISTS "${_path}")
+        message(FATAL_ERROR
+            "${_var_name} is set to '${_path}', but the file does not exist."
+        )
+    endif()
+endfunction()
+
+function(qhenkix_setup_directx_dependencies)
     if(QHENKIX_PREBUILT_DIRECTXTEX_LIB AND QHENKIX_PREBUILT_DIRECTXGUIDS_LIB)
-        if(NOT EXISTS "${QHENKIX_PREBUILT_DIRECTXTEX_LIB}")
-            message(FATAL_ERROR
-                "QHENKIX_PREBUILT_DIRECTXTEX_LIB is set to '${QHENKIX_PREBUILT_DIRECTXTEX_LIB}', but the file does not exist."
-            )
-        endif()
-        if(NOT EXISTS "${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}")
-            message(FATAL_ERROR
-                "QHENKIX_PREBUILT_DIRECTXGUIDS_LIB is set to '${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}', but the file does not exist."
-            )
-        endif()
+        qhenkix_require_existing("${QHENKIX_PREBUILT_DIRECTXTEX_LIB}" "QHENKIX_PREBUILT_DIRECTXTEX_LIB")
+        qhenkix_require_existing("${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}" "QHENKIX_PREBUILT_DIRECTXGUIDS_LIB")
 
         add_library(DirectX-Guids STATIC IMPORTED GLOBAL)
         set_target_properties(DirectX-Guids PROPERTIES
@@ -91,49 +90,88 @@ if(QHENKIX_PREBUILT_LIB)
         qhenkix_add_subdirectory_with_build_shared_libs(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
     endif()
 
+    if(TARGET DirectXMath)
+        target_include_directories(DirectXMath INTERFACE
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external>")
+    endif()
+endfunction()
+
+function(qhenkix_setup_sdl_dependency)
     if(QHENKIX_PREBUILT_SDL_ROOT)
-        set(_qhenkix_sdl_search_paths)
-        foreach(_qhenkix_cfg Debug Release RelWithDebInfo MinSizeRel)
-            list(APPEND _qhenkix_sdl_search_paths "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/${_qhenkix_cfg}")
-        endforeach()
-
-        find_file(_qhenkix_sdl_lib SDL3.lib
-            PATHS ${_qhenkix_sdl_search_paths}
-            NO_DEFAULT_PATH
-        )
-
-        find_file(_qhenkix_sdl_dll SDL3.dll
-            PATHS ${_qhenkix_sdl_search_paths}
-            NO_DEFAULT_PATH
-        )
-
         set(_qhenkix_sdl_include_dir "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/SDL/include")
-
-        if(NOT _qhenkix_sdl_lib)
-            message(FATAL_ERROR
-                "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.lib was not found. Checked: ${_qhenkix_sdl_search_paths}"
-            )
-        endif()
-        if(NOT _qhenkix_sdl_dll)
-            message(FATAL_ERROR
-                "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.dll was not found. Checked: ${_qhenkix_sdl_search_paths}"
-            )
-        endif()
         if(NOT EXISTS "${_qhenkix_sdl_include_dir}/SDL3/SDL.h")
             message(FATAL_ERROR
                 "Missing SDL headers at '${_qhenkix_sdl_include_dir}'. Ensure submodules are initialized with: git submodule update --init --recursive"
             )
         endif()
 
-        add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
-        set_target_properties(SDL3::SDL3 PROPERTIES
-            IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
-            IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
-            INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
-        )
+        if(WIN32)
+            set(_qhenkix_sdl_search_paths)
+            foreach(_qhenkix_cfg Debug Release RelWithDebInfo MinSizeRel)
+                list(APPEND _qhenkix_sdl_search_paths "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/${_qhenkix_cfg}")
+            endforeach()
+
+            find_file(_qhenkix_sdl_lib SDL3.lib
+                PATHS ${_qhenkix_sdl_search_paths}
+                NO_DEFAULT_PATH
+            )
+
+            find_file(_qhenkix_sdl_dll SDL3.dll
+                PATHS ${_qhenkix_sdl_search_paths}
+                NO_DEFAULT_PATH
+            )
+
+            if(NOT _qhenkix_sdl_lib)
+                message(FATAL_ERROR
+                    "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.lib was not found. Checked: ${_qhenkix_sdl_search_paths}"
+                )
+            endif()
+            if(NOT _qhenkix_sdl_dll)
+                message(FATAL_ERROR
+                    "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but SDL3.dll was not found. Checked: ${_qhenkix_sdl_search_paths}"
+                )
+            endif()
+
+            add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
+            set_target_properties(SDL3::SDL3 PROPERTIES
+                IMPORTED_IMPLIB "${_qhenkix_sdl_lib}"
+                IMPORTED_LOCATION "${_qhenkix_sdl_dll}"
+                INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
+            )
+        elseif(LINUX)
+            file(GLOB _qhenkix_sdl_sos
+                CONFIGURE_DEPENDS
+                "${QHENKIX_PREBUILT_SDL_ROOT}/SDL/libSDL3.so*"
+            )
+            set(_qhenkix_sdl_so "")
+            if(_qhenkix_sdl_sos)
+                list(SORT _qhenkix_sdl_sos)
+                list(LENGTH _qhenkix_sdl_sos _qhenkix_sdl_sos_n)
+                math(EXPR _qhenkix_sdl_sos_last "${_qhenkix_sdl_sos_n} - 1")
+                list(GET _qhenkix_sdl_sos ${_qhenkix_sdl_sos_last} _qhenkix_sdl_so)
+            endif()
+            if(NOT _qhenkix_sdl_so)
+                message(FATAL_ERROR
+                    "QHENKIX_PREBUILT_SDL_ROOT is set to '${QHENKIX_PREBUILT_SDL_ROOT}', but no libSDL3.so* was found in ${QHENKIX_PREBUILT_SDL_ROOT}/SDL"
+                )
+            endif()
+
+            add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
+            set_target_properties(SDL3::SDL3 PROPERTIES
+                IMPORTED_LOCATION "${_qhenkix_sdl_so}"
+                INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
+            )
+        else()
+            message(FATAL_ERROR "Not supported")
+        endif()
     else()
         qhenkix_add_dependency_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
     endif()
+endfunction()
+
+function(qhenkix_setup_prebuilt_workspace_dependencies)
+    qhenkix_setup_directx_dependencies()
+    qhenkix_setup_sdl_dependency()
 
     set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
     set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
@@ -153,6 +191,11 @@ if(QHENKIX_PREBUILT_LIB)
     set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
     set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
     qhenkix_add_dependency_subdirectory(QhenkiX/external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
+endfunction()
+
+if(QHENKIX_PREBUILT_LIB)
+    include(QhenkiX/QhenkiXDeps.cmake)
+    qhenkix_setup_prebuilt_workspace_dependencies()
 
     add_library(QhenkiX STATIC IMPORTED GLOBAL)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
@@ -166,7 +209,7 @@ if(QHENKIX_PREBUILT_LIB)
         spirv-cross-core
         spirv-cross-glsl
     )
-    if(WIN32)
+    if(QHENKIX_SYSTEM_LIBS)
         target_link_libraries(QhenkiX INTERFACE ${QHENKIX_SYSTEM_LIBS})
     endif()
 else()

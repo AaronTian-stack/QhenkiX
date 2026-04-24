@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <fstream>
-#include <locale>
 
 #include <filesystem>
 
@@ -62,12 +61,21 @@ template<typename CharT> static bool write_file_impl(const CharT* path, const vo
 
 bool read_file(const wchar_t* path, void** data, size_t* size)
 {
+#if defined(_WIN32) || defined(_WIN64)
     return read_file_impl(path, data, size);
+#else
+    // wchar_t* fstream overloads are MSVC extension so convert them on other platforms
+    return read_file_impl(std::filesystem::path(path).c_str(), data, size);
+#endif
 }
 
 bool write_file(const wchar_t* path, const void* data, const size_t size)
 {
+#if defined(_WIN32) || defined(_WIN64)
     return write_file_impl(path, data, size);
+#else
+    return write_file_impl(std::filesystem::path(path).c_str(), data, size);
+#endif
 }
 
 bool read_file(const char* path, void** data, size_t* size)

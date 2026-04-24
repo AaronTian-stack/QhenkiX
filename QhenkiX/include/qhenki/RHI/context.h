@@ -1,7 +1,6 @@
 #pragma once
 
 #include <mutex>
-#include <stdexcept>
 #include <string>
 
 #include "qhenki/display_window.h"
@@ -275,21 +274,3 @@ inline memory::Arena& acquire_arena(const uint64_t current_frame)
 }
 
 } // namespace qhenki::gfx
-
-#define THROW_IF_FALSE(result)                                   \
-    do                                                           \
-    {                                                            \
-        if (!result)                                             \
-        {                                                        \
-            throw std::runtime_error("Something went wrong!\n"); \
-        }                                                        \
-    } while (0)
-
-#define THROW_IF_TRUE(result)                                    \
-    do                                                           \
-    {                                                            \
-        if ((result))                                            \
-        {                                                        \
-            throw std::runtime_error("Something went wrong!\n"); \
-        }                                                        \
-    } while (0)

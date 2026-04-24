@@ -13,8 +13,6 @@ using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-std::wstring shader_model_wchar(ShaderType type, ShaderModel model);
-std::string shader_model_char(ShaderType type, ShaderModel model);
 DXGI_FORMAT dxgi_format(IndexType format);
 
 D3D12_BARRIER_SYNC sync_stage(SyncStage stage);
