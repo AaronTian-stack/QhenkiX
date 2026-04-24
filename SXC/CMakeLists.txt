@@ -44,7 +44,7 @@ target_link_libraries(SXC PRIVATE TBB::tbb)
 if(WIN32)
     add_custom_command(TARGET SXC POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:SXC>
+            $<FILTER:$<TARGET_RUNTIME_DLLS:SXC>,EXCLUDE,SDL3\\.dll$>
             $<TARGET_FILE_DIR:SXC>
         COMMAND_EXPAND_LISTS
     )
