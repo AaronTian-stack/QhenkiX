@@ -1037,7 +1037,7 @@ void RetroExampleApp::render()
     auto vb_stride = [&stride_from_accessor](const Mesh::AccessorBufferView& abv)
     {
         return abv.buffer_view.stride != 0 ? abv.buffer_view.stride
-                                      : stride_from_accessor(abv.accessor.component_type, abv.accessor.type);
+                                           : stride_from_accessor(abv.accessor.component_type, abv.accessor.type);
     };
     const std::array skybox_vbs = {&m_skybox_buffer};
     const std::array skybox_vb_offsets = {vb_offset(m_skybox_mesh.position)};
@@ -1067,7 +1067,8 @@ void RetroExampleApp::render()
     const std::array bevel_vb_strides = {vb_stride(m_bevel_cube_mesh.position), vb_stride(m_bevel_cube_mesh.normal)};
     const unsigned bevel_index_offset = static_cast<unsigned>(m_bevel_cube_mesh.index.buffer_view.offset +
                                                               m_bevel_cube_mesh.index.accessor.offset);
-    const auto bevel_index_type = m_bevel_cube_mesh.index.accessor.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+    const auto bevel_index_type = m_bevel_cube_mesh.index.accessor.component_type ==
+                                          TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
                                     ? qhenki::gfx::IndexType::UINT16
                                     : qhenki::gfx::IndexType::UINT32;
 
@@ -1085,7 +1086,8 @@ void RetroExampleApp::render()
                                    stencil_vb_offsets.data());
     const unsigned stencil_index_offset = static_cast<unsigned>(m_stencil_mesh.index.buffer_view.offset +
                                                                 m_stencil_mesh.index.accessor.offset);
-    const auto stencil_index_type = m_stencil_mesh.index.accessor.component_type == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
+    const auto stencil_index_type = m_stencil_mesh.index.accessor.component_type ==
+                                            TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT
                                       ? qhenki::gfx::IndexType::UINT16
                                       : qhenki::gfx::IndexType::UINT32;
     m_context->bind_index_buffer(&cmd_list, m_stencil_mesh.buffer, stencil_index_type, stencil_index_offset);
