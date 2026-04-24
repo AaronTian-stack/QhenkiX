@@ -13,9 +13,9 @@ You can find the core RHI interfaces in the [RHI folder](QhenkiX/include/qhenki/
 Current highlights:
 
 - Multi-backend rendering architecture:
-    - D3D12 backend
-    - D3D11 backend
-    - Experimental Vulkan 1.4 backend
+    - D3D12 backend (Windows)
+    - D3D11 backend (Windows)
+    - Experimental Vulkan 1.4 backend (Windows, Linux)
         - Uses the cutting edge [VK_EXT_descriptor_heap](https://docs.vulkan.org/features/latest/features/proposals/VK_EXT_descriptor_heap.html) extension
         - Uses all the modern Vulkan features, such as timeline semaphores, dynamic rendering, sync2, etc.
     - Shaders can be shared across backends
@@ -36,7 +36,7 @@ See [Examples](Examples) for use cases of the library.
 - Vulkan backend:
     - Vulkan 1.4 core
     - VK_EXT_DESCRIPTOR_HEAP_EXTENSION
-        - **This requires installing the latest beta graphics drivers from [NVIDIA](https://developer.nvidia.com/vulkan-driver) or [AMD Adrenalin Edition for Expanded Vulkan Extension](https://www.amd.com/en/resources/support-articles/release-notes/RN-RAD-WIN-VULKAN.html).**
+        - **This requires installing the latest beta graphics drivers from [NVIDIA](https://developer.nvidia.com/vulkan-driver) or [AMD](https://www.amd.com/en/resources/support-articles/release-notes/RN-RAD-WIN-VULKAN.html).**
     - VK_EXT_MEMORY_BUDGET_EXTENSION
     - VK_EXT_MEMORY_PRIORITY_EXTENSION
     - VK_KHR_MAINTENANCE_9_EXTENSION
@@ -50,26 +50,32 @@ See [Examples](Examples) for use cases of the library.
     ```bash
     git clone --recurse-submodules https://github.com/AaronTian-stack/QhenkiX.git
     ```
-2. Generate build files using CMake.
+2. Install Linux system dependencies for SDL3 (Linux only).
+    - https://wiki.libsdl.org/SDL3/README-linux
+3. Generate build files using CMake.
     ```bash
     cd QhenkiX
     mkdir build
     cd build
     cmake ..
     ```
-3. Build the workspace.
+    Linux users can configure explicitly with clang from the repository root:
+    ```bash
+    cmake -S QhenkiX -B QhenkiX/build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+    ```
+4. Build the workspace.
     ```bash
     cmake --build . --config Release
     ```
     Or open the generated Visual Studio solution (`QhenkiX-Workspace.slnx`) and build from there.
 
-4. [Link the library to your app](#linking).
+5. [Link the library to your app](#linking).
 
-5. Extend the [Application](QhenkiX/include/qhenki/application.h) class and start building your app. See [Examples/README.md](Examples/README.md).
+6. Extend the [Application](QhenkiX/include/qhenki/application.h) class and start building your app. See [Examples/README.md](Examples/README.md).
 
 ## Linking
 
-QhenkiX is built as a static library (`.lib`).
+QhenkiX is built as a static library.
 
 ### Using CMake
 
@@ -85,13 +91,33 @@ If you are creating a project using QhenkiX in Visual Studio, you can add Qhenki
 
 ### Required Runtime Shared Libraries
 
-QhenkiX requires several shared libraries to run. When using CMake, the examples automatically copy the required DLLs to the output directory. If you writing your own project you will need to ensure the following DLLs are available in your executable's directory:
+QhenkiX requires several shared libraries to run. When using CMake, the examples automatically copy the required DLLs to the output directory. If you writing your own project you will need to ensure the following shared libraries are available in your executable's directory:
 
-#### Windows
+#### QhenkiX
 
-- `dxcompiler.dll` - compile shaders with DXC
-- `dxil.dll` - validate/sign shaders generated with DXC
-- `SDL3.dll` - SDL3 runtime library
+##### Windows
+
+- `SDL3.dll`
+
+##### Linux
+
+- `libSDL3.so`
+
+#### SXC runtime
+
+`SXC` needs DXC shared libraries available at runtime.
+
+##### Windows
+
+- `dxcompiler.dll`
+- `dxil.dll`
+- `tbb12.dll`
+
+##### Linux
+
+- `libdxcompiler.so`
+- `libdxildll.so` (copied from `libdxil.so`)
+- `libtbb.so.12`
 
 ## Dependencies
 
