@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
 
 #if defined(_WIN32) || defined(_WIN64)
         auto fxc_name_buffer = mkU<char[]>(buffer_length);
-        qhenki::gfx::FXCShaderCompiler::get_compiler_path(fxc_name_buffer.data(), buffer_length);
+        qhenki::gfx::FXCShaderCompiler::get_compiler_path(fxc_name_buffer.get(), buffer_length);
         printf("Using shader compiler libraries:\nDXC: %s\nFXC: %s\n", dxc_name_buffer.get(), fxc_name_buffer.get());
 #else
         printf("Using shader compiler library:\nDXC: %s\n", dxc_name_buffer.get());
