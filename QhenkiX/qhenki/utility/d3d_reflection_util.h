@@ -7,7 +7,7 @@
 #if defined(_WIN32) || defined(_WIN64)
 #include <directx/d3dcommon.h>
 #else
-// Clone of D3D_REGISTER_COMPONENT_TYPE S
+// Clone of D3D_REGISTER_COMPONENT_TYPE
 // So I don't have to include d3dcommon.h which would cause collisions with <dxc/WinAdapter.h>
 // https://learn.microsoft.com/en-us/windows/win32/api/d3dcommon/ne-d3
 typedef enum D3D_REGISTER_COMPONENT_TYPE
