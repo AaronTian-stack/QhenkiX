@@ -1,0 +1,132 @@
+name: "Linux Build"
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.config }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+        fetch-depth: 0
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          clang \
+          lld \
+          build-essential \
+          git \
+          make \
+          pkg-config \
+          ninja-build \
+          gnome-desktop-testing \
+          libasound2-dev \
+          libpulse-dev \
+          libaudio-dev \
+          libfribidi-dev \
+          libjack-dev \
+          libsndio-dev \
+          libx11-dev \
+          libxext-dev \
+          libxrandr-dev \
+          libxcursor-dev \
+          libxfixes-dev \
+          libxi-dev \
+          libxss-dev \
+          libxtst-dev \
+          libxkbcommon-dev \
+          libdrm-dev \
+          libgbm-dev \
+          libgl1-mesa-dev \
+          libgles2-mesa-dev \
+          libegl1-mesa-dev \
+          libdbus-1-dev \
+          libibus-1.0-dev \
+          libudev-dev \
+          libthai-dev \
+          libpipewire-0.3-dev \
+          libwayland-dev \
+          libdecor-0-dev \
+          liburing-dev
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.29'
+
+    - name: Configure CMake
+      env:
+        CC: clang
+        CXX: clang++
+      run: cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+
+    - name: Build QhenkiX
+      run: cmake --build build --target QhenkiX --parallel
+
+    - name: Build SXC
+      run: cmake --build build --target SXC --parallel
+
+    - name: Build Examples
+      run: cmake --build build --target SimpleExample ImGuiExample gltfViewer RetroExample --parallel
+
+    - name: Upload QhenkiX Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: qhenkix-prebuilt-linux-${{ matrix.config }}
+        path: |
+          build/QhenkiX/libQhenkiX.a
+          build/SDL/libSDL3.so*
+        retention-days: 1
+        if-no-files-found: warn
+
+    - name: Upload SXC Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sxc-linux-${{ matrix.config }}
+        path: |
+          build/SXC/SXC
+          build/SXC/*.so*
+        retention-days: 1
+        if-no-files-found: warn
+
+    - name: Upload Example Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: examples-linux-${{ matrix.config }}
+        path: |
+          build/Examples/SimpleExample/SimpleExample
+          build/Examples/ImGuiExample/ImGuiExample
+          build/Examples/gltfViewer/gltfViewer
+          build/Examples/RetroExample/RetroExample
+          build/Examples/**/*.so*
+        retention-days: 1
+        if-no-files-found: warn
+
+  linux-build-gate:
+    name: Linux build
+    runs-on: ubuntu-24.04
+    needs:
+      - build
+    if: ${{ always() }}
+    steps:
+      - name: Fail if any upstream job failed
+        run: |
+          for result in "${{ needs.build.result }}"; do
+            if [ "$result" != "success" ]; then
+              echo "Upstream job failed: $result"
+              exit 1
+            fi
+          done
+          echo "All Linux build jobs succeeded."
