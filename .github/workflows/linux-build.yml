@@ -66,10 +66,7 @@ jobs:
         cmake-version: '3.29'
 
     - name: Configure CMake
-      env:
-        CC: clang
-        CXX: clang++
-      run: cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+      run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-debug' || 'linux-release' }}
 
     - name: Build QhenkiX
       run: cmake --build build --target QhenkiX --parallel
@@ -152,10 +149,7 @@ jobs:
         path: prebuilt-qhenkix/
 
     - name: Configure CMake
-      env:
-        CC: clang
-        CXX: clang++
-      run: cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/libQhenkiX.a -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix
+      run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-prebuilt-sxc-debug' || 'linux-prebuilt-sxc-release' }}
 
     - name: Build SXC
       run: cmake --build build --target SXC --parallel
@@ -245,10 +239,7 @@ jobs:
         path: prebuilt-sxc/
 
     - name: Configure CMake
-      env:
-        CC: clang
-        CXX: clang++
-      run: cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DQHENKIX_PREBUILT_LIB=${{ github.workspace }}/prebuilt-qhenkix/QhenkiX/libQhenkiX.a -DQHENKIX_PREBUILT_SDL_ROOT=${{ github.workspace }}/prebuilt-qhenkix -DSXC_PREBUILT_EXE=${{ github.workspace }}/prebuilt-sxc/SXC/SXC
+      run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-prebuilt-examples-debug' || 'linux-prebuilt-examples-release' }}
 
     - name: Build ${{ matrix.example }} (${{ matrix.config }})
       run: cmake --build build --target ${{ matrix.example }} --parallel

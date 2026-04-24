@@ -37,19 +37,18 @@ set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 set(BUILD_DX11 OFF CACHE BOOL "" FORCE)
 set(BUILD_DX12 OFF CACHE BOOL "" FORCE)
 
-if(QHENKIX_PREBUILT_LIB)
-    include(QhenkiX/QhenkiXDeps.cmake)
+function(qhenkix_require_existing _path _var_name)
+    if(NOT EXISTS "${_path}")
+        message(FATAL_ERROR
+            "${_var_name} is set to '${_path}', but the file does not exist."
+        )
+    endif()
+endfunction()
+
+function(qhenkix_setup_directx_dependencies)
     if(QHENKIX_PREBUILT_DIRECTXTEX_LIB AND QHENKIX_PREBUILT_DIRECTXGUIDS_LIB)
-        if(NOT EXISTS "${QHENKIX_PREBUILT_DIRECTXTEX_LIB}")
-            message(FATAL_ERROR
-                "QHENKIX_PREBUILT_DIRECTXTEX_LIB is set to '${QHENKIX_PREBUILT_DIRECTXTEX_LIB}', but the file does not exist."
-            )
-        endif()
-        if(NOT EXISTS "${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}")
-            message(FATAL_ERROR
-                "QHENKIX_PREBUILT_DIRECTXGUIDS_LIB is set to '${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}', but the file does not exist."
-            )
-        endif()
+        qhenkix_require_existing("${QHENKIX_PREBUILT_DIRECTXTEX_LIB}" "QHENKIX_PREBUILT_DIRECTXTEX_LIB")
+        qhenkix_require_existing("${QHENKIX_PREBUILT_DIRECTXGUIDS_LIB}" "QHENKIX_PREBUILT_DIRECTXGUIDS_LIB")
 
         add_library(DirectX-Guids STATIC IMPORTED GLOBAL)
         set_target_properties(DirectX-Guids PROPERTIES
@@ -90,10 +89,13 @@ if(QHENKIX_PREBUILT_LIB)
         set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
         qhenkix_add_subdirectory_with_build_shared_libs(QhenkiX/external/DirectXTex ${CMAKE_BINARY_DIR}/DirectXTex OFF)
     endif()
+
     if(TARGET DirectXMath)
         target_include_directories(DirectXMath INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external")
     endif()
+endfunction()
 
+function(qhenkix_setup_sdl_dependency)
     if(QHENKIX_PREBUILT_SDL_ROOT)
         set(_qhenkix_sdl_include_dir "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/SDL/include")
         if(NOT EXISTS "${_qhenkix_sdl_include_dir}/SDL3/SDL.h")
@@ -159,13 +161,16 @@ if(QHENKIX_PREBUILT_LIB)
                 INTERFACE_INCLUDE_DIRECTORIES "${_qhenkix_sdl_include_dir}"
             )
         else()
-            message(FATAL_ERROR
-                "Not supported"
-            )
+            message(FATAL_ERROR "Not supported")
         endif()
     else()
         qhenkix_add_dependency_subdirectory(QhenkiX/external/SDL ${CMAKE_BINARY_DIR}/SDL)
     endif()
+endfunction()
+
+function(qhenkix_setup_prebuilt_workspace_dependencies)
+    qhenkix_setup_directx_dependencies()
+    qhenkix_setup_sdl_dependency()
 
     set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
     set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
@@ -185,6 +190,11 @@ if(QHENKIX_PREBUILT_LIB)
     set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
     set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
     qhenkix_add_dependency_subdirectory(QhenkiX/external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
+endfunction()
+
+if(QHENKIX_PREBUILT_LIB)
+    include(QhenkiX/QhenkiXDeps.cmake)
+    qhenkix_setup_prebuilt_workspace_dependencies()
 
     add_library(QhenkiX STATIC IMPORTED GLOBAL)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
