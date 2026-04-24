@@ -91,7 +91,8 @@ function(qhenkix_setup_directx_dependencies)
     endif()
 
     if(TARGET DirectXMath)
-        target_include_directories(DirectXMath INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external")
+        target_include_directories(DirectXMath INTERFACE
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external>")
     endif()
 endfunction()
 
