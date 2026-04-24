@@ -99,14 +99,14 @@
       "name": "linux-prebuilt-examples-debug",
       "inherits": "linux-prebuilt-sxc-debug",
       "cacheVariables": {
-        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC/SXC"
+        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC"
       }
     },
     {
       "name": "linux-prebuilt-examples-release",
       "inherits": "linux-prebuilt-sxc-release",
       "cacheVariables": {
-        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC/SXC"
+        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC"
       }
     }
   ]
