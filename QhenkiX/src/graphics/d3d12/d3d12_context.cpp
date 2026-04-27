@@ -21,10 +21,10 @@
 #include "d3d12_fence.h"
 #include "d3d12_texture.h"
 
-#include "qhenki/utility/d3d_reflection_util.h"
-#include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/gfx_util.h"
 #include "qhenki/utility/string_util.h"
+#include "src/utility/d3d_reflection_util.h"
+#include "src/utility/d3d_util.h"
 
 using namespace qhenki::gfx;
 

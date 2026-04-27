@@ -14,9 +14,9 @@
 #include "d3d11_texture.h"
 
 #include "qhenki/application.h"
-#include "qhenki/utility/d3d_util.h"
 #include "qhenki/utility/gfx_util.h"
 #include "qhenki/utility/string_util.h"
+#include "src/utility/d3d_util.h"
 
 using namespace qhenki::gfx;
 
