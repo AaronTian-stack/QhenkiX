@@ -1,61 +1,61 @@
 #pragma once
 
-#include <D3D12MemAlloc.h>
-#include <directx/d3d12shader.h>
-#include <dxcapi.h>
-#include <dxgi1_6.h>
-#include <dxgidebug.h>
-#include <wrl/client.h>
+#define VK_NO_PROTOTYPES
+#include <vk_mem_alloc.h>
+#include <VkBootstrap.h>
 
-#include <D3D12DescriptorHelpers/RenderTargetHelper.hpp>
-
-#include "d3d12_descriptor_heap.h"
-#include "qhenki/graphics/shared/descriptor_flush.h"
+#include "concurrentqueue.h"
 #include "qhenki/RHI/context.h"
-
-using Microsoft::WRL::ComPtr;
+#include "src/graphics/shared/descriptor_flush.h"
+#include "vulkan_command_pool.h"
 
 namespace qhenki::gfx
 {
-class D3D12Context : public Context
+struct VulkanTexture;
+
+class VulkanContext : public Context
 {
     struct Capabilities
     {
-        D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};     // TiledResourcesTier, ResourceBindingTier, ResourceHeapTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};   // SamplerFeedbackTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12 = {}; // Enhanced barriers
-        D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};   // VariableShadingRateTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};   // RaytracingTier
-        D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};   // MeshShaderTier
-        D3D12_FEATURE_DATA_SHADER_MODEL shader_model = {}; // Shader Model
-        bool allow_tearing;
-    } m_capabilities;
+        VkPhysicalDeviceProperties2 properties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+                                               .pNext = &descriptor_heap_properties};
+        VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
+    } m_capabilities; // TODO
 
-    // TODO: Add limits (ie memory)
+    vkb::Instance m_instance;
+    vkb::Device m_device;
+    struct
+    {
+        vkb::Swapchain swapchain;
+        std::vector<VkImage> images;
+        std::vector<VkImageView> image_views;
+    } m_swapchain;
+    VkSurfaceKHR m_surface;
+    std::array<VkSemaphore, 2> m_image_available_semaphores{VK_NULL_HANDLE, VK_NULL_HANDLE};
+    std::array<VkSemaphore, 2> m_render_finished_semaphores{VK_NULL_HANDLE, VK_NULL_HANDLE};
 
-    ComPtr<IDXGIFactory6> m_dxgi_factory;
+    VmaAllocator m_allocator = nullptr;
 
-    ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> m_dred_settings;
-    ComPtr<ID3D12Debug3> m_debug;
-    ComPtr<IDXGIDebug1> m_dxgi_debug;
+    struct VulkanQueue
+    {
+        VkQueue queue = VK_NULL_HANDLE;
+        unsigned family_index = 0u;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        uint64_t last_signaled_fence_value = 0;
+    };
 
-    ComPtr<ID3D12Device4> m_device;
-    ComPtr<D3D12MA::Allocator> m_allocator;
+    VulkanQueue m_graphics_queue;
+    VulkanQueue m_compute_queue;
+    VulkanQueue m_transfer_queue;
 
-    ComPtr<IDXGISwapChain3> m_swapchain;
-    std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers; // 2 is upper limit
+    moodycamel::ConcurrentQueue<Texture*> m_texture_queue;
 
-    ComPtr<IDxcUtils> m_library;
+    VkSemaphore m_internal_semaphore = VK_NULL_HANDLE;
+    uint64_t m_internal_semaphore_value = 0;
 
-    D3D12DescriptorHeap m_imgui_heap{};              // ImGUI only
-    std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
-
-    ComPtr<ID3D12CommandQueue> m_graphics_queue;
-    ComPtr<ID3D12CommandQueue> m_compute_queue;
-    ComPtr<ID3D12CommandQueue> m_copy_queue;
-
-    Fence m_fence_wait_all{}; // For stalling queues
-    uint64_t m_fence_wait_all_last_signaled = 0;
+    uint32_t m_bloated_resource_descriptor_size = 0;
+    uint32_t m_bloated_sampler_descriptor_size = 0;
 
     DeferredDescriptorCopier m_descriptor_copier;
 
@@ -85,13 +85,12 @@ public:
                                uint32_t offset,
                                unsigned size,
                                void* data) override;
-
     bool create_descriptor_heap(const DescriptorHeapDesc& desc, DescriptorHeap* heap, const char* debug_name) override;
+
     void set_descriptor_heap(CommandList* cmd_list, const DescriptorHeap& heap) override;
     void set_descriptor_heap(CommandList* cmd_list,
                              const DescriptorHeap& heap,
                              const DescriptorHeap& sampler_heap) override;
-
     bool set_descriptor_table(CommandList* cmd_list,
                               const PipelineLayout& expected_layout,
                               unsigned index,
@@ -131,8 +130,8 @@ public:
     void bind_index_buffer(CommandList* cmd_list, const Buffer& buffer, IndexType format, uint64_t offset) override;
 
     bool create_command_pool(CommandPool* command_pool, QueueType queue, const char* debug_name) override;
-    bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool create_command_list(CommandList* cmd_list, const CommandPool& command_pool, const char* debug_name) override;
+    bool reset_command_list(CommandList* cmd_list, const CommandPool& command_pool) override;
     bool close_command_list(CommandList* cmd_list) override;
 
     bool reset_command_pool(CommandPool* command_pool) override;
@@ -140,7 +139,6 @@ public:
     bool start_render_pass(CommandList* cmd_list,
                            const float* clear_color_values,
                            const RenderTarget* depth_stencil) override;
-
     bool start_render_pass(CommandList* cmd_list,
                            unsigned rt_count,
                            const RenderTarget* rts,
@@ -174,7 +172,7 @@ public:
     void render_imgui_draw_data(CommandList* cmd_list) override;
     void destroy_imgui() override;
 
-    // D3D12 does not implement compability functions
+    // Vulkan does not implement compability functions
     bool compatibility_set_constant_buffers(unsigned slot,
                                             unsigned count,
                                             Buffer* const* buffers,
@@ -193,17 +191,30 @@ public:
 
     bool wait_idle(QueueType queue) override;
 
-    D3D12Context() = default;
-    ~D3D12Context() override;
-    D3D12Context(const D3D12Context&) = delete;
-    D3D12Context& operator=(const D3D12Context&) = delete;
-    D3D12Context(D3D12Context&&) = delete;
-    D3D12Context& operator=(D3D12Context&&) = delete;
+    VulkanContext() = default;
+    ~VulkanContext() override;
+    VulkanContext(const VulkanContext&) = delete;
+    VulkanContext& operator=(const VulkanContext&) = delete;
+    VulkanContext(VulkanContext&&) = delete;
+    VulkanContext& operator=(VulkanContext&&) = delete;
+
+    friend class VulkanDescriptorHeap;
 
 private:
-    D3D12_INPUT_ELEMENT_DESC* shader_reflection(ID3D12ShaderReflection* shader_reflection,
-                                                const D3D12_SHADER_DESC& shader_desc,
-                                                bool increment_slot) const;
-    ID3D12CommandQueue* get_command_queue(QueueType queue) const;
+    bool create_swapchain(const SwapchainDesc& swapchain_desc);
+
+    VkDeviceSize get_reserved_range(DescriptorHeapDesc::Type type) const;
+    bool create_descriptor_buffer(const Buffer& buffer,
+                                  DescriptorHeap* heap,
+                                  Descriptor* descriptor,
+                                  VkDescriptorType type) const;
+    bool create_descriptor_texture(const Texture& texture,
+                                   DescriptorHeap* heap,
+                                   Descriptor* descriptor,
+                                   VkDescriptorType type) const;
+
+    VulkanQueue& get_queue(QueueType queue);
+
+    VulkanCommandPool& acquire_command_pool(QueueType queue);
 };
 } // namespace qhenki::gfx

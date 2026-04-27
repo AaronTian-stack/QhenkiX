@@ -22,7 +22,7 @@ qhenkix_require_submodule("external/volk" "CMakeLists.txt")
 qhenkix_require_submodule("external/vk-bootstrap" "CMakeLists.txt")
 qhenkix_require_submodule("external/SPIRV-Cross" "CMakeLists.txt")
 
-set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qhenki")
+set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
 set(IMGUI_SOURCES

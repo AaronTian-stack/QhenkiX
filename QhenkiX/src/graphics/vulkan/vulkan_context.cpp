@@ -24,7 +24,7 @@
 
 #include "qhenki/utility/math_util.h"
 #include "qhenki/utility/string_util.h"
-#include "qhenki/utility/vulkan_util.h"
+#include "src/utility/vulkan_util.h"
 #include "vulkan_command_list.h"
 
 constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
