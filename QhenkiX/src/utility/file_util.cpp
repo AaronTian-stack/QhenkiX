@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <fstream>
+#include <new>
 
 #include <filesystem>
 
@@ -24,11 +25,15 @@ template<typename CharT> static bool read_file_impl(const CharT* path, void** da
     *size = static_cast<size_t>(stream_size);
     file.seekg(0, std::ios::beg);
 
-    *data = malloc(stream_size);
+    *data = new (std::nothrow) char[*size];
+    if (!*data)
+    {
+        return false;
+    }
 
     if (!file.read(static_cast<char*>(*data), stream_size))
     {
-        free(*data); // Free on failure
+        delete[] static_cast<char*>(*data); // Free on failure
         *data = nullptr;
         return false;
     }

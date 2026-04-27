@@ -20,23 +20,6 @@ const char* get_shader_subdir(const qhenki::gfx::API api)
     }
 }
 
-namespace
-{
-const char* get_shader_extension(const qhenki::gfx::API api)
-{
-    switch (api)
-    {
-    case qhenki::gfx::API::D3D11:
-        return "dxbc";
-    case qhenki::gfx::API::Vulkan:
-        return "spv";
-    case qhenki::gfx::API::D3D12:
-    default:
-        return "dxil";
-    }
-}
-} // namespace
-
 bool append_shader_extension(const qhenki::gfx::API api,
                              const char* shader_name_no_ext,
                              char* out_name,
@@ -47,7 +30,22 @@ bool append_shader_extension(const qhenki::gfx::API api,
         return false;
     }
 
-    const int written = std::snprintf(out_name, out_name_size, "%s.%s", shader_name_no_ext, get_shader_extension(api));
+    const char* extension = nullptr;
+    switch (api)
+    {
+    case qhenki::gfx::API::D3D11:
+        extension = "dxbc";
+        break;
+    case qhenki::gfx::API::Vulkan:
+        extension = "spv";
+        break;
+    case qhenki::gfx::API::D3D12:
+    default:
+        extension = "dxil";
+        break;
+    }
+
+    const int written = snprintf(out_name, out_name_size, "%s.%s", shader_name_no_ext, extension);
     return written > 0 && std::cmp_less(written, out_name_size);
 }
 
@@ -70,7 +68,11 @@ bool read_compiled_shader_bytes(const qhenki::gfx::API api,
         return false;
     }
 
-    *out_data = uPtr<std::byte, void (*)(void*)>(static_cast<std::byte*>(raw), free);
+    *out_data = uPtr<std::byte, void (*)(void*)>(static_cast<std::byte*>(raw),
+                                                 [](void* p)
+                                                 {
+                                                     delete[] static_cast<char*>(p);
+                                                 });
     *out_size = size;
     return true;
 }

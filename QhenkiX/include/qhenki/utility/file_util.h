@@ -7,7 +7,7 @@ namespace qhenki::util
 /**
  * Reads a file into memory.
  * @param path Wide string path to read from
- * @param data (out) Pointer to the data read from the file. Caller responsible for freeing the memory.
+ * @param data (out) Pointer to the data read from the file. Caller must release with delete[].
  * @param size (out) Size in bytes of the data read from the file.
  * @return Whether the file was successfully read or not. Could fail from failing to open or read.
  */
@@ -17,7 +17,7 @@ bool write_file(const wchar_t* path, const void* data, size_t size);
 /**
  * Reads a file into memory.
  * @param path String path to read from
- * @param data (out) Pointer to the data read from the file. Caller responsible for freeing the memory.
+ * @param data (out) Pointer to the data read from the file. Caller must release with delete[].
  * @param size (out) Size in bytes of the data read from the file.
  * @return Whether the file was successfully read or not. Could fail from failing to open or read.
  */
