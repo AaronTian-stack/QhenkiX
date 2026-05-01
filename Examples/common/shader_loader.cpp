@@ -6,20 +6,6 @@
 #include <cstdio>
 #include <utility>
 
-const char* get_shader_subdir(const qhenki::gfx::API api)
-{
-    switch (api)
-    {
-    case qhenki::gfx::API::D3D11:
-        return "dx11";
-    case qhenki::gfx::API::Vulkan:
-        return "vulkan";
-    case qhenki::gfx::API::D3D12:
-    default:
-        return "dx12";
-    }
-}
-
 bool append_shader_extension(const qhenki::gfx::API api,
                              const char* shader_name_no_ext,
                              char* out_name,
@@ -30,7 +16,7 @@ bool append_shader_extension(const qhenki::gfx::API api,
         return false;
     }
 
-    const char* extension = nullptr;
+    const char* extension;
     switch (api)
     {
     case qhenki::gfx::API::D3D11:
@@ -59,7 +45,22 @@ bool read_compiled_shader_bytes(const qhenki::gfx::API api,
         return false;
     }
 
-    const auto path = qhenki::util::format_string("compiled-shaders/%s/%s", get_shader_subdir(api), name);
+    const char* api_str;
+    switch (api)
+    {
+    case qhenki::gfx::API::D3D11:
+        api_str = "dx11";
+        break;
+    case qhenki::gfx::API::Vulkan:
+        api_str = "vulkan";
+        break;
+    case qhenki::gfx::API::D3D12:
+    default:
+        api_str = "dx12";
+        break;
+    }
+
+    const auto path = qhenki::util::format_string("compiled-shaders/%s/%s", api_str, name);
 
     void* raw = nullptr;
     size_t size = 0;
