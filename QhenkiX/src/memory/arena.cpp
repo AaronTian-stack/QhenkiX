@@ -10,7 +10,6 @@ using namespace qhenki::memory;
 Arena::Arena(const size_t init_block_size)
     : m_block_size(init_block_size ? init_block_size : alignof(std::max_align_t))
 {
-    assert(init_block_size);
     m_blocks.emplace_back(mkU<uint8_t[]>(m_block_size), m_block_size, 0);
 }
 
