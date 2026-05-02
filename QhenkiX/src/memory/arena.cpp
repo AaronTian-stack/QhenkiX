@@ -20,7 +20,6 @@ void Arena::reset()
     {
         block.offset = 0;
     }
-    m_block_index = 0;
 }
 
 void* Arena::alloc(const size_t size, const size_t alignment)
@@ -28,29 +27,38 @@ void* Arena::alloc(const size_t size, const size_t alignment)
     assert(size);
     assert(alignment && util::is_power_of_two(alignment));
 
-    auto& current_block = m_blocks[m_block_index];
-
-    const auto current_address = reinterpret_cast<size_t>(current_block.memory.get()) + current_block.offset;
-    const auto aligned_address = util::align_u(current_address, alignment);
-    const auto padding = aligned_address - current_address;
-    const auto total_size = size + padding;
-    if (current_block.offset + total_size > current_block.capacity)
+    auto place_in_block = [&](Block& block) -> void*
     {
-        while (total_size > m_block_size)
+        const auto current_address = reinterpret_cast<size_t>(block.memory.get()) + block.offset;
+        const auto aligned_address = util::align_u(current_address, alignment);
+        const auto padding = aligned_address - current_address;
+        const auto total_size = size + padding;
+        if (block.offset + total_size <= block.capacity)
         {
-            m_block_size = util::align_u(total_size, m_block_size);
+            void* ptr = block.memory.get() + block.offset + padding;
+            block.offset += total_size;
+            return ptr;
         }
+        return nullptr;
+    };
 
-        if (++m_block_index >= m_blocks.size())
+    for (auto& block : m_blocks)
+    {
+        if (const auto ptr = place_in_block(block))
         {
-            m_blocks.emplace_back(mkU<uint8_t[]>(m_block_size), m_block_size, 0);
+            return ptr;
         }
-
-        return alloc(size, alignment);
     }
-    current_block.offset += padding;
-    void* ptr = current_block.memory.get() + current_block.offset;
-    current_block.offset += size;
 
+    const auto required_capacity = size + alignment - 1;
+    while (required_capacity > m_block_size)
+    {
+        m_block_size *= 2;
+    }
+
+    auto& new_block = m_blocks.emplace_back(mkU<uint8_t[]>(m_block_size), m_block_size, 0);
+
+    const auto ptr = place_in_block(new_block);
+    assert(ptr);
     return ptr;
 }

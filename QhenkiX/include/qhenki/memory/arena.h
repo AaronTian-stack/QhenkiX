@@ -20,7 +20,6 @@ class Arena
     size_t m_block_size;
 
     std::vector<Block> m_blocks;
-    size_t m_block_index = 0;
 
 public:
     Arena() = delete;
