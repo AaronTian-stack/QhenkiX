@@ -42,7 +42,7 @@ public:
      * Create uninitialized block of given size and alignment.
      * @param size Number of bytes to allocate.
      * @param alignment Alignment requirement for the allocation.
-     * @return Pointer to the allocated memory or null on allocation failure.
+     * @return Pointer to the allocated memory.
      */
     void* alloc(size_t size, size_t alignment = alignof(std::max_align_t));
 
@@ -50,7 +50,7 @@ public:
      * Create default initialized array of given POD type.
      * @tparam T Type of array elements.
      * @param count Number of elements in array.
-     * @return Pointer to the allocated array or null if arena is full.
+     * @return Pointer to the allocated array or null if operation failed.
      */
     template<typename T> T* alloc_array(const size_t count)
     {
@@ -77,7 +77,7 @@ public:
      *
      * @tparam T Type of array elements.
      * @param count Number of elements in array.
-     * @return Unique pointer to the allocated array (calls destructors) or null if arena is full.
+     * @return Unique pointer to the allocated array (calls destructors) or null if operation failed.
      */
     template<typename T> uPtr<T[], std::function<void(T*)>> alloc_array_managed(const size_t count)
     {
