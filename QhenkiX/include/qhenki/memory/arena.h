@@ -4,18 +4,26 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace qhenki::memory
 {
 class Arena
 {
-    uPtr<uint8_t[]> m_memory;
-    size_t m_capacity;
-    size_t m_offset = 0;
+    struct Block
+    {
+        uPtr<uint8_t[]> memory;
+        size_t capacity = 0;
+        size_t offset = 0;
+    };
+
+    size_t m_block_size;
+
+    std::vector<Block> m_blocks;
 
 public:
-    Arena() = default;
-    Arena(size_t capacity);
+    Arena() = delete;
+    Arena(size_t init_block_size);
     Arena(const Arena&) = delete;
     Arena& operator=(const Arena&) = delete;
     Arena(Arena&&) = default;
@@ -31,15 +39,10 @@ public:
     void reset();
 
     /**
-     * Initializes the arena memory once. Returns false if already initialized.
-     */
-    bool init(size_t capacity);
-
-    /**
      * Create uninitialized block of given size and alignment.
      * @param size Number of bytes to allocate.
      * @param alignment Alignment requirement for the allocation.
-     * @return Pointer to the allocated memory or null if arena is full.
+     * @return Pointer to the allocated memory.
      */
     void* alloc(size_t size, size_t alignment = alignof(std::max_align_t));
 
@@ -47,7 +50,7 @@ public:
      * Create default initialized array of given POD type.
      * @tparam T Type of array elements.
      * @param count Number of elements in array.
-     * @return Pointer to the allocated array or null if arena is full.
+     * @return Pointer to the allocated array or null if operation failed.
      */
     template<typename T> T* alloc_array(const size_t count)
     {
@@ -74,7 +77,7 @@ public:
      *
      * @tparam T Type of array elements.
      * @param count Number of elements in array.
-     * @return Unique pointer to the allocated array (calls destructors) or null if arena is full.
+     * @return Unique pointer to the allocated array (calls destructors) or null if operation failed.
      */
     template<typename T> uPtr<T[], std::function<void(T*)>> alloc_array_managed(const size_t count)
     {

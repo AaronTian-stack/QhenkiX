@@ -11,7 +11,9 @@ constexpr uint64_t MEGABYTE = KILOBYTE * 1024;
 
 #define BIT(x) (1 << (x))
 
-inline bool is_power_of_two(const uint32_t value)
+template<typename T>
+    requires std::unsigned_integral<T>
+bool is_power_of_two(const T value)
 {
     return (value & (value - 1)) == 0;
 }
