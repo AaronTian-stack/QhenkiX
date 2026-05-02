@@ -7,51 +7,50 @@
 
 using namespace qhenki::memory;
 
-Arena::Arena(const size_t capacity)
-    : m_memory{mkU<uint8_t[]>(capacity)},
-      m_capacity{capacity}
+Arena::Arena(const size_t init_block_size)
+    : m_block_size(init_block_size ? init_block_size : alignof(std::max_align_t))
 {
+    assert(init_block_size);
+    m_blocks.emplace_back(mkU<uint8_t[]>(m_block_size), m_block_size, 0);
 }
 
 void Arena::reset()
 {
-    m_offset = 0;
-}
-
-bool Arena::init(const size_t capacity)
-{
-    assert(capacity);
-    if (m_memory)
+    for (auto& block : m_blocks)
     {
-        assert(false);
-        return false;
+        block.offset = 0;
     }
-    m_memory = mkU<uint8_t[]>(capacity);
-    m_capacity = capacity;
-    m_offset = 0;
-    return true;
+    m_block_index = 0;
 }
 
 void* Arena::alloc(const size_t size, const size_t alignment)
 {
     assert(size);
-    assert(alignment);
-    assert(m_memory);
+    assert(alignment && util::is_power_of_two(alignment));
 
-    const auto current_address = reinterpret_cast<size_t>(m_memory.get()) + m_offset;
+    auto& current_block = m_blocks[m_block_index];
+
+    const auto current_address = reinterpret_cast<size_t>(current_block.memory.get()) + current_block.offset;
     const auto aligned_address = util::align_u(current_address, alignment);
     const auto padding = aligned_address - current_address;
     const auto total_size = size + padding;
-    if (m_offset + total_size > m_capacity)
+    if (current_block.offset + total_size > current_block.capacity)
     {
-        // TODO: Need some growing strategy that supports contiguous memory
-        // Since separate allocs are not probably not related easiest solution would probably be a linked list of
-        // blocks. Then this failed alloc would just go into the next block.
-        return nullptr;
+        while (total_size > m_block_size)
+        {
+            m_block_size = util::align_u(total_size, m_block_size);
+        }
+
+        if (++m_block_index >= m_blocks.size())
+        {
+            m_blocks.emplace_back(mkU<uint8_t[]>(m_block_size), m_block_size, 0);
+        }
+
+        return alloc(size, alignment);
     }
-    m_offset += padding;
-    void* ptr = m_memory.get() + m_offset;
-    m_offset += size;
+    current_block.offset += padding;
+    void* ptr = current_block.memory.get() + current_block.offset;
+    current_block.offset += size;
 
     return ptr;
 }
