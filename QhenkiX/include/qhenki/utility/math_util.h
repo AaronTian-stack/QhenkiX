@@ -20,18 +20,24 @@ bool is_power_of_two(const T value)
 
 template<typename T>
     requires std::unsigned_integral<T>
-constexpr T align_up(const T size, const T alignment)
+constexpr T align_up(const T value, const T alignment)
 {
+    if (alignment == 0)
+    {
+        return value;
+    }
     assert(is_power_of_two(alignment));
-    return (size + alignment - 1) & ~(alignment - 1);
+    return (value + alignment - 1) & ~(alignment - 1);
 }
 
-/** Ceil-align value to alignment (alignment may be any positive integer; unlike align_u). */
 template<typename T>
     requires std::unsigned_integral<T>
 constexpr T align_up_non_power_of_two(const T value, const T alignment)
 {
-    assert(alignment > 0);
+    if (alignment == 0)
+    {
+        return value;
+    }
     return (value + alignment - 1) / alignment * alignment;
 }
 
