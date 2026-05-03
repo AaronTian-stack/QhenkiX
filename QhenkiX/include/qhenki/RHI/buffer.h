@@ -49,4 +49,10 @@ struct Buffer
     BufferDesc desc;
     sPtr<void> internal_state;
 };
+
+struct BufferRange
+{
+    Buffer* buffer;
+    uint64_t offset;
+};
 } // namespace qhenki::gfx

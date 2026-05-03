@@ -135,15 +135,18 @@ public:
                                                DescriptorHeap* heap,
                                                Descriptor* descriptor) = 0;
 
+    virtual uint64_t get_required_staging_size(const Texture& texture) = 0;
+    virtual size_t get_staging_alignment(const Texture& texture) = 0;
+
     /**
      * @brief Creates staging buffer with data pointer and copies it to the texture.
      * @param cmd_list Pointer to the command list used to record the copy operation.
      * @param data Pointer to the data to be copied.
-     * @param staging Pointer to the uninitialized staging buffer.
+     * @param staging Buffer pointer plus offset to write data at.
      * @param texture Pointer to the destination texture where the data will be copied.
      * @return True if the copy operation was successful, false otherwise.
      */
-    virtual bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) = 0;
+    virtual bool copy_to_texture(CommandList* cmd_list, const void* data, BufferRange staging, Texture* texture) = 0;
 
     virtual bool create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 

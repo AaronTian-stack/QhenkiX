@@ -379,11 +379,11 @@ std::string VulkanContext::create(const bool enable_debug_layer)
     const auto required_alignment = std::max(descriptor_properties.bufferDescriptorAlignment,
                                              descriptor_properties.imageDescriptorAlignment);
     m_bloated_resource_descriptor_size = std::max(
-        {util::align_u(descriptor_properties.bufferDescriptorSize, required_alignment),
-         util::align_u(descriptor_properties.imageDescriptorSize, required_alignment)});
+        {util::align_up(descriptor_properties.bufferDescriptorSize, required_alignment),
+         util::align_up(descriptor_properties.imageDescriptorSize, required_alignment)});
 
-    m_bloated_sampler_descriptor_size = util::align_u(descriptor_properties.samplerDescriptorSize,
-                                                      descriptor_properties.samplerDescriptorAlignment);
+    m_bloated_sampler_descriptor_size = util::align_up(descriptor_properties.samplerDescriptorSize,
+                                                       descriptor_properties.samplerDescriptorAlignment);
 
     const auto& limits = m_capabilities.properties.properties.limits;
     if (limits.maxPushConstantsSize < PUSH_RESERVED_START_OFFSET)
@@ -1730,12 +1730,8 @@ bool VulkanContext::create_descriptor_shader_view(const Texture& texture, Descri
 
 namespace
 {
-bool compute_vk_copy_pitch(const VkFormat format,
-                           const uint32_t width,
-                           const uint32_t height,
-                           size_t* row_pitch,
-                           size_t* slice_pitch,
-                           const uint32_t depth)
+bool compute_vk_copy_pitch(
+    const VkFormat format, const uint32_t width, const uint32_t height, size_t* slice_pitch, const uint32_t depth)
 {
     if (vkuFormatIsUndefined(format) || vkuFormatIsMultiplane(format))
     {
@@ -1752,14 +1748,81 @@ bool compute_vk_copy_pitch(const VkFormat format,
     const uint32_t blocks_x = qhenki::util::ceil_div(width, block_extent.width);
     const uint32_t blocks_y = qhenki::util::ceil_div(height, block_extent.height);
 
-    *row_pitch = static_cast<size_t>(blocks_x) * bytes_per_block;
-    *slice_pitch = *row_pitch * blocks_y * depth;
+    const size_t row_pitch = blocks_x * bytes_per_block;
+    *slice_pitch = row_pitch * blocks_y * depth;
 
     return true;
 }
 } // namespace
 
-bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture)
+uint64_t VulkanContext::get_required_staging_size(const Texture& texture)
+{
+    const auto& desc = texture.desc;
+
+    const bool is_3D = desc.dimension == TextureDimension::TEXTURE_3D;
+    const uint32_t num_subresources = is_3D ? desc.mip_levels : desc.mip_levels * desc.depth_or_array_size;
+    const auto vk_format = convert_format(desc.format);
+    const size_t staging_alignment = get_staging_alignment(texture);
+
+    size_t total_size = 0;
+    for (uint32_t subresource = 0; subresource < num_subresources; subresource++)
+    {
+        uint32_t mip;
+
+        if (is_3D)
+        {
+            mip = subresource;
+        }
+        else
+        {
+            mip = subresource % desc.mip_levels;
+        }
+
+        const uint32_t mip_width = std::max(1u, desc.width >> mip);
+        const uint32_t mip_height = std::max(1u, desc.height >> mip);
+        const uint32_t mip_depth = is_3D ? std::max(1u, static_cast<uint32_t>(desc.depth_or_array_size) >> mip) : 1u;
+
+        size_t slice_pitch = 0;
+        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &slice_pitch, mip_depth))
+        {
+            return false;
+        }
+
+        total_size = util::align_up_non_power_of_two(total_size, staging_alignment);
+        total_size += slice_pitch;
+    }
+    return total_size;
+}
+
+size_t VulkanContext::get_staging_alignment(const Texture& texture)
+{
+    constexpr size_t min_copy_offset_alignment = 4;
+    const auto format = convert_format(texture.desc.format);
+
+    if (vkuFormatIsUndefined(format) || vkuFormatIsMultiplane(format))
+    {
+        return min_copy_offset_alignment;
+    }
+
+    const size_t bytes_per_block = vkuFormatTexelBlockSize(format);
+    if (bytes_per_block == 0)
+    {
+        return min_copy_offset_alignment;
+    }
+
+    size_t alignment = min_copy_offset_alignment;
+    while (alignment % bytes_per_block != 0)
+    {
+        alignment += min_copy_offset_alignment;
+    }
+
+    return alignment;
+}
+
+bool VulkanContext::copy_to_texture(CommandList* cmd_list,
+                                    const void* data,
+                                    const BufferRange staging,
+                                    Texture* texture)
 {
     const auto tex = to_internal(*texture);
     const TextureDesc& desc = texture->desc;
@@ -1771,6 +1834,7 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
     const auto regions = arena.alloc_array<VkBufferImageCopy>(num_subresources);
 
     const auto vk_format = convert_format(desc.format);
+    const size_t staging_alignment = get_staging_alignment(*texture);
 
     static_assert(std::is_same_v<VkDeviceSize, size_t>);
     size_t total_size = 0;
@@ -1794,15 +1858,15 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
         const uint32_t mip_height = std::max(1u, desc.height >> mip);
         const uint32_t mip_depth = is_3D ? std::max(1u, static_cast<uint32_t>(desc.depth_or_array_size) >> mip) : 1u;
 
-        size_t row_pitch = 0;
         size_t slice_pitch = 0;
-        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &row_pitch, &slice_pitch, mip_depth))
+        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &slice_pitch, mip_depth))
         {
             return false;
         }
 
+        total_size = util::align_up_non_power_of_two(total_size, staging_alignment);
         regions[subresource] = {
-            .bufferOffset = total_size,
+            .bufferOffset = total_size + staging.offset,
             .bufferRowLength = 0,   // Tightly packed
             .bufferImageHeight = 0, // Tightly packed
             .imageSubresource =
@@ -1819,19 +1883,7 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
         total_size += slice_pitch;
     }
 
-    // TODO: Transient staging buffer
-    const BufferDesc staging_desc{
-        .size = total_size,
-        .usage = BufferUsage::COPY_SRC,
-        .visibility = CPU_SEQUENTIAL,
-    };
-    Buffer local_staging;
-    if (!create_buffer(staging_desc, data, &local_staging, nullptr))
-    {
-        return false;
-    }
-
-    const auto upload = static_cast<uint8_t*>(map_buffer(local_staging));
+    const auto upload = static_cast<uint8_t*>(map_buffer(*staging.buffer));
     size_t data_offset = 0;
 
     // Second pass: pack data into the staging buffer
@@ -1843,9 +1895,8 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
         const uint32_t mip_height = std::max(1u, desc.height >> mip);
         const uint32_t mip_depth = is_3D ? std::max(1u, static_cast<uint32_t>(desc.depth_or_array_size) >> mip) : 1u;
 
-        size_t src_row_pitch = 0;
         size_t src_slice_pitch = 0;
-        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &src_row_pitch, &src_slice_pitch, mip_depth))
+        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &src_slice_pitch, mip_depth))
         {
             return false;
         }
@@ -1857,20 +1908,18 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list, const void* data, Buf
         data_offset += src_slice_pitch;
     }
 
-    unmap_buffer(local_staging);
+    unmap_buffer(*staging.buffer);
 
     // Texture should have already been transitioned to TRANSFER_DST by prepended command list in submit_command_lists
 
     const auto vk_cmd_list = to_internal(*cmd_list);
-    const auto vk_buffer = to_internal(local_staging);
+    const auto vk_buffer = to_internal(*staging.buffer);
     vkCmdCopyBufferToImage(vk_cmd_list->cmd_buf,
                            vk_buffer->buffer,
                            tex->image,
                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                            num_subresources,
                            regions);
-
-    *staging = std::move(local_staging);
 
     return true;
 }

@@ -1071,12 +1071,11 @@ bool D3D12Context::copy_descriptors(const size_t num_descriptors, const Descript
 
 bool D3D12Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
-    assert(buffer);
     buffer->internal_state = mkS<ComPtr<D3D12MA::Allocation>>();
     const auto allocation = to_internal(*buffer);
 
     const auto size = desc.usage & BufferUsage::CONSTANT
-                        ? util::align_u(desc.size, static_cast<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT))
+                        ? util::align_up(desc.size, static_cast<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT))
                         : desc.size;
 
     D3D12_RESOURCE_DESC1 resource_desc = {
@@ -1379,9 +1378,24 @@ bool D3D12Context::create_descriptor_shader_view(const Texture& texture,
     return true;
 }
 
+uint64_t D3D12Context::get_required_staging_size(const Texture& texture)
+{
+    const UINT num_subresources = texture.desc.mip_levels * texture.desc.depth_or_array_size;
+    const auto texture_allocation = to_internal(texture);
+    const auto desc = texture_allocation->allocation.Get()->GetResource()->GetDesc();
+    UINT64 size;
+    m_device->GetCopyableFootprints(&desc, 0, num_subresources, 0, nullptr, nullptr, nullptr, &size);
+    return size;
+}
+
+size_t D3D12Context::get_staging_alignment(const Texture& texture)
+{
+    return D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+}
+
 bool D3D12Context::copy_to_texture(CommandList* cmd_list,
                                    const void* data,
-                                   Buffer* const staging,
+                                   const BufferRange staging,
                                    Texture* const texture)
 {
     const UINT num_subresources = texture->desc.mip_levels * texture->desc.depth_or_array_size;
@@ -1394,23 +1408,9 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
     const auto row_sizes = arena.alloc_array<UINT64>(num_subresources);
 
     UINT64 size;
-    m_device->GetCopyableFootprints(&desc, 0, num_subresources, 0, layouts, row_counts, row_sizes, &size);
+    m_device->GetCopyableFootprints(&desc, 0, num_subresources, staging.offset, layouts, row_counts, row_sizes, &size);
 
-    const BufferDesc staging_desc{
-        .size = size,
-        .usage = BufferUsage::COPY_SRC,
-        .visibility = CPU_SEQUENTIAL,
-    };
-
-    // TODO: Transient staging buffer
-    Buffer local_staging;
-    if (!create_buffer(staging_desc, nullptr, &local_staging, nullptr))
-    {
-        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to create staging buffer for texture copy\n");
-        return false;
-    }
-
-    const auto upload_memory = static_cast<uint8_t*>(map_buffer(local_staging));
+    const auto upload_memory = static_cast<std::byte*>(map_buffer(*staging.buffer));
 
     size_t data_offset = 0;
 
@@ -1439,13 +1439,13 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         const UINT32 dst_row_pitch = footprint.Footprint.RowPitch;
         const UINT32 dst_slice_bytes = dst_row_pitch * num_rows;
 
-        UINT8* dst = &upload_memory[footprint.Offset];
-        const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
+        std::byte* dst = &upload_memory[footprint.Offset];
+        const std::byte* src = static_cast<const std::byte*>(data) + data_offset;
 
         for (UINT32 z = 0; z < mip_depth; z++) // 1 for 2D or array textures
         {
-            UINT8* dst_slice = &dst[z * dst_slice_bytes];
-            const UINT8* src_slice = &src[z * src_slice_pitch];
+            std::byte* dst_slice = &dst[z * dst_slice_bytes];
+            const std::byte* src_slice = &src[z * src_slice_pitch];
 
             for (UINT y = 0; y < num_rows; y++)
             {
@@ -1456,9 +1456,9 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         data_offset += src_slice_pitch * mip_depth;
     }
 
-    unmap_buffer(local_staging);
+    unmap_buffer(*staging.buffer);
 
-    const auto staging_internal = to_internal(local_staging);
+    const auto staging_internal = to_internal(*staging.buffer);
     const auto cmd_list_d3d12 = to_internal(*cmd_list);
     for (UINT subresource_index = 0; subresource_index < num_subresources; subresource_index++)
     {
@@ -1475,8 +1475,6 @@ bool D3D12Context::copy_to_texture(CommandList* cmd_list,
         };
         cmd_list_d3d12->list.Get()->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
     }
-
-    *staging = std::move(local_staging);
 
     return true;
 }

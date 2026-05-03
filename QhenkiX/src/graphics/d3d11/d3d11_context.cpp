@@ -538,6 +538,14 @@ bool D3D11Context::copy_descriptors(size_t num_descriptors, const Descriptor& sr
 
 bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
+    if (desc.size == 0)
+    {
+        // There are cases where we might create a zero sized buffer
+        // For example texture staging buffer (since copy_to_texture uses UpdateSubresource directly)
+        OutputDebugStringA("Qhenki D3D11 WARNING: Buffer size is zero. Check if intentional.\n");
+        return true;
+    }
+
     D3D11_BUFFER_DESC buffer_info{
         .ByteWidth = static_cast<UINT>(desc.size),
         .StructureByteStride = static_cast<UINT>(desc.stride),
@@ -545,7 +553,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
     if (desc.usage & BufferUsage::CONSTANT)
     {
-        buffer_info.ByteWidth = util::align_u(buffer_info.ByteWidth, 16u);
+        buffer_info.ByteWidth = util::align_up(buffer_info.ByteWidth, 16u);
         if (buffer_info.ByteWidth > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16)
         {
             OutputDebugStringA("Qhenki D3D11 ERROR: Buffer size exceeds maximum constant buffer size\n");
@@ -859,12 +867,19 @@ bool D3D11Context::create_descriptor_shader_view(const Texture& texture,
     return true;
 }
 
-bool D3D11Context::copy_to_texture(CommandList* cmd_list,
-                                   const void* data,
-                                   Buffer* const staging,
-                                   Texture* const texture)
+uint64_t D3D11Context::get_required_staging_size(const Texture& texture)
 {
-    assert(staging);
+    // Update is done directly via UpdateSubresource so no staging buffer is needed
+    return 0;
+}
+
+size_t D3D11Context::get_staging_alignment(const Texture& texture)
+{
+    return 0;
+}
+
+bool D3D11Context::copy_to_texture(CommandList* cmd_list, const void* data, BufferRange staging, Texture* const texture)
+{
     const auto texture_d3d11 = to_internal(*texture);
     ID3D11Resource* resource = get_texture_resource(*texture_d3d11);
     if (!resource)
@@ -893,7 +908,7 @@ bool D3D11Context::copy_to_texture(CommandList* cmd_list,
             return false;
         }
 
-        const UINT8* src = static_cast<const UINT8*>(data) + data_offset;
+        const auto src = static_cast<const std::byte*>(data) + data_offset;
         m_device_context->UpdateSubresource(
             resource, subresource, nullptr, src, static_cast<UINT>(row_pitch), static_cast<UINT>(slice_pitch));
 
