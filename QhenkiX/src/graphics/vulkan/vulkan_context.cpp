@@ -11,8 +11,11 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 
-#include "vk_mem_alloc.h"
+#include <vk_mem_alloc.h>
 
+#include "vk_format_utils.h"
+
+#include "vulkan_command_list.h"
 #include "vulkan_command_pool.h"
 #include "vulkan_descriptor_heap.h"
 #include "vulkan_macros.h"
@@ -25,7 +28,6 @@
 #include "qhenki/utility/math_util.h"
 #include "qhenki/utility/string_util.h"
 #include "src/utility/vulkan_util.h"
-#include "vulkan_command_list.h"
 
 constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
 constexpr uint32_t MAX_VERTEX_SLOTS = 32u;
@@ -424,7 +426,7 @@ std::string VulkanContext::create(const bool enable_debug_layer)
                    reinterpret_cast<uint64_t>(m_internal_semaphore),
                    "Internal Timeline Semaphore");
 
-    const VkSemaphoreCreateInfo image_available_info{
+    constexpr VkSemaphoreCreateInfo image_available_info{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
     for (size_t i = 0; i < m_image_available_semaphores.size(); i++)
@@ -1726,83 +1728,31 @@ bool VulkanContext::create_descriptor_shader_view(const Texture& texture, Descri
     return create_descriptor_texture(texture, heap, descriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 }
 
-struct FormatInfo
-{
-    uint32_t block_width;
-    uint32_t block_height;
-    uint32_t bytes_per_block; // For uncompressed format this is bytes per pixel
-};
-
 namespace
 {
-bool get_vk_format_info(const VkFormat format, FormatInfo* out)
-{
-    switch (format)
-    {
-    case VK_FORMAT_R8_UNORM:
-        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 1};
-        return true;
-    case VK_FORMAT_R8G8_UNORM:
-        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 2};
-        return true;
-    case VK_FORMAT_R8G8B8A8_UNORM:
-    case VK_FORMAT_R8G8B8A8_SRGB:
-    case VK_FORMAT_B8G8R8A8_UNORM:
-    case VK_FORMAT_B8G8R8A8_SRGB:
-        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 4};
-        return true;
-    case VK_FORMAT_R16G16B16A16_SFLOAT:
-        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 8};
-        return true;
-    case VK_FORMAT_R32G32B32A32_SFLOAT:
-        *out = {.block_width = 1, .block_height = 1, .bytes_per_block = 16};
-        return true;
-
-    case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
-    case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
-        *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 8};
-        return true;
-
-    case VK_FORMAT_BC2_UNORM_BLOCK:
-    case VK_FORMAT_BC2_SRGB_BLOCK:
-    case VK_FORMAT_BC3_UNORM_BLOCK:
-    case VK_FORMAT_BC3_SRGB_BLOCK:
-    case VK_FORMAT_BC5_UNORM_BLOCK:
-    case VK_FORMAT_BC5_SNORM_BLOCK:
-    case VK_FORMAT_BC6H_UFLOAT_BLOCK:
-    case VK_FORMAT_BC6H_SFLOAT_BLOCK:
-    case VK_FORMAT_BC7_UNORM_BLOCK:
-    case VK_FORMAT_BC7_SRGB_BLOCK:
-        *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 16};
-        return true;
-
-    case VK_FORMAT_BC4_UNORM_BLOCK:
-    case VK_FORMAT_BC4_SNORM_BLOCK:
-        *out = {.block_width = 4, .block_height = 4, .bytes_per_block = 8};
-        return true;
-
-    default:
-        return false;
-    }
-}
-
-bool compute_vk_copy_pitch(VkFormat format,
+bool compute_vk_copy_pitch(const VkFormat format,
                            const uint32_t width,
                            const uint32_t height,
                            size_t* row_pitch,
                            size_t* slice_pitch,
                            const uint32_t depth)
 {
-    FormatInfo info{};
-    if (!get_vk_format_info(format, &info))
+    if (vkuFormatIsUndefined(format) || vkuFormatIsMultiplane(format))
     {
         return false;
     }
 
-    const uint32_t blocks_x = qhenki::util::ceil_div(width, info.block_width);
-    const uint32_t blocks_y = qhenki::util::ceil_div(height, info.block_height);
+    const uint32_t bytes_per_block = vkuFormatTexelBlockSize(format);
+    const VkExtent3D block_extent = vkuFormatTexelBlockExtent(format);
+    if (bytes_per_block == 0 || block_extent.width == 0 || block_extent.height == 0)
+    {
+        return false;
+    }
 
-    *row_pitch = static_cast<size_t>(blocks_x) * info.bytes_per_block;
+    const uint32_t blocks_x = qhenki::util::ceil_div(width, block_extent.width);
+    const uint32_t blocks_y = qhenki::util::ceil_div(height, block_extent.height);
+
+    *row_pitch = static_cast<size_t>(blocks_x) * bytes_per_block;
     *slice_pitch = *row_pitch * blocks_y * depth;
 
     return true;
