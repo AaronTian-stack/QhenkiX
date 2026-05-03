@@ -13,7 +13,7 @@
 
 #include <vk_mem_alloc.h>
 
-#include "vk_format_utils.h"
+#include <Vulkan-Utility/vk_format_utils.h>
 
 #include "vulkan_command_list.h"
 #include "vulkan_command_pool.h"
@@ -1788,7 +1788,7 @@ uint64_t VulkanContext::get_required_staging_size(const Texture& texture)
             return false;
         }
 
-        total_size = util::align_up_non_power_of_two(total_size, staging_alignment);
+        total_size = util::align_up(total_size, staging_alignment);
         total_size += slice_pitch;
     }
     return total_size;
@@ -1864,7 +1864,7 @@ bool VulkanContext::copy_to_texture(CommandList* cmd_list,
             return false;
         }
 
-        total_size = util::align_up_non_power_of_two(total_size, staging_alignment);
+        total_size = util::align_up(total_size, staging_alignment);
         regions[subresource] = {
             .bufferOffset = total_size + staging.offset,
             .bufferRowLength = 0,   // Tightly packed
