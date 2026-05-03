@@ -254,8 +254,8 @@ void RetroExampleApp::create()
         m_context->create_descriptor_shader_view(m_skybox_texture, &m_CPU_heap, &m_skybox_texture_descriptor));
 
     const auto geometry_bytes = skybox_buffer_bytes + stencil_buffer_bytes + cube_buffer_bytes;
-    const auto texture_start =
-        qhenki::util::align_up_non_power_of_two(geometry_bytes, m_context->get_staging_alignment(m_skybox_texture));
+    const auto texture_start = qhenki::util::align_up(geometry_bytes,
+                                                      m_context->get_staging_alignment(m_skybox_texture));
     const auto staging_size = texture_start + m_context->get_required_staging_size(m_skybox_texture);
 
     qhenki::gfx::Buffer upload_staging{};

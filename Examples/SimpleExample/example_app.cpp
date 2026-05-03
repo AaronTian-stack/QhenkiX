@@ -181,8 +181,7 @@ void ExampleApp::create()
     };
 
     const auto geometry_size = vertex_desc.size + index_desc.size;
-    const auto texture_start = qhenki::util::align_up_non_power_of_two(geometry_size,
-                                                                       m_context->get_staging_alignment(m_texture));
+    const auto texture_start = qhenki::util::align_up(geometry_size, m_context->get_staging_alignment(m_texture));
     const auto staging_size = texture_start + m_context->get_required_staging_size(m_texture);
 
     qhenki::gfx::BufferDesc staging_desc{

@@ -384,15 +384,14 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
         max_image_staging_align = std::max(max_image_staging_align, img_align);
 
         const uint64_t req = data.context->get_required_staging_size(model->images.back());
-        tex_cursor = qhenki::util::align_up_non_power_of_two(tex_cursor, img_align);
+        tex_cursor = qhenki::util::align_up(tex_cursor, img_align);
         image_staging_rel_offset.push_back(tex_cursor);
         tex_cursor += req;
     }
     const uint64_t texture_section_bytes = tex_cursor;
 
     const uint64_t after_material = geometry_bytes + material_bytes;
-    const uint64_t texture_section_base = qhenki::util::align_up_non_power_of_two(after_material,
-                                                                                  max_image_staging_align);
+    const uint64_t texture_section_base = qhenki::util::align_up(after_material, max_image_staging_align);
     const uint64_t total_staging_bytes = texture_section_base + texture_section_bytes;
 
     qhenki::gfx::Buffer upload_staging{};
