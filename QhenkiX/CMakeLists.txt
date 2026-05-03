@@ -71,6 +71,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/utility/vulkan_util.cpp"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.cpp"
+    "${QHENKIX_DIR}/graphics/shared/modern_context.cpp"
 )
 
 if(WIN32)
@@ -115,6 +116,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"
+    "${QHENKIX_DIR}/graphics/shared/modern_context.h"
 )
 
 if(WIN32)

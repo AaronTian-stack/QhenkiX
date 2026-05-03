@@ -5,15 +5,18 @@
 #include <VkBootstrap.h>
 
 #include "concurrentqueue.h"
+
+#include "vulkan_command_pool.h"
+
 #include "qhenki/RHI/context.h"
 #include "src/graphics/shared/descriptor_flush.h"
-#include "vulkan_command_pool.h"
+#include "src/graphics/shared/modern_context.h"
 
 namespace qhenki::gfx
 {
 struct VulkanTexture;
 
-class VulkanContext : public Context
+class VulkanContext : public ModernContext
 {
     struct Capabilities
     {

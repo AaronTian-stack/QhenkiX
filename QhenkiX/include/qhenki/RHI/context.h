@@ -255,22 +255,6 @@ public:
 
 protected:
     unsigned m_frame_count = 0;
-    // For internal swapchain purposes
-    unsigned m_swapchain_index = 0;
-
-    std::mutex m_submit_mutex;
 };
-
-inline memory::Arena& acquire_arena(const uint64_t current_frame)
-{
-    thread_local memory::Arena arena(4 * util::MEGABYTE);
-    thread_local uint64_t arena_frame = 0;
-    if (arena_frame != current_frame)
-    {
-        arena_frame = current_frame;
-        arena.reset();
-    }
-    return arena;
-}
 
 } // namespace qhenki::gfx
