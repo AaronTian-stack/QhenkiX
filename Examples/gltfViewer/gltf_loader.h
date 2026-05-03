@@ -1,9 +1,6 @@
 #pragma once
 
-#include <mutex>
-
 #include <qhenki/RHI/context.h>
-#include <tiny_gltf.h>
 #include "gltf_model.h"
 
 struct ContextData
@@ -13,10 +10,4 @@ struct ContextData
     qhenki::gfx::QueueType queue;
 };
 
-class GLTFLoader
-{
-    std::mutex loading;
-
-public:
-    bool load(const char* filename, GLTFModel* model, const ContextData& data);
-};
+bool load(const char* filename, GLTFModel* model, const ContextData& data);

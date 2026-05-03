@@ -4,16 +4,16 @@
 #include "example_shared/window_init.h"
 #include "shared_structs.h"
 
-#include <imgui/imgui.h>
-#include <SDL3/SDL_dialog.h>
-
-#include <qhenki/utility/general_util.h>
-
 #include <algorithm>
 #include <array>
 #include <cstdio>
 
-#include "qhenki/math/transform_simd.h"
+#include <imgui/imgui.h>
+#include <SDL3/SDL_dialog.h>
+#include <tiny_gltf.h>
+
+#include <qhenki/math/transform_simd.h>
+#include <qhenki/utility/general_util.h>
 
 namespace
 {
@@ -214,8 +214,6 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
         return;
     }
 
-    GLTFLoader loader;
-
     const auto context_model = static_cast<ContextModel*>(userdata);
     assert(context_model);
 
@@ -229,15 +227,13 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
 
     std::scoped_lock lock(*context_model->mutex);
 
-    const auto result =
-        loader.load(*filelist, &context_model->models[*context_model->model_index_to_load_into], context_data);
-    if (result)
+    if (load(*filelist, &context_model->models[*context_model->model_index_to_load_into], context_data))
     {
         printf("glTF model loaded: %s\n", *filelist);
     }
     else
     {
-        printf("FAILED to load glTF model: %s\n", *filelist);
+        printf("Failed to load glTF model: %s\n", *filelist);
     }
 
     // Only copy below descriptors when model lock is held so is ok.
@@ -299,7 +295,6 @@ void gltfViewerApp::render()
     THROW_IF_FALSE(m_context->acquire_swapchain_image());
 
     {
-        // ImGui::ShowDemoWindow();
         const float PAD = 10.0f;
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos;

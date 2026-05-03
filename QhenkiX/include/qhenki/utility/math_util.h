@@ -36,6 +36,10 @@ constexpr T align_up(const T value, const T alignment)
     {
         return align_up_non_power_of_two(value, alignment);
     }
+    if (alignment == 0)
+    {
+        return value;
+    }
     return (value + alignment - 1) & ~(alignment - 1);
 }
 

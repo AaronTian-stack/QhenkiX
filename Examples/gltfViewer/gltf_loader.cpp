@@ -277,7 +277,7 @@ void process_samplers(const tinygltf::Model& tiny_model, GLTFModel* model, qhenk
 
 } // namespace
 
-bool GLTFLoader::load(const char* filename, GLTFModel* const model, const ContextData& data)
+bool load(const char* filename, GLTFModel* const model, const ContextData& data)
 {
     assert(model);
 
@@ -320,20 +320,18 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
     assert(data.context);
     assert(data.pool);
 
-    std::scoped_lock lock(loading);
-
     process_nodes(tiny_model, model);
     process_accessor_views(tiny_model, model);
     process_meshes(tiny_model, model);
     process_materials(tiny_model, model);
     process_samplers(tiny_model, model, *data.context);
 
-    uint64_t geometry_bytes = 0;
+    uint64_t geometry_size = 0;
     for (const auto& tiny_buffer : tiny_model.buffers)
     {
-        geometry_bytes += tiny_buffer.data.size();
+        geometry_size += tiny_buffer.data.size();
     }
-    const uint64_t material_bytes = sizeof(Material) * model->materials.size();
+    const uint64_t material_size = sizeof(Material) * model->materials.size();
 
     model->textures.clear();
     model->textures.reserve(tiny_model.textures.size());
@@ -345,10 +343,10 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
             .sampler_index = tiny_texture.sampler,
         });
     }
-    const uint64_t texture_table_bytes = sizeof(Texture) * model->textures.size();
+    const uint64_t texture_struct_size = sizeof(Texture) * model->textures.size();
 
     qhenki::gfx::BufferDesc texture_buffer_desc{
-        .size = texture_table_bytes,
+        .size = texture_struct_size,
         .stride = sizeof(Texture),
         .usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::UAV,
         .visibility = qhenki::gfx::BufferVisibility::GPU,
@@ -357,11 +355,11 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
 
     model->images.clear();
     model->images.reserve(tiny_model.images.size());
-    std::vector<uint64_t> image_staging_rel_offset;
-    image_staging_rel_offset.reserve(tiny_model.images.size());
 
-    uint64_t max_image_staging_align = 1;
-    uint64_t tex_cursor = texture_table_bytes;
+    std::vector<uint64_t> image_staging_relative_offset;
+    image_staging_relative_offset.reserve(tiny_model.images.size());
+
+    uint64_t texture_offset = geometry_size + material_size + texture_struct_size;
     for (int i = 0; i < tiny_model.images.size(); i++)
     {
         const auto& tiny_image = tiny_model.images[i];
@@ -380,23 +378,19 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
         };
         THROW_IF_FALSE(data.context->create_texture(model->images.back().desc, &model->images.back()));
 
-        const uint64_t img_align = data.context->get_staging_alignment(model->images.back());
-        max_image_staging_align = std::max(max_image_staging_align, img_align);
-
         const uint64_t req = data.context->get_required_staging_size(model->images.back());
-        tex_cursor = qhenki::util::align_up(tex_cursor, img_align);
-        image_staging_rel_offset.push_back(tex_cursor);
-        tex_cursor += req;
+        texture_offset = qhenki::util::align_up(texture_offset,
+                                                data.context->get_staging_alignment(model->images.back()));
+        image_staging_relative_offset.push_back(texture_offset);
+        texture_offset += req;
     }
-    const uint64_t texture_section_bytes = tex_cursor;
 
-    const uint64_t after_material = geometry_bytes + material_bytes;
-    const uint64_t texture_section_base = qhenki::util::align_up(after_material, max_image_staging_align);
-    const uint64_t total_staging_bytes = texture_section_base + texture_section_bytes;
+    const auto total_size = texture_offset;
+    const uint64_t texture_struct_base = geometry_size + material_size;
 
     qhenki::gfx::Buffer upload_staging{};
     qhenki::gfx::BufferDesc upload_staging_desc{
-        .size = total_staging_bytes,
+        .size = total_size,
         .usage = qhenki::gfx::BufferUsage::COPY_SRC,
         .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
     };
@@ -406,20 +400,20 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
         void* const ptr = data.context->map_buffer(upload_staging);
         THROW_IF_FALSE(ptr);
         auto* const bytes = static_cast<std::byte*>(ptr);
-        uint64_t write_at = 0;
+        uint64_t offset = 0;
         for (const auto& tiny_buffer : tiny_model.buffers)
         {
-            memcpy(bytes + write_at, tiny_buffer.data.data(), tiny_buffer.data.size());
-            write_at += tiny_buffer.data.size();
+            memcpy(bytes + offset, tiny_buffer.data.data(), tiny_buffer.data.size());
+            offset += tiny_buffer.data.size();
         }
-        assert(write_at == geometry_bytes);
-        memcpy(bytes + geometry_bytes, model->materials.data(), material_bytes);
-        memcpy(bytes + texture_section_base, model->textures.data(), texture_table_bytes);
+        assert(offset == geometry_size);
+        memcpy(bytes + geometry_size, model->materials.data(), material_size);
+        memcpy(bytes + texture_struct_base, model->textures.data(), texture_struct_size);
         data.context->unmap_buffer(upload_staging);
     }
 
     qhenki::gfx::BufferDesc material_gpu_desc{
-        .size = material_bytes,
+        .size = material_size,
         .stride = sizeof(Material),
         .usage = qhenki::gfx::BufferUsage::COPY_DST | qhenki::gfx::BufferUsage::UAV,
         .visibility = qhenki::gfx::BufferVisibility::GPU,
@@ -442,26 +436,26 @@ bool GLTFLoader::load(const char* filename, GLTFModel* const model, const Contex
         model->buffers.push_back(gpu_buffer);
     }
 
-    qhenki::gfx::CommandList cmd_list{};
+    qhenki::gfx::CommandList cmd_list;
     THROW_IF_FALSE(data.context->create_command_list(&cmd_list, *data.pool));
     THROW_IF_FALSE(data.context->reset_command_list(&cmd_list, *data.pool));
 
-    uint64_t src_off = 0;
+    uint64_t offset = 0;
     for (int i = 0; i < tiny_model.buffers.size(); i++)
     {
         const auto size = tiny_model.buffers[i].data.size();
-        data.context->copy_buffer(&cmd_list, upload_staging, src_off, &model->buffers[i], 0, size);
-        src_off += size;
+        data.context->copy_buffer(&cmd_list, upload_staging, offset, &model->buffers[i], 0, size);
+        offset += size;
     }
-    data.context->copy_buffer(&cmd_list, upload_staging, geometry_bytes, &model->material_buffer, 0, material_bytes);
+    data.context->copy_buffer(&cmd_list, upload_staging, geometry_size, &model->material_buffer, 0, material_size);
     data.context->copy_buffer(
-        &cmd_list, upload_staging, texture_section_base, &model->texture_buffer, 0, texture_table_bytes);
+        &cmd_list, upload_staging, texture_struct_base, &model->texture_buffer, 0, texture_struct_size);
 
     for (int i = 0; i < tiny_model.images.size(); i++)
     {
         const qhenki::gfx::BufferRange img_range{
             .buffer = &upload_staging,
-            .offset = texture_section_base + image_staging_rel_offset[i],
+            .offset = image_staging_relative_offset[i],
         };
         THROW_IF_FALSE(
             data.context->copy_to_texture(&cmd_list, tiny_model.images[i].image.data(), img_range, &model->images[i]));
