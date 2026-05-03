@@ -129,6 +129,7 @@ if(WIN32)
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.h"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.h"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_buffer.h"
         "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
         "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
 

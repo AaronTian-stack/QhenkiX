@@ -7,6 +7,7 @@
 #include <d3dcompiler.h>
 #include <DirectXTex.h>
 
+#include "d3d11_buffer.h"
 #include "d3d11_descriptor_heap.h"
 #include "d3d11_pipeline.h"
 #include "d3d11_sampler_heap.h"
@@ -22,9 +23,9 @@ using namespace qhenki::gfx;
 
 namespace
 {
-ComPtr<ID3D11Buffer>* to_internal(const Buffer& ext)
+D3D11Buffer* to_internal(const Buffer& ext)
 {
-    const auto d3d11_buffer = static_cast<ComPtr<ID3D11Buffer>*>(ext.internal_state.get());
+    const auto d3d11_buffer = static_cast<D3D11Buffer*>(ext.internal_state.get());
     assert(d3d11_buffer);
     return d3d11_buffer;
 }
@@ -584,6 +585,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
 
     if (buffer_info.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
     {
+        // Force UAV to also be SRV since there is no such distinction in RHI / Vulkan
         buffer_info.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
         if (buffer_info.StructureByteStride > 0)
         {
@@ -600,18 +602,18 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
         buffer_info.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
         if (buffer_info.BindFlags == 0)
         {
+            // COPY_SRC or COPY_DST
             buffer_info.Usage = D3D11_USAGE_STAGING;
         }
         else if (buffer_info.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
         {
             // DYNAMIC buffers cannot be UAV bound
-            // This prevents staging buffers from being used directly
-            // TODO: Revisit this
             buffer_info.Usage = D3D11_USAGE_DEFAULT;
             buffer_info.CPUAccessFlags = 0;
         }
         else
         {
+            // Not UAV, COPY_SRC, COPY_DST
             buffer_info.Usage = D3D11_USAGE_DYNAMIC;
             buffer_info.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         }
@@ -638,7 +640,7 @@ bool D3D11Context::create_buffer(const BufferDesc& desc, const void* data, Buffe
     }
 
     buffer->desc = desc;
-    buffer->internal_state = mkS<ComPtr<ID3D11Buffer>>(std::move(d3d11_buffer));
+    buffer->internal_state = mkS<D3D11Buffer>(std::move(d3d11_buffer), buffer_info.Usage);
     return true;
 }
 
@@ -684,7 +686,8 @@ bool D3D11Context::create_descriptor_shader_view(const Buffer& buffer, Descripto
                 },
         };
     }
-    if (FAILED(m_device->CreateShaderResourceView(buffer_d3d11->Get(), &srv_desc, view.ReleaseAndGetAddressOf())))
+    if (FAILED(
+            m_device->CreateShaderResourceView(buffer_d3d11->buffer.Get(), &srv_desc, view.ReleaseAndGetAddressOf())))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create buffer SRV\n");
         return false;
@@ -716,7 +719,7 @@ void D3D11Context::copy_buffer(CommandList* cmd_list,
 
     // Buffers don't have subresources
     m_device_context->CopySubresourceRegion(
-        dst_d3d11->Get(), 0, static_cast<long>(dst_offset), 0, 0, src_d3d11->Get(), 0, &box);
+        dst_d3d11->buffer.Get(), 0, static_cast<long>(dst_offset), 0, 0, src_d3d11->buffer.Get(), 0, &box);
 }
 
 bool D3D11Context::create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name)
@@ -957,7 +960,10 @@ void* D3D11Context::map_buffer(const Buffer& buffer)
     D3D11_MAPPED_SUBRESOURCE mapped_resource;
     const auto buffer_d3d11 = to_internal(buffer);
     auto lock = acquire_lock();
-    if (FAILED(m_device_context->Map(buffer_d3d11->Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
+    assert(buffer.desc.visibility & CPU_SEQUENTIAL);
+    const D3D11_MAP map_type = buffer_d3d11->mapping_type == D3D11_USAGE_DYNAMIC ? D3D11_MAP_WRITE_DISCARD
+                                                                                 : D3D11_MAP_WRITE;
+    if (FAILED(m_device_context->Map(buffer_d3d11->buffer.Get(), 0, map_type, 0, &mapped_resource)))
     {
         OutputDebugStringA("Qhenki D3D11 ERROR: Failed to map buffer\n");
         return nullptr;
@@ -969,7 +975,7 @@ void D3D11Context::unmap_buffer(const Buffer& buffer)
 {
     const auto buffer_d3d11 = to_internal(buffer);
     auto lock = acquire_lock();
-    m_device_context->Unmap(buffer_d3d11->Get(), 0);
+    m_device_context->Unmap(buffer_d3d11->buffer.Get(), 0);
 }
 
 bool D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
@@ -990,7 +996,7 @@ bool D3D11Context::bind_vertex_buffers(CommandList* cmd_list,
     for (unsigned int i = 0; i < buffer_count; i++)
     {
         const auto buffer = to_internal(*buffers[i]);
-        buffer_d3d11[i] = buffer->Get();
+        buffer_d3d11[i] = buffer->buffer.Get();
         assert(strides[i] <= std::numeric_limits<UINT>::max());
         assert(offsets[i] <= std::numeric_limits<UINT>::max());
         buffer_strides[i] = strides[i];
@@ -1008,7 +1014,7 @@ void D3D11Context::bind_index_buffer(CommandList* cmd_list,
 {
     const auto buffer_d3d11 = to_internal(buffer);
     assert(offset <= std::numeric_limits<UINT>::max());
-    m_device_context->IASetIndexBuffer(buffer_d3d11->Get(), dxgi_format(format), offset);
+    m_device_context->IASetIndexBuffer(buffer_d3d11->buffer.Get(), dxgi_format(format), offset);
 }
 
 bool D3D11Context::create_command_pool(CommandPool* command_pool, const QueueType queue, const char* debug_name)
@@ -1224,7 +1230,7 @@ bool D3D11Context::compatibility_set_constant_buffers(const unsigned slot,
     }
     for (unsigned i = 0; i < count; i++)
     {
-        buffer_d3d11[i] = to_internal(*buffers[i])->Get();
+        buffer_d3d11[i] = to_internal(*buffers[i])->buffer.Get();
     }
     switch (stage)
     {
