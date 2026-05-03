@@ -91,6 +91,7 @@ void ImGUIExampleApp::create()
 
     {
         void* const ptr = m_context->map_buffer(staging);
+        THROW_IF_FALSE(ptr);
         auto* const bytes = static_cast<std::byte*>(ptr);
         memcpy(bytes, vertices.data(), vertex_desc.size);
         memcpy(bytes + vertex_desc.size, indices.data(), index_desc.size);
