@@ -481,7 +481,10 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
 
 bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, const unsigned height)
 {
-    wait_idle(GRAPHICS);
+    if (!wait_all_idle())
+    {
+        return false;
+    }
 
     m_swapchain.swapchain.destroy_image_views(m_swapchain.image_views);
 
@@ -502,7 +505,7 @@ bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width,
 
 bool VulkanContext::acquire_swapchain_image()
 {
-    const unsigned sem_index = m_frame_count % m_image_available_semaphores.size();
+    const unsigned sem_index = get_frame_slot(m_image_available_semaphores.size());
     if (VK_FAILED(vkAcquireNextImageKHR(m_device.device,
                                         m_swapchain.swapchain.swapchain,
                                         std::numeric_limits<uint64_t>::max(),

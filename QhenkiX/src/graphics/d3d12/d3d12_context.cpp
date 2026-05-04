@@ -376,7 +376,10 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window, const Swapchain
 
 bool D3D12Context::resize_swapchain(Swapchain* const swapchain, const unsigned width, const unsigned height)
 {
-    wait_idle(GRAPHICS);
+    if (!wait_all_idle())
+    {
+        return false;
+    }
 
     for (auto& buffer : m_swapchain_buffers)
     {
