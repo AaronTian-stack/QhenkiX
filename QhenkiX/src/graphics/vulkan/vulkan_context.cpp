@@ -15,6 +15,8 @@
 
 #include <Vulkan-Utility/vk_format_utils.h>
 
+#include <numeric>
+
 #include "vulkan_command_list.h"
 #include "vulkan_command_pool.h"
 #include "vulkan_descriptor_heap.h"
@@ -1733,23 +1735,25 @@ namespace
 bool compute_vk_copy_pitch(
     const VkFormat format, const uint32_t width, const uint32_t height, size_t* slice_pitch, const uint32_t depth)
 {
+    // This function does not work with multiplane formats
     if (vkuFormatIsUndefined(format) || vkuFormatIsMultiplane(format))
     {
         return false;
     }
 
-    const uint32_t bytes_per_block = vkuFormatTexelBlockSize(format);
+    const auto bytes_per_block = vkuFormatTexelBlockSize(format);
     const VkExtent3D block_extent = vkuFormatTexelBlockExtent(format);
-    if (bytes_per_block == 0 || block_extent.width == 0 || block_extent.height == 0)
+    if (bytes_per_block == 0 || block_extent.width == 0 || block_extent.height == 0 || block_extent.depth == 0)
     {
         return false;
     }
 
-    const uint32_t blocks_x = qhenki::util::ceil_div(width, block_extent.width);
-    const uint32_t blocks_y = qhenki::util::ceil_div(height, block_extent.height);
+    const auto block_w = qhenki::util::ceil_div(width, block_extent.width);
+    const auto blocks_h = qhenki::util::ceil_div(height, block_extent.height);
+    const auto blocks_d = qhenki::util::ceil_div(depth, block_extent.depth);
 
-    const size_t row_pitch = blocks_x * bytes_per_block;
-    *slice_pitch = row_pitch * blocks_y * depth;
+    const size_t row_pitch = block_w * bytes_per_block;
+    *slice_pitch = row_pitch * blocks_h * blocks_d;
 
     return true;
 }
@@ -1782,14 +1786,12 @@ uint64_t VulkanContext::get_required_staging_size(const Texture& texture)
         const uint32_t mip_height = std::max(1u, desc.height >> mip);
         const uint32_t mip_depth = is_3D ? std::max(1u, static_cast<uint32_t>(desc.depth_or_array_size) >> mip) : 1u;
 
-        size_t slice_pitch = 0;
-        if (!compute_vk_copy_pitch(vk_format, mip_width, mip_height, &slice_pitch, mip_depth))
-        {
-            return false;
-        }
+        size_t subresource_size = 0;
+        const bool result = compute_vk_copy_pitch(vk_format, mip_width, mip_height, &subresource_size, mip_depth);
+        assert(result);
 
         total_size = util::align_up(total_size, staging_alignment);
-        total_size += slice_pitch;
+        total_size += subresource_size;
     }
     return total_size;
 }
@@ -1799,24 +1801,17 @@ size_t VulkanContext::get_staging_alignment(const Texture& texture)
     constexpr size_t min_copy_offset_alignment = 4;
     const auto format = convert_format(texture.desc.format);
 
-    if (vkuFormatIsUndefined(format) || vkuFormatIsMultiplane(format))
-    {
-        return min_copy_offset_alignment;
-    }
+    assert(!vkuFormatIsUndefined(format));
+
+    // Multiplane format requires a lot more work, you would need to know what plane is being aligned
+    // in this function. Then alignment would be LCM of that size and 4
+    // We don't support multiplane formats at all right now though
+    assert(!vkuFormatIsMultiplane(format));
 
     const size_t bytes_per_block = vkuFormatTexelBlockSize(format);
-    if (bytes_per_block == 0)
-    {
-        return min_copy_offset_alignment;
-    }
+    assert(bytes_per_block > 0);
 
-    size_t alignment = min_copy_offset_alignment;
-    while (alignment % bytes_per_block != 0)
-    {
-        alignment += min_copy_offset_alignment;
-    }
-
-    return alignment;
+    return std::lcm(min_copy_offset_alignment, bytes_per_block);
 }
 
 bool VulkanContext::copy_to_texture(CommandList* cmd_list,
