@@ -1,5 +1,7 @@
 #include "vulkan_util.h"
 
+#include <cassert>
+
 namespace qhenki::gfx
 {
 

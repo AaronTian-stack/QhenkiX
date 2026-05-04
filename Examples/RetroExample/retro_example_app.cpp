@@ -10,6 +10,7 @@
 
 #include <qhenki/utility/general_util.h>
 #include <qhenki/utility/gfx_util.h>
+#include <qhenki/utility/math_util.h>
 #include <qhenki/utility/shader_blob.h>
 #include <qhenki/utility/string_util.h>
 
@@ -103,8 +104,6 @@ void RetroExampleApp::create()
             m_context->create_descriptor_constant_view(m_matrix_buffers[i], &m_CPU_heap, &m_matrix_descriptors[i]));
     }
 
-    qhenki::gfx::Buffer cylinder_CPU;
-
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
@@ -136,52 +135,7 @@ void RetroExampleApp::create()
     set_accessor(&m_skybox_mesh.index, prim.indices);
 
     assert(model.buffers.size() == 1);
-    auto& buffer = model.buffers[0];
-    qhenki::gfx::BufferDesc desc{.size = buffer.data.size(),
-                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
-                                          qhenki::gfx::BufferUsage::COPY_SRC,
-                                 .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
-    THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &cylinder_CPU, "Skybox Vertex Buffer CPU"));
-
-    desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
-                 qhenki::gfx::BufferUsage::COPY_DST;
-    desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_skybox_buffer, "Skybox Vertex Buffer GPU"));
-
-    {
-        void* ptr = m_context->map_buffer(cylinder_CPU);
-        THROW_IF_FALSE(ptr);
-        memcpy(ptr, buffer.data.data(), buffer.data.size());
-        m_context->unmap_buffer(cylinder_CPU);
-    }
-
-    qhenki::gfx::SamplerDesc sampler_desc{
-        .min_filter = qhenki::gfx::Filter::NEAREST,
-        .mag_filter = qhenki::gfx::Filter::NEAREST,
-        .mip_filter = qhenki::gfx::Filter::NEAREST,
-        .address_mode_u = qhenki::gfx::AddressMode::WRAP,
-        .address_mode_v = qhenki::gfx::AddressMode::WRAP,
-        .address_mode_w = qhenki::gfx::AddressMode::WRAP,
-    };
-    m_sampler_descriptor.offset = 0;
-    THROW_IF_FALSE(m_context->create_descriptor(sampler_desc, &m_sampler_heap, &m_sampler_descriptor));
-
-    qhenki::gfx::SamplerDesc sampler_linear_desc{
-        .min_filter = qhenki::gfx::Filter::LINEAR,
-        .mag_filter = qhenki::gfx::Filter::LINEAR,
-        .mip_filter = qhenki::gfx::Filter::LINEAR,
-        .address_mode_u = qhenki::gfx::AddressMode::CLAMP,
-        .address_mode_v = qhenki::gfx::AddressMode::CLAMP,
-        .address_mode_w = qhenki::gfx::AddressMode::CLAMP,
-    };
-    m_sampler_linear_descriptor.offset = 1;
-    THROW_IF_FALSE(m_context->create_descriptor(sampler_linear_desc, &m_sampler_heap, &m_sampler_linear_descriptor));
-
-    const unsigned frame_slot_init = m_context->get_frame_slot(m_frames_in_flight);
-    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot_init]));
-    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot_init], m_cmd_pools[frame_slot_init]));
-    auto& cmd_list_init = m_cmd_lists[frame_slot_init];
-    m_context->copy_buffer(&cmd_list_init, cylinder_CPU, 0, &m_skybox_buffer, 0, desc.size);
+    const size_t skybox_buffer_bytes = model.buffers[0].data.size();
 
     tinygltf::Model stencil_model;
     THROW_IF_FALSE(loader.LoadBinaryFromFile(&stencil_model, &err, &warn, "assets/cylinder_capped.glb"));
@@ -209,26 +163,7 @@ void RetroExampleApp::create()
     set_accessor_stencil(&m_stencil_mesh.index, stencil_prim.indices);
 
     assert(stencil_model.buffers.size() == 1);
-    auto& stencil_buffer = stencil_model.buffers[0];
-    qhenki::gfx::BufferDesc stencil_desc{
-        .size = stencil_buffer.data.size(),
-        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
-                 qhenki::gfx::BufferUsage::COPY_SRC,
-        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
-    };
-    qhenki::gfx::Buffer stencil_CPU;
-    THROW_IF_FALSE(m_context->create_buffer(stencil_desc, nullptr, &stencil_CPU, "Stencil cylinder CPU"));
-    {
-        void* ptr = m_context->map_buffer(stencil_CPU);
-        THROW_IF_FALSE(ptr);
-        memcpy(ptr, stencil_buffer.data.data(), stencil_buffer.data.size());
-        m_context->unmap_buffer(stencil_CPU);
-    }
-    stencil_desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
-                         qhenki::gfx::BufferUsage::COPY_DST;
-    stencil_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(stencil_desc, nullptr, &m_stencil_mesh.buffer, "Stencil cylinder GPU"));
-    m_context->copy_buffer(&cmd_list_init, stencil_CPU, 0, &m_stencil_mesh.buffer, 0, stencil_buffer.data.size());
+    const size_t stencil_buffer_bytes = stencil_model.buffers[0].data.size();
 
     tinygltf::Model cube_model;
     THROW_IF_FALSE(loader.LoadBinaryFromFile(&cube_model, &err, &warn, "assets/bevel_cube.glb"));
@@ -257,28 +192,43 @@ void RetroExampleApp::create()
     set_accessor_cube(&m_bevel_cube_mesh.index, cube_prim.indices);
 
     assert(cube_model.buffers.size() == 1);
-    auto& cube_buffer = cube_model.buffers[0];
-    qhenki::gfx::BufferDesc cube_desc{
-        .size = cube_buffer.data.size(),
-        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
-                 qhenki::gfx::BufferUsage::COPY_SRC,
-        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
-    };
-    qhenki::gfx::Buffer bevel_cube_CPU;
-    THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &bevel_cube_CPU, "Bevel Cube CPU"));
-    {
-        void* ptr = m_context->map_buffer(bevel_cube_CPU);
-        THROW_IF_FALSE(ptr);
-        memcpy(ptr, cube_buffer.data.data(), cube_buffer.data.size());
-        m_context->unmap_buffer(bevel_cube_CPU);
-    }
-    cube_desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
-                      qhenki::gfx::BufferUsage::COPY_DST;
-    cube_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(cube_desc, nullptr, &m_bevel_cube_mesh.buffer, "Bevel Cube GPU"));
-    m_context->copy_buffer(&cmd_list_init, bevel_cube_CPU, 0, &m_bevel_cube_mesh.buffer, 0, cube_buffer.data.size());
+    const size_t cube_buffer_bytes = cube_model.buffers[0].data.size();
 
-    qhenki::gfx::Buffer skybox_staging;
+    qhenki::gfx::BufferDesc gpu_mesh_desc{
+        .size = skybox_buffer_bytes,
+        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::INDEX |
+                 qhenki::gfx::BufferUsage::COPY_DST,
+        .visibility = qhenki::gfx::BufferVisibility::GPU,
+    };
+    THROW_IF_FALSE(m_context->create_buffer(gpu_mesh_desc, nullptr, &m_skybox_buffer, "Skybox Vertex Buffer"));
+
+    gpu_mesh_desc.size = stencil_buffer_bytes;
+    THROW_IF_FALSE(m_context->create_buffer(gpu_mesh_desc, nullptr, &m_stencil_mesh.buffer, "Stencil cylinder"));
+
+    gpu_mesh_desc.size = cube_buffer_bytes;
+    THROW_IF_FALSE(m_context->create_buffer(gpu_mesh_desc, nullptr, &m_bevel_cube_mesh.buffer, "Bevel Cube"));
+
+    qhenki::gfx::SamplerDesc sampler_desc{
+        .min_filter = qhenki::gfx::Filter::NEAREST,
+        .mag_filter = qhenki::gfx::Filter::NEAREST,
+        .mip_filter = qhenki::gfx::Filter::NEAREST,
+        .address_mode_u = qhenki::gfx::AddressMode::WRAP,
+        .address_mode_v = qhenki::gfx::AddressMode::WRAP,
+        .address_mode_w = qhenki::gfx::AddressMode::WRAP,
+    };
+    m_sampler_descriptor.offset = 0;
+    THROW_IF_FALSE(m_context->create_descriptor(sampler_desc, &m_sampler_heap, &m_sampler_descriptor));
+
+    qhenki::gfx::SamplerDesc sampler_linear_desc{
+        .min_filter = qhenki::gfx::Filter::LINEAR,
+        .mag_filter = qhenki::gfx::Filter::LINEAR,
+        .mip_filter = qhenki::gfx::Filter::LINEAR,
+        .address_mode_u = qhenki::gfx::AddressMode::CLAMP,
+        .address_mode_v = qhenki::gfx::AddressMode::CLAMP,
+        .address_mode_w = qhenki::gfx::AddressMode::CLAMP,
+    };
+    m_sampler_linear_descriptor.offset = 1;
+    THROW_IF_FALSE(m_context->create_descriptor(sampler_linear_desc, &m_sampler_heap, &m_sampler_linear_descriptor));
 
     const wchar_t* skybox_path = L"assets/skybox.dds";
     ScratchImage scratch;
@@ -303,7 +253,52 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(
         m_context->create_descriptor_shader_view(m_skybox_texture, &m_CPU_heap, &m_skybox_texture_descriptor));
 
-    THROW_IF_FALSE(m_context->copy_to_texture(&cmd_list_init, scratch.GetPixels(), &skybox_staging, &m_skybox_texture));
+    const auto geometry_bytes = skybox_buffer_bytes + stencil_buffer_bytes + cube_buffer_bytes;
+    const auto texture_start = qhenki::util::align_up(geometry_bytes,
+                                                      m_context->get_staging_alignment(m_skybox_texture));
+    const auto staging_size = texture_start + m_context->get_required_staging_size(m_skybox_texture);
+
+    qhenki::gfx::Buffer upload_staging{};
+    qhenki::gfx::BufferDesc upload_staging_desc{
+        .size = staging_size,
+        .usage = qhenki::gfx::BufferUsage::COPY_SRC,
+        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
+    };
+    THROW_IF_FALSE(m_context->create_buffer(upload_staging_desc, nullptr, &upload_staging, "Upload staging"));
+
+    const unsigned frame_slot_init = m_context->get_frame_slot(m_frames_in_flight);
+    THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot_init]));
+    THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot_init], m_cmd_pools[frame_slot_init]));
+    auto& cmd_list_init = m_cmd_lists[frame_slot_init];
+
+    {
+        void* const ptr = m_context->map_buffer(upload_staging);
+        THROW_IF_FALSE(ptr);
+        auto* const bytes = static_cast<std::byte*>(ptr);
+        memcpy(bytes, model.buffers[0].data.data(), skybox_buffer_bytes);
+        memcpy(bytes + skybox_buffer_bytes, stencil_model.buffers[0].data.data(), stencil_buffer_bytes);
+        memcpy(bytes + skybox_buffer_bytes + stencil_buffer_bytes,
+               cube_model.buffers[0].data.data(),
+               cube_buffer_bytes);
+        m_context->unmap_buffer(upload_staging);
+    }
+
+    m_context->copy_buffer(&cmd_list_init, upload_staging, 0, &m_skybox_buffer, 0, skybox_buffer_bytes);
+    m_context->copy_buffer(
+        &cmd_list_init, upload_staging, skybox_buffer_bytes, &m_stencil_mesh.buffer, 0, stencil_buffer_bytes);
+    m_context->copy_buffer(&cmd_list_init,
+                           upload_staging,
+                           skybox_buffer_bytes + stencil_buffer_bytes,
+                           &m_bevel_cube_mesh.buffer,
+                           0,
+                           cube_buffer_bytes);
+
+    const qhenki::gfx::BufferRange texture_staging_range{
+        .buffer = &upload_staging,
+        .offset = texture_start,
+    };
+    THROW_IF_FALSE(
+        m_context->copy_to_texture(&cmd_list_init, scratch.GetPixels(), texture_staging_range, &m_skybox_texture));
 
     qhenki::gfx::ImageBarrier barrier_skybox = {
         .src_stage = qhenki::gfx::SyncStage::SYNC_COPY,

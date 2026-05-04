@@ -12,12 +12,13 @@
 #include "d3d12_descriptor_heap.h"
 #include "qhenki/RHI/context.h"
 #include "src/graphics/shared/descriptor_flush.h"
+#include "src/graphics/shared/modern_context.h"
 
 using Microsoft::WRL::ComPtr;
 
 namespace qhenki::gfx
 {
-class D3D12Context : public Context
+class D3D12Context : public ModernContext
 {
     struct Capabilities
     {
@@ -57,7 +58,6 @@ class D3D12Context : public Context
     Fence m_fence_wait_all{}; // For stalling queues
     uint64_t m_fence_wait_all_last_signaled = 0;
 
-    DeferredDescriptorCopier m_descriptor_copier;
 
 public:
     std::string create(bool enable_debug_layer) override;
@@ -113,7 +113,9 @@ public:
     bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name) override;
     bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 
-    bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
+    uint64_t get_required_staging_size(const Texture& texture) override;
+    size_t get_staging_alignment(const Texture& texture) override;
+    bool copy_to_texture(CommandList* cmd_list, const void* data, BufferRange staging, Texture* texture) override;
 
     bool create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor) override;
 

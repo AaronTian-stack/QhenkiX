@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cassert>
 #include <concepts>
 #include <cstdint>
 
@@ -20,10 +19,28 @@ bool is_power_of_two(const T value)
 
 template<typename T>
     requires std::unsigned_integral<T>
-constexpr T align_u(const T size, const T alignment)
+constexpr T align_up_non_power_of_two(const T value, const T alignment)
 {
-    assert(is_power_of_two(alignment));
-    return (size + alignment - 1) & ~(alignment - 1);
+    if (alignment == 0)
+    {
+        return value;
+    }
+    return (value + alignment - 1) / alignment * alignment;
+}
+
+template<typename T>
+    requires std::unsigned_integral<T>
+constexpr T align_up(const T value, const T alignment)
+{
+    if (!is_power_of_two(alignment))
+    {
+        return align_up_non_power_of_two(value, alignment);
+    }
+    if (alignment == 0)
+    {
+        return value;
+    }
+    return (value + alignment - 1) & ~(alignment - 1);
 }
 
 template<typename T>

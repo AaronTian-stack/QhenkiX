@@ -5,15 +5,18 @@
 #include <VkBootstrap.h>
 
 #include "concurrentqueue.h"
+
+#include "vulkan_command_pool.h"
+
 #include "qhenki/RHI/context.h"
 #include "src/graphics/shared/descriptor_flush.h"
-#include "vulkan_command_pool.h"
+#include "src/graphics/shared/modern_context.h"
 
 namespace qhenki::gfx
 {
 struct VulkanTexture;
 
-class VulkanContext : public Context
+class VulkanContext : public ModernContext
 {
     struct Capabilities
     {
@@ -112,7 +115,9 @@ public:
     bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name) override;
     bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 
-    bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) override;
+    uint64_t get_required_staging_size(const Texture& texture) override;
+    size_t get_staging_alignment(const Texture& texture) override;
+    bool copy_to_texture(CommandList* cmd_list, const void* data, BufferRange staging, Texture* texture) override;
 
     bool create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor) override;
 

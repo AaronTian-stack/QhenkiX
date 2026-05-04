@@ -5,6 +5,8 @@
 #endif
 #include <vulkan/vulkan.h>
 
+#include "vulkan_root_signature.h"
+
 #include <array>
 
 namespace qhenki::gfx

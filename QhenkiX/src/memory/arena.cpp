@@ -29,7 +29,7 @@ void* Arena::alloc(const size_t size, const size_t alignment)
     auto place_in_block = [&](Block& block) -> void*
     {
         const auto current_address = reinterpret_cast<size_t>(block.memory.get()) + block.offset;
-        const auto aligned_address = util::align_u(current_address, alignment);
+        const auto aligned_address = util::align_up(current_address, alignment);
         const auto padding = aligned_address - current_address;
         const auto total_size = size + padding;
         if (block.offset + total_size <= block.capacity)

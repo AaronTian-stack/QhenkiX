@@ -71,6 +71,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/utility/vulkan_util.cpp"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.cpp"
+    "${QHENKIX_DIR}/graphics/shared/modern_context.cpp"
 )
 
 if(WIN32)
@@ -114,6 +115,7 @@ set(QHENKIX_PRIVATE_HEADERS
     "${QHENKIX_DIR}/utility/vulkan_util.h"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"
+    "${QHENKIX_DIR}/graphics/shared/modern_context.h"
 )
 
 if(WIN32)
@@ -126,6 +128,7 @@ if(WIN32)
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.h"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.h"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.h"
+        "${QHENKIX_DIR}/graphics/d3d11/d3d11_buffer.h"
         "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
         "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
 

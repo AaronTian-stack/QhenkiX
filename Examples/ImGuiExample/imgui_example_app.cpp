@@ -66,39 +66,44 @@ void ImGUIExampleApp::create()
         THROW_IF_FALSE(m_context->create_command_list(&m_cmd_lists[i], m_cmd_pools[i]));
     }
 
-    qhenki::gfx::Buffer vertex_CPU;
-    qhenki::gfx::Buffer index_CPU;
-
     constexpr auto vertices = std::array{Vertex{.position = {0.0f, 0.5f, 0.0f}, .color = {1.0f, 0.0f, 0.0f}},
                                          Vertex{.position = {0.5f, -0.5f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}},
-                                         Vertex{{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
-    qhenki::gfx::BufferDesc desc{.size = vertices.size() * sizeof(Vertex),
-                                 .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::COPY_SRC,
-                                 .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
-    THROW_IF_FALSE(
-        m_context->create_buffer(desc, vertices.data(), &vertex_CPU, "Interleaved Position/Color Buffer CPU"));
-
-    desc.usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::COPY_DST;
-    desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(desc, nullptr, &m_vertex_buffer, "Interleaved Position/Color Buffer GPU"));
+                                         Vertex{.position = {-0.5f, -0.5f, 0.0f}, .color = {0.0f, 0.0f, 1.0f}}};
+    qhenki::gfx::BufferDesc vertex_desc{.size = vertices.size() * sizeof(Vertex),
+                                        .usage = qhenki::gfx::BufferUsage::VERTEX | qhenki::gfx::BufferUsage::COPY_DST,
+                                        .visibility = qhenki::gfx::BufferVisibility::GPU};
+    THROW_IF_FALSE(m_context->create_buffer(vertex_desc, nullptr, &m_vertex_buffer, "Vertex Buffer"));
 
     constexpr auto indices = std::array{0u, 1u, 2u};
     qhenki::gfx::BufferDesc index_desc{.size = indices.size() * sizeof(uint32_t),
-                                       .usage = qhenki::gfx::BufferUsage::INDEX | qhenki::gfx::BufferUsage::COPY_SRC,
-                                       .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL};
-    THROW_IF_FALSE(m_context->create_buffer(index_desc, indices.data(), &index_CPU, "Index Buffer CPU"));
+                                       .usage = qhenki::gfx::BufferUsage::INDEX | qhenki::gfx::BufferUsage::COPY_DST,
+                                       .visibility = qhenki::gfx::BufferVisibility::GPU};
+    THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer"));
 
-    index_desc.usage = qhenki::gfx::BufferUsage::INDEX | qhenki::gfx::BufferUsage::COPY_DST;
-    index_desc.visibility = qhenki::gfx::BufferVisibility::GPU;
-    THROW_IF_FALSE(m_context->create_buffer(index_desc, nullptr, &m_index_buffer, "Index Buffer GPU"));
+    const auto geometry_size = vertex_desc.size + index_desc.size;
+    qhenki::gfx::BufferDesc staging_desc{
+        .size = geometry_size,
+        .usage = qhenki::gfx::BufferUsage::COPY_SRC,
+        .visibility = qhenki::gfx::BufferVisibility::CPU_SEQUENTIAL,
+    };
+    qhenki::gfx::Buffer staging{};
+    THROW_IF_FALSE(m_context->create_buffer(staging_desc, nullptr, &staging, "Staging buffer"));
 
-    // Schedule copies to GPU buffers / texture
+    {
+        void* const ptr = m_context->map_buffer(staging);
+        THROW_IF_FALSE(ptr);
+        auto* const bytes = static_cast<std::byte*>(ptr);
+        memcpy(bytes, vertices.data(), vertex_desc.size);
+        memcpy(bytes + vertex_desc.size, indices.data(), index_desc.size);
+        m_context->unmap_buffer(staging);
+    }
+
     const unsigned frame_slot_init = m_context->get_frame_slot(m_frames_in_flight);
     THROW_IF_FALSE(m_context->reset_command_pool(&m_cmd_pools[frame_slot_init]));
     THROW_IF_FALSE(m_context->reset_command_list(&m_cmd_lists[frame_slot_init], m_cmd_pools[frame_slot_init]));
     auto& cmd_list = m_cmd_lists[frame_slot_init];
-    m_context->copy_buffer(&cmd_list, vertex_CPU, 0, &m_vertex_buffer, 0, desc.size);
-    m_context->copy_buffer(&cmd_list, index_CPU, 0, &m_index_buffer, 0, index_desc.size);
+    m_context->copy_buffer(&cmd_list, staging, 0, &m_vertex_buffer, 0, vertex_desc.size);
+    m_context->copy_buffer(&cmd_list, staging, vertex_desc.size, &m_index_buffer, 0, index_desc.size);
 
     THROW_IF_FALSE(m_context->close_command_list(&cmd_list));
     auto current_fence_value = ++m_fence_frame_ready_val[frame_slot_init];

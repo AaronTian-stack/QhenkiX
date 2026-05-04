@@ -136,14 +136,34 @@ public:
                                                Descriptor* descriptor) = 0;
 
     /**
-     * @brief Creates staging buffer with data pointer and copies it to the texture.
+     * Get the required staging buffer size to copy data to the texture.
+     * @param texture Texture to get staging buffer size for.
+     * @return Size in bytes of staging buffer or staging buffer range required to copy data to the texture.
+     */
+    virtual uint64_t get_required_staging_size(const Texture& texture) = 0;
+
+    /**
+     * Get required alignment for a texture within a staging buffer.
+     * @param texture Texture to get staging buffer alignment for.
+     * @return Alignment in bytes required for the texture within a staging buffer. This is NOT guaranteed to be a power
+     * of 2.
+     */
+    virtual size_t get_staging_alignment(const Texture& texture) = 0;
+
+    /**
+     * @brief Fills a staging buffer range with data and records a copy to a texture.
+     *
+     * Use @ref get_required_staging_size to determine the required staging range size.
+     * Use @ref get_staging_alignment to determine the required alignment when placing
+     * that range within the staging buffer.
+     *
      * @param cmd_list Pointer to the command list used to record the copy operation.
      * @param data Pointer to the data to be copied.
-     * @param staging Pointer to the uninitialized staging buffer.
+     * @param staging Buffer pointer plus offset to write data at.
      * @param texture Pointer to the destination texture where the data will be copied.
      * @return True if the copy operation was successful, false otherwise.
      */
-    virtual bool copy_to_texture(CommandList* cmd_list, const void* data, Buffer* staging, Texture* texture) = 0;
+    virtual bool copy_to_texture(CommandList* cmd_list, const void* data, BufferRange staging, Texture* texture) = 0;
 
     virtual bool create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor) = 0;
 
@@ -209,8 +229,7 @@ public:
     // TODO: draw indirect count
 
     /**
-     * Submits command lists to the specified queue and signals/waits on fences as specified in submit_info. Not thread
-     * safe and should only be called from main thread.
+     * Submits command lists to the specified queue and signals/waits on fences as specified in submit_info.
      * @param submit_info Struct containing command lists to be submitted, fences to be signaled and waited on, and
      * what queues to wait on for each waiting fence.
      * @param queue Queue to submit command lists to.
@@ -254,23 +273,8 @@ public:
     virtual ~Context() = default;
 
 protected:
+    // Current frame count, incremented whenever present is called.
     unsigned m_frame_count = 0;
-    // For internal swapchain purposes
-    unsigned m_swapchain_index = 0;
-
-    std::mutex m_submit_mutex;
 };
-
-inline memory::Arena& acquire_arena(const uint64_t current_frame)
-{
-    thread_local memory::Arena arena(4 * util::MEGABYTE);
-    thread_local uint64_t arena_frame = 0;
-    if (arena_frame != current_frame)
-    {
-        arena_frame = current_frame;
-        arena.reset();
-    }
-    return arena;
-}
 
 } // namespace qhenki::gfx
