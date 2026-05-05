@@ -1372,7 +1372,7 @@ void RetroExampleApp::render()
 
 void RetroExampleApp::resize(const unsigned width, const unsigned height)
 {
-    m_context->wait_idle(qhenki::gfx::QueueType::GRAPHICS);
+    m_context->wait_idle();
     const qhenki::gfx::TextureDesc depth_desc{
         .width = width,
         .height = height,

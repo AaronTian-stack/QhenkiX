@@ -481,7 +481,10 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
 
 bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, const unsigned height)
 {
-    wait_idle(GRAPHICS);
+    if (!wait_idle())
+    {
+        return false;
+    }
 
     m_swapchain.swapchain.destroy_image_views(m_swapchain.image_views);
 
@@ -502,7 +505,25 @@ bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width,
 
 bool VulkanContext::acquire_swapchain_image()
 {
-    const unsigned sem_index = m_frame_count % m_image_available_semaphores.size();
+    const unsigned sem_index = get_frame_slot(m_image_available_semaphores.size());
+
+    const uint64_t consumed_at = m_image_available_consumed_at[sem_index];
+    if (consumed_at > 0)
+    {
+        uint64_t current_queue_val = 0;
+        vkGetSemaphoreCounterValue(m_device.device, m_graphics_queue.semaphore, &current_queue_val);
+        if (current_queue_val < consumed_at)
+        {
+            const VkSemaphoreWaitInfo wait_info{
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+                .semaphoreCount = 1,
+                .pSemaphores = &m_graphics_queue.semaphore,
+                .pValues = &consumed_at,
+            };
+            vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max());
+        }
+    }
+
     if (VK_FAILED(vkAcquireNextImageKHR(m_device.device,
                                         m_swapchain.swapchain.swapchain,
                                         std::numeric_limits<uint64_t>::max(),
@@ -2674,9 +2695,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         wait_semaphore_infos[wait_idx++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_image_available_semaphores[m_frame_count % m_image_available_semaphores.size()],
-            .value = 0,
-            .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .semaphore = m_image_available_semaphores[get_frame_slot(m_image_available_semaphores.size())],
         };
     }
 
@@ -2728,6 +2747,11 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         .value = ++q.last_signaled_fence_value,
         .stageMask = stage_mask,
     };
+    if (submit_info.wait_swapchain)
+    {
+        m_image_available_consumed_at[get_frame_slot(m_image_available_semaphores.size())] =
+            q.last_signaled_fence_value;
+    }
     if (signal_internal_semaphore)
     {
         signal_semaphore_infos[signal_count++] = {
@@ -2991,9 +3015,13 @@ bool VulkanContext::wait_idle(const QueueType queue)
         return VK_SUCCEEDED(vkQueueWaitIdle(m_compute_queue.queue));
     case COPY:
         return VK_SUCCEEDED(vkQueueWaitIdle(m_transfer_queue.queue));
-    default:
-        return VK_SUCCEEDED(vkDeviceWaitIdle(m_device.device));
     }
+    return false;
+}
+
+bool VulkanContext::wait_idle()
+{
+    return VK_SUCCEEDED(vkDeviceWaitIdle(m_device.device));
 }
 
 VulkanContext::~VulkanContext()

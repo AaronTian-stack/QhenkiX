@@ -270,11 +270,12 @@ public:
                                             PipelineStage stage) = 0;
 
     virtual bool wait_idle(QueueType queue) = 0;
+    virtual bool wait_idle() = 0;
+
     virtual ~Context() = default;
 
 protected:
     // Current frame count, incremented whenever present is called.
     unsigned m_frame_count = 0;
 };
-
 } // namespace qhenki::gfx

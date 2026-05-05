@@ -376,7 +376,10 @@ bool D3D12Context::create_swapchain(const DisplayWindow& window, const Swapchain
 
 bool D3D12Context::resize_swapchain(Swapchain* const swapchain, const unsigned width, const unsigned height)
 {
-    wait_idle(GRAPHICS);
+    if (!wait_idle())
+    {
+        return false;
+    }
 
     for (auto& buffer : m_swapchain_buffers)
     {
@@ -2232,6 +2235,15 @@ bool D3D12Context::wait_idle(const QueueType queue)
 
     const WaitInfo wait_info{.wait_all = true, .count = 1, .fences = &m_fence_wait_all, .values = &value};
     return wait_fences(wait_info);
+}
+
+bool D3D12Context::wait_idle()
+{
+    if (!wait_idle(GRAPHICS) || !wait_idle(COMPUTE) || !wait_idle(COPY))
+    {
+        return false;
+    }
+    return true;
 }
 
 D3D12Context::~D3D12Context()

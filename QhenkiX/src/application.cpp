@@ -186,7 +186,7 @@ void Application::run(const gfx::API api,
             render();
         }
     }
-    m_context->wait_idle(gfx::QueueType::GRAPHICS);
+    m_context->wait_idle();
     destroy();
 }
 
