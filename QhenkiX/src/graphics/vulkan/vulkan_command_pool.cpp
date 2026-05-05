@@ -13,9 +13,9 @@ VulkanCommandPool::VulkanCommandPool(const VkDevice device, const VkCommandPool 
 VulkanCommandPool::~VulkanCommandPool()
 {
     assert(device);
-    if (current_command_buffer_index > 0)
+    if (command_buffer_count > 0)
     {
-        vkFreeCommandBuffers(device, command_pool, current_command_buffer_index + 1, command_buffers.data());
+        vkFreeCommandBuffers(device, command_pool, command_buffer_count + 1, command_buffers.data());
     }
     if (command_pool)
     {
@@ -36,22 +36,22 @@ VkCommandBuffer VulkanCommandPool::create_command_buffer(VkCommandBufferAllocate
     info.commandPool = command_pool;
     info.commandBufferCount = 1;
     VkCommandBuffer buffer = VK_NULL_HANDLE;
-    if (current_command_buffer_index >= command_buffers.size() ||
+    if (command_buffer_count >= command_buffers.size() ||
         vkAllocateCommandBuffers(device, &info, &buffer) != VK_SUCCESS)
     {
         return VK_NULL_HANDLE;
     }
-    command_buffers[current_command_buffer_index++] = buffer;
+    command_buffers[command_buffer_count++] = buffer;
     return buffer;
 }
 
 VkResult VulkanCommandPool::reset()
 {
     assert(command_pool);
-    if (current_command_buffer_index > 0)
+    if (command_buffer_count > 0)
     {
-        vkFreeCommandBuffers(device, command_pool, current_command_buffer_index + 1, command_buffers.data());
+        vkFreeCommandBuffers(device, command_pool, command_buffer_count, command_buffers.data());
     }
-    current_command_buffer_index = 0;
+    command_buffer_count = 0;
     return vkResetCommandPool(device, command_pool, 0);
 }

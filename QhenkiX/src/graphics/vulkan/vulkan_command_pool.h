@@ -12,7 +12,7 @@ class VulkanCommandPool
     VkCommandPool command_pool = VK_NULL_HANDLE;
     // You shouldn't be submitting so many command buffers
     std::array<VkCommandBuffer, 32> command_buffers{};
-    unsigned current_command_buffer_index = 0;
+    unsigned command_buffer_count = 0;
 
 public:
     VulkanCommandPool() = default;
