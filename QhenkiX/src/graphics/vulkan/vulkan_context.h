@@ -35,8 +35,9 @@ class VulkanContext : public ModernContext
         std::vector<VkImageView> image_views;
     } m_swapchain;
     VkSurfaceKHR m_surface;
-    std::array<VkSemaphore, 2> m_image_available_semaphores{VK_NULL_HANDLE, VK_NULL_HANDLE};
-    std::array<VkSemaphore, 2> m_render_finished_semaphores{VK_NULL_HANDLE, VK_NULL_HANDLE};
+    std::array<VkSemaphore, 2> m_image_available_semaphores;
+    std::array<VkSemaphore, 2> m_render_finished_semaphores;
+    std::array<uint64_t, 2> m_image_available_consumed_at;
 
     VmaAllocator m_allocator = nullptr;
 
