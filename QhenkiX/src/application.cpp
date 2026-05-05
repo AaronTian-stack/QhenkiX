@@ -4,12 +4,11 @@
 #include "graphics/d3d11/d3d11_context.h"
 #include "graphics/d3d12/d3d12_context.h"
 #endif
+#include "graphics/vulkan/vulkan_context.h"
+
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 
-#include <algorithm>
-
-#include "graphics/vulkan/vulkan_context.h"
 #include "qhenki/display_window.h"
 #include "qhenki/RHI/context.h"
 #include "qhenki/utility/string_util.h"
@@ -153,8 +152,8 @@ void Application::run(const gfx::API api,
             }
             if (event.type == SDL_EVENT_WINDOW_RESIZED)
             {
-                m_window.m_display_info.width = std::max(event.window.data1, 1);
-                m_window.m_display_info.height = std::max(event.window.data2, 1);
+                m_window.m_display_info.width = event.window.data1;
+                m_window.m_display_info.height = event.window.data2;
                 m_context->resize_swapchain(&m_swapchain, event.window.data1, event.window.data2);
                 // The swapchain backbuffer index might have changed after resize to use the same index as the last
                 // present, so the last fence value is no longer valid
