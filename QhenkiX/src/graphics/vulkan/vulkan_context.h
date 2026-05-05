@@ -195,6 +195,7 @@ public:
                                     PipelineStage stage) override;
 
     bool wait_idle(QueueType queue) override;
+    bool wait_idle() override;
 
     VulkanContext() = default;
     ~VulkanContext() override;

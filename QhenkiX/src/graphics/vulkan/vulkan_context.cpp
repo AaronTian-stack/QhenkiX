@@ -481,7 +481,7 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
 
 bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, const unsigned height)
 {
-    if (!wait_all_idle())
+    if (!wait_idle())
     {
         return false;
     }
@@ -2994,9 +2994,13 @@ bool VulkanContext::wait_idle(const QueueType queue)
         return VK_SUCCEEDED(vkQueueWaitIdle(m_compute_queue.queue));
     case COPY:
         return VK_SUCCEEDED(vkQueueWaitIdle(m_transfer_queue.queue));
-    default:
-        return VK_SUCCEEDED(vkDeviceWaitIdle(m_device.device));
     }
+    return false;
+}
+
+bool VulkanContext::wait_idle()
+{
+    return VK_SUCCEEDED(vkDeviceWaitIdle(m_device.device));
 }
 
 VulkanContext::~VulkanContext()

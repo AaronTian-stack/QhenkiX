@@ -194,6 +194,7 @@ public:
                                     PipelineStage stage) override;
 
     bool wait_idle(QueueType queue) override;
+    bool wait_idle() override;
 
     D3D12Context() = default;
     ~D3D12Context() override;

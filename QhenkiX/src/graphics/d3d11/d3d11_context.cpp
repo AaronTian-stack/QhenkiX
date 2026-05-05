@@ -1447,6 +1447,11 @@ bool D3D11Context::compatibility_set_samplers(const unsigned slot,
 
 bool D3D11Context::wait_idle(QueueType queue)
 {
+    return wait_idle();
+}
+
+bool D3D11Context::wait_idle()
+{
     auto lock = acquire_lock();
     m_device_context->Flush();
     return true;
