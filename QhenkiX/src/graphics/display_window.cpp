@@ -116,8 +116,6 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
 
     m_window = SDL_CreateWindowWithProperties(properties_id);
 
-    m_display_info = info;
-
     if (m_window == nullptr)
     {
         const auto str = util::format_string("Unable to create window: %s", SDL_GetError());
@@ -125,6 +123,13 @@ void DisplayWindow::create_window_internal(const DisplayInfo& info, int monitor_
         SDL_Quit();
         return;
     }
+
+    if (!SDL_SetWindowMinimumSize(m_window, 1, 1))
+    {
+        SDL_Log("SDL_SetWindowMinimumSize failed: %s", SDL_GetError());
+    }
+
+    m_display_info = info;
 
     const SDL_DisplayID id = SDL_GetDisplayForWindow(m_window);
     m_current_monitor = *SDL_GetCurrentDisplayMode(id);
