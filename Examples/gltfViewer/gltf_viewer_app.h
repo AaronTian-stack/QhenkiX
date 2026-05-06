@@ -1,7 +1,9 @@
 #pragma once
 
 #include <tsl/robin_map.h>
+#include <atomic>
 #include <mutex>
+
 #include "gltf_loader.h"
 #include "scene.h"
 
