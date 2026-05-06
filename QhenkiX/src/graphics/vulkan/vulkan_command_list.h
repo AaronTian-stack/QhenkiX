@@ -1,9 +1,6 @@
 #pragma once
 
-#ifndef VK_NO_PROTOTYPES
-#define VK_NO_PROTOTYPES
-#endif
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 #include "vulkan_root_signature.h"
 
