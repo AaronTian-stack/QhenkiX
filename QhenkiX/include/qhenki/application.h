@@ -1,13 +1,10 @@
 #pragma once
 
 #include <smartpointer.h>
-#include <thread>
 
 #include "display_window.h"
-
 #include "input/input_manager.h"
-
-#include "RHI/context.h"
+#include "rhi/context.h"
 
 namespace qhenki
 {

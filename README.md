@@ -8,7 +8,7 @@ QhenkiX is a personal C++20 library for 3D software creation. It is centered aro
 
 ## Features
 
-You can find the core RHI interfaces in the [RHI folder](QhenkiX/include/qhenki/RHI). Backend implementations live in [QhenkiX/src/graphics](QhenkiX/src/graphics).
+You can find the core RHI interfaces in the [RHI folder](QhenkiX/include/qhenki/rhi). Backend implementations live in [QhenkiX/src/graphics](QhenkiX/src/graphics).
 
 Current highlights:
 

@@ -8,7 +8,7 @@
 
 #include "vulkan_command_pool.h"
 
-#include "qhenki/RHI/context.h"
+#include "qhenki/rhi/context.h"
 #include "src/graphics/shared/descriptor_flush.h"
 #include "src/graphics/shared/modern_context.h"
 

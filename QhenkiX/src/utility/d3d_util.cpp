@@ -1,7 +1,7 @@
 #include "d3d_util.h"
 
 #include <magic_enum/magic_enum.hpp>
-#include "qhenki/RHI/shader.h"
+#include "qhenki/rhi/shader.h"
 
 namespace qhenki::gfx
 {

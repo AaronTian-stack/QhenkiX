@@ -3,7 +3,7 @@
 #include <span>
 #include <vector>
 
-#include "qhenki/RHI/descriptor.h"
+#include "qhenki/rhi/descriptor.h"
 
 namespace qhenki::gfx
 {

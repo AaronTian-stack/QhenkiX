@@ -7,7 +7,7 @@
 #include <mutex>
 #include <optional>
 
-#include "qhenki/RHI/shader.h"
+#include "qhenki/rhi/shader.h"
 
 using Microsoft::WRL::ComPtr;
 

@@ -3,7 +3,7 @@
 #include <cstddef>
 
 #include <qhenki/application.h>
-#include <qhenki/RHI/context.h>
+#include <qhenki/rhi/context.h>
 #include <smartpointer.h>
 
 bool append_shader_extension(qhenki::gfx::API api,

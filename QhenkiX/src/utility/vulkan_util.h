@@ -5,9 +5,9 @@
 #endif
 #include <vulkan/vulkan.h>
 
-#include "qhenki/RHI/barrier.h"
-#include "qhenki/RHI/enums.h"
-#include "qhenki/RHI/texture.h"
+#include "qhenki/rhi/barrier.h"
+#include "qhenki/rhi/enums.h"
+#include "qhenki/rhi/texture.h"
 
 namespace qhenki::gfx
 {

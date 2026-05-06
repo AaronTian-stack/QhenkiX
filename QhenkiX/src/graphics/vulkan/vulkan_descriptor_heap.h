@@ -1,6 +1,6 @@
 #pragma once
 
-#include "qhenki/RHI/descriptor_heap.h"
+#include "qhenki/rhi/descriptor_heap.h"
 
 #include "vulkan_buffer.h"
 

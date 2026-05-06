@@ -5,9 +5,9 @@
 #include <wrl/client.h>
 #include <string>
 
-#include "qhenki/RHI/barrier.h"
-#include "qhenki/RHI/enums.h"
-#include "qhenki/RHI/shader.h"
+#include "qhenki/rhi/barrier.h"
+#include "qhenki/rhi/enums.h"
+#include "qhenki/rhi/shader.h"
 
 using Microsoft::WRL::ComPtr;
 

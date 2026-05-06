@@ -6,7 +6,7 @@
 #include <d3d11shader.h>
 #include <d3dcompiler.h>
 
-#include "qhenki/RHI/shader.h"
+#include "qhenki/rhi/shader.h"
 
 using namespace qhenki::gfx;
 

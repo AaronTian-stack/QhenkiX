@@ -5,7 +5,7 @@
 #include <variant>
 #include <vector>
 
-#include "qhenki/RHI/shader.h"
+#include "qhenki/rhi/shader.h"
 #include "qhenki/utility/math_util.h"
 
 struct IDxcBlob;

@@ -6,7 +6,7 @@
 #include "d3d11_layout_assembler.h"
 #include "d3d11_multithread.h"
 
-#include "qhenki/RHI/context.h"
+#include "qhenki/rhi/context.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;

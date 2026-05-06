@@ -1,6 +1,6 @@
 #pragma once
 
-#include <qhenki/RHI/context.h>
+#include <qhenki/rhi/context.h>
 #include "gltf_model.h"
 
 struct ContextData

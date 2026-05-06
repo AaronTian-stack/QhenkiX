@@ -2,7 +2,7 @@
 
 #include "dxc_com_ptr.h"
 
-#include "qhenki/RHI/shader_compiler.h"
+#include "qhenki/rhi/shader_compiler.h"
 
 using Microsoft::WRL::ComPtr;
 

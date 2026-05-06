@@ -2,7 +2,7 @@
 
 #include <directx/dxgiformat.h>
 
-#include "qhenki/RHI/enums.h"
+#include "qhenki/rhi/enums.h"
 
 namespace qhenki::gfx
 {

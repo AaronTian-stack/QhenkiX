@@ -7,9 +7,9 @@
 
 #include <qhenki/math/transform.h>
 
-#include <qhenki/RHI/buffer.h>
-#include <qhenki/RHI/sampler.h>
-#include <qhenki/RHI/texture.h>
+#include <qhenki/rhi/buffer.h>
+#include <qhenki/rhi/sampler.h>
+#include <qhenki/rhi/texture.h>
 
 struct GLTFModel
 {

@@ -4,7 +4,7 @@
 
 #include "descriptor_flush.h"
 #include "qhenki/memory/arena.h"
-#include "qhenki/RHI/context.h"
+#include "qhenki/rhi/context.h"
 
 namespace qhenki::gfx
 {

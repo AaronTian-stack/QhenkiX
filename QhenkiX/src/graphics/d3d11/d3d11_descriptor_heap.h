@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "qhenki/RHI/descriptor_heap.h"
+#include "qhenki/rhi/descriptor_heap.h"
 
 namespace qhenki::gfx
 {

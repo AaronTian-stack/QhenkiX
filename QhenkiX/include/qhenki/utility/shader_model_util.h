@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "qhenki/RHI/shader.h"
+#include "qhenki/rhi/shader.h"
 
 namespace qhenki::gfx
 {

@@ -10,7 +10,7 @@
 #include <imgui_impl_sdl3.h>
 
 #include "qhenki/display_window.h"
-#include "qhenki/RHI/context.h"
+#include "qhenki/rhi/context.h"
 #include "qhenki/utility/string_util.h"
 
 using namespace qhenki;

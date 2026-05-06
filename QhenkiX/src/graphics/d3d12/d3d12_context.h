@@ -10,7 +10,7 @@
 #include <D3D12DescriptorHelpers/RenderTargetHelper.hpp>
 
 #include "d3d12_descriptor_heap.h"
-#include "qhenki/RHI/context.h"
+#include "qhenki/rhi/context.h"
 #include "src/graphics/shared/descriptor_flush.h"
 #include "src/graphics/shared/modern_context.h"
 
