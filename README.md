@@ -139,6 +139,7 @@ This project relies on the following dependencies and build tools:
 - [SDL3](https://github.com/libsdl-org/SDL) - (zlib License)
 - [Dear ImGui](https://github.com/ocornut/imgui) - (MIT License)
 - [Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers) - (Apache 2.0)
+- [Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) - (Apache 2.0)
 - [volk](https://github.com/zeux/volk) - (MIT License)
 - [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap) - (MIT License)
 - [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - (Apache 2.0)
