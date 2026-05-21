@@ -1,4 +1,4 @@
-name: "Linux Build (clang)"
+name: "Linux Build (clang-21)"
 
 on:
   workflow_call:
@@ -19,12 +19,19 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
 
+    - name: Install LLVM 21 toolchain
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y wget gnupg lsb-release
+        wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21
+        sudo apt-get install -y clang-21 lld-21
+
     - name: Install system dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          clang \
-          lld \
           build-essential \
           git \
           make \
@@ -96,12 +103,19 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
 
+    - name: Install LLVM 21 toolchain
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y wget gnupg lsb-release
+        wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21
+        sudo apt-get install -y clang-21 lld-21
+
     - name: Install system dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          clang \
-          lld \
           build-essential \
           git \
           make \
@@ -180,12 +194,19 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
 
+    - name: Install LLVM 21 toolchain
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y wget gnupg lsb-release
+        wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21
+        sudo apt-get install -y clang-21 lld-21
+
     - name: Install system dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          clang \
-          lld \
           build-essential \
           git \
           make \

@@ -46,6 +46,11 @@ See [Examples](Examples) for use cases of the library.
     
 ## Installation / Build
 
+**Build Requirements:**
+- CMake 3.21 or higher
+- C++20 compiler
+    - Linux: clang-21 (not tested witb GCC)
+
 1. Clone the repository with submodules.
     ```bash
     git clone --recurse-submodules https://github.com/AaronTian-stack/QhenkiX.git
@@ -121,13 +126,6 @@ QhenkiX requires several shared libraries to run. When using CMake, the examples
 
 ## Dependencies
 
-This project relies on the following dependencies and build tools:
-
-**Build Requirements:**
-- CMake 3.21 or higher
-- C++20 compiler
-
-**Third-party Libraries:**
 - [Boost](https://github.com/boostorg/boost) - (Boost Software License 1.0)
 - [D3D12MemAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) - (MIT License)
 - [D3D12DescriptorHelpers](https://github.com/sawickiap/D3D12DescriptorHelpers) - (Public Domain)
