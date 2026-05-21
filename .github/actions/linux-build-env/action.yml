@@ -1,0 +1,68 @@
+name: Linux build environment
+description: Install LLVM/clang, SDL build dependencies, and CMake for Linux CI jobs
+inputs:
+  llvm-version:
+    description: LLVM major version to install from apt.llvm.org
+    required: false
+    default: '21'
+  cmake-version:
+    description: CMake version for jwlawson/actions-setup-cmake
+    required: false
+    default: '3.29'
+runs:
+  using: composite
+  steps:
+    - name: Install LLVM toolchain
+      shell: bash
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y wget gnupg lsb-release
+        wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh "${{ inputs.llvm-version }}"
+        sudo apt-get install -y "clang-${{ inputs.llvm-version }}" "lld-${{ inputs.llvm-version }}"
+
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          build-essential \
+          git \
+          make \
+          pkg-config \
+          ninja-build \
+          gnome-desktop-testing \
+          libasound2-dev \
+          libpulse-dev \
+          libaudio-dev \
+          libfribidi-dev \
+          libjack-dev \
+          libsndio-dev \
+          libx11-dev \
+          libxext-dev \
+          libxrandr-dev \
+          libxcursor-dev \
+          libxfixes-dev \
+          libxi-dev \
+          libxss-dev \
+          libxtst-dev \
+          libxkbcommon-dev \
+          libdrm-dev \
+          libgbm-dev \
+          libgl1-mesa-dev \
+          libgles2-mesa-dev \
+          libegl1-mesa-dev \
+          libdbus-1-dev \
+          libibus-1.0-dev \
+          libudev-dev \
+          libthai-dev \
+          libpipewire-0.3-dev \
+          libwayland-dev \
+          libdecor-0-dev \
+          liburing-dev
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: ${{ inputs.cmake-version }}

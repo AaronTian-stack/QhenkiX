@@ -60,10 +60,10 @@
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
-      "environment": {
-        "CC": "clang",
-        "CXX": "clang++"
-      }
+      "cacheVariables": {
+        "QHENKIX_REQUIRED_CLANG_VERSION": "21.1"
+      },
+      "toolchainFile": "${sourceDir}/QhenkiX/cmake/linux-clang-toolchain.cmake"
     },
     {
       "name": "linux-debug",
