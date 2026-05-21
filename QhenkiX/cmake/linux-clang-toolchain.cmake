@@ -1,5 +1,5 @@
 if(NOT DEFINED QHENKIX_REQUIRED_CLANG_VERSION)
-    set(QHENKIX_REQUIRED_CLANG_VERSION "21.1" CACHE STRING)
+    set(QHENKIX_REQUIRED_CLANG_VERSION "21.1" CACHE STRING "Required Clang major.minor version")
 endif()
 
 function(qhenkix_verify_clang_version _compiler _language)
