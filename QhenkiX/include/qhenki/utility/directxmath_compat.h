@@ -28,4 +28,3 @@
 #elif defined(__valid)
 #undef __valid
 #endif
-
