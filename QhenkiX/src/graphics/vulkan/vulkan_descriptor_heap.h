@@ -34,7 +34,7 @@ public:
     VulkanDescriptorHeap(VulkanDescriptorHeap&&) = delete;
     VulkanDescriptorHeap& operator=(const VulkanDescriptorHeap&) = delete;
     VulkanDescriptorHeap& operator=(VulkanDescriptorHeap&&) = delete;
-    ~VulkanDescriptorHeap();
+    ~VulkanDescriptorHeap() = default;
 
     bool create(const DescriptorHeapDesc& desc, const VulkanDescriptorHeapInitInfo& init_info);
 
