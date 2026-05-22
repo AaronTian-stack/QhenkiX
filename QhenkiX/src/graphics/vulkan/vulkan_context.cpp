@@ -118,7 +118,6 @@ auto get_gpu_address(const VkDevice device, VkBuffer buffer) -> VkDeviceAddress
     };
     return vkGetBufferDeviceAddress(device, &addr_info);
 }
-
 } // namespace
 
 constexpr uint32_t major = 1;
@@ -480,6 +479,21 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
     return create_swapchain(swapchain_desc);
 }
 
+namespace
+{
+void destroy_swapchain_resources(vkb::Swapchain* swapchain, std::vector<VkImageView>* image_views)
+{
+    swapchain->destroy_image_views(*image_views);
+    image_views->clear();
+
+    if (swapchain->swapchain != VK_NULL_HANDLE)
+    {
+        vkb::destroy_swapchain(*swapchain);
+        swapchain->swapchain = VK_NULL_HANDLE;
+    }
+}
+} // namespace
+
 bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, const unsigned height)
 {
     if (!wait_idle())
@@ -487,7 +501,7 @@ bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width,
         return false;
     }
 
-    m_swapchain.swapchain.destroy_image_views(m_swapchain.image_views);
+    destroy_swapchain_resources(&m_swapchain.swapchain, &m_swapchain.image_views);
 
     SwapchainDesc desc = *swapchain;
     desc.width = width;
@@ -568,15 +582,17 @@ bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
 
     const VkPresentModeKHR present_mode = swapchain_desc.tearing ? VK_PRESENT_MODE_IMMEDIATE_KHR
                                                                  : VK_PRESENT_MODE_FIFO_KHR;
-    auto swap_ret = swapchain_builder.set_old_swapchain(m_swapchain.swapchain)
-                        .set_desired_extent(swapchain_desc.width, swapchain_desc.height)
-                        .set_desired_present_mode(present_mode)
-                        .set_required_min_image_count(swapchain_desc.buffer_count)
-                        .set_desired_format({convert_format(swapchain_desc.format), VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
-                        .build();
+    swapchain_builder.set_desired_extent(swapchain_desc.width, swapchain_desc.height)
+        .set_desired_present_mode(present_mode)
+        .set_required_min_image_count(swapchain_desc.buffer_count)
+        .set_desired_format({convert_format(swapchain_desc.format), VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
+    if (m_swapchain.swapchain.swapchain != VK_NULL_HANDLE)
+    {
+        swapchain_builder.set_old_swapchain(m_swapchain.swapchain);
+    }
+    auto swap_ret = swapchain_builder.build();
     if (!swap_ret)
     {
-        m_swapchain.swapchain.swapchain = VK_NULL_HANDLE;
         return false;
     }
     m_swapchain.swapchain = std::move(swap_ret.value());
@@ -3041,11 +3057,7 @@ VulkanContext::~VulkanContext()
         pool->~VulkanCommandPool();
     }
 
-    for (const auto image_view : m_swapchain.image_views)
-    {
-        vkDestroyImageView(m_device.device, image_view, nullptr);
-    }
-    vkb::destroy_swapchain(m_swapchain.swapchain);
+    destroy_swapchain_resources(&m_swapchain.swapchain, &m_swapchain.image_views);
     if (m_surface)
     {
         vkb::destroy_surface(m_instance, m_surface);
