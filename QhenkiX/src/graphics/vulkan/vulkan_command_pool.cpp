@@ -15,7 +15,7 @@ VulkanCommandPool::~VulkanCommandPool()
     assert(m_device);
     if (m_command_buffer_count > 0)
     {
-        vkFreeCommandBuffers(m_device, m_command_pool, m_command_buffer_count + 1, m_command_buffers.data());
+        vkFreeCommandBuffers(m_device, m_command_pool, m_command_buffer_count, m_command_buffers.data());
         m_command_buffer_count = 0;
     }
     if (m_command_pool)
