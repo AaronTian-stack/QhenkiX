@@ -1122,7 +1122,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
-    pipeline->internal_state = mkS<VulkanPipeline>(vk_pipeline, primitive_topology, vk_root_signature);
+    pipeline->internal_state = mkS<VulkanPipeline>(m_device.device, vk_pipeline, primitive_topology, vk_root_signature);
 
     set_debug_name(m_device.device, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(vk_pipeline), debug_name);
 
