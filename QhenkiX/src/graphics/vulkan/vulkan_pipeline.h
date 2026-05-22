@@ -12,7 +12,7 @@ struct VulkanPipeline
     VkPipeline pipeline;
     VkPrimitiveTopology topology;
     VulkanRootSignature* root_signature;
-    VulkanPipeline() = default;
+    VulkanPipeline() = delete;
     VulkanPipeline(const VkDevice device,
                    const VkPipeline pipeline,
                    const VkPrimitiveTopology topology,
