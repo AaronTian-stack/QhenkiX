@@ -2146,16 +2146,11 @@ struct RenderTargetState
 {
     std::array<VkImageView, MAX_RENDER_TARGETS> color_render_targets{};
     VkImageView depth_stencil = VK_NULL_HANDLE;
+    bool seen = false;
 };
 
 namespace
 {
-RenderTargetState& get_render_target_state(const RenderTarget* const* rts, const RenderTarget* depth_stencil)
-{
-    thread_local RenderTargetState state;
-    return state;
-}
-
 bool create_views(const VkDevice device,
                   const unsigned count,
                   const RenderTarget* targets,
@@ -2245,7 +2240,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
 
     const auto& swapchain = m_swapchain.swapchain;
 
-    auto& rt_state = get_render_target_state(nullptr, depth_stencil);
+    auto& rt_state = get_render_target_state();
     if (!create_views(m_device.device, 0, nullptr, depth_stencil, &rt_state))
     {
         return false;
@@ -2304,7 +2299,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
                                       const RenderTarget* rts,
                                       const RenderTarget* depth_stencil)
 {
-    auto& rt_state = get_render_target_state(&rts, depth_stencil);
+    auto& rt_state = get_render_target_state();
     if (!create_views(m_device.device, rt_count, rts, depth_stencil, &rt_state))
     {
         return false;
@@ -2837,7 +2832,7 @@ bool VulkanContext::wait_fences(const WaitInfo& info)
     return VK_SUCCEEDED(vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max()));
 }
 
-void VulkanContext::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
+void VulkanContext::set_barrier_resource(const unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
 {
     for (unsigned i = 0; i < count; i++)
     {
@@ -3025,11 +3020,32 @@ VulkanContext::~VulkanContext()
         vkDeviceWaitIdle(m_device.device);
     }
     vmaDestroyAllocator(m_allocator);
+
+    for (auto rt_state : m_render_target_states)
+    {
+        for (unsigned i = 0; i < MAX_RENDER_TARGETS; i++)
+        {
+            if (rt_state->color_render_targets[i] != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(m_device.device, rt_state->color_render_targets[i], nullptr);
+            }
+        }
+        if (rt_state->depth_stencil != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(m_device.device, rt_state->depth_stencil, nullptr);
+        }
+    }
+
+    for (const auto image_view : m_swapchain.image_views)
+    {
+        vkDestroyImageView(m_device.device, image_view, nullptr);
+    }
     vkb::destroy_swapchain(m_swapchain.swapchain);
     if (m_surface)
     {
         vkb::destroy_surface(m_instance, m_surface);
     }
+
     for (const auto& q : {m_graphics_queue, m_compute_queue, m_transfer_queue})
     {
         vkDestroySemaphore(m_device.device, q.semaphore, nullptr);
@@ -3043,6 +3059,7 @@ VulkanContext::~VulkanContext()
         vkDestroySemaphore(m_device.device, sem, nullptr);
     }
     vkDestroySemaphore(m_device.device, m_internal_semaphore, nullptr);
+
     vkb::destroy_device(m_device);
     vkb::destroy_instance(m_instance);
 }
@@ -3197,4 +3214,16 @@ VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
         }
     }
     return thread_pools[m_frame_count % thread_pools.size()];
+}
+
+RenderTargetState& VulkanContext::get_render_target_state()
+{
+    thread_local RenderTargetState state;
+    if (!state.seen)
+    {
+        state.seen = true;
+        std::scoped_lock lock(m_rt_states_mutex);
+        m_render_target_states.push_back(&state);
+    }
+    return state;
 }
