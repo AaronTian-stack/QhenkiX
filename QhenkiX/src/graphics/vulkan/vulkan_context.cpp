@@ -3021,7 +3021,7 @@ VulkanContext::~VulkanContext()
     }
     vmaDestroyAllocator(m_allocator);
 
-    for (auto rt_state : m_render_target_states)
+    for (const auto rt_state : m_rt_states_to_delete.resources)
     {
         for (unsigned i = 0; i < MAX_RENDER_TARGETS; i++)
         {
@@ -3034,6 +3034,11 @@ VulkanContext::~VulkanContext()
         {
             vkDestroyImageView(m_device.device, rt_state->depth_stencil, nullptr);
         }
+    }
+
+    for (const auto pool : m_command_pools_to_delete.resources)
+    {
+        pool->~VulkanCommandPool();
     }
 
     for (const auto image_view : m_swapchain.image_views)
@@ -3188,18 +3193,19 @@ VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
 
 VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
 {
+    // TODO: Fix this to properly account for different queue types
+
     // One pool per thread that is double buffered
     thread_local std::array<VulkanCommandPool, 2> thread_pools;
-    for (size_t i = 0; i < thread_pools.size(); i++)
+    for (auto& pool : thread_pools)
     {
-        const VkCommandPoolCreateInfo internal_pool_ci{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = get_queue(queue).family_index,
-        };
-        auto& pool = thread_pools[i];
         if (!pool.is_valid())
         {
+            const VkCommandPoolCreateInfo internal_pool_ci{
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                .queueFamilyIndex = get_queue(queue).family_index,
+            };
             VkCommandPool cmd_pool;
             if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &cmd_pool)))
             {
@@ -3211,6 +3217,8 @@ VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
                            "Internal Command Pool");
 
             pool.init(m_device.device, cmd_pool);
+
+            m_command_pools_to_delete.add(&pool);
         }
     }
     return thread_pools[m_frame_count % thread_pools.size()];
@@ -3222,8 +3230,7 @@ RenderTargetState& VulkanContext::get_render_target_state()
     if (!state.seen)
     {
         state.seen = true;
-        std::scoped_lock lock(m_rt_states_mutex);
-        m_render_target_states.push_back(&state);
+        m_rt_states_to_delete.add(&state);
     }
     return state;
 }
