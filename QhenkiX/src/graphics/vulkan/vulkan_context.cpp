@@ -1467,9 +1467,6 @@ bool VulkanContext::copy_descriptors(const size_t num_descriptors, const Descrip
 
 bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
-    buffer->internal_state = mkS<VulkanBuffer>();
-    const auto vulkan_buffer = static_cast<VulkanBuffer*>(buffer->internal_state.get());
-
     VkBufferCreateInfo buffer_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = desc.size,
@@ -1519,10 +1516,11 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
         alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
-    if (VK_FAILED(vmaCreateBuffer(
-            m_allocator, &buffer_info, &alloc_info, &vulkan_buffer->buffer, &vulkan_buffer->allocation, nullptr)))
+    VkBuffer vk_buffer;
+    VmaAllocation allocation;
+
+    if (VK_FAILED(vmaCreateBuffer(m_allocator, &buffer_info, &alloc_info, &vk_buffer, &allocation, nullptr)))
     {
-        buffer->internal_state.reset();
         return false;
     }
 
