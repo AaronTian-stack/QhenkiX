@@ -20,15 +20,15 @@ public:
     // Expects pool to already be created
     VulkanCommandPool(VkDevice device, VkCommandPool pool);
     VulkanCommandPool(const VulkanCommandPool&) = delete;
-    VulkanCommandPool& operator=(const VulkanCommandPool&) = delete;
     VulkanCommandPool(VulkanCommandPool&&) = delete;
+    VulkanCommandPool& operator=(const VulkanCommandPool&) = delete;
+    VulkanCommandPool& operator=(VulkanCommandPool&&) = delete;
     ~VulkanCommandPool();
 
     void init(VkDevice device, VkCommandPool pool);
+    bool is_valid() const;
 
     VkCommandBuffer create_command_buffer(VkCommandBufferAllocateInfo& info);
     VkResult reset();
-
-    friend class VulkanContext;
 };
 } // namespace qhenki::gfx

@@ -29,6 +29,11 @@ void VulkanCommandPool::init(const VkDevice device, const VkCommandPool pool)
     this->m_command_pool = pool;
 }
 
+bool VulkanCommandPool::is_valid() const
+{
+    return m_device != VK_NULL_HANDLE && m_command_pool != VK_NULL_HANDLE;
+}
+
 VkCommandBuffer VulkanCommandPool::create_command_buffer(VkCommandBufferAllocateInfo& info)
 {
     assert(m_device);

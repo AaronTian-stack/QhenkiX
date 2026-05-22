@@ -620,7 +620,7 @@ bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
     // Transition swapchain images from UNDEFINED to PRESENT_SRC_KHR
     {
         auto& internal_pool = acquire_command_pool(GRAPHICS);
-        if (internal_pool.m_command_pool == VK_NULL_HANDLE)
+        if (!internal_pool.is_valid())
         {
             return false;
         }
@@ -2457,7 +2457,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     if (needs_transition || needs_descriptor_copies)
     {
         auto& internal_pool = acquire_command_pool(GRAPHICS);
-        if (internal_pool.command_pool == VK_NULL_HANDLE)
+        if (!internal_pool.is_valid())
         {
             return false;
         }
@@ -3181,12 +3181,11 @@ VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
             .queueFamilyIndex = get_queue(queue).family_index,
         };
         auto& pool = thread_pools[i];
-        if (pool.device == VK_NULL_HANDLE)
+        if (!pool.is_valid())
         {
             VkCommandPool cmd_pool;
             if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &cmd_pool)))
             {
-                pool.command_pool = VK_NULL_HANDLE;
                 return pool;
             }
             set_debug_name(m_device.device,
