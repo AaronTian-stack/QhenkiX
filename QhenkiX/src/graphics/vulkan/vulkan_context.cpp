@@ -30,6 +30,7 @@
 #include "qhenki/utility/math_util.h"
 #include "qhenki/utility/string_util.h"
 #include "src/utility/vulkan_util.h"
+#include "vulkan_semaphore.h"
 
 constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
 constexpr uint32_t MAX_VERTEX_SLOTS = 32u;
@@ -74,11 +75,11 @@ VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
     return vulkan_descriptor_heap;
 }
 
-VkSemaphore* to_internal(const Fence& ext)
+VkSemaphore to_internal(const Fence& ext)
 {
-    const auto vulkan_semaphore = static_cast<VkSemaphore*>(ext.internal_state.get());
+    const auto vulkan_semaphore = static_cast<VulkanSemaphore*>(ext.internal_state.get());
     assert(vulkan_semaphore);
-    return vulkan_semaphore;
+    return vulkan_semaphore->semaphore;
 }
 
 VulkanCommandPool* to_internal(const CommandPool& ext)
@@ -2663,7 +2664,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         wait_semaphore_infos[i] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = *to_internal(submit_info.wait_fences[i]),
+            .semaphore = to_internal(submit_info.wait_fences[i]),
             .value = submit_info.wait_values[i],
             .stageMask = stage_mask,
         };
@@ -2722,7 +2723,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         const auto vk_fence = to_internal(submit_info.signal_fences[i]);
         uint64_t current_val = 0;
-        vkGetSemaphoreCounterValue(m_device.device, *vk_fence, &current_val);
+        vkGetSemaphoreCounterValue(m_device.device, vk_fence, &current_val);
         if (submit_info.signal_values[i] <= current_val)
         {
             // No-op
@@ -2730,7 +2731,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         }
         signal_semaphore_infos[signal_count++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = *vk_fence,
+            .semaphore = vk_fence,
             .value = submit_info.signal_values[i],
             .stageMask = stage_mask,
         };
@@ -2792,17 +2793,16 @@ bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value, con
     VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     semaphore_info.pNext = &type_info;
 
-    // TODO: Stop using RAII
-    fence->internal_state = mkS<VkSemaphore>();
-    const auto vk_fence = to_internal(*fence);
+    VkSemaphore semaphore;
 
-    if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, vk_fence)))
+    if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, &semaphore)))
     {
-        fence->internal_state.reset();
         return false;
     }
 
-    set_debug_name(m_device.device, VK_OBJECT_TYPE_SEMAPHORE, reinterpret_cast<uint64_t>(*vk_fence), debug_name);
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_SEMAPHORE, reinterpret_cast<uint64_t>(semaphore), debug_name);
+
+    fence->internal_state = mkS<VulkanSemaphore>(m_device.device, semaphore);
 
     return true;
 }
@@ -2810,7 +2810,7 @@ bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value, con
 uint64_t VulkanContext::get_fence_value(const Fence& fence)
 {
     uint64_t value;
-    if (VK_FAILED(vkGetSemaphoreCounterValue(m_device.device, *to_internal(fence), &value)))
+    if (VK_FAILED(vkGetSemaphoreCounterValue(m_device.device, to_internal(fence), &value)))
     {
         return 0;
     }
@@ -2824,7 +2824,7 @@ bool VulkanContext::wait_fences(const WaitInfo& info)
 
     for (unsigned i = 0; i < info.count; i++)
     {
-        semaphores[i] = *to_internal(info.fences[i]);
+        semaphores[i] = to_internal(info.fences[i]);
     }
 
     const VkSemaphoreWaitInfo wait_info{
