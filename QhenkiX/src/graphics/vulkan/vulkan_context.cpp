@@ -1531,22 +1531,18 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
         if (is_cpu_visible)
         {
             void* mapped;
-            if (VK_FAILED(vmaMapMemory(m_allocator, vulkan_buffer->allocation, &mapped)))
+            if (VK_FAILED(vmaMapMemory(m_allocator, allocation, &mapped)))
             {
-                buffer->internal_state.reset();
                 return false;
             }
             memcpy(mapped, data, desc.size);
-            vmaUnmapMemory(m_allocator, vulkan_buffer->allocation);
+            vmaUnmapMemory(m_allocator, allocation);
         }
     }
 
-    set_debug_name(m_device.device,
-                   VK_OBJECT_TYPE_BUFFER,
-                   reinterpret_cast<uint64_t>(vulkan_buffer->buffer),
-                   debug_name);
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(vk_buffer), debug_name);
 
-    vulkan_buffer->allocator = m_allocator;
+    buffer->internal_state = mkS<VulkanBuffer>(vk_buffer, allocation, m_allocator);
     buffer->desc = desc;
 
     return true;

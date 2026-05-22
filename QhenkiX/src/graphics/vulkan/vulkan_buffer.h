@@ -12,6 +12,12 @@ struct VulkanBuffer
     VmaAllocation allocation;
     VmaAllocator allocator;
     VulkanBuffer() = default;
+    VulkanBuffer(const VkBuffer buffer, const VmaAllocation allocation, const VmaAllocator allocator)
+        : buffer(buffer),
+          allocation(allocation),
+          allocator(allocator)
+    {
+    }
     VulkanBuffer(const VulkanBuffer&) = delete;
     VulkanBuffer(VulkanBuffer&&) = delete;
     VulkanBuffer& operator=(const VulkanBuffer&) = delete;
