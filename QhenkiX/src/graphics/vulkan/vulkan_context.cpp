@@ -620,7 +620,7 @@ bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
     // Transition swapchain images from UNDEFINED to PRESENT_SRC_KHR
     {
         auto& internal_pool = acquire_command_pool(GRAPHICS);
-        if (internal_pool.command_pool == VK_NULL_HANDLE)
+        if (internal_pool.m_command_pool == VK_NULL_HANDLE)
         {
             return false;
         }

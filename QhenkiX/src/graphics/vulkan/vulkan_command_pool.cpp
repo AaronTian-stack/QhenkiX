@@ -5,53 +5,53 @@
 using namespace qhenki::gfx;
 
 VulkanCommandPool::VulkanCommandPool(const VkDevice device, const VkCommandPool pool)
-    : device(device),
-      command_pool(pool)
+    : m_device(device),
+      m_command_pool(pool)
 {
 }
 
 VulkanCommandPool::~VulkanCommandPool()
 {
-    assert(device);
-    if (command_buffer_count > 0)
+    assert(m_device);
+    if (m_command_buffer_count > 0)
     {
-        vkFreeCommandBuffers(device, command_pool, command_buffer_count + 1, command_buffers.data());
+        vkFreeCommandBuffers(m_device, m_command_pool, m_command_buffer_count + 1, m_command_buffers.data());
     }
-    if (command_pool)
+    if (m_command_pool)
     {
-        vkDestroyCommandPool(device, command_pool, nullptr);
+        vkDestroyCommandPool(m_device, m_command_pool, nullptr);
     }
 }
 
 void VulkanCommandPool::init(const VkDevice device, const VkCommandPool pool)
 {
-    this->device = device;
-    this->command_pool = pool;
+    this->m_device = device;
+    this->m_command_pool = pool;
 }
 
 VkCommandBuffer VulkanCommandPool::create_command_buffer(VkCommandBufferAllocateInfo& info)
 {
-    assert(device);
-    assert(command_pool);
-    info.commandPool = command_pool;
+    assert(m_device);
+    assert(m_command_pool);
+    info.commandPool = m_command_pool;
     info.commandBufferCount = 1;
     VkCommandBuffer buffer = VK_NULL_HANDLE;
-    if (command_buffer_count >= command_buffers.size() ||
-        vkAllocateCommandBuffers(device, &info, &buffer) != VK_SUCCESS)
+    if (m_command_buffer_count >= m_command_buffers.size() ||
+        vkAllocateCommandBuffers(m_device, &info, &buffer) != VK_SUCCESS)
     {
         return VK_NULL_HANDLE;
     }
-    command_buffers[command_buffer_count++] = buffer;
+    m_command_buffers[m_command_buffer_count++] = buffer;
     return buffer;
 }
 
 VkResult VulkanCommandPool::reset()
 {
-    assert(command_pool);
-    if (command_buffer_count > 0)
+    assert(m_command_pool);
+    if (m_command_buffer_count > 0)
     {
-        vkFreeCommandBuffers(device, command_pool, command_buffer_count, command_buffers.data());
+        vkFreeCommandBuffers(m_device, m_command_pool, m_command_buffer_count, m_command_buffers.data());
     }
-    command_buffer_count = 0;
-    return vkResetCommandPool(device, command_pool, 0);
+    m_command_buffer_count = 0;
+    return vkResetCommandPool(m_device, m_command_pool, 0);
 }
