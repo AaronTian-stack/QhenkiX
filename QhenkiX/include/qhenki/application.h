@@ -31,16 +31,21 @@ private:
     gfx::API m_graphics_api = gfx::API::D3D11;
 
 protected:
-    // Audio
-    input::InputManager m_input_manager{}; // Input
-    // Files
-    // Preferences
+    // TODO: Audio
 
-    bool m_QUIT = false; // Set to true when the application should quit
+    input::InputManager m_input_manager{};
+
+    // TODO: Files
+    // TODO: Preferences
+
+    // Set to true when the application should quit
+    bool m_QUIT = false;
+
     DisplayWindow m_window;
     uPtr<gfx::Context> m_context;
     gfx::Swapchain m_swapchain{};
 
+    // Convenience fence to track when the current frame is ready for rendering (signal at end of present)
     gfx::Fence m_fence_frame_ready{};
     std::array<uint64_t, m_frames_in_flight> m_fence_frame_ready_val{0, 0};
 

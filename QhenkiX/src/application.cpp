@@ -130,7 +130,7 @@ void Application::run(const gfx::API api,
         return;
     }
 
-    if (!m_context->create_fence(&m_fence_frame_ready, 0))
+    if (!m_context->create_fence(&m_fence_frame_ready, 0, "Frame ready fence"))
     {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "ERROR", "Failed to create fence", nullptr);
         return;
