@@ -5,11 +5,6 @@
 
 using namespace qhenki::gfx;
 
-VulkanDescriptorHeap::~VulkanDescriptorHeap()
-{
-    vmaDestroyBuffer(m_allocator, m_heap.buffer, m_heap.allocation);
-}
-
 bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanDescriptorHeapInitInfo& init_info)
 {
     const auto& heap_info = init_info.heap_info;
@@ -27,7 +22,7 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanDe
     };
 
     VmaAllocationCreateInfo allocation_create_info{
-        // TODO: Don't do this, quick fix to allow creating into GPU heaps directly
+        // TODO: Don't do this. This is a quick fix to allow creating into GPU heaps directly
         .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
         .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
     };
@@ -54,11 +49,10 @@ bool VulkanDescriptorHeap::create(const DescriptorHeapDesc& desc, const VulkanDe
     {
         return false;
     }
+    m_heap.allocator = init_info.allocator;
 
     m_data = alloc_info.pMappedData;
     assert(m_data);
-
-    m_allocator = init_info.allocator;
 
     m_total_size = size;
     m_reserved_size = init_info.heap_info.reserved_size;

@@ -13,6 +13,8 @@
 #include "src/graphics/shared/descriptor_flush.h"
 #include "src/graphics/shared/modern_context.h"
 
+struct RenderTargetState;
+
 namespace qhenki::gfx
 {
 struct VulkanTexture;
@@ -62,7 +64,18 @@ class VulkanContext : public ModernContext
     uint32_t m_bloated_resource_descriptor_size = 0;
     uint32_t m_bloated_sampler_descriptor_size = 0;
 
-    DeferredDescriptorCopier m_descriptor_copier;
+    template<typename T> struct ThreadLocalResourceToDelete
+    {
+        std::mutex mutex;
+        std::vector<T*> resources;
+        void add(T* resource)
+        {
+            std::lock_guard lock(mutex);
+            resources.push_back(resource);
+        }
+    };
+    ThreadLocalResourceToDelete<RenderTargetState> m_rt_states_to_delete;
+    ThreadLocalResourceToDelete<VulkanCommandPool> m_command_pools_to_delete;
 
 public:
     std::string create(bool enable_debug_layer) override;
@@ -224,5 +237,7 @@ private:
     VulkanQueue& get_queue(QueueType queue);
 
     VulkanCommandPool& acquire_command_pool(QueueType queue);
+
+    RenderTargetState& get_render_target_state();
 };
 } // namespace qhenki::gfx

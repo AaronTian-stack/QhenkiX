@@ -30,6 +30,7 @@
 #include "qhenki/utility/math_util.h"
 #include "qhenki/utility/string_util.h"
 #include "src/utility/vulkan_util.h"
+#include "vulkan_semaphore.h"
 
 constexpr uint32_t PUSH_RESERVED_START_OFFSET = 128u;
 constexpr uint32_t MAX_VERTEX_SLOTS = 32u;
@@ -74,11 +75,11 @@ VulkanDescriptorHeap* to_internal(const DescriptorHeap& ext)
     return vulkan_descriptor_heap;
 }
 
-VkSemaphore* to_internal(const Fence& ext)
+VkSemaphore to_internal(const Fence& ext)
 {
-    const auto vulkan_semaphore = static_cast<VkSemaphore*>(ext.internal_state.get());
+    const auto vulkan_semaphore = static_cast<VulkanSemaphore*>(ext.internal_state.get());
     assert(vulkan_semaphore);
-    return vulkan_semaphore;
+    return vulkan_semaphore->semaphore;
 }
 
 VulkanCommandPool* to_internal(const CommandPool& ext)
@@ -117,7 +118,6 @@ auto get_gpu_address(const VkDevice device, VkBuffer buffer) -> VkDeviceAddress
     };
     return vkGetBufferDeviceAddress(device, &addr_info);
 }
-
 } // namespace
 
 constexpr uint32_t major = 1;
@@ -479,6 +479,21 @@ bool VulkanContext::create_swapchain(const DisplayWindow& window, const Swapchai
     return create_swapchain(swapchain_desc);
 }
 
+namespace
+{
+void destroy_swapchain_resources(vkb::Swapchain* swapchain, std::vector<VkImageView>* image_views)
+{
+    swapchain->destroy_image_views(*image_views);
+    image_views->clear();
+
+    if (swapchain->swapchain != VK_NULL_HANDLE)
+    {
+        vkb::destroy_swapchain(*swapchain);
+        swapchain->swapchain = VK_NULL_HANDLE;
+    }
+}
+} // namespace
+
 bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width, const unsigned height)
 {
     if (!wait_idle())
@@ -486,7 +501,7 @@ bool VulkanContext::resize_swapchain(Swapchain* swapchain, const unsigned width,
         return false;
     }
 
-    m_swapchain.swapchain.destroy_image_views(m_swapchain.image_views);
+    destroy_swapchain_resources(&m_swapchain.swapchain, &m_swapchain.image_views);
 
     SwapchainDesc desc = *swapchain;
     desc.width = width;
@@ -567,15 +582,17 @@ bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
 
     const VkPresentModeKHR present_mode = swapchain_desc.tearing ? VK_PRESENT_MODE_IMMEDIATE_KHR
                                                                  : VK_PRESENT_MODE_FIFO_KHR;
-    auto swap_ret = swapchain_builder.set_old_swapchain(m_swapchain.swapchain)
-                        .set_desired_extent(swapchain_desc.width, swapchain_desc.height)
-                        .set_desired_present_mode(present_mode)
-                        .set_required_min_image_count(swapchain_desc.buffer_count)
-                        .set_desired_format({convert_format(swapchain_desc.format), VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
-                        .build();
+    swapchain_builder.set_desired_extent(swapchain_desc.width, swapchain_desc.height)
+        .set_desired_present_mode(present_mode)
+        .set_required_min_image_count(swapchain_desc.buffer_count)
+        .set_desired_format({convert_format(swapchain_desc.format), VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
+    if (m_swapchain.swapchain.swapchain != VK_NULL_HANDLE)
+    {
+        swapchain_builder.set_old_swapchain(m_swapchain.swapchain);
+    }
+    auto swap_ret = swapchain_builder.build();
     if (!swap_ret)
     {
-        m_swapchain.swapchain.swapchain = VK_NULL_HANDLE;
         return false;
     }
     m_swapchain.swapchain = std::move(swap_ret.value());
@@ -619,7 +636,7 @@ bool VulkanContext::create_swapchain(const SwapchainDesc& swapchain_desc)
     // Transition swapchain images from UNDEFINED to PRESENT_SRC_KHR
     {
         auto& internal_pool = acquire_command_pool(GRAPHICS);
-        if (internal_pool.command_pool == VK_NULL_HANDLE)
+        if (!internal_pool.is_valid())
         {
             return false;
         }
@@ -1122,7 +1139,7 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
-    pipeline->internal_state = mkS<VulkanPipeline>(vk_pipeline, primitive_topology, vk_root_signature);
+    pipeline->internal_state = mkS<VulkanPipeline>(m_device.device, vk_pipeline, primitive_topology, vk_root_signature);
 
     set_debug_name(m_device.device, VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<uint64_t>(vk_pipeline), debug_name);
 
@@ -1467,9 +1484,6 @@ bool VulkanContext::copy_descriptors(const size_t num_descriptors, const Descrip
 
 bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name)
 {
-    buffer->internal_state = mkS<VulkanBuffer>();
-    const auto vulkan_buffer = static_cast<VulkanBuffer*>(buffer->internal_state.get());
-
     VkBufferCreateInfo buffer_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = desc.size,
@@ -1519,10 +1533,11 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
         alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
-    if (VK_FAILED(vmaCreateBuffer(
-            m_allocator, &buffer_info, &alloc_info, &vulkan_buffer->buffer, &vulkan_buffer->allocation, nullptr)))
+    VkBuffer vk_buffer;
+    VmaAllocation allocation;
+
+    if (VK_FAILED(vmaCreateBuffer(m_allocator, &buffer_info, &alloc_info, &vk_buffer, &allocation, nullptr)))
     {
-        buffer->internal_state.reset();
         return false;
     }
 
@@ -1531,22 +1546,18 @@ bool VulkanContext::create_buffer(const BufferDesc& desc, const void* data, Buff
         if (is_cpu_visible)
         {
             void* mapped;
-            if (VK_FAILED(vmaMapMemory(m_allocator, vulkan_buffer->allocation, &mapped)))
+            if (VK_FAILED(vmaMapMemory(m_allocator, allocation, &mapped)))
             {
-                buffer->internal_state.reset();
                 return false;
             }
             memcpy(mapped, data, desc.size);
-            vmaUnmapMemory(m_allocator, vulkan_buffer->allocation);
+            vmaUnmapMemory(m_allocator, allocation);
         }
     }
 
-    set_debug_name(m_device.device,
-                   VK_OBJECT_TYPE_BUFFER,
-                   reinterpret_cast<uint64_t>(vulkan_buffer->buffer),
-                   debug_name);
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(vk_buffer), debug_name);
 
-    vulkan_buffer->allocator = m_allocator;
+    buffer->internal_state = mkS<VulkanBuffer>(vk_buffer, allocation, m_allocator);
     buffer->desc = desc;
 
     return true;
@@ -2151,16 +2162,11 @@ struct RenderTargetState
 {
     std::array<VkImageView, MAX_RENDER_TARGETS> color_render_targets{};
     VkImageView depth_stencil = VK_NULL_HANDLE;
+    bool seen = false;
 };
 
 namespace
 {
-RenderTargetState& get_render_target_state(const RenderTarget* const* rts, const RenderTarget* depth_stencil)
-{
-    thread_local RenderTargetState state;
-    return state;
-}
-
 bool create_views(const VkDevice device,
                   const unsigned count,
                   const RenderTarget* targets,
@@ -2250,7 +2256,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
 
     const auto& swapchain = m_swapchain.swapchain;
 
-    auto& rt_state = get_render_target_state(nullptr, depth_stencil);
+    auto& rt_state = get_render_target_state();
     if (!create_views(m_device.device, 0, nullptr, depth_stencil, &rt_state))
     {
         return false;
@@ -2309,7 +2315,7 @@ bool VulkanContext::start_render_pass(CommandList* cmd_list,
                                       const RenderTarget* rts,
                                       const RenderTarget* depth_stencil)
 {
-    auto& rt_state = get_render_target_state(&rts, depth_stencil);
+    auto& rt_state = get_render_target_state();
     if (!create_views(m_device.device, rt_count, rts, depth_stencil, &rt_state))
     {
         return false;
@@ -2462,7 +2468,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     if (needs_transition || needs_descriptor_copies)
     {
         auto& internal_pool = acquire_command_pool(GRAPHICS);
-        if (internal_pool.command_pool == VK_NULL_HANDLE)
+        if (!internal_pool.is_valid())
         {
             return false;
         }
@@ -2669,7 +2675,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         wait_semaphore_infos[i] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = *to_internal(submit_info.wait_fences[i]),
+            .semaphore = to_internal(submit_info.wait_fences[i]),
             .value = submit_info.wait_values[i],
             .stageMask = stage_mask,
         };
@@ -2728,7 +2734,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         const auto vk_fence = to_internal(submit_info.signal_fences[i]);
         uint64_t current_val = 0;
-        vkGetSemaphoreCounterValue(m_device.device, *vk_fence, &current_val);
+        vkGetSemaphoreCounterValue(m_device.device, vk_fence, &current_val);
         if (submit_info.signal_values[i] <= current_val)
         {
             // No-op
@@ -2736,7 +2742,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         }
         signal_semaphore_infos[signal_count++] = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = *vk_fence,
+            .semaphore = vk_fence,
             .value = submit_info.signal_values[i],
             .stageMask = stage_mask,
         };
@@ -2798,17 +2804,16 @@ bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value, con
     VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     semaphore_info.pNext = &type_info;
 
-    // TODO: Stop using RAII
-    fence->internal_state = mkS<VkSemaphore>();
-    const auto vk_fence = to_internal(*fence);
+    VkSemaphore semaphore;
 
-    if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, vk_fence)))
+    if (VK_FAILED(vkCreateSemaphore(m_device.device, &semaphore_info, nullptr, &semaphore)))
     {
-        fence->internal_state.reset();
         return false;
     }
 
-    set_debug_name(m_device.device, VK_OBJECT_TYPE_SEMAPHORE, reinterpret_cast<uint64_t>(*vk_fence), debug_name);
+    set_debug_name(m_device.device, VK_OBJECT_TYPE_SEMAPHORE, reinterpret_cast<uint64_t>(semaphore), debug_name);
+
+    fence->internal_state = mkS<VulkanSemaphore>(m_device.device, semaphore);
 
     return true;
 }
@@ -2816,7 +2821,7 @@ bool VulkanContext::create_fence(Fence* fence, const uint64_t initial_value, con
 uint64_t VulkanContext::get_fence_value(const Fence& fence)
 {
     uint64_t value;
-    if (VK_FAILED(vkGetSemaphoreCounterValue(m_device.device, *to_internal(fence), &value)))
+    if (VK_FAILED(vkGetSemaphoreCounterValue(m_device.device, to_internal(fence), &value)))
     {
         return 0;
     }
@@ -2830,7 +2835,7 @@ bool VulkanContext::wait_fences(const WaitInfo& info)
 
     for (unsigned i = 0; i < info.count; i++)
     {
-        semaphores[i] = *to_internal(info.fences[i]);
+        semaphores[i] = to_internal(info.fences[i]);
     }
 
     const VkSemaphoreWaitInfo wait_info{
@@ -2843,7 +2848,7 @@ bool VulkanContext::wait_fences(const WaitInfo& info)
     return VK_SUCCEEDED(vkWaitSemaphores(m_device.device, &wait_info, std::numeric_limits<uint64_t>::max()));
 }
 
-void VulkanContext::set_barrier_resource(unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
+void VulkanContext::set_barrier_resource(const unsigned count, ImageBarrier* barriers, const Swapchain& swapchain)
 {
     for (unsigned i = 0; i < count; i++)
     {
@@ -3031,11 +3036,33 @@ VulkanContext::~VulkanContext()
         vkDeviceWaitIdle(m_device.device);
     }
     vmaDestroyAllocator(m_allocator);
-    vkb::destroy_swapchain(m_swapchain.swapchain);
+
+    for (const auto rt_state : m_rt_states_to_delete.resources)
+    {
+        for (unsigned i = 0; i < MAX_RENDER_TARGETS; i++)
+        {
+            if (rt_state->color_render_targets[i] != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(m_device.device, rt_state->color_render_targets[i], nullptr);
+            }
+        }
+        if (rt_state->depth_stencil != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(m_device.device, rt_state->depth_stencil, nullptr);
+        }
+    }
+
+    for (const auto pool : m_command_pools_to_delete.resources)
+    {
+        pool->~VulkanCommandPool();
+    }
+
+    destroy_swapchain_resources(&m_swapchain.swapchain, &m_swapchain.image_views);
     if (m_surface)
     {
         vkb::destroy_surface(m_instance, m_surface);
     }
+
     for (const auto& q : {m_graphics_queue, m_compute_queue, m_transfer_queue})
     {
         vkDestroySemaphore(m_device.device, q.semaphore, nullptr);
@@ -3049,6 +3076,7 @@ VulkanContext::~VulkanContext()
         vkDestroySemaphore(m_device.device, sem, nullptr);
     }
     vkDestroySemaphore(m_device.device, m_internal_semaphore, nullptr);
+
     vkb::destroy_device(m_device);
     vkb::destroy_instance(m_instance);
 }
@@ -3177,22 +3205,22 @@ VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
 
 VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
 {
+    // TODO: Fix this to properly account for different queue types
+
     // One pool per thread that is double buffered
     thread_local std::array<VulkanCommandPool, 2> thread_pools;
-    for (size_t i = 0; i < thread_pools.size(); i++)
+    for (auto& pool : thread_pools)
     {
-        const VkCommandPoolCreateInfo internal_pool_ci{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = get_queue(queue).family_index,
-        };
-        auto& pool = thread_pools[i];
-        if (pool.device == VK_NULL_HANDLE)
+        if (!pool.is_valid())
         {
+            const VkCommandPoolCreateInfo internal_pool_ci{
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                .queueFamilyIndex = get_queue(queue).family_index,
+            };
             VkCommandPool cmd_pool;
             if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &cmd_pool)))
             {
-                pool.command_pool = VK_NULL_HANDLE;
                 return pool;
             }
             set_debug_name(m_device.device,
@@ -3201,7 +3229,20 @@ VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
                            "Internal Command Pool");
 
             pool.init(m_device.device, cmd_pool);
+
+            m_command_pools_to_delete.add(&pool);
         }
     }
     return thread_pools[m_frame_count % thread_pools.size()];
+}
+
+RenderTargetState& VulkanContext::get_render_target_state()
+{
+    thread_local RenderTargetState state;
+    if (!state.seen)
+    {
+        state.seen = true;
+        m_rt_states_to_delete.add(&state);
+    }
+    return state;
 }

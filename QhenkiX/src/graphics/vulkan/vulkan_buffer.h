@@ -11,7 +11,14 @@ struct VulkanBuffer
     VkBuffer buffer;
     VmaAllocation allocation;
     VmaAllocator allocator;
+    // We need default constructor for VulkanDescriptorHeap member
     VulkanBuffer() = default;
+    VulkanBuffer(const VkBuffer buffer, const VmaAllocation allocation, const VmaAllocator allocator)
+        : buffer(buffer),
+          allocation(allocation),
+          allocator(allocator)
+    {
+    }
     VulkanBuffer(const VulkanBuffer&) = delete;
     VulkanBuffer(VulkanBuffer&&) = delete;
     VulkanBuffer& operator=(const VulkanBuffer&) = delete;
