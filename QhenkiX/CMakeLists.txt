@@ -117,6 +117,7 @@ set(QHENKIX_PRIVATE_HEADERS
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.h"
     "${QHENKIX_DIR}/graphics/shared/modern_context.h"
+    "${QHENKIX_DIR}/graphics/shared/thread_local_resource_tracker.h"
 )
 
 if(WIN32)
