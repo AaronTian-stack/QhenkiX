@@ -1466,7 +1466,7 @@ bool VulkanContext::set_descriptor_table(CommandList* cmd_list,
     return true;
 }
 
-bool VulkanContext::copy_descriptors(const size_t num_descriptors, const Descriptor& src, const Descriptor& dst)
+bool VulkanContext::copy_descriptors(uint64_t num_descriptors, const Descriptor& src, const Descriptor& dst)
 {
     if (src.heap->desc.type != dst.heap->desc.type)
     {
@@ -1828,9 +1828,8 @@ uint64_t VulkanContext::get_required_staging_size(const Texture& texture)
     return total_size;
 }
 
-size_t VulkanContext::get_staging_alignment(const Texture& texture)
+uint64_t VulkanContext::get_staging_alignment(const Texture& texture)
 {
-    constexpr size_t min_copy_offset_alignment = 4;
     const auto format = convert_format(texture.desc.format);
 
     assert(!vkuFormatIsUndefined(format));
@@ -1840,9 +1839,10 @@ size_t VulkanContext::get_staging_alignment(const Texture& texture)
     // We don't support multiplane formats at all right now though
     assert(!vkuFormatIsMultiplane(format));
 
-    const size_t bytes_per_block = vkuFormatTexelBlockSize(format);
+    const uint64_t bytes_per_block = vkuFormatTexelBlockSize(format);
     assert(bytes_per_block > 0);
 
+    constexpr uint64_t min_copy_offset_alignment = 4;
     return std::lcm(min_copy_offset_alignment, bytes_per_block);
 }
 

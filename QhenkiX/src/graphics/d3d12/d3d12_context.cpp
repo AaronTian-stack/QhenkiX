@@ -1049,7 +1049,7 @@ bool D3D12Context::set_descriptor_table(CommandList* cmd_list,
     return true;
 }
 
-bool D3D12Context::copy_descriptors(const size_t num_descriptors, const Descriptor& src, const Descriptor& dst)
+bool D3D12Context::copy_descriptors(const uint64_t num_descriptors, const Descriptor& src, const Descriptor& dst)
 {
     const auto src_heap_d3d12 = to_internal(*src.heap);
     const auto dst_heap_d3d12 = to_internal(*dst.heap);
@@ -1391,7 +1391,7 @@ uint64_t D3D12Context::get_required_staging_size(const Texture& texture)
     return size;
 }
 
-size_t D3D12Context::get_staging_alignment(const Texture& texture)
+uint64_t D3D12Context::get_staging_alignment(const Texture& texture)
 {
     return D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <mutex>
 #include <string>
 
 #include "qhenki/display_window.h"
@@ -12,7 +11,6 @@
 #include "descriptor.h"
 #include "descriptor_heap.h"
 #include "pipeline.h"
-#include "qhenki/memory/arena.h"
 #include "queue.h"
 #include "render_target.h"
 #include "sampler.h"
@@ -91,7 +89,7 @@ public:
      * @param dst Destination descriptor to start copying to.
      * @return True if the operation succeeded, false otherwise.
      */
-    virtual bool copy_descriptors(size_t num_descriptors, const Descriptor& src, const Descriptor& dst) = 0;
+    virtual bool copy_descriptors(uint64_t num_descriptors, const Descriptor& src, const Descriptor& dst) = 0;
 
     /**
      * Creates a buffer with specified description.
@@ -130,7 +128,7 @@ public:
                              uint64_t bytes) = 0;
 
     virtual bool create_texture(const TextureDesc& desc, Texture* texture, const char* debug_name = nullptr) = 0;
-    // TODO: add description
+
     virtual bool create_descriptor_shader_view(const Texture& texture,
                                                DescriptorHeap* heap,
                                                Descriptor* descriptor) = 0;
@@ -148,7 +146,7 @@ public:
      * @return Alignment in bytes required for the texture within a staging buffer. This is NOT guaranteed to be a power
      * of 2.
      */
-    virtual size_t get_staging_alignment(const Texture& texture) = 0;
+    virtual uint64_t get_staging_alignment(const Texture& texture) = 0;
 
     /**
      * @brief Fills a staging buffer range with data and records a copy to a texture.

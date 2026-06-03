@@ -42,7 +42,7 @@ bool can_merge_adjacent(const PendingDescriptorCopy& cur, const PendingDescripto
 }
 } // namespace
 
-bool DeferredDescriptorCopier::add_pending_descriptor_copy(const size_t descriptors,
+bool DeferredDescriptorCopier::add_pending_descriptor_copy(const uint64_t descriptors,
                                                            const Descriptor& src,
                                                            const Descriptor& dst)
 {

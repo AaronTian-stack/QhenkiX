@@ -114,7 +114,7 @@ public:
                               unsigned index,
                               const Descriptor& gpu_descriptor) override;
 
-    bool copy_descriptors(size_t num_descriptors, const Descriptor& src, const Descriptor& dst) override;
+    bool copy_descriptors(uint64_t num_descriptors, const Descriptor& src, const Descriptor& dst) override;
 
     bool create_buffer(const BufferDesc& desc, const void* data, Buffer* buffer, const char* debug_name) override;
     bool create_descriptor_constant_view(const Buffer& buffer, DescriptorHeap* heap, Descriptor* descriptor) override;
@@ -131,7 +131,7 @@ public:
     bool create_descriptor_shader_view(const Texture& texture, DescriptorHeap* heap, Descriptor* descriptor) override;
 
     uint64_t get_required_staging_size(const Texture& texture) override;
-    size_t get_staging_alignment(const Texture& texture) override;
+    uint64_t get_staging_alignment(const Texture& texture) override;
     bool copy_to_texture(CommandList* cmd_list, const void* data, BufferRange staging, Texture* texture) override;
 
     bool create_descriptor(const SamplerDesc& desc, DescriptorHeap* heap, Descriptor* descriptor) override;

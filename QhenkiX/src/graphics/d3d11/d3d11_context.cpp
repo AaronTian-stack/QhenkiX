@@ -532,7 +532,7 @@ bool D3D11Context::set_descriptor_table(CommandList* cmd_list,
     return true;
 }
 
-bool D3D11Context::copy_descriptors(size_t num_descriptors, const Descriptor& src, const Descriptor& dst)
+bool D3D11Context::copy_descriptors(uint64_t num_descriptors, const Descriptor& src, const Descriptor& dst)
 {
     return true;
 }
@@ -876,7 +876,7 @@ uint64_t D3D11Context::get_required_staging_size(const Texture& texture)
     return 0;
 }
 
-size_t D3D11Context::get_staging_alignment(const Texture& texture)
+uint64_t D3D11Context::get_staging_alignment(const Texture& texture)
 {
     return 0;
 }
