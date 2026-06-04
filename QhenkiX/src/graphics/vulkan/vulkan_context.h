@@ -227,7 +227,7 @@ private:
 
     VulkanQueue& get_queue(QueueType queue);
 
-    VulkanCommandPool& acquire_command_pool(QueueType queue);
+    VulkanCommandPool& acquire_command_pool(QueueType type);
 
     RenderTargetState& get_render_target_state();
 };

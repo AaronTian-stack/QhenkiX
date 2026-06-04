@@ -3203,20 +3203,39 @@ VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
     }
 }
 
-VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
+struct ThreadLocalCommandPools
 {
-    // TODO: Fix this to properly account for different queue types
-
-    // One pool per thread that is double buffered
-    thread_local std::array<VulkanCommandPool, 2> thread_pools;
-    for (auto& pool : thread_pools)
+    VulkanCommandPool graphics;
+    VulkanCommandPool compute;
+    VulkanCommandPool copy;
+    VulkanCommandPool& get_pool(const QueueType type)
     {
+        switch (type)
+        {
+        default:
+        case GRAPHICS:
+            return graphics;
+        case COMPUTE:
+            return compute;
+        case COPY:
+            return copy;
+        }
+    }
+};
+
+VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType type)
+{
+    // One pool per thread that is double buffered
+    thread_local std::array<ThreadLocalCommandPools, 2> thread_pools;
+    for (auto& pools : thread_pools)
+    {
+        auto& pool = pools.get_pool(type);
         if (!pool.is_valid())
         {
             const VkCommandPoolCreateInfo internal_pool_ci{
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                 .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                .queueFamilyIndex = get_queue(queue).family_index,
+                .queueFamilyIndex = get_queue(type).family_index,
             };
             VkCommandPool cmd_pool;
             if (VK_FAILED(vkCreateCommandPool(m_device.device, &internal_pool_ci, nullptr, &cmd_pool)))
@@ -3233,7 +3252,7 @@ VulkanCommandPool& VulkanContext::acquire_command_pool(const QueueType queue)
             m_command_pools_to_delete.add(&pool);
         }
     }
-    return thread_pools[m_frame_count % thread_pools.size()];
+    return thread_pools[m_frame_count % thread_pools.size()].get_pool(type);
 }
 
 RenderTargetState& VulkanContext::get_render_target_state()

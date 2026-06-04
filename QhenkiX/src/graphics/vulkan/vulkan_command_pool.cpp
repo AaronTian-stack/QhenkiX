@@ -12,7 +12,10 @@ VulkanCommandPool::VulkanCommandPool(const VkDevice device, const VkCommandPool 
 
 VulkanCommandPool::~VulkanCommandPool()
 {
-    assert(m_device);
+    if (m_device == VK_NULL_HANDLE)
+    {
+        return;
+    }
     if (m_command_buffer_count > 0)
     {
         vkFreeCommandBuffers(m_device, m_command_pool, m_command_buffer_count, m_command_buffers.data());
