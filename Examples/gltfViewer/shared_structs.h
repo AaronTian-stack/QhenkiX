@@ -6,18 +6,16 @@
 #ifdef __cplusplus
 #include <qhenki/utility/directxmath_compat.h>
 using namespace DirectX;
-#define F4_1 = (*reinterpret_cast<const XMFLOAT4*>(&g_XMOne))
-#define F3_0 = (*reinterpret_cast<const XMFLOAT3*>(&g_XMZero))
-#define F_0 = (reinterpret_cast<const XMFLOAT4*>(&g_XMZero)->x)
-#define F_1 = (reinterpret_cast<const XMFLOAT4*>(&g_XMOne)->x)
-#define NEG_1 = -1
+#define F4_1 = {1.0f, 1.0f, 1.0f, 1.0f}
+#define F3_0 = {0.f, 0.f, 0.f}
+#define ONE = 1
+#define NEG_ONE = -1
 #define ZERO = 0
 #else
 #define F4_1
 #define F3_0
-#define F_0
-#define F_1
-#define NEG_1
+#define ONE
+#define NEG_ONE
 #define ZERO
 #endif
 
@@ -41,36 +39,36 @@ static_assert(sizeof(ModelConstants) <= 128);
 struct BaseColor
 {
     XMFLOAT4 factor F4_1;
-    int index NEG_1;
+    int index NEG_ONE;
     int texture_coordinate_set ZERO;
 };
 
 struct MetallicRoughness
 {
-    float metallic_factor F_0;
-    float roughness_factor F_0;
-    int index NEG_1;
+    float metallic_factor ONE;
+    float roughness_factor ONE;
+    int index NEG_ONE;
     int texture_coordinate_set ZERO;
 };
 
 struct Normal
 {
-    int index NEG_1;
+    int index NEG_ONE;
     int texture_coordinate_set ZERO;
-    float scale F_1;
+    float scale ONE;
 };
 
 struct Occlusion
 {
-    int index NEG_1;
+    int index NEG_ONE;
     int texture_coordinate_set ZERO;
-    float strength F_1;
+    float strength ONE;
 };
 
 struct Emissive
 {
     XMFLOAT3 factor F3_0;
-    int index NEG_1;
+    int index NEG_ONE;
     int texture_coordinate_set ZERO;
 };
 
@@ -86,16 +84,15 @@ struct Material
 #if defined(__cplusplus) || !defined(DX11)
 struct Texture
 {
-    int image_index NEG_1;
-    int sampler_index NEG_1;
+    int image_index NEG_ONE;
+    int sampler_index NEG_ONE;
 };
 #endif
 
 #undef F4_1
 #undef F3_0
-#undef F_0
-#undef F_1
-#undef NEG_1
+#undef ONE
+#undef NEG_ONE
 #undef ZERO
 
 #endif // GLTFVIEWER_SHARED_STRUCTS_H
