@@ -2442,6 +2442,7 @@ void VulkanContext::draw_indexed(CommandList* cmd_list,
 bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const QueueType queue)
 {
     std::scoped_lock lock(m_submit_mutex);
+
     // Internally ordered within the same queue so treat this as an error
     for (unsigned i = 0; i < submit_info.wait_fence_count; i++)
     {
@@ -2453,12 +2454,29 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
 
     auto& arena = acquire_arena(m_frame_count);
 
-    // Record internal command buffer (graphics queue) for texture transitions + descriptor copies
     const auto number_of_textures_to_transition = m_texture_queue.size_approx();
     const bool needs_transition = number_of_textures_to_transition > 0;
 
+    // Dequeue might dequeue less than number of textures to transition
+    // Thus use texture_count instead of number_of_textures_to_transition
+    size_t dequeued_texture_count = 0;
+    Texture** textures = nullptr;
+    if (needs_transition)
+    {
+        textures = arena.alloc_array<Texture*>(number_of_textures_to_transition);
+        size_t dequeued_count = 0;
+        while (dequeued_count == 0)
+        {
+            dequeued_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
+        }
+
+        for (size_t i = 0; i < dequeued_count; i++)
+        {
+            textures[dequeued_texture_count++] = textures[i];
+        }
+    }
+
     // Descriptor copies
-    // TODO: Do it on compute queue?
     m_descriptor_copier.merge_regions();
     const auto descriptor_regions = m_descriptor_copier.get_merged_regions();
     const auto descriptor_region_count = descriptor_regions.size();
@@ -2467,7 +2485,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     VkCommandBuffer internal_cmd = VK_NULL_HANDLE;
     if (needs_transition || needs_descriptor_copies)
     {
-        auto& internal_pool = acquire_command_pool(GRAPHICS);
+        auto& internal_pool = acquire_command_pool(queue);
         if (!internal_pool.is_valid())
         {
             return false;
@@ -2501,16 +2519,8 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
 
         if (needs_transition)
         {
-            auto const textures = arena.alloc_array<Texture*>(number_of_textures_to_transition);
-            size_t texture_count = 0;
-            while (texture_count == 0)
-            {
-                texture_count = m_texture_queue.try_dequeue_bulk(textures, number_of_textures_to_transition);
-            }
-            assert(texture_count == number_of_textures_to_transition);
-
-            const auto image_barriers = arena.alloc_array<VkImageMemoryBarrier2>(texture_count);
-            for (size_t i = 0; i < texture_count; i++)
+            const auto image_barriers = arena.alloc_array<VkImageMemoryBarrier2>(dequeued_texture_count);
+            for (size_t i = 0; i < dequeued_texture_count; i++)
             {
                 const auto texture = textures[i];
                 const auto vulkan_texture = to_internal(*texture);
@@ -2538,7 +2548,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
             }
             const VkDependencyInfo dep_info{
                 .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                .imageMemoryBarrierCount = static_cast<uint32_t>(texture_count),
+                .imageMemoryBarrierCount = static_cast<uint32_t>(dequeued_texture_count),
                 .pImageMemoryBarriers = image_barriers,
             };
             vkCmdPipelineBarrier2(internal_cmd, &dep_info);
@@ -2616,48 +2626,9 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         }
     }
 
-    const bool has_internal_cmd = internal_cmd != VK_NULL_HANDLE;
-    // Track the semaphore value so the recycling check knows when this is done
-    if (has_internal_cmd)
-    {
-        ++m_internal_semaphore_value;
-    }
-
-    // If non-graphics: Submit separately on the graphics queue and synchronize
-    // Otherwise avoid extra submission by adding into the same submit
-    if (has_internal_cmd && queue != GRAPHICS)
-    {
-        const VkCommandBufferSubmitInfo internal_cmd_info{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-            .commandBuffer = internal_cmd,
-        };
-        const VkSemaphoreSubmitInfo internal_signal{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_internal_semaphore,
-            .value = m_internal_semaphore_value,
-            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        };
-        const VkSubmitInfo2 internal_submit{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-            .commandBufferInfoCount = 1,
-            .pCommandBufferInfos = &internal_cmd_info,
-            .signalSemaphoreInfoCount = 1,
-            .pSignalSemaphoreInfos = &internal_signal,
-        };
-        if (VK_FAILED(vkQueueSubmit2(m_graphics_queue.queue, 1, &internal_submit, VK_NULL_HANDLE)))
-        {
-            return false;
-        }
-    }
-
-    // +1 for internal ordering, +1 optional swapchain, +1 optional internal semaphore
-    const bool wait_on_internal_semaphore = has_internal_cmd && queue != GRAPHICS;
+    // +1 for internal ordering, +1 optional swapchain
     uint32_t additional_waits = 1;
     if (submit_info.wait_swapchain)
-    {
-        ++additional_waits;
-    }
-    if (wait_on_internal_semaphore)
     {
         ++additional_waits;
     }
@@ -2688,15 +2659,6 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         .value = q.last_signaled_fence_value,
         .stageMask = stage_mask,
     };
-    if (wait_on_internal_semaphore)
-    {
-        wait_semaphore_infos[wait_idx++] = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_internal_semaphore,
-            .value = m_internal_semaphore_value,
-            .stageMask = stage_mask,
-        };
-    }
     if (submit_info.wait_swapchain)
     {
         wait_semaphore_infos[wait_idx++] = {
@@ -2705,7 +2667,7 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         };
     }
 
-    const bool prepend_internal = has_internal_cmd && queue == GRAPHICS;
+    const bool prepend_internal = internal_cmd != VK_NULL_HANDLE;
     const uint32_t total_cmd_count = submit_info.command_list_count + (prepend_internal ? 1u : 0u);
     const auto cmd_buffer_infos = arena.alloc_array<VkCommandBufferSubmitInfo>(total_cmd_count);
     uint32_t cmd_idx = 0;
@@ -2724,10 +2686,8 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
         };
     }
 
-    // +1 internal ordering, +1 optional swapchain, +1 optional internal semaphore
-    const bool signal_internal_semaphore = prepend_internal;
-    const uint32_t max_signal_count = submit_info.signal_fence_count + 1 + (submit_info.signal_swapchain ? 1u : 0u) +
-                                      (signal_internal_semaphore ? 1u : 0u);
+    // +1 internal ordering, +1 optional swapchain
+    const uint32_t max_signal_count = submit_info.signal_fence_count + 1 + (submit_info.signal_swapchain ? 1u : 0u);
     const auto signal_semaphore_infos = arena.alloc_array<VkSemaphoreSubmitInfo>(max_signal_count);
     uint32_t signal_count = 0;
     for (unsigned i = 0; i < submit_info.signal_fence_count; i++)
@@ -2757,15 +2717,6 @@ bool VulkanContext::submit_command_lists(const SubmitInfo& submit_info, const Qu
     {
         m_image_available_consumed_at[get_frame_slot(m_image_available_semaphores.size())] =
             q.last_signaled_fence_value;
-    }
-    if (signal_internal_semaphore)
-    {
-        signal_semaphore_infos[signal_count++] = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = m_internal_semaphore,
-            .value = m_internal_semaphore_value,
-            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        };
     }
     if (submit_info.signal_swapchain)
     {
@@ -3197,9 +3148,6 @@ VulkanContext::VulkanQueue& VulkanContext::get_queue(const QueueType queue)
         return m_compute_queue;
     case COPY:
         return m_transfer_queue;
-    default:
-        assert(false);
-        return m_graphics_queue;
     }
 }
 
@@ -3212,7 +3160,6 @@ struct ThreadLocalCommandPools
     {
         switch (type)
         {
-        default:
         case GRAPHICS:
             return graphics;
         case COMPUTE:
