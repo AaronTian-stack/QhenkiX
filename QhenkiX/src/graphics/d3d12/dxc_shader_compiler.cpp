@@ -108,29 +108,25 @@ bool patch_dxc_read_only_storage_buffers(const void* data,
         switch (opcode)
         {
         case SpvOpMemberDecorate:
-            if (word_count >= 4 && words[word + 1] < id_bound &&
-                words[word + 3] == SpvDecorationNonWritable)
+            if (word_count >= 4 && words[word + 1] < id_bound && words[word + 3] == SpvDecorationNonWritable)
             {
                 member_is_non_writable[words[word + 1]] = true;
             }
             break;
         case SpvOpDecorate:
-            if (word_count >= 3 && words[word + 1] < id_bound &&
-                words[word + 2] == SpvDecorationNonWritable)
+            if (word_count >= 3 && words[word + 1] < id_bound && words[word + 2] == SpvDecorationNonWritable)
             {
                 variable_is_non_writable[words[word + 1]] = true;
             }
             break;
         case SpvOpTypePointer:
-            if (word_count == 4 && words[word + 1] < id_bound &&
-                words[word + 2] == SpvStorageClassStorageBuffer)
+            if (word_count == 4 && words[word + 1] < id_bound && words[word + 2] == SpvStorageClassStorageBuffer)
             {
                 storage_buffer_pointer_pointee[words[word + 1]] = words[word + 3];
             }
             break;
         case SpvOpVariable:
-            if (word_count >= 4 && words[word + 2] < id_bound &&
-                words[word + 3] == SpvStorageClassStorageBuffer)
+            if (word_count >= 4 && words[word + 2] < id_bound && words[word + 3] == SpvStorageClassStorageBuffer)
             {
                 storage_buffer_variables.push_back({
                     .pointer_type = words[word + 1],
@@ -403,10 +399,8 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     if (output_spirv)
     {
         std::vector<uint32_t> patched_words;
-        if (!patch_dxc_read_only_storage_buffers(output.blob->GetBufferPointer(),
-                                                 output.blob->GetBufferSize(),
-                                                 patched_words,
-                                                 output.error_message))
+        if (!patch_dxc_read_only_storage_buffers(
+                output.blob->GetBufferPointer(), output.blob->GetBufferSize(), patched_words, output.error_message))
         {
             return false;
         }
