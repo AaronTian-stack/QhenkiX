@@ -6,6 +6,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <limits>
+#include <span>
+#include <vector>
+
+#include <SPIRV-Cross/spirv.h>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
@@ -50,6 +55,131 @@ const char* get_dxc_library_name()
 #else
 #error "Unsupported platform"
 #endif
+}
+
+bool patch_dxc_read_only_storage_buffers(const void* data,
+                                         const size_t size,
+                                         std::vector<uint32_t>& patched_words,
+                                         std::string& error_message)
+{
+    constexpr size_t spirv_header_word_count = 5;
+
+    if (data == nullptr || size < spirv_header_word_count * sizeof(uint32_t) || size % sizeof(uint32_t) != 0)
+    {
+        error_message = "DXCShaderCompiler: DXC returned malformed SPIR-V";
+        return false;
+    }
+
+    const auto words = std::span(static_cast<const uint32_t*>(data), size / sizeof(uint32_t));
+    if (words[0] != SpvMagicNumber)
+    {
+        error_message = "DXCShaderCompiler: DXC returned an invalid SPIR-V magic number";
+        return false;
+    }
+
+    const uint32_t id_bound = words[3];
+    std::vector<bool> member_is_non_writable(id_bound, false);
+    std::vector<bool> variable_is_non_writable(id_bound, false);
+    std::vector<uint32_t> storage_buffer_pointer_pointee(id_bound, 0);
+
+    struct StorageBufferVariable
+    {
+        uint32_t pointer_type;
+        uint32_t variable;
+    };
+    std::vector<StorageBufferVariable> storage_buffer_variables;
+
+    size_t annotation_insert_word = words.size();
+    for (size_t word = spirv_header_word_count; word < words.size();)
+    {
+        const uint16_t word_count = static_cast<uint16_t>(words[word] >> SpvWordCountShift);
+        const auto opcode = static_cast<SpvOp>(words[word] & SpvOpCodeMask);
+        if (word_count == 0 || word + word_count > words.size())
+        {
+            error_message = "DXCShaderCompiler: DXC returned malformed SPIR-V instructions";
+            return false;
+        }
+
+        if (annotation_insert_word == words.size() && opcode >= SpvOpTypeVoid && opcode <= SpvOpTypeForwardPointer)
+        {
+            annotation_insert_word = word;
+        }
+
+        switch (opcode)
+        {
+        case SpvOpMemberDecorate:
+            if (word_count >= 4 && words[word + 1] < id_bound &&
+                words[word + 3] == SpvDecorationNonWritable)
+            {
+                member_is_non_writable[words[word + 1]] = true;
+            }
+            break;
+        case SpvOpDecorate:
+            if (word_count >= 3 && words[word + 1] < id_bound &&
+                words[word + 2] == SpvDecorationNonWritable)
+            {
+                variable_is_non_writable[words[word + 1]] = true;
+            }
+            break;
+        case SpvOpTypePointer:
+            if (word_count == 4 && words[word + 1] < id_bound &&
+                words[word + 2] == SpvStorageClassStorageBuffer)
+            {
+                storage_buffer_pointer_pointee[words[word + 1]] = words[word + 3];
+            }
+            break;
+        case SpvOpVariable:
+            if (word_count >= 4 && words[word + 2] < id_bound &&
+                words[word + 3] == SpvStorageClassStorageBuffer)
+            {
+                storage_buffer_variables.push_back({
+                    .pointer_type = words[word + 1],
+                    .variable = words[word + 2],
+                });
+            }
+            break;
+        default:
+            break;
+        }
+
+        word += word_count;
+    }
+
+    std::vector<uint32_t> variables_to_decorate;
+    for (const auto& [pointer_type, variable] : storage_buffer_variables)
+    {
+        if (pointer_type >= id_bound)
+        {
+            continue;
+        }
+
+        const uint32_t pointee_type = storage_buffer_pointer_pointee[pointer_type];
+        if (pointee_type < id_bound && member_is_non_writable[pointee_type] && !variable_is_non_writable[variable])
+        {
+            variables_to_decorate.push_back(variable);
+        }
+    }
+
+    if (variables_to_decorate.empty())
+    {
+        return true;
+    }
+    if (annotation_insert_word == words.size())
+    {
+        error_message = "DXCShaderCompiler: Cannot locate the SPIR-V annotation section";
+        return false;
+    }
+
+    patched_words.reserve(words.size() + variables_to_decorate.size() * 3);
+    patched_words.insert(patched_words.end(), words.begin(), words.begin() + annotation_insert_word);
+    for (const uint32_t variable : variables_to_decorate)
+    {
+        patched_words.push_back((3u << SpvWordCountShift) | SpvOpDecorate);
+        patched_words.push_back(variable);
+        patched_words.push_back(SpvDecorationNonWritable);
+    }
+    patched_words.insert(patched_words.end(), words.begin() + annotation_insert_word, words.end());
+    return true;
 }
 } // namespace
 
@@ -263,6 +393,45 @@ bool DXCShaderCompiler::compile(const CompilerInput& input, CompilerOutput& outp
     {
         output_error();
         return false;
+    }
+
+    // Workaround for https://github.com/microsoft/DirectXShaderCompiler/issues/8492:
+    // DXC currently marks a read-only StructuredBuffer by decorating its block
+    // member NonWritable, but VK_EXT_descriptor_heap classifies the resource
+    // using NonWritable on the OpVariable. Mirror the decoration onto the
+    // StorageBuffer variable until DXC emits the required form itself.
+    if (output_spirv)
+    {
+        std::vector<uint32_t> patched_words;
+        if (!patch_dxc_read_only_storage_buffers(output.blob->GetBufferPointer(),
+                                                 output.blob->GetBufferSize(),
+                                                 patched_words,
+                                                 output.error_message))
+        {
+            return false;
+        }
+
+        if (!patched_words.empty())
+        {
+            const size_t patched_size = patched_words.size() * sizeof(uint32_t);
+            if (patched_size > std::numeric_limits<uint32_t>::max())
+            {
+                output.error_message = "DXCShaderCompiler: Patched SPIR-V exceeds the DXC blob size limit";
+                return false;
+            }
+
+            ComPtr<IDxcBlobEncoding> patched_blob;
+            if (FAILED(m_library->CreateBlob(patched_words.data(),
+                                             static_cast<uint32_t>(patched_size),
+                                             DXC_CP_ACP,
+                                             patched_blob.ReleaseAndGetAddressOf())))
+            {
+                output.error_message = "DXCShaderCompiler: Failed to create the patched SPIR-V blob";
+                return false;
+            }
+            output.blob->Release();
+            output.blob = patched_blob.Detach();
+        }
     }
 
     // Assumed to be null terminated
