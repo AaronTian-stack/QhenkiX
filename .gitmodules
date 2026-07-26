@@ -27,3 +27,6 @@
 [submodule "QhenkiX/external/DirectXMath"]
 	path = QhenkiX/external/DirectXMath
 	url = https://github.com/microsoft/DirectXMath.git
+[submodule "QhenkiX/external/slang"]
+	path = QhenkiX/external/slang
+	url = https://github.com/shader-slang/slang.git
