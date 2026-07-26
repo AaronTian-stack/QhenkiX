@@ -11,7 +11,6 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/imgui/backends"
     "${QHENKIX_SRC_DIR}/external"
     "${QHENKIX_SRC_DIR}/external/DirectXMath/Inc"
-    "${QHENKIX_SRC_DIR}/external/SPIRV-Cross/include"
     "${QHENKIX_SRC_DIR}/external/DirectXTex"
     "${QHENKIX_SRC_DIR}/external/utf8"
     "${QHENKIX_SRC_DIR}/external/D3D12MemAlloc"
@@ -21,6 +20,9 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/vk-bootstrap/src"
     "${QHENKIX_SRC_DIR}/external/VulkanMemAlloc"
     "${QHENKIX_SRC_DIR}/external/concurrent_queue-1.0.4"
+    "${QHENKIX_SRC_DIR}/external/slang/include"
+    "${QHENKIX_SRC_DIR}/external/slang/external/dxc"
+    "${QHENKIX_SRC_DIR}/external/SPIRV-Cross/include"
 )
 
 if(WIN32)

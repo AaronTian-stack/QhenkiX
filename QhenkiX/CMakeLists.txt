@@ -17,10 +17,10 @@ qhenkix_require_submodule("external/DirectXMath" "CMakeLists.txt")
 qhenkix_require_submodule("external/DirectX-Headers" "CMakeLists.txt")
 qhenkix_require_submodule("external/DirectXTex" "CMakeLists.txt")
 qhenkix_require_submodule("external/SDL" "CMakeLists.txt")
+qhenkix_require_submodule("external/SPIRV-Cross" "CMakeLists.txt")
 qhenkix_require_submodule("external/Vulkan-Headers" "CMakeLists.txt")
 qhenkix_require_submodule("external/volk" "CMakeLists.txt")
 qhenkix_require_submodule("external/vk-bootstrap" "CMakeLists.txt")
-qhenkix_require_submodule("external/SPIRV-Cross" "CMakeLists.txt")
 
 set(QHENKIX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
@@ -61,7 +61,6 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/memory/arena.cpp"
 
-    "${QHENKIX_DIR}/utility/d3d_reflection_util.cpp"
     "${QHENKIX_DIR}/utility/gfx_util.cpp"
     "${QHENKIX_DIR}/utility/file_util.cpp"
     "${QHENKIX_DIR}/utility/shader_model_util.cpp"
@@ -83,6 +82,7 @@ if(WIN32)
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.cpp"
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.cpp"
 
+        "${QHENKIX_DIR}/utility/d3d_reflection_util.cpp"
         "${QHENKIX_DIR}/utility/d3d_util.cpp"
 
         "${CMAKE_CURRENT_SOURCE_DIR}/external/D3D12MemAlloc/D3D12MemAlloc.cpp"
@@ -91,7 +91,6 @@ if(WIN32)
 endif()
 
 set(QHENKIX_PRIVATE_HEADERS
-    "${QHENKIX_DIR}/utility/d3d_reflection_util.h"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
@@ -127,6 +126,7 @@ if(WIN32)
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_pipeline.h"
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_texture.h"
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_command_list.h"
+        "${QHENKIX_DIR}/utility/d3d_reflection_util.h"
         "${QHENKIX_DIR}/utility/d3d_util.h"
     )
 endif()
@@ -183,6 +183,18 @@ set(QHENKIX_PUBLIC_HEADERS
 )
 
 add_library(${PROJECT_NAME} STATIC ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS} ${IMGUI_SOURCES})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${QHENKIX_SLANG_LINK_TARGET})
+
+if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+    add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
+        COMMAND "${CMAKE_COMMAND}" --build "${QHENKIX_SLANG_BINARY_DIR}"
+            --config $<CONFIG>
+            --target slang slang-glslang
+            --parallel
+        COMMENT "Building the nested Slang compiler dependency"
+        VERBATIM
+    )
+endif()
 
 set(ALL_FILES ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ALL_FILES})
@@ -237,6 +249,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC Microsoft::DirectXMath)
 qhenkix_add_dependency_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
 target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
 
+set(SPIRV_CROSS_STATIC ON CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
+qhenkix_add_dependency_subdirectory(external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
+target_link_libraries(${PROJECT_NAME} PUBLIC spirv-cross-core spirv-cross-glsl)
+target_compile_definitions(${PROJECT_NAME} PRIVATE SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS)
+
 set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 qhenkix_add_dependency_subdirectory(external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
@@ -253,14 +273,6 @@ set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
 set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
 qhenkix_add_dependency_subdirectory(external/vk-bootstrap ${CMAKE_BINARY_DIR}/vk-bootstrap)
 target_link_libraries(${PROJECT_NAME} PUBLIC vk-bootstrap::vk-bootstrap)
-
-set(SPIRV_CROSS_STATIC ON CACHE BOOL "" FORCE)
-set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)
-set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
-set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
-qhenkix_add_dependency_subdirectory(external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spirv-cross)
-target_link_libraries(${PROJECT_NAME} PUBLIC spirv-cross-core spirv-cross-glsl)
-target_compile_definitions(${PROJECT_NAME} PRIVATE SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS)
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX UNICODE _UNICODE)
