@@ -50,9 +50,6 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/perspective_camera_component.cpp"
     "${QHENKIX_DIR}/graphics/2d/spritebatch.cpp"
 
-    "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.cpp"
-    "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.cpp"
-
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.cpp"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.cpp"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_command_pool.cpp"
@@ -83,9 +80,6 @@ if(WIN32)
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_descriptor_heap.cpp"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.cpp"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.cpp"
-        "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.cpp"
-        "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.cpp"
-
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.cpp"
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.cpp"
 
@@ -97,10 +91,6 @@ if(WIN32)
 endif()
 
 set(QHENKIX_PRIVATE_HEADERS
-    "${QHENKIX_DIR}/graphics/d3d12/dxc_com_ptr.h"
-    "${QHENKIX_DIR}/graphics/d3d12/dxc_include_handler.h"
-    "${QHENKIX_DIR}/graphics/d3d12/dxc_shader_compiler.h"
-
     "${QHENKIX_DIR}/utility/d3d_reflection_util.h"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
@@ -131,9 +121,6 @@ if(WIN32)
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_sampler_heap.h"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_srv_uav_heap.h"
         "${QHENKIX_DIR}/graphics/d3d11/d3d11_buffer.h"
-        "${QHENKIX_DIR}/graphics/d3d11/fxc_include_handler.h"
-        "${QHENKIX_DIR}/graphics/d3d11/fxc_shader_compiler.h"
-
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_context.h"
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_descriptor_heap.h"
         "${QHENKIX_DIR}/graphics/d3d12/d3d12_fence.h"
