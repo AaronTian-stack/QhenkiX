@@ -4,6 +4,7 @@ struct PSInput
     float2 uv : TEXCOORD0;
 };
 
+[shader("vertex")]
 PSInput vs_main(uint vertex_id : SV_VertexID)
 {
     float2 uv = float2((vertex_id << 1) & 2, vertex_id & 2);

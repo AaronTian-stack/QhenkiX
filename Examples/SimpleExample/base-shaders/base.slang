@@ -1,26 +1,17 @@
 #include "shared_structs.h"
 
-#ifdef __spirv__
-[[vk::binding(0)]]
-#endif
 cbuffer CameraBuffer : register(b0)
 {
     CameraMatrices camera_buffer;
 };
 
-#ifdef __spirv__
-[[vk::binding(1)]]
-#endif
 Texture2D g_texture : register(t1);
 
-#ifdef __spirv__
-[[vk::binding(0, 1)]]
-#endif
 SamplerState samp
-#ifdef DX12
-    : register(s0, space1);
-#else
+#ifdef DX11
     : register(s0);
+#else
+    : register(s0, space1);
 #endif
 
 struct PSInput
@@ -30,6 +21,7 @@ struct PSInput
     float2 uv : TEXCOORD0;
 };
 
+[shader("vertex")]
 PSInput vs_main(Vertex input)
 {
     PSInput output;
@@ -47,6 +39,7 @@ struct PSOutput
     float4 color : SV_Target0;
 };
 
+[shader("fragment")]
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;

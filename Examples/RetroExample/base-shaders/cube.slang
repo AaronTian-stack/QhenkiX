@@ -1,5 +1,6 @@
-#include "shared.hlsl"
+#include "shared.slang"
 
+[shader("vertex")]
 float4 vs_main(uint vertex_id : SV_VertexID)
     : SV_Position
 {
@@ -30,6 +31,7 @@ float4 vs_main(uint vertex_id : SV_VertexID)
     return mul(world_position, frame_constants.camera_buffer.view_proj);
 }
 
+[shader("fragment")]
 float4 ps_main()
     : SV_TARGET0
 {

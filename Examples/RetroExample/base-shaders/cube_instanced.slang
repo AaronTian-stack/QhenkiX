@@ -1,5 +1,5 @@
-#include "pbr.hlsl"
-#include "shared.hlsl"
+#include "pbr.slang"
+#include "shared.slang"
 
 struct VertexIn
 {
@@ -47,6 +47,7 @@ uint hash_to_index(uint row, uint col)
     return n % palette_count;
 }
 
+[shader("vertex")]
 PSInput vs_main(VertexIn input, uint instance_id : SV_InstanceID)
 {
     PSInput output;
@@ -72,6 +73,7 @@ static const float light_radius_sq = 32.0;
 static const float3 ambient_color = float3(0.25, 0.28, 0.35);
 static const float ambient_strength = 0.6;
 
+[shader("fragment")]
 float4 ps_main(PSInput input)
     : SV_Target0
 {

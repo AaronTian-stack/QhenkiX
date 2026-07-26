@@ -1,4 +1,4 @@
-#include "shared.hlsl"
+#include "shared.slang"
 
 struct VertexIn
 {
@@ -26,6 +26,7 @@ float noise_3D(float3 p)
                 f.z);
 }
 
+[shader("vertex")]
 PSInput vs_main(VertexIn input)
 {
     PSInput output;
@@ -72,11 +73,12 @@ float bayer_eval(uint2 screen_pos)
     return bayer[y * 4 + x];
 }
 
+[shader("fragment")]
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
 
-    float threshold = bayer_eval(uint2(input.position.xy) / 4.0);
+    float threshold = bayer_eval(uint2(input.position.xy / 4.0));
     float scale = lerp(1.0, 0.95, (1.0 + sin(frame_constants.time * 2.0)) * 0.5);
     float distance = length(float2(input.local_position.x, input.local_position.z)) * scale;
     float alpha = smoothstep(1.0, 0.0, pow(abs(distance), 2.0));

@@ -1,5 +1,5 @@
-#ifndef PBR_HLSL
-#define PBR_HLSL
+#ifndef PBR_SLANG
+#define PBR_SLANG
 
 #define PI 3.14159265359
 
@@ -113,4 +113,4 @@ float3 BRDF_CALCULATE(Material material, float illuminance, float3 light_color, 
     return (diffuse + specular) * light_color * illuminance;
 }
 
-#endif // PBR_HLSL
+#endif // PBR_SLANG

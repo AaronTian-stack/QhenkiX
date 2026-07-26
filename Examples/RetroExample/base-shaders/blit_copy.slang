@@ -1,4 +1,4 @@
-#include "shared.hlsl"
+#include "shared.slang"
 
 struct PSInput
 {
@@ -19,6 +19,7 @@ static float3 ACESFilm(float3 x)
 
 static const float GAMMA = 2.2;
 
+[shader("fragment")]
 float4 ps_main(PSInput input)
     : SV_Target0
 {

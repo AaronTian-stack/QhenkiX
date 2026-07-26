@@ -1,4 +1,4 @@
-#include "shared.hlsl"
+#include "shared.slang"
 
 struct PSInput
 {
@@ -16,6 +16,7 @@ void pixel(float2 loc, float weight, inout float3 sum_color, inout float sum_a)
     sum_a += t.a * weight;
 }
 
+[shader("fragment")]
 float4 ps_main(PSInput input)
     : SV_Target0
 {

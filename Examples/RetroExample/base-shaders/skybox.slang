@@ -1,4 +1,4 @@
-#include "shared.hlsl"
+#include "shared.slang"
 
 struct PSInput
 {
@@ -9,6 +9,7 @@ struct PSInput
 static const float PI = 3.14159265;
 static const float scale_factor = 2.0;
 
+[shader("vertex")]
 PSInput vs_main(float3 position : POSITION)
 {
     PSInput output;
@@ -26,6 +27,7 @@ PSInput vs_main(float3 position : POSITION)
 
 #define STEPPED
 
+[shader("fragment")]
 float4 ps_main(PSInput input)
     : SV_Target0
 {

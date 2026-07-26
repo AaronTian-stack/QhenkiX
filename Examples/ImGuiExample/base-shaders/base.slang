@@ -10,6 +10,7 @@ struct PSInput
     float3 color : COLOR0;
 };
 
+[shader("vertex")]
 PSInput vs_main(VSInput input)
 {
     PSInput output;
@@ -25,6 +26,7 @@ struct PSOutput
     float4 color : SV_Target0;
 };
 
+[shader("fragment")]
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;

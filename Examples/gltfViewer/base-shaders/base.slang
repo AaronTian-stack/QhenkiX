@@ -1,36 +1,20 @@
 #include "shared_structs.h"
 
-#ifdef __spirv__
-[[vk::binding(0)]]
-#endif
 cbuffer CameraBuffer : register(b0)
 {
     CameraData camera_data;
 };
 
-#ifdef __spirv__
 [[vk::push_constant]]
-ModelConstants model_constants;
-#else
-cbuffer ModelBuffer
+ConstantBuffer<ModelConstants> model_constants
 #ifdef DX11
-    : register(b1)
+    : register(b1);
 #else
-    : register(b0, space5)
-#endif
-{
-    ModelConstants model_constants;
-};
+    : register(b0, space5);
 #endif
 
 #ifndef DX11
-#ifdef __spirv__
-[[vk::binding(1)]]
-#endif
 StructuredBuffer<Texture> textures : register(t1);
-#endif
-#ifdef __spirv__
-[[vk::binding(2)]]
 #endif
 StructuredBuffer<Material> materials : register(t2);
 #ifdef DX11
@@ -41,9 +25,6 @@ Texture2D normal_tex : register(t5);
 Texture2D occlusion_tex : register(t6);
 Texture2D emissive_tex : register(t7);
 #else
-#ifdef __spirv__
-[[vk::binding(3)]]
-#endif
 Texture2D g_textures[] : register(t3);
 #endif
 
@@ -54,9 +35,6 @@ SamplerState normal_samp : register(s2);
 SamplerState occlusion_samp : register(s3);
 SamplerState emissive_samp : register(s4);
 #else
-#ifdef __spirv__
-[[vk::binding(0, 1)]]
-#endif
 SamplerState samps[] : register(s0, space1);
 #endif
 
@@ -85,6 +63,7 @@ float4x4 convert(float4x3 M)
     return float4x4(float4(M[0], 0), float4(M[1], 0), float4(M[2], 0), float4(M[3], 1));
 }
 
+[shader("vertex")]
 PSInput vs_main(VSInput input)
 {
     PSInput output;
@@ -173,6 +152,7 @@ void set_values(PSInput input,
     }
 };
 
+[shader("fragment")]
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;

@@ -1,4 +1,4 @@
-#include "shared.hlsl"
+#include "shared.slang"
 
 static const float luminance_threshold = 0.25;
 
@@ -8,6 +8,7 @@ struct PSInput
     float2 uv : TEXCOORD0;
 };
 
+[shader("fragment")]
 float4 ps_main(PSInput input)
     : SV_Target0
 {
