@@ -19,28 +19,33 @@ struct D3D11Layout
     std::vector<D3D11_INPUT_ELEMENT_DESC> desc;
 };
 
+struct InputLayoutResult
+{
+    ID3D11InputLayout* layout;
+    bool is_empty;
+};
+
 class D3D11LayoutAssembler
 {
-    std::mutex m_layout_mutex; // compile shaders from multiple threads?
+    std::mutex m_layout_mutex; // For compiling shaders from multiple threads
     tsl::robin_map<size_t, D3D11Layout> m_layout_map;
     tsl::robin_map<ID3D11InputLayout*, D3D11Layout*> m_layout_logical_map;
 
-    std::vector<D3D11_INPUT_ELEMENT_DESC> m_layout_desc;
-
 public:
-    void add_input(const D3D11_INPUT_ELEMENT_DESC& input);
     ID3D11InputLayout* find_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layout);
     D3D11Layout* find_layout(ID3D11InputLayout* layout);
-    // Creates input layout based off current state of layout_desc
-    std::optional<ComPtr<ID3D11InputLayout>> create_input_layout_manual(ID3D11Device* device,
-                                                                        ID3DBlob* vertex_shader_blob);
 
     static std::vector<D3D11_INPUT_ELEMENT_DESC> create_input_layout_desc(ID3D11ShaderReflection* vs_reflection,
+                                                                          const D3D11_SHADER_DESC& shader_desc,
                                                                           bool increment_slot,
                                                                           unsigned* out_builtins);
 
-    ID3D11InputLayout* create_input_layout_reflection(ID3D11Device* device, Shader shader, bool increment_slot);
+    InputLayoutResult create_input_layout_reflection(ID3D11Device* device,
+                                                     Shader shader,
+                                                     bool increment_slot,
+                                                     const char* debug_name);
 
+    // This exists only to stop debug layer from complaining at shutdown
     void clear_maps();
 };
 } // namespace qhenki::gfx

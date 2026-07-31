@@ -361,12 +361,14 @@ bool D3D11Context::create_pipeline(const GraphicsPipelineDesc& desc,
     }
     set_debug_name(d3d11_pipeline->pixel_shader.Get(), debug_name);
 
-    ID3D11InputLayout* input_layout =
-        m_layout_assembler.create_input_layout_reflection(m_device.Get(), vertex_shader, desc.increment_slot);
+    const auto result = m_layout_assembler.create_input_layout_reflection(m_device.Get(),
+                                                                          vertex_shader,
+                                                                          desc.increment_slot,
+                                                                          debug_name);
 
-    d3d11_pipeline->input_layout = input_layout;
+    d3d11_pipeline->input_layout = result.layout;
 
-    bool succeeded = input_layout != nullptr;
+    bool succeeded = result.is_empty || result.layout != nullptr;
 
     const RasterizerDesc rs = desc.rasterizer_state.value_or(RasterizerDesc{});
     const D3D11_RASTERIZER_DESC rasterizer_desc = {

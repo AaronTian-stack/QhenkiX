@@ -45,8 +45,8 @@ class D3D12Context : public ModernContext
 
     ComPtr<IDXGISwapChain3> m_swapchain;
     std::array<ComPtr<ID3D12Resource>, 2> m_swapchain_buffers; // 2 is upper limit
-
-    ComPtr<IDxcUtils> m_library;
+    HMODULE m_dxcompiler_module = nullptr;
+    ComPtr<IDxcUtils> m_dxc_utils;
 
     D3D12DescriptorHeap m_imgui_heap{};              // ImGUI only
     std::array<Descriptor, 2> m_imgui_descriptors{}; // ImGUI only
