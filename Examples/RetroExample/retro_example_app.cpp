@@ -336,14 +336,14 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(read_compiled_shader_blob(api, skybox_vs_name, &skybox_vs_blob_data, &skybox_vs_blob.size));
     skybox_vs_blob.data = skybox_vs_blob_data.get();
     qhenki::gfx::Shader skybox_vertex_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(skybox_vs_blob, 0, &skybox_vertex_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(skybox_vs_blob, &skybox_vertex_shader));
 
     uPtr<std::byte[]> skybox_ps_blob_data;
     qhenki::gfx::Shader skybox_ps_blob;
     THROW_IF_FALSE(read_compiled_shader_blob(api, skybox_ps_name, &skybox_ps_blob_data, &skybox_ps_blob.size));
     skybox_ps_blob.data = skybox_ps_blob_data.get();
     qhenki::gfx::Shader skybox_pixel_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(skybox_ps_blob, 0, &skybox_pixel_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(skybox_ps_blob, &skybox_pixel_shader));
 
     qhenki::gfx::BlendDesc skybox_blend_desc{
         .alpha_to_coverage_enable = false,
@@ -390,14 +390,14 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(read_compiled_shader_blob(api, cube_vs_name, &cube_vs_blob_data, &cube_vs_blob.size));
     cube_vs_blob.data = cube_vs_blob_data.get();
     qhenki::gfx::Shader cube_vertex_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(cube_vs_blob, 0, &cube_vertex_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(cube_vs_blob, &cube_vertex_shader));
 
     uPtr<std::byte[]> cube_ps_blob_data;
     qhenki::gfx::Shader cube_ps_blob;
     THROW_IF_FALSE(read_compiled_shader_blob(api, cube_ps_name, &cube_ps_blob_data, &cube_ps_blob.size));
     cube_ps_blob.data = cube_ps_blob_data.get();
     qhenki::gfx::Shader cube_pixel_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(cube_ps_blob, 0, &cube_pixel_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(cube_ps_blob, &cube_pixel_shader));
 
     qhenki::gfx::GraphicsPipelineDesc cube_pipeline_desc = {
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
@@ -424,14 +424,14 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(read_compiled_shader_blob(api, stencil_vs_name, &stencil_vs_blob_data, &stencil_vs_blob.size));
     stencil_vs_blob.data = stencil_vs_blob_data.get();
     qhenki::gfx::Shader stencil_vertex_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(stencil_vs_blob, 0, &stencil_vertex_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(stencil_vs_blob, &stencil_vertex_shader));
 
     uPtr<std::byte[]> stencil_ps_blob_data;
     qhenki::gfx::Shader stencil_ps_blob;
     THROW_IF_FALSE(read_compiled_shader_blob(api, stencil_ps_name, &stencil_ps_blob_data, &stencil_ps_blob.size));
     stencil_ps_blob.data = stencil_ps_blob_data.get();
     qhenki::gfx::Shader stencil_pixel_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(stencil_ps_blob, 0, &stencil_pixel_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(stencil_ps_blob, &stencil_pixel_shader));
 
     qhenki::gfx::BlendDesc stencil_blend_desc{
         .alpha_to_coverage_enable = false,
@@ -506,14 +506,14 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(read_compiled_shader_blob(api, bevel_vs_name, &bevel_vs_blob_data, &bevel_vs_blob.size));
     bevel_vs_blob.data = bevel_vs_blob_data.get();
     qhenki::gfx::Shader bevel_vertex_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(bevel_vs_blob, 0, &bevel_vertex_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(bevel_vs_blob, &bevel_vertex_shader));
 
     uPtr<std::byte[]> bevel_ps_blob_data;
     qhenki::gfx::Shader bevel_ps_blob;
     THROW_IF_FALSE(read_compiled_shader_blob(api, bevel_ps_name, &bevel_ps_blob_data, &bevel_ps_blob.size));
     bevel_ps_blob.data = bevel_ps_blob_data.get();
     qhenki::gfx::Shader bevel_pixel_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(bevel_ps_blob, 0, &bevel_pixel_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(bevel_ps_blob, &bevel_pixel_shader));
     qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
         .depth_stencil_state =
             qhenki::gfx::DepthStencilDesc{
@@ -565,7 +565,7 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(read_compiled_shader_blob(api, blit_vs_name, &blit_vs_blob_data, &blit_vs_blob.size));
     blit_vs_blob.data = blit_vs_blob_data.get();
     qhenki::gfx::Shader blit_vertex_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(blit_vs_blob, 0, &blit_vertex_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(blit_vs_blob, &blit_vertex_shader));
 
     // Load blit copy pixel shader
     const char* blit_copy_ps_name = select_profile("blit_copy_ps_5_0_ps_main.slang_blob",
@@ -576,7 +576,7 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(read_compiled_shader_blob(api, blit_copy_ps_name, &blit_copy_ps_blob_data, &blit_copy_ps_blob.size));
     blit_copy_ps_blob.data = blit_copy_ps_blob_data.get();
     qhenki::gfx::Shader blit_copy_pixel_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(blit_copy_ps_blob, 0, &blit_copy_pixel_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(blit_copy_ps_blob, &blit_copy_pixel_shader));
 
     // Load blit luminance pixel shader
     const char* blit_luminance_ps_name = select_profile("blit_luminance_ps_5_0_ps_main.slang_blob",
@@ -588,7 +588,7 @@ void RetroExampleApp::create()
         api, blit_luminance_ps_name, &blit_luminance_ps_blob_data, &blit_luminance_ps_blob.size));
     blit_luminance_ps_blob.data = blit_luminance_ps_blob_data.get();
     qhenki::gfx::Shader blit_luminance_pixel_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(blit_luminance_ps_blob, 0, &blit_luminance_pixel_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(blit_luminance_ps_blob, &blit_luminance_pixel_shader));
     {
         uPtr<std::byte[]> blob_data;
         size_t blob_size = 0;
@@ -604,10 +604,10 @@ void RetroExampleApp::create()
         };
         qhenki::gfx::Shader blit_bloom_1d_horizontal_pixel_shader;
         qhenki::gfx::Shader blit_bloom_1d_vertical_pixel_shader;
-        THROW_IF_FALSE(qhenki::util::find_permutation_in_blob(
-            blit_bloom_blob, horizontal_defines, 1, &blit_bloom_1d_horizontal_pixel_shader));
-        THROW_IF_FALSE(qhenki::util::find_permutation_in_blob(
-            blit_bloom_blob, vertical_defines, 1, &blit_bloom_1d_vertical_pixel_shader));
+        THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(
+            blit_bloom_blob, &blit_bloom_1d_horizontal_pixel_shader, horizontal_defines, 1));
+        THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(
+            blit_bloom_blob, &blit_bloom_1d_vertical_pixel_shader, vertical_defines, 1));
 
         qhenki::gfx::GraphicsPipelineDesc blit_pipeline_desc = {
             .rtv_formats = {m_offscreen_rt_format},

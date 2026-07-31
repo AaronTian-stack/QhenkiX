@@ -27,14 +27,14 @@ void ImGUIExampleApp::create()
     THROW_IF_FALSE(read_compiled_shader_blob(api, vs_name, &vs_blob_data, &vs_blob.size));
     vs_blob.data = vs_blob_data.get();
     qhenki::gfx::Shader vertex_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(vs_blob, 0, &vertex_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(vs_blob, &vertex_shader));
 
     uPtr<std::byte[]> ps_blob_data;
     qhenki::gfx::Shader ps_blob;
     THROW_IF_FALSE(read_compiled_shader_blob(api, ps_name, &ps_blob_data, &ps_blob.size));
     ps_blob.data = ps_blob_data.get();
     qhenki::gfx::Shader pixel_shader;
-    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(ps_blob, 0, &pixel_shader));
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(ps_blob, &pixel_shader));
 
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
