@@ -3,6 +3,8 @@
 #include "example_shared/shader_loader.h"
 #include "example_shared/window_init.h"
 
+#include <qhenki/utility/shader_blob.h>
+
 #include <imgui/imgui.h>
 
 #include <array>
@@ -17,22 +19,22 @@ void ImGUIExampleApp::create()
     const auto api = get_graphics_api();
     const bool use_dx11 = api == qhenki::gfx::API::D3D11;
 
-    const char* vs_base_name = use_dx11 ? "base_vs_5_0_vs_main" : "base_vs_6_6_vs_main";
-    const char* ps_base_name = use_dx11 ? "base_ps_5_0_ps_main" : "base_ps_6_6_ps_main";
-    char vs_name[64]{};
-    char ps_name[64]{};
-    THROW_IF_FALSE(append_shader_extension(api, vs_base_name, vs_name, sizeof(vs_name)));
-    THROW_IF_FALSE(append_shader_extension(api, ps_base_name, ps_name, sizeof(ps_name)));
+    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.slang_blob" : "base_vs_6_6_vs_main.slang_blob";
+    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.slang_blob" : "base_ps_6_6_ps_main.slang_blob";
 
-    uPtr<std::byte, void (*)(void*)> vs_data(nullptr, free);
+    uPtr<std::byte[]> vs_blob_data;
+    qhenki::gfx::Shader vs_blob;
+    THROW_IF_FALSE(read_compiled_shader_blob(api, vs_name, &vs_blob_data, &vs_blob.size));
+    vs_blob.data = vs_blob_data.get();
     qhenki::gfx::Shader vertex_shader;
-    read_compiled_shader_bytes(api, vs_name, &vs_data, &vertex_shader.size);
-    vertex_shader.data = vs_data.get();
+    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(vs_blob, 0, &vertex_shader));
 
-    uPtr<std::byte, void (*)(void*)> ps_data(nullptr, free);
+    uPtr<std::byte[]> ps_blob_data;
+    qhenki::gfx::Shader ps_blob;
+    THROW_IF_FALSE(read_compiled_shader_blob(api, ps_name, &ps_blob_data, &ps_blob.size));
+    ps_blob.data = ps_blob_data.get();
     qhenki::gfx::Shader pixel_shader;
-    read_compiled_shader_bytes(api, ps_name, &ps_data, &pixel_shader.size);
-    pixel_shader.data = ps_data.get();
+    THROW_IF_FALSE(qhenki::util::get_shader_from_blob(ps_blob, 0, &pixel_shader));
 
     qhenki::gfx::PipelineLayoutDesc layout_desc{};
     THROW_IF_FALSE(m_context->create_pipeline_layout(&layout_desc, &m_pipeline_layout));
