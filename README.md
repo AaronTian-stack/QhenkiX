@@ -110,19 +110,24 @@ QhenkiX requires several shared libraries to run. When using CMake, the examples
 
 #### SXC runtime
 
-`SXC` needs DXC shared libraries available at runtime.
+`SXC` needs the Slang compiler and its downstream compiler libraries available at runtime.
 
 ##### Windows
 
+- `slang-compiler.dll`
+- `slang-glslang.dll`
+- `d3dcompiler_47.dll`
 - `dxcompiler.dll`
 - `dxil.dll`
 - `tbb12.dll`
 
 ##### Linux
 
-- `libdxcompiler.so`
-- `libdxildll.so` (copied from `libdxil.so`)
+- `libslang.so`
+- `libslang-glslang.so`
 - `libtbb.so.12`
+
+Note that Slang's pinned binary package currently provides downstream DXC only for Windows. DXIL generation on Linux therefore requires a downstream compiler to be supplied separately.
 
 ## Dependencies
 
@@ -130,7 +135,7 @@ QhenkiX requires several shared libraries to run. When using CMake, the examples
 - [D3D12MemAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) - (MIT License)
 - [D3D12DescriptorHelpers](https://github.com/sawickiap/D3D12DescriptorHelpers) - (Public Domain)
 - [robin-map / tsl](https://github.com/Tessil/robin-map) - (MIT License)
-- [DXC (DirectX Shader Compiler)](https://github.com/microsoft/DirectXShaderCompiler) - (LLVM/NCSA + MIT)
+- [Slang](https://github.com/shader-slang/slang) - (Apache 2.0 with LLVM Exception)
 - [DirectX Headers](https://github.com/microsoft/DirectX-Headers) - (MIT License)
 - [DirectXMath](https://github.com/microsoft/DirectXMath) - (MIT License)
 - [DirectXTex](https://github.com/microsoft/DirectXTex) - (MIT License)
@@ -140,7 +145,6 @@ QhenkiX requires several shared libraries to run. When using CMake, the examples
 - [Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) - (Apache 2.0)
 - [volk](https://github.com/zeux/volk) - (MIT License)
 - [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap) - (MIT License)
-- [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - (Apache 2.0)
 - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) - (MIT License)
 - [magic_enum](https://github.com/Neargye/magic_enum) - (MIT License)
 - [utf8cpp](https://github.com/nemtrif/utfcpp) - (Boost Software License 1.0)
