@@ -22,7 +22,7 @@ jobs:
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
-        cmake-version: '3.29'
+        cmake-version: '4.2'
 
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
@@ -63,7 +63,7 @@ jobs:
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
-        cmake-version: '3.29'
+        cmake-version: '4.2'
 
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
@@ -106,7 +106,7 @@ jobs:
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
-        cmake-version: '3.29'
+        cmake-version: '4.2'
 
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
