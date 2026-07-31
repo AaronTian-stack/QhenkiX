@@ -6,7 +6,6 @@
 #include <magic_enum/magic_enum.hpp>
 #include "compiler_job.h"
 #include "graphics/shared/slang_shader_compiler.h"
-#include "smartpointer.h"
 
 int main(int argc, char* argv[])
 {
@@ -131,15 +130,13 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        constexpr auto buffer_length = 4096;
+        std::array<char, 4096> name_buffer;
 #ifdef __linux__
-        static_assert(buffer_length >= PATH_MAX);
+        static_assert(name_buffer.size() >= PATH_MAX);
 #endif
-
-        auto slang_name_buffer = mkU<char[]>(buffer_length);
-        if (qhenki::gfx::SlangShaderCompiler::get_compiler_path(slang_name_buffer.get(), buffer_length))
+        if (qhenki::gfx::SlangShaderCompiler::get_compiler_path(name_buffer.data(), name_buffer.size()))
         {
-            printf("Using shader compiler library:\nSlang: %s\n", slang_name_buffer.get());
+            printf("Using shader compiler library:\nSlang: %s\n", name_buffer.data());
         }
         else
         {
