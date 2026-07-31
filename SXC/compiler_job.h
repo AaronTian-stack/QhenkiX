@@ -20,12 +20,11 @@ struct CLIInput
 {
     std::string config_path;
     std::string output_dir;
-    std::string_view pdb_dir;
     std::span<const std::string> global_defines;
     std::span<const std::string> include_paths;
     gfx::ShaderModel shader_model;
     CompilerInput::Optimization optimization;
-    bool debug_flag;
+    bool embed_debug;
     bool force;
     bool output_spirv = false;
 };
@@ -41,7 +40,6 @@ struct OutputInfo
     gfx::ShaderModel sm;
     gfx::ShaderType st;
     std::string_view entry_point;
-    bool output_spirv = false;
 };
 
 using CompilerInputVector = boost::container::small_vector<CompilerInput, 1>;
@@ -63,8 +61,7 @@ class SXCJob
 public:
     static fs::path get_resolved_output_name(const OutputInfo& info,
                                              const fs::path& input_path,
-                                             const std::string& output_dir,
-                                             size_t permutation_count);
+                                             const std::string& output_dir);
     static int parse_config(const CLIInput& input, tbb::concurrent_vector<CompilerInputVector>* compiler_inputs);
 };
 

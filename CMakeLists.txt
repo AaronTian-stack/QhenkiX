@@ -8,6 +8,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake/ScopedBuildSharedLibs.cmake)
 
 # Set repo root for all subprojects
 set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+include(${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake/SlangCompiler.cmake)
 
 option(BUILD_GLTF_VIEWER "Build gltfViewer example" ON)
 option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)

@@ -49,6 +49,7 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/orthographic_camera_component.cpp"
     "${QHENKIX_DIR}/graphics/perspective_camera_component.cpp"
     "${QHENKIX_DIR}/graphics/2d/spritebatch.cpp"
+    "${QHENKIX_DIR}/graphics/shared/slang_shader_compiler.cpp"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.cpp"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.cpp"
@@ -91,6 +92,7 @@ if(WIN32)
 endif()
 
 set(QHENKIX_PRIVATE_HEADERS
+    "${QHENKIX_DIR}/graphics/shared/slang_shader_compiler.h"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
@@ -183,7 +185,7 @@ set(QHENKIX_PUBLIC_HEADERS
 )
 
 add_library(${PROJECT_NAME} STATIC ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS} ${IMGUI_SOURCES})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${QHENKIX_SLANG_LINK_TARGET})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${QHENKIX_SLANG_LINK_TARGET})
 
 if(CMAKE_GENERATOR MATCHES "^Visual Studio")
     add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD

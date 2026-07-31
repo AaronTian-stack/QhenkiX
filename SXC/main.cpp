@@ -5,16 +5,13 @@
 #include <filesystem>
 #include <magic_enum/magic_enum.hpp>
 #include "compiler_job.h"
-#include "graphics/d3d12/dxc_shader_compiler.h"
+#include "graphics/shared/slang_shader_compiler.h"
 #include "smartpointer.h"
-#if defined(_WIN32) || defined(_WIN64)
-#include "graphics/d3d11/fxc_shader_compiler.h"
-#endif
 
 int main(int argc, char* argv[])
 {
-    argparse::ArgumentParser program("SXC", "0.4.0");
-    program.add_description("FXC/DXC batch shader compiler.");
+    argparse::ArgumentParser program("SXC", "0.5.0");
+    program.add_description("Slang batch shader compiler.");
 #if defined(_WIN32) || defined(_WIN64)
     program.set_prefix_chars("-+/");
 #else
@@ -23,13 +20,11 @@ int main(int argc, char* argv[])
     program.set_assign_chars("=:");
 
     { // OPTIONAL ARGUMENTS
-        program.add_argument("-pdb", "--pdb-path").help("pdb output path").nargs(1);
-
         program.add_argument("-i", "--include-path").append().help("include path");
 
         program.add_argument("-g", "--global-defines").append().help("defines to be used for all shaders");
 
-        program.add_argument("-dbg", "--debug-flag").flag().help("enable debug flag for all shaders");
+        program.add_argument("-dbg", "--embed-debug").flag().help("embed debug information in all shaders");
 
         program.add_argument("-spirv", "--output-spirv").flag().help("output SPIR-V instead of DXBC/DXIL");
 
@@ -54,7 +49,7 @@ int main(int argc, char* argv[])
             .required();
 
         program.add_argument("-sm", "--shader-model")
-            .help("HLSL shader model [X_Y]")
+            .help("shader model [X_Y]")
             .choices("5_0", "6_0", "6_1", "6_2", "6_3", "6_4", "6_5", "6_6")
             .nargs(1)
             .required();
@@ -77,19 +72,9 @@ int main(int argc, char* argv[])
             std::filesystem::current_path(config_dir);
         }
 
-        const auto pdb = program.present<std::string>("--pdb-path");
         const auto includes = program.present<std::vector<std::string>>("--include-path");
 
         { // Verify optional arguments
-
-            if (pdb.has_value())
-            {
-                if (const auto& pdb_path = pdb.value(); !std::filesystem::exists(pdb_path))
-                {
-                    throw std::runtime_error("Specified PDB path does not exist: " +
-                                             std::string(pdb_path.begin(), pdb_path.end()));
-                }
-            }
 
             if (includes.has_value())
             {
@@ -126,14 +111,13 @@ int main(int argc, char* argv[])
         auto global_defines = program.present<std::vector<std::string>>("--global-defines");
         qhenki::sxc::CLIInput input{.config_path = std::move(config_file_path),
                                     .output_dir = program.get<std::string>("--output"),
-                                    .pdb_dir = pdb.has_value() ? pdb.value() : std::string_view{},
                                     .global_defines = global_defines.has_value() ? global_defines.value()
                                                                                  : std::span<const std::string>{},
                                     .include_paths = includes.has_value() ? includes.value()
                                                                           : std::span<const std::string>{},
                                     .shader_model = sm.value(),
                                     .optimization = optimization.value(),
-                                    .debug_flag = program.get<bool>("--debug-flag"),
+                                    .embed_debug = program.get<bool>("--embed-debug"),
                                     .force = program.get<bool>("--force"),
                                     .output_spirv = program.get<bool>("--output-spirv")};
 
@@ -152,16 +136,15 @@ int main(int argc, char* argv[])
         static_assert(buffer_length >= PATH_MAX);
 #endif
 
-        auto dxc_name_buffer = mkU<char[]>(buffer_length);
-        qhenki::gfx::DXCShaderCompiler::get_compiler_path(dxc_name_buffer.get(), buffer_length);
-
-#if defined(_WIN32) || defined(_WIN64)
-        auto fxc_name_buffer = mkU<char[]>(buffer_length);
-        qhenki::gfx::FXCShaderCompiler::get_compiler_path(fxc_name_buffer.get(), buffer_length);
-        printf("Using shader compiler libraries:\nDXC: %s\nFXC: %s\n", dxc_name_buffer.get(), fxc_name_buffer.get());
-#else
-        printf("Using shader compiler library:\nDXC: %s\n", dxc_name_buffer.get());
-#endif
+        auto slang_name_buffer = mkU<char[]>(buffer_length);
+        if (qhenki::gfx::SlangShaderCompiler::get_compiler_path(slang_name_buffer.get(), buffer_length))
+        {
+            printf("Using shader compiler library:\nSlang: %s\n", slang_name_buffer.get());
+        }
+        else
+        {
+            printf("Using shader compiler library: Slang (path unavailable)\n");
+        }
 
         const auto result_count =
             qhenki::sxc::execute_compilation_job(&inputs, input.output_dir, input.force, input.output_spirv);
