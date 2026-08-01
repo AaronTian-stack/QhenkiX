@@ -17,7 +17,7 @@ SXC is heavily inspired by [ShaderMake](https://github.com/NVIDIA-RTX/ShaderMake
 ## Basic Usage
 
 ```bash
-SXC.exe -c <config_file> -sm <shader_model> -out <output_dir> [options]
+SXC.exe -c <config_file> -sm <shader_model> -ir <DXBC|DXIL|SPIRV> -out <output_dir> [options]
 ```
 
 The output consists of one or more `.slang_blob` files, which is a container holding one or more native shader bytecode variants. 
@@ -25,7 +25,8 @@ The output consists of one or more `.slang_blob` files, which is a container hol
 ### Required Arguments
 
 - `-c, --config-path`: Path to the configuration file
-- `-sm, --shader-model`: Target shader model (`5_0`, `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, `6_5`, `6_6`)
+- `-sm, --shader-model`: Target shader model (`5_0` through `6_9`)
+- `-ir, --output-IR`: Output representation (`DXBC`, `DXIL`, or `SPIRV`)
 - `-out, --output`: Output directory for compiled shaders
 
 ### Optional Arguments
@@ -33,7 +34,6 @@ The output consists of one or more `.slang_blob` files, which is a container hol
 - `-i, --include-path`: Additional include directories (can be specified multiple times)
 - `-g, --global-defines`: Global preprocessor defines for all shaders (can be specified multiple times)
 - `-dbg, --embed-debug`: Embed target-native debug information in all shaders
-- `-spirv, --output-spirv`: Emit SPIR-V output (requires shader model 6.0 or higher)
 - `-f, --force`: Force recompilation of shaders even if up-to-date
 - `-o, --optimization`: Default optimization level (O0, O1, O2, O3) [default: O3]
 
@@ -86,7 +86,7 @@ To select a permutation at runtime, call `ShaderBlob::find_shader()` with its re
 
 ### Command Line
 ```bash
-SXC.exe -c shaders.config -sm 6_0 -out compiled_shaders -i include_dir -g GLOBAL_DEFINE=1
+SXC.exe -c shaders.config -sm 6_0 -ir DXIL -out compiled_shaders -i include_dir -g GLOBAL_DEFINE=1
 ```
 
 ## Dependencies

@@ -471,7 +471,7 @@ int SXCJob::parse_config(const CLIInput& input,
 
     for (const auto& error : parse_errors)
     {
-        fprintf(stderr, "Failed to parse config line: %d\n\t%s\n", error.first, error.second.c_str());
+        fprintf(stderr, "Failed to parse config line: %llu\n\t%s\n", error.first, error.second.c_str());
     }
     return parse_errors.empty() ? 0 : -1;
 }
@@ -509,7 +509,7 @@ fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
 ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<CompilerInputVector>* inputs,
                                                        const std::string& output_dir,
                                                        bool force,
-                                                       bool output_spirv)
+                                                       ShaderIR ir)
 {
     // Go through inputs and just return the same one
     const auto collect_inputs =
@@ -583,7 +583,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
     // Compile shader
     auto compile_shaders = tbb::make_filter<OutputPathAndCompilerInputVector, PathAndOutputs>(
         tbb::filter_mode::parallel,
-        [&slang_compilers, output_spirv](const OutputPathAndCompilerInputVector& out_and_vector) -> PathAndOutputs
+        [&slang_compilers, ir](const OutputPathAndCompilerInputVector& out_and_vector) -> PathAndOutputs
         {
             const auto& out_path = out_and_vector.output_path;
             const auto input_vector = out_and_vector.input_vector;
@@ -593,19 +593,19 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
                 return {};
             }
 
-            assert(!output_spirv || input_vector->front().shader_model >= gfx::ShaderModel::SM_6_0);
+            assert((ir == DXBC) == (input_vector->front().shader_model < gfx::ShaderModel::SM_6_0));
 
             std::vector<CompilerOutput> output(input_vector->size());
 
             tbb::parallel_for(static_cast<size_t>(0),
                               input_vector->size(),
-                              [&output, &slang_compilers, input_vector, output_spirv](const size_t i)
+                              [&output, &slang_compilers, input_vector, ir](const size_t i)
                               {
                                   const auto& input = (*input_vector)[i];
                                   auto& out = output[i];
-                                  const auto success = slang_compilers.local().compile(input, out, output_spirv);
+                                  const auto success = slang_compilers.local().compile(input, out, ir);
 
-                                  const auto tm = gfx::shader_model_char(input.shader_type, input.shader_model);
+                                  const auto tm = shader_model_char(input.shader_type, input.shader_model);
 
                                   if (success)
                                   {

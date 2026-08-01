@@ -8,6 +8,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <qhenki/utility/string_util.h>
+
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #elif defined(__APPLE__) || defined(__linux__)
@@ -41,17 +43,14 @@ constexpr std::array<const char*, 17> SPIRV_OPTIONS{
     "-fvk-invert-y",
 };
 
-constexpr size_t SHADER_PROFILE_SIZE = 6;
+constexpr size_t SHADER_PROFILE_SIZE = sizeof("sm_X_Y");
 
-std::array<char, SHADER_PROFILE_SIZE + 1> shader_profile(const ShaderModel model)
+std::array<char, SHADER_PROFILE_SIZE> shader_profile(const ShaderModel model)
 {
     const auto enum_name = magic_enum::enum_name(model);
-    if (enum_name.size() != SHADER_PROFILE_SIZE)
-    {
-        return {};
-    }
+    assert(enum_name.size() == SHADER_PROFILE_SIZE);
 
-    std::array<char, SHADER_PROFILE_SIZE + 1> profile{};
+    std::array<char, SHADER_PROFILE_SIZE> profile{};
     std::memcpy(profile.data(), enum_name.data(), enum_name.size());
     profile[0] = 's';
     profile[1] = 'm';
@@ -69,7 +68,8 @@ SlangStage shader_stage(const ShaderType type)
     case COMPUTE_SHADER:
         return SLANG_STAGE_COMPUTE;
     }
-    assert(false && "Library shaders do not have a single entry-point stage");
+    // Library shaders don't have an entrypoint
+    assert(false);
     return SLANG_STAGE_NONE;
 }
 
@@ -162,7 +162,7 @@ bool SlangShaderCompiler::get_compiler_path(char* buffer, const size_t length)
 #endif
 }
 
-bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output, const bool output_spirv)
+bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& output, const ShaderIR ir)
 {
     output.error_message.clear();
     output.blob.setNull();
@@ -183,7 +183,22 @@ bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         }
     } request_guard{request};
 
-    const auto target = output_spirv ? SLANG_SPIRV : input.shader_model < ShaderModel::SM_6_0 ? SLANG_DXBC : SLANG_DXIL;
+    SlangCompileTarget target;
+    switch (ir)
+    {
+    case DXBC:
+        target = SLANG_DXBC;
+        break;
+    case DXIL:
+        target = SLANG_DXIL;
+        break;
+    case SPIRV:
+        target = SLANG_SPIRV;
+        break;
+    default:
+        output.error_message = "SlangShaderCompiler: Unsupported shader IR";
+        return false;
+    }
     const auto target_index = spAddCodeGenTarget(request, target);
     const auto profile_name = shader_profile(input.shader_model);
     if (profile_name[0] == '\0')
@@ -195,8 +210,9 @@ bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     const auto profile = spFindProfile(m_session, profile_name.data());
     if (profile == SLANG_PROFILE_UNKNOWN)
     {
-        output.error_message = "SlangShaderCompiler: Slang does not support profile " +
-                               std::string(profile_name.data());
+        const auto error = util::format_string("SlangShaderCompiler: Slang does not support profile %s",
+                                               profile_name.data());
+        output.error_message = error.buffer.data();
         return false;
     }
     spSetTargetProfile(request, target_index, profile);
@@ -207,7 +223,7 @@ bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     if (input.flags & CompilerInput::DEBUG)
     {
         spSetDebugInfoLevel(request, SLANG_DEBUG_INFO_LEVEL_STANDARD);
-        if (!output_spirv)
+        if (ir != SPIRV)
         {
             spSetDebugInfoFormat(request, SLANG_DEBUG_INFO_FORMAT_C7);
         }
@@ -239,7 +255,7 @@ bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         spAddPreprocessorDefine(request, name.c_str(), define.c_str() + separator + 1);
     }
 
-    if (output_spirv)
+    if (ir == SPIRV)
     {
         const auto option_count = input.shader_type == VERTEX_SHADER ? static_cast<int>(SPIRV_OPTIONS.size())
                                                                      : static_cast<int>(SPIRV_OPTIONS.size() - 1);

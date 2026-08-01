@@ -25,8 +25,8 @@ struct CLIInput
     gfx::ShaderModel shader_model;
     CompilerInput::Optimization optimization;
     bool embed_debug;
-    bool force;
-    bool output_spirv = false;
+    bool force_recompile;
+    ShaderIR output_IR;
 };
 
 struct CompilerInputFile
@@ -50,7 +50,7 @@ class SXCJob
     {
         std::optional<std::string> output_dir; // Overrides CLIInput output directory
         std::string entry_point;
-        std::optional<std::vector<std::string>> defines;         // list of range of possible range of values {}
+        std::optional<std::vector<std::string>> defines;         // List of range of possible range of values
         std::optional<CompilerInput::Optimization> optimization; // Overrides CLIInput optimization
         gfx::ShaderType shader_type;
     };
@@ -75,5 +75,5 @@ struct ShaderResultCount
 ShaderResultCount execute_compilation_job(tbb::concurrent_vector<CompilerInputVector>* inputs,
                                           const std::string& output_dir,
                                           bool force,
-                                          bool output_spirv = false);
+                                          ShaderIR ir);
 } // namespace qhenki::sxc

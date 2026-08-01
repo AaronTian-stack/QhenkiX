@@ -17,7 +17,7 @@ public:
 
     static bool get_compiler_path(char* buffer, size_t length);
 
-    bool compile(const CompilerInput& input, CompilerOutput& output, bool output_spirv = false) override;
+    bool compile(const CompilerInput& input, CompilerOutput& output, ShaderIR ir) override;
 
     ~SlangShaderCompiler() override;
 };

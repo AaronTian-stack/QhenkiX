@@ -25,8 +25,6 @@ int main(int argc, char* argv[])
 
         program.add_argument("-dbg", "--embed-debug").flag().help("embed debug information in all shaders");
 
-        program.add_argument("-spirv", "--output-spirv").flag().help("output SPIR-V instead of DXBC/DXIL");
-
         program.add_argument("-f", "--force").flag().help("force recompilation of all shaders");
 
         program.add_argument("-o", "--optimization")
@@ -49,11 +47,17 @@ int main(int argc, char* argv[])
 
         program.add_argument("-sm", "--shader-model")
             .help("shader model [X_Y]")
-            .choices("5_0", "6_0", "6_1", "6_2", "6_3", "6_4", "6_5", "6_6")
+            .choices("5_0", "6_0", "6_1", "6_2", "6_3", "6_4", "6_5", "6_6", "6_7", "6_8", "6_9")
             .nargs(1)
             .required();
 
         program.add_argument("-out", "--output").nargs(1).help("output directory").required();
+
+        program.add_argument("-ir", "--output-IR")
+            .choices("DXBC", "DXIL", "SPIRV")
+            .nargs(1)
+            .help("shader intermediate representation")
+            .required();
     }
 
     try
@@ -95,9 +99,19 @@ int main(int argc, char* argv[])
             throw std::runtime_error("Failed to reflect shader model: " + std::string(sm_str.buffer.data()));
         }
 
-        if (program.get<bool>("--output-spirv") && sm.value() < qhenki::gfx::ShaderModel::SM_6_0)
+        const auto output_IR = magic_enum::enum_cast<ShaderIR>(program.get<std::string>("--output-IR"));
+        if (!output_IR.has_value())
         {
-            throw std::runtime_error("SPIR-V output requires shader model 6.0 or higher");
+            throw std::runtime_error("Failed to reflect output type");
+        }
+
+        if (output_IR.value() == DXBC && sm.value() >= qhenki::gfx::ShaderModel::SM_6_0)
+        {
+            throw std::runtime_error("DXBC does not support SM >= 6.0");
+        }
+        if (output_IR.value() != DXBC && sm.value() < qhenki::gfx::ShaderModel::SM_6_0)
+        {
+            throw std::runtime_error("DXIL and SPIR-V require SM >= 6.0");
         }
 
         const auto optimization = magic_enum::enum_cast<CompilerInput::Optimization>(
@@ -117,8 +131,8 @@ int main(int argc, char* argv[])
                                     .shader_model = sm.value(),
                                     .optimization = optimization.value(),
                                     .embed_debug = program.get<bool>("--embed-debug"),
-                                    .force = program.get<bool>("--force"),
-                                    .output_spirv = program.get<bool>("--output-spirv")};
+                                    .force_recompile = program.get<bool>("--force"),
+                                    .output_IR = output_IR.value()};
 
         const auto start = std::chrono::steady_clock::now();
 
@@ -144,7 +158,7 @@ int main(int argc, char* argv[])
         }
 
         const auto result_count =
-            qhenki::sxc::execute_compilation_job(&inputs, input.output_dir, input.force, input.output_spirv);
+            qhenki::sxc::execute_compilation_job(&inputs, input.output_dir, input.force_recompile, input.output_IR);
 
         const auto end = std::chrono::steady_clock::now();
 

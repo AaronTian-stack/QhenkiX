@@ -72,6 +72,13 @@ struct CompilerInput
     }
 };
 
+enum ShaderIR : uint8_t
+{
+    DXBC,
+    DXIL,
+    SPIRV,
+};
+
 struct CompilerOutput
 {
     std::string error_message;
@@ -83,6 +90,6 @@ class ShaderCompiler
 {
 public:
     // Creates a source blob (DXIL, DXBC, or SPIR-V) from the input
-    virtual bool compile(const CompilerInput& input, CompilerOutput& output, bool output_spirv = false) = 0;
+    virtual bool compile(const CompilerInput& input, CompilerOutput& output, ShaderIR ir) = 0;
     virtual ~ShaderCompiler() = default;
 };
