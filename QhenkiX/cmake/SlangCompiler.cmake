@@ -102,6 +102,17 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
     set(QHENKIX_SLANG_GLSLANG_FILE
         "${QHENKIX_SLANG_BINARY_DIR}/$<CONFIG>/bin/slang-glslang.dll")
 else()
+    # Slang otherwise adds its bundled Vulkan-Headers copy to the shared build
+    # graph. Add our pinned copy first so both projects reuse one target.
+    if(NOT TARGET Vulkan::Headers)
+        set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+        set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+        qhenkix_add_dependency_subdirectory(
+            "${REPO_ROOT}/QhenkiX/external/Vulkan-Headers"
+            "${CMAKE_BINARY_DIR}/Vulkan-Headers"
+        )
+    endif()
+
     set(SLANG_ENABLE_CUDA OFF CACHE BOOL "" FORCE)
     set(SLANG_ENABLE_OPTIX OFF CACHE BOOL "" FORCE)
     set(SLANG_ENABLE_NVAPI OFF CACHE BOOL "" FORCE)

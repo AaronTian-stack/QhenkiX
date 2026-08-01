@@ -248,9 +248,11 @@ qhenkix_add_dependency_subdirectory(external/SPIRV-Cross ${CMAKE_BINARY_DIR}/spi
 target_link_libraries(${PROJECT_NAME} PUBLIC spirv-cross-core spirv-cross-glsl)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS)
 
-set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
-set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-qhenkix_add_dependency_subdirectory(external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
+if(NOT TARGET Vulkan::Headers)
+    set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+    set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+    qhenkix_add_dependency_subdirectory(external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
+endif()
 
 set(VULKAN_HEADERS_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/Vulkan-Headers" CACHE PATH "" FORCE)
 set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
