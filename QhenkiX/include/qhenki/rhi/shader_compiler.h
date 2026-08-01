@@ -72,7 +72,7 @@ struct CompilerInput
     }
 };
 
-enum ShaderIR : uint8_t
+enum class ShaderIR : uint8_t
 {
     DXBC,
     DXIL,

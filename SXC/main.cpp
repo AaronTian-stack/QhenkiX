@@ -105,11 +105,11 @@ int main(int argc, char* argv[])
             throw std::runtime_error("Failed to reflect output type");
         }
 
-        if (output_IR.value() == DXBC && sm.value() >= qhenki::gfx::ShaderModel::SM_6_0)
+        if (output_IR.value() == ShaderIR::DXBC && sm.value() >= qhenki::gfx::ShaderModel::SM_6_0)
         {
             throw std::runtime_error("DXBC does not support SM >= 6.0");
         }
-        if (output_IR.value() != DXBC && sm.value() < qhenki::gfx::ShaderModel::SM_6_0)
+        if (output_IR.value() != ShaderIR::DXBC && sm.value() < qhenki::gfx::ShaderModel::SM_6_0)
         {
             throw std::runtime_error("DXIL and SPIR-V require SM >= 6.0");
         }

@@ -478,7 +478,8 @@ int SXCJob::parse_config(const CLIInput& input,
 
 fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
                                           const fs::path& input_path,
-                                          const std::string& output_dir)
+                                          const std::string& output_dir,
+                                          const ShaderIR ir_format)
 {
     // SXC always writes a .slang_blob container even for single variant shaders
     fs::path filename = input_path.filename();
@@ -501,7 +502,20 @@ fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
         filename += info.entry_point;
     }
 
-    filename += ".slang_blob";
+    switch (ir_format)
+    {
+    case ShaderIR::DXBC:
+        filename += ".dxbc";
+        break;
+    case ShaderIR::DXIL:
+        filename += ".dxil_blob";
+        break;
+    case ShaderIR::SPIRV:
+        filename += ".spv_blob";
+        break;
+    default:
+        assert(false);
+    }
 
     return fs::path(output_dir) / filename;
 }
@@ -509,7 +523,7 @@ fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
 ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<CompilerInputVector>* inputs,
                                                        const std::string& output_dir,
                                                        bool force,
-                                                       ShaderIR ir)
+                                                       ShaderIR ir_format)
 {
     // Go through inputs and just return the same one
     const auto collect_inputs =
@@ -541,7 +555,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
     // Check if input needs to be compiled
     const auto filter_shaders = tbb::make_filter<CompilerInputVector*, OutputPathAndCompilerInputVector>(
         tbb::filter_mode::parallel,
-        [&output_dir, &skipped_count, force](CompilerInputVector* input) -> OutputPathAndCompilerInputVector
+        [&output_dir, &skipped_count, force, ir_format](CompilerInputVector* input) -> OutputPathAndCompilerInputVector
         {
             assert(input); // nullptr should have stopped pipeline from last filter
             assert(!input->empty());
@@ -560,7 +574,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
                 .entry_point = ci.entry_point,
             };
             const fs::path input_path = ci.get_path();
-            const fs::path output_path = SXCJob::get_resolved_output_name(info, input_path, output_dir);
+            const fs::path output_path = SXCJob::get_resolved_output_name(info, input_path, output_dir, ir_format);
 
             if (needs_to_recompile_shader(input_path, output_path, ci.includes, *input, force))
             {
@@ -583,7 +597,7 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
     // Compile shader
     auto compile_shaders = tbb::make_filter<OutputPathAndCompilerInputVector, PathAndOutputs>(
         tbb::filter_mode::parallel,
-        [&slang_compilers, ir](const OutputPathAndCompilerInputVector& out_and_vector) -> PathAndOutputs
+        [&slang_compilers, ir_format](const OutputPathAndCompilerInputVector& out_and_vector) -> PathAndOutputs
         {
             const auto& out_path = out_and_vector.output_path;
             const auto input_vector = out_and_vector.input_vector;
@@ -593,17 +607,15 @@ ShaderResultCount qhenki::sxc::execute_compilation_job(tbb::concurrent_vector<Co
                 return {};
             }
 
-            assert((ir == DXBC) == (input_vector->front().shader_model < gfx::ShaderModel::SM_6_0));
-
             std::vector<CompilerOutput> output(input_vector->size());
 
             tbb::parallel_for(static_cast<size_t>(0),
                               input_vector->size(),
-                              [&output, &slang_compilers, input_vector, ir](const size_t i)
+                              [&output, &slang_compilers, input_vector, ir_format](const size_t i)
                               {
                                   const auto& input = (*input_vector)[i];
                                   auto& out = output[i];
-                                  const auto success = slang_compilers.local().compile(input, out, ir);
+                                  const auto success = slang_compilers.local().compile(input, out, ir_format);
 
                                   const auto tm = shader_model_char(input.shader_type, input.shader_model);
 

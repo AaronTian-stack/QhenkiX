@@ -48,7 +48,7 @@ constexpr size_t SHADER_PROFILE_SIZE = sizeof("sm_X_Y");
 std::array<char, SHADER_PROFILE_SIZE> shader_profile(const ShaderModel model)
 {
     const auto enum_name = magic_enum::enum_name(model);
-    assert(enum_name.size() == SHADER_PROFILE_SIZE);
+    assert(enum_name.size() + 1 == SHADER_PROFILE_SIZE);
 
     std::array<char, SHADER_PROFILE_SIZE> profile{};
     std::memcpy(profile.data(), enum_name.data(), enum_name.size());
@@ -186,13 +186,13 @@ bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     SlangCompileTarget target;
     switch (ir)
     {
-    case DXBC:
+    case ShaderIR::DXBC:
         target = SLANG_DXBC;
         break;
-    case DXIL:
+    case ShaderIR::DXIL:
         target = SLANG_DXIL;
         break;
-    case SPIRV:
+    case ShaderIR::SPIRV:
         target = SLANG_SPIRV;
         break;
     default:
@@ -223,7 +223,7 @@ bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
     if (input.flags & CompilerInput::DEBUG)
     {
         spSetDebugInfoLevel(request, SLANG_DEBUG_INFO_LEVEL_STANDARD);
-        if (ir != SPIRV)
+        if (ir != ShaderIR::SPIRV)
         {
             spSetDebugInfoFormat(request, SLANG_DEBUG_INFO_FORMAT_C7);
         }
@@ -255,7 +255,7 @@ bool SlangShaderCompiler::compile(const CompilerInput& input, CompilerOutput& ou
         spAddPreprocessorDefine(request, name.c_str(), define.c_str() + separator + 1);
     }
 
-    if (ir == SPIRV)
+    if (ir == ShaderIR::SPIRV)
     {
         const auto option_count = input.shader_type == VERTEX_SHADER ? static_cast<int>(SPIRV_OPTIONS.size())
                                                                      : static_cast<int>(SPIRV_OPTIONS.size() - 1);

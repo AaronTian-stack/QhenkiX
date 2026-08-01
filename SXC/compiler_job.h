@@ -61,7 +61,8 @@ class SXCJob
 public:
     static fs::path get_resolved_output_name(const OutputInfo& info,
                                              const fs::path& input_path,
-                                             const std::string& output_dir);
+                                             const std::string& output_dir,
+                                             ShaderIR ir_format);
     static int parse_config(const CLIInput& input, tbb::concurrent_vector<CompilerInputVector>* compiler_inputs);
 };
 
@@ -75,5 +76,5 @@ struct ShaderResultCount
 ShaderResultCount execute_compilation_job(tbb::concurrent_vector<CompilerInputVector>* inputs,
                                           const std::string& output_dir,
                                           bool force,
-                                          ShaderIR ir);
+                                          ShaderIR ir_format);
 } // namespace qhenki::sxc
