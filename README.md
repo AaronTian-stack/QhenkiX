@@ -36,7 +36,6 @@ See [Examples](Examples) for use cases of the library.
 - Vulkan backend:
     - Vulkan 1.4 core
     - VK_EXT_DESCRIPTOR_HEAP_EXTENSION
-        - **This requires installing the latest beta graphics drivers from [NVIDIA](https://developer.nvidia.com/vulkan-driver) or [AMD](https://www.amd.com/en/resources/support-articles/release-notes/RN-RAD-WIN-VULKAN.html).**
     - VK_EXT_MEMORY_BUDGET_EXTENSION
     - VK_EXT_MEMORY_PRIORITY_EXTENSION
     - VK_KHR_MAINTENANCE_9_EXTENSION
@@ -152,10 +151,6 @@ Note that Slang's pinned binary package currently provides downstream DXC only f
 ## Documentation
 
 This project is primarily for personal use and and will be frequently subject to large breaking changes, so there is not any documentation currently besides certain select functions. However I will eventually create a wiki of some sort and also explain my design choices in detail...
-
-## Notes
-
-- FXC depends on `d3dcompiler_47.dll` which is not included with this library. It is included with the Windows SDK. I will eventually bundle a specific version of the DLL with the library.
 
 ## License
 
