@@ -87,6 +87,17 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
             "${QHENKIX_SLANG_BINARY_DIR}/${QHENKIX_SLANG_CONFIG}/bin/slang-compiler.dll")
     endforeach()
 
+    add_custom_target(qhenkix_slang_build
+        COMMAND "${CMAKE_COMMAND}" --build "${QHENKIX_SLANG_BINARY_DIR}"
+            --config $<CONFIG>
+            --target slang slang-glslang
+            --parallel
+        COMMENT "Building the nested Slang compiler dependency"
+        VERBATIM
+    )
+    set_property(TARGET qhenkix_slang_build PROPERTY FOLDER "_Dependencies")
+    add_dependencies(qhenkix_slang qhenkix_slang_build)
+
     set(QHENKIX_SLANG_LINK_TARGET qhenkix_slang)
     set(QHENKIX_SLANG_GLSLANG_FILE
         "${QHENKIX_SLANG_BINARY_DIR}/$<CONFIG>/bin/slang-glslang.dll")

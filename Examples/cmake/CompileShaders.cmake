@@ -30,6 +30,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             COMMAND $<TARGET_FILE:SXC>
                 -c "${CONFIG_PATH}"
                 -sm ${SXC_DX11_SM}
+                -ir DXBC
                 -out "${COMPILED_SHADERS_DIR}/dx11"
                 -i "${CMAKE_CURRENT_SOURCE_DIR}"
                 -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
@@ -46,6 +47,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             COMMAND $<TARGET_FILE:SXC>
                 -c "${CONFIG_PATH}"
                 -sm ${SXC_DX12_SM}
+                -ir DXIL
                 -out "${COMPILED_SHADERS_DIR}/dx12"
                 -i "${CMAKE_CURRENT_SOURCE_DIR}"
                 -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
@@ -63,10 +65,10 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
         COMMAND $<TARGET_FILE:SXC>
             -c "${CONFIG_PATH}"
             -sm ${SXC_VULKAN_SM}
+            -ir SPIRV
             -out "${COMPILED_SHADERS_DIR}/vulkan"
             -i "${CMAKE_CURRENT_SOURCE_DIR}"
             -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
-            -spirv
             $<$<BOOL:${EXAMPLES_FORCE_SHADER_RECOMPILE}>:-f>
         DEPENDS SXC
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"

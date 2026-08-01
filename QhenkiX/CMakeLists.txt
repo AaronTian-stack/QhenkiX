@@ -187,17 +187,6 @@ set(QHENKIX_PUBLIC_HEADERS
 add_library(${PROJECT_NAME} STATIC ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS} ${IMGUI_SOURCES})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${QHENKIX_SLANG_LINK_TARGET})
 
-if(CMAKE_GENERATOR MATCHES "^Visual Studio")
-    add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
-        COMMAND "${CMAKE_COMMAND}" --build "${QHENKIX_SLANG_BINARY_DIR}"
-            --config $<CONFIG>
-            --target slang slang-glslang
-            --parallel
-        COMMENT "Building the nested Slang compiler dependency"
-        VERBATIM
-    )
-endif()
-
 set(ALL_FILES ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ALL_FILES})
 source_group("external/ImGui" FILES ${IMGUI_SOURCES})
