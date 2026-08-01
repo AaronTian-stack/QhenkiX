@@ -1,7 +1,7 @@
 #include "imgui_example_app.h"
+#include "example_shared/example_util.h"
 #include "example_shared/macros.h"
 #include "example_shared/shader_loader.h"
-#include "example_shared/window_init.h"
 
 #include <qhenki/utility/shader_blob.h>
 
@@ -19,19 +19,19 @@ void ImGUIExampleApp::create()
     const auto api = get_graphics_api();
     const bool use_dx11 = api == qhenki::gfx::API::D3D11;
 
-    const char* vs_name = use_dx11 ? "base_vs_5_0_vs_main.slang_blob" : "base_vs_6_6_vs_main.slang_blob";
-    const char* ps_name = use_dx11 ? "base_ps_5_0_ps_main.slang_blob" : "base_ps_6_6_ps_main.slang_blob";
+    const auto vs_name = make_shader_filename(api, use_dx11 ? "base_vs_5_0_vs_main" : "base_vs_6_6_vs_main");
+    const auto ps_name = make_shader_filename(api, use_dx11 ? "base_ps_5_0_ps_main" : "base_ps_6_6_ps_main");
 
     uPtr<std::byte[]> vs_blob_data;
     qhenki::gfx::Shader vs_blob;
-    THROW_IF_FALSE(read_compiled_shader_blob(api, vs_name, &vs_blob_data, &vs_blob.size));
+    THROW_IF_FALSE(read_compiled_shader_blob(api, vs_name.buffer.data(), &vs_blob_data, &vs_blob.size));
     vs_blob.data = vs_blob_data.get();
     qhenki::gfx::Shader vertex_shader;
     THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(vs_blob, &vertex_shader));
 
     uPtr<std::byte[]> ps_blob_data;
     qhenki::gfx::Shader ps_blob;
-    THROW_IF_FALSE(read_compiled_shader_blob(api, ps_name, &ps_blob_data, &ps_blob.size));
+    THROW_IF_FALSE(read_compiled_shader_blob(api, ps_name.buffer.data(), &ps_blob_data, &ps_blob.size));
     ps_blob.data = ps_blob_data.get();
     qhenki::gfx::Shader pixel_shader;
     THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(ps_blob, &pixel_shader));

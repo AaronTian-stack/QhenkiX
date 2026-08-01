@@ -1,6 +1,6 @@
 #include "example_app.h"
 #include "example_shared/cli_args.h"
-#include "example_shared/window_init.h"
+#include "example_shared/example_util.h"
 
 int main(int argc, char* argv[])
 {

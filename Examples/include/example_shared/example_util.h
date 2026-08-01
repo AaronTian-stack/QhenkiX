@@ -23,6 +23,27 @@ inline const char* graphics_api_label(const qhenki::gfx::API api)
     }
 }
 
+inline qhenki::util::FormatResult<128> make_shader_filename(const qhenki::gfx::API api, const char* basename)
+{
+    const char* extension;
+    switch (api)
+    {
+    case qhenki::gfx::API::D3D11:
+        extension = ".dxbc_blob";
+        break;
+    case qhenki::gfx::API::D3D12:
+        extension = ".dxil_blob";
+        break;
+    case qhenki::gfx::API::Vulkan:
+        extension = ".spv_blob";
+        break;
+    default:
+        return {};
+    }
+
+    return qhenki::util::format_string<128>("%s%s", basename, extension);
+}
+
 inline void init_display_window_with_name(qhenki::Application& app,
                                           qhenki::DisplayWindow& window,
                                           const char* title,

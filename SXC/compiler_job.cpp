@@ -505,7 +505,7 @@ fs::path SXCJob::get_resolved_output_name(const OutputInfo& info,
     switch (ir_format)
     {
     case ShaderIR::DXBC:
-        filename += ".dxbc";
+        filename += ".dxbc_blob";
         break;
     case ShaderIR::DXIL:
         filename += ".dxil_blob";
