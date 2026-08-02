@@ -8,6 +8,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake/ScopedBuildSharedLibs.cmake)
 
 # Set repo root for all subprojects
 set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+include(${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake/SlangCompiler.cmake)
 
 option(BUILD_GLTF_VIEWER "Build gltfViewer example" ON)
 option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)
@@ -173,9 +174,11 @@ function(qhenkix_setup_prebuilt_workspace_dependencies)
     qhenkix_setup_directx_dependencies()
     qhenkix_setup_sdl_dependency()
 
-    set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
-    set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    qhenkix_add_dependency_subdirectory(QhenkiX/external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
+    if(NOT TARGET Vulkan::Headers)
+        set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+        set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+        qhenkix_add_dependency_subdirectory(QhenkiX/external/Vulkan-Headers ${CMAKE_BINARY_DIR}/Vulkan-Headers)
+    endif()
 
     set(VULKAN_HEADERS_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/external/Vulkan-Headers" CACHE PATH "" FORCE)
     set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)

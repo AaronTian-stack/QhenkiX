@@ -8,7 +8,7 @@
 
 namespace qhenki::util
 {
-template<typename CharT> static bool read_file_impl(const CharT* path, void** data, size_t* size)
+template<typename CharT> static bool read_file_impl(const CharT* path, std::byte** data, size_t* size)
 {
     assert(data);
     std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -25,15 +25,15 @@ template<typename CharT> static bool read_file_impl(const CharT* path, void** da
     *size = static_cast<size_t>(stream_size);
     file.seekg(0, std::ios::beg);
 
-    *data = new (std::nothrow) char[*size];
+    *data = new (std::nothrow) std::byte[*size];
     if (!*data)
     {
         return false;
     }
 
-    if (!file.read(static_cast<char*>(*data), stream_size))
+    if (!file.read(reinterpret_cast<char*>(*data), stream_size))
     {
-        delete[] static_cast<char*>(*data); // Free on failure
+        delete[] *data; // Free on failure
         *data = nullptr;
         return false;
     }
@@ -64,7 +64,7 @@ template<typename CharT> static bool write_file_impl(const CharT* path, const vo
     return true;
 }
 
-bool read_file(const wchar_t* path, void** data, size_t* size)
+bool read_file(const wchar_t* path, std::byte** data, size_t* size)
 {
 #if defined(_WIN32) || defined(_WIN64)
     return read_file_impl(path, data, size);
@@ -83,7 +83,7 @@ bool write_file(const wchar_t* path, const void* data, const size_t size)
 #endif
 }
 
-bool read_file(const char* path, void** data, size_t* size)
+bool read_file(const char* path, std::byte** data, size_t* size)
 {
     return read_file_impl(path, data, size);
 }

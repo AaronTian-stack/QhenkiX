@@ -1,10 +1,9 @@
 #include "d3d11_layout_assembler.h"
 
+#include <d3dcompiler.h>
+
 #include "qhenki/utility/string_util.h"
 #include "src/utility/d3d_reflection_util.h"
-
-#include <d3d11shader.h>
-#include <d3dcompiler.h>
 
 #include "qhenki/rhi/shader.h"
 
@@ -44,21 +43,6 @@ std::size_t hash_input_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layou
 }
 } // namespace
 
-void D3D11LayoutAssembler::add_input(const D3D11_INPUT_ELEMENT_DESC& input)
-{
-    m_layout_desc.push_back(input);
-}
-
-ID3D11InputLayout* D3D11LayoutAssembler::find_layout(const std::vector<D3D11_INPUT_ELEMENT_DESC>& layout)
-{
-    const auto hash = hash_input_layout(layout);
-    if (m_layout_map.contains(hash))
-    {
-        return m_layout_map[hash].layout.Get();
-    }
-
-    return nullptr;
-}
 
 D3D11Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
 {
@@ -70,50 +54,16 @@ D3D11Layout* D3D11LayoutAssembler::find_layout(ID3D11InputLayout* layout)
     return nullptr;
 }
 
-#define find_layout(layout_d)                \
-    auto hash = hash_input_layout(layout_d); \
-    if (m_layout_map.contains(hash))         \
-        return m_layout_map[hash].layout.Get();
-
-
-std::optional<ComPtr<ID3D11InputLayout>> D3D11LayoutAssembler::create_input_layout_manual(
-    ID3D11Device* const device, ID3DBlob* const vertex_shader_blob)
-{
-    std::scoped_lock lock(m_layout_mutex);
-    // Hash the input layout
-    find_layout(m_layout_desc)
-
-        ComPtr<ID3D11InputLayout>
-            layout;
-    if (FAILED(device->CreateInputLayout(m_layout_desc.data(),
-                                         static_cast<UINT>(m_layout_desc.size()),
-                                         vertex_shader_blob->GetBufferPointer(),
-                                         vertex_shader_blob->GetBufferSize(),
-                                         layout.ReleaseAndGetAddressOf())))
-    {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout manual\n");
-        return {};
-    }
-
-    m_layout_map[hash] = {.layout = layout, .desc = m_layout_desc};
-    m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
-
-    return layout;
-}
-
 std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_desc(
-    ID3D11ShaderReflection* vs_reflection, const bool increment_slot, unsigned* out_builtins)
+    ID3D11ShaderReflection* const vs_reflection,
+    const D3D11_SHADER_DESC& shader_desc,
+    const bool increment_slot,
+    unsigned* const out_builtins)
 {
-    assert(vs_reflection);
-
-    D3D11_SHADER_DESC shader_desc;
-    if (FAILED(vs_reflection->GetDesc(&shader_desc)))
-    {
-        return {};
-    }
+    assert(vs_reflection && out_builtins);
+    *out_builtins = 0;
 
     UINT slot = 0;
-
     std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc;
     input_layout_desc.reserve(shader_desc.InputParameters);
     for (UINT i = 0; i < shader_desc.InputParameters; i++)
@@ -124,95 +74,103 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> D3D11LayoutAssembler::create_input_layout_
             continue;
         }
 
-        // Ignore system attributes
-        if (param_desc.SystemValueType == D3D_NAME_VERTEX_ID || param_desc.SystemValueType == D3D_NAME_PRIMITIVE_ID ||
-            param_desc.SystemValueType == D3D_NAME_INSTANCE_ID)
+        if (param_desc.SystemValueType != D3D_NAME_UNDEFINED)
         {
             ++*out_builtins;
             continue;
         }
 
-        D3D11_INPUT_ELEMENT_DESC element_desc = {
+        D3D11_INPUT_ELEMENT_DESC element_desc{
             .SemanticName = param_desc.SemanticName,
             .SemanticIndex = param_desc.SemanticIndex,
+            .Format = mask_to_format(param_desc.Mask, param_desc.ComponentType),
             .InputSlot = slot,
             .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
-            // TODO: INSTANCING
             .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
             .InstanceDataStepRate = 0,
         };
-
-        element_desc.Format = qhenki::gfx::mask_to_format(param_desc.Mask, param_desc.ComponentType);
         if (element_desc.Format == DXGI_FORMAT_UNKNOWN)
         {
-            const auto error_msg = util::format_string<256>("D3D11: Unsupported input format for %s[%d] with mask %d\n",
-                                                            param_desc.SemanticName,
-                                                            param_desc.SemanticIndex,
-                                                            param_desc.Mask);
+            const auto error_msg =
+                util::format_string<256>("D3D11: Unsupported reflected input format for %s[%d] with mask %d\n",
+                                         param_desc.SemanticName,
+                                         param_desc.SemanticIndex,
+                                         param_desc.Mask);
             OutputDebugStringA(error_msg.buffer.data());
             continue;
         }
 
         if (increment_slot)
         {
-            slot++;
+            ++slot;
         }
-
-        // Save element desc
         input_layout_desc.push_back(element_desc);
     }
 
     return input_layout_desc;
 }
 
-ID3D11InputLayout* D3D11LayoutAssembler::create_input_layout_reflection(ID3D11Device* device,
-                                                                        const Shader shader,
-                                                                        const bool increment_slot)
+InputLayoutResult D3D11LayoutAssembler::create_input_layout_reflection(ID3D11Device* const device,
+                                                                       const Shader shader,
+                                                                       const bool increment_slot,
+                                                                       const char* const debug_name)
 {
-    ComPtr<ID3D11ShaderReflection> vs_shader_reflection;
-    if (FAILED(D3DReflect(shader.data, shader.size, IID_ID3D11ShaderReflection, &vs_shader_reflection)))
+    ComPtr<ID3D11ShaderReflection> reflection;
+    if (FAILED(D3DReflect(shader.data, shader.size, IID_ID3D11ShaderReflection, &reflection)))
     {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Input layout reflection failed\n");
-        return nullptr;
+        OutputDebugStringA("Qhenki D3D11 ERROR: Native DXBC reflection failed\n");
+        return {.layout = nullptr, .is_empty = false};
     }
 
-    D3D11_SHADER_DESC shader_desc;
-    if FAILED (vs_shader_reflection->GetDesc(&shader_desc))
+    D3D11_SHADER_DESC shader_desc{};
+    if (FAILED(reflection->GetDesc(&shader_desc)))
     {
-        return nullptr;
+        return {.layout = nullptr, .is_empty = false};
     }
 
-    unsigned builtins = 0;
-    std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc =
-        create_input_layout_desc(vs_shader_reflection.Get(), increment_slot, &builtins);
-
-    if (input_layout_desc.empty() && builtins == 0)
+    unsigned system_inputs = 0;
+    auto input_layout_desc = create_input_layout_desc(reflection.Get(), shader_desc, increment_slot, &system_inputs);
+    if (input_layout_desc.empty())
     {
-        return nullptr;
+        if (shader_desc.InputParameters == system_inputs)
+        {
+            return {.layout = nullptr, .is_empty = true};
+        }
+        return {.layout = nullptr, .is_empty = false};
+    }
+    if (input_layout_desc.size() + system_inputs != shader_desc.InputParameters)
+    {
+        return {.layout = nullptr, .is_empty = false};
     }
 
     std::scoped_lock lock(m_layout_mutex);
-    find_layout(input_layout_desc)
 
-        ComPtr<ID3D11InputLayout>
-            layout;
-    if (FAILED(device->CreateInputLayout(
-            input_layout_desc.data(), input_layout_desc.size(), shader.data, shader.size, &layout)))
+    const auto hash = hash_input_layout(input_layout_desc);
+    if (m_layout_map.contains(hash))
     {
-        OutputDebugStringA("Qhenki D3D11 ERROR: Failed to create Input Layout reflection\n");
-        return nullptr;
+        return {.layout = m_layout_map[hash].layout.Get(), .is_empty = false};
+    }
+
+    ComPtr<ID3D11InputLayout> layout;
+    const auto result = device->CreateInputLayout(
+        input_layout_desc.data(), input_layout_desc.size(), shader.data, shader.size, &layout);
+    if (FAILED(result))
+    {
+        const auto error_message =
+            util::format_string<512>("Qhenki D3D11 ERROR: Failed to create input layout for '%s' (HRESULT 0x%08X)\n",
+                                     debug_name ? debug_name : "<unnamed>",
+                                     static_cast<unsigned>(result));
+        OutputDebugStringA(error_message.buffer.data());
+        return {.layout = nullptr, .is_empty = false};
     }
 
     m_layout_map[hash] = {.layout = layout, .desc = std::move(input_layout_desc)};
     m_layout_logical_map[layout.Get()] = &m_layout_map[hash];
-
-    return layout.Get();
+    return {.layout = layout.Get(), .is_empty = false};
 }
 
 void D3D11LayoutAssembler::clear_maps()
 {
-    std::scoped_lock lock(m_layout_mutex);
     m_layout_map.clear();
     m_layout_logical_map.clear();
-    m_layout_desc.clear();
 }

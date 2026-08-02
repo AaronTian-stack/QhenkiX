@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 namespace qhenki::gfx
@@ -11,6 +12,7 @@ enum ShaderType : uint8_t
     COMPUTE_SHADER,
     LIBRARY_SHADER,
 };
+
 enum class ShaderModel
 {
     SM_5_0,
@@ -21,7 +23,11 @@ enum class ShaderModel
     SM_6_4,
     SM_6_5,
     SM_6_6,
+    SM_6_7,
+    SM_6_8,
+    SM_6_9,
 };
+
 struct Shader
 {
     void* data;

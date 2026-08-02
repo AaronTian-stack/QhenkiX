@@ -1,7 +1,7 @@
 #include "retro_example_app.h"
+#include "example_shared/example_util.h"
 #include "example_shared/macros.h"
 #include "example_shared/shader_loader.h"
-#include "example_shared/window_init.h"
 #include "shared_structs.h"
 
 #include <DirectXTex.h>
@@ -40,7 +40,7 @@ void RetroExampleApp::create()
     const auto api = get_graphics_api();
     const bool use_dx11 = api == qhenki::gfx::API::D3D11;
 
-    const auto select_profile_base = [&](const char* shader_model_5_0, const char* shader_model_6_6)
+    const auto select_profile = [use_dx11](const char* shader_model_5_0, const char* shader_model_6_6)
     {
         return use_dx11 ? shader_model_5_0 : shader_model_6_6;
     };
@@ -328,26 +328,26 @@ void RetroExampleApp::create()
     THROW_IF_FALSE(m_context->wait_fences(wait_info));
 
     // Load skybox shaders
-    char skybox_vs_name[96]{};
-    char skybox_ps_name[96]{};
-    THROW_IF_FALSE(append_shader_extension(api,
-                                           select_profile_base("skybox_vs_5_0_vs_main", "skybox_vs_6_6_vs_main"),
-                                           skybox_vs_name,
-                                           sizeof(skybox_vs_name)));
-    THROW_IF_FALSE(append_shader_extension(api,
-                                           select_profile_base("skybox_ps_5_0_ps_main", "skybox_ps_6_6_ps_main"),
-                                           skybox_ps_name,
-                                           sizeof(skybox_ps_name)));
+    const auto skybox_vs_name = make_shader_filename(api,
+                                                     select_profile("skybox_vs_5_0_vs_main", "skybox_vs_6_6_vs_main"));
+    const auto skybox_ps_name = make_shader_filename(api,
+                                                     select_profile("skybox_ps_5_0_ps_main", "skybox_ps_6_6_ps_main"));
 
-    uPtr<std::byte, void (*)(void*)> skybox_vs_data(nullptr, free);
+    uPtr<std::byte[]> skybox_vs_blob_data;
+    qhenki::gfx::Shader skybox_vs_blob;
+    THROW_IF_FALSE(
+        read_compiled_shader_blob(api, skybox_vs_name.buffer.data(), &skybox_vs_blob_data, &skybox_vs_blob.size));
+    skybox_vs_blob.data = skybox_vs_blob_data.get();
     qhenki::gfx::Shader skybox_vertex_shader;
-    read_compiled_shader_bytes(api, skybox_vs_name, &skybox_vs_data, &skybox_vertex_shader.size);
-    skybox_vertex_shader.data = skybox_vs_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(skybox_vs_blob, &skybox_vertex_shader));
 
-    uPtr<std::byte, void (*)(void*)> skybox_ps_data(nullptr, free);
+    uPtr<std::byte[]> skybox_ps_blob_data;
+    qhenki::gfx::Shader skybox_ps_blob;
+    THROW_IF_FALSE(
+        read_compiled_shader_blob(api, skybox_ps_name.buffer.data(), &skybox_ps_blob_data, &skybox_ps_blob.size));
+    skybox_ps_blob.data = skybox_ps_blob_data.get();
     qhenki::gfx::Shader skybox_pixel_shader;
-    read_compiled_shader_bytes(api, skybox_ps_name, &skybox_ps_data, &skybox_pixel_shader.size);
-    skybox_pixel_shader.data = skybox_ps_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(skybox_ps_blob, &skybox_pixel_shader));
 
     qhenki::gfx::BlendDesc skybox_blend_desc{
         .alpha_to_coverage_enable = false,
@@ -386,22 +386,22 @@ void RetroExampleApp::create()
                                               "Skybox pipeline"));
 
     // Load cube shaders
-    char cube_vs_name[96]{};
-    char cube_ps_name[96]{};
-    THROW_IF_FALSE(append_shader_extension(
-        api, select_profile_base("cube_vs_5_0_vs_main", "cube_vs_6_6_vs_main"), cube_vs_name, sizeof(cube_vs_name)));
-    THROW_IF_FALSE(append_shader_extension(
-        api, select_profile_base("cube_ps_5_0_ps_main", "cube_ps_6_6_ps_main"), cube_ps_name, sizeof(cube_ps_name)));
+    const auto cube_vs_name = make_shader_filename(api, select_profile("cube_vs_5_0_vs_main", "cube_vs_6_6_vs_main"));
+    const auto cube_ps_name = make_shader_filename(api, select_profile("cube_ps_5_0_ps_main", "cube_ps_6_6_ps_main"));
 
-    uPtr<std::byte, void (*)(void*)> cube_vs_data(nullptr, free);
+    uPtr<std::byte[]> cube_vs_blob_data;
+    qhenki::gfx::Shader cube_vs_blob;
+    THROW_IF_FALSE(read_compiled_shader_blob(api, cube_vs_name.buffer.data(), &cube_vs_blob_data, &cube_vs_blob.size));
+    cube_vs_blob.data = cube_vs_blob_data.get();
     qhenki::gfx::Shader cube_vertex_shader;
-    read_compiled_shader_bytes(api, cube_vs_name, &cube_vs_data, &cube_vertex_shader.size);
-    cube_vertex_shader.data = cube_vs_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(cube_vs_blob, &cube_vertex_shader));
 
-    uPtr<std::byte, void (*)(void*)> cube_ps_data(nullptr, free);
+    uPtr<std::byte[]> cube_ps_blob_data;
+    qhenki::gfx::Shader cube_ps_blob;
+    THROW_IF_FALSE(read_compiled_shader_blob(api, cube_ps_name.buffer.data(), &cube_ps_blob_data, &cube_ps_blob.size));
+    cube_ps_blob.data = cube_ps_blob_data.get();
     qhenki::gfx::Shader cube_pixel_shader;
-    read_compiled_shader_bytes(api, cube_ps_name, &cube_ps_data, &cube_pixel_shader.size);
-    cube_pixel_shader.data = cube_ps_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(cube_ps_blob, &cube_pixel_shader));
 
     qhenki::gfx::GraphicsPipelineDesc cube_pipeline_desc = {
         .depth_stencil_state = qhenki::gfx::DepthStencilDesc{},
@@ -418,26 +418,26 @@ void RetroExampleApp::create()
                                               "Cube pipeline"));
 
     // Load stencil shaders
-    char stencil_vs_name[96]{};
-    char stencil_ps_name[96]{};
-    THROW_IF_FALSE(append_shader_extension(api,
-                                           select_profile_base("stencil_vs_5_0_vs_main", "stencil_vs_6_6_vs_main"),
-                                           stencil_vs_name,
-                                           sizeof(stencil_vs_name)));
-    THROW_IF_FALSE(append_shader_extension(api,
-                                           select_profile_base("stencil_ps_5_0_ps_main", "stencil_ps_6_6_ps_main"),
-                                           stencil_ps_name,
-                                           sizeof(stencil_ps_name)));
+    const auto stencil_vs_name =
+        make_shader_filename(api, select_profile("stencil_vs_5_0_vs_main", "stencil_vs_6_6_vs_main"));
+    const auto stencil_ps_name =
+        make_shader_filename(api, select_profile("stencil_ps_5_0_ps_main", "stencil_ps_6_6_ps_main"));
 
-    uPtr<std::byte, void (*)(void*)> stencil_vs_data(nullptr, free);
+    uPtr<std::byte[]> stencil_vs_blob_data;
+    qhenki::gfx::Shader stencil_vs_blob;
+    THROW_IF_FALSE(
+        read_compiled_shader_blob(api, stencil_vs_name.buffer.data(), &stencil_vs_blob_data, &stencil_vs_blob.size));
+    stencil_vs_blob.data = stencil_vs_blob_data.get();
     qhenki::gfx::Shader stencil_vertex_shader;
-    read_compiled_shader_bytes(api, stencil_vs_name, &stencil_vs_data, &stencil_vertex_shader.size);
-    stencil_vertex_shader.data = stencil_vs_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(stencil_vs_blob, &stencil_vertex_shader));
 
-    uPtr<std::byte, void (*)(void*)> stencil_ps_data(nullptr, free);
+    uPtr<std::byte[]> stencil_ps_blob_data;
+    qhenki::gfx::Shader stencil_ps_blob;
+    THROW_IF_FALSE(
+        read_compiled_shader_blob(api, stencil_ps_name.buffer.data(), &stencil_ps_blob_data, &stencil_ps_blob.size));
+    stencil_ps_blob.data = stencil_ps_blob_data.get();
     qhenki::gfx::Shader stencil_pixel_shader;
-    read_compiled_shader_bytes(api, stencil_ps_name, &stencil_ps_data, &stencil_pixel_shader.size);
-    stencil_pixel_shader.data = stencil_ps_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(stencil_ps_blob, &stencil_pixel_shader));
 
     qhenki::gfx::BlendDesc stencil_blend_desc{
         .alpha_to_coverage_enable = false,
@@ -502,28 +502,26 @@ void RetroExampleApp::create()
                                               "Stencil cube pipeline"));
 
     // Load bevel cube (instanced) shaders
-    char bevel_vs_name[96]{};
-    char bevel_ps_name[96]{};
-    THROW_IF_FALSE(
-        append_shader_extension(api,
-                                select_profile_base("cube_instanced_vs_5_0_vs_main", "cube_instanced_vs_6_6_vs_main"),
-                                bevel_vs_name,
-                                sizeof(bevel_vs_name)));
-    THROW_IF_FALSE(
-        append_shader_extension(api,
-                                select_profile_base("cube_instanced_ps_5_0_ps_main", "cube_instanced_ps_6_6_ps_main"),
-                                bevel_ps_name,
-                                sizeof(bevel_ps_name)));
+    const auto bevel_vs_name =
+        make_shader_filename(api, select_profile("cube_instanced_vs_5_0_vs_main", "cube_instanced_vs_6_6_vs_main"));
+    const auto bevel_ps_name =
+        make_shader_filename(api, select_profile("cube_instanced_ps_5_0_ps_main", "cube_instanced_ps_6_6_ps_main"));
 
-    uPtr<std::byte, void (*)(void*)> bevel_vs_data(nullptr, free);
+    uPtr<std::byte[]> bevel_vs_blob_data;
+    qhenki::gfx::Shader bevel_vs_blob;
+    THROW_IF_FALSE(
+        read_compiled_shader_blob(api, bevel_vs_name.buffer.data(), &bevel_vs_blob_data, &bevel_vs_blob.size));
+    bevel_vs_blob.data = bevel_vs_blob_data.get();
     qhenki::gfx::Shader bevel_vertex_shader;
-    read_compiled_shader_bytes(api, bevel_vs_name, &bevel_vs_data, &bevel_vertex_shader.size);
-    bevel_vertex_shader.data = bevel_vs_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(bevel_vs_blob, &bevel_vertex_shader));
 
-    uPtr<std::byte, void (*)(void*)> bevel_ps_data(nullptr, free);
+    uPtr<std::byte[]> bevel_ps_blob_data;
+    qhenki::gfx::Shader bevel_ps_blob;
+    THROW_IF_FALSE(
+        read_compiled_shader_blob(api, bevel_ps_name.buffer.data(), &bevel_ps_blob_data, &bevel_ps_blob.size));
+    bevel_ps_blob.data = bevel_ps_blob_data.get();
     qhenki::gfx::Shader bevel_pixel_shader;
-    read_compiled_shader_bytes(api, bevel_ps_name, &bevel_ps_data, &bevel_pixel_shader.size);
-    bevel_pixel_shader.data = bevel_ps_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(bevel_ps_blob, &bevel_pixel_shader));
     qhenki::gfx::GraphicsPipelineDesc bevel_pipeline_desc = {
         .depth_stencil_state =
             qhenki::gfx::DepthStencilDesc{
@@ -567,72 +565,59 @@ void RetroExampleApp::create()
                                               "Bevel cube instanced pipeline"));
 
     // Load fullscreen triangle (blit) vertex shader
-    char blit_vs_name[96]{};
-    THROW_IF_FALSE(append_shader_extension(api,
-                                           select_profile_base("fullscreen_triangle_vs_5_0_vs_main",
-                                                               "fullscreen_triangle_vs_6_6_vs_main"),
-                                           blit_vs_name,
-                                           sizeof(blit_vs_name)));
+    const auto blit_vs_name = make_shader_filename(api,
+                                                   select_profile("fullscreen_triangle_vs_5_0_vs_main",
+                                                                  "fullscreen_triangle_vs_6_6_vs_main"));
 
-    uPtr<std::byte, void (*)(void*)> blit_vs_data(nullptr, free);
+    uPtr<std::byte[]> blit_vs_blob_data;
+    qhenki::gfx::Shader blit_vs_blob;
+    THROW_IF_FALSE(read_compiled_shader_blob(api, blit_vs_name.buffer.data(), &blit_vs_blob_data, &blit_vs_blob.size));
+    blit_vs_blob.data = blit_vs_blob_data.get();
     qhenki::gfx::Shader blit_vertex_shader;
-    read_compiled_shader_bytes(api, blit_vs_name, &blit_vs_data, &blit_vertex_shader.size);
-    blit_vertex_shader.data = blit_vs_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(blit_vs_blob, &blit_vertex_shader));
 
     // Load blit copy pixel shader
-    char blit_copy_ps_name[96]{};
-    THROW_IF_FALSE(append_shader_extension(api,
-                                           select_profile_base("blit_copy_ps_5_0_ps_main", "blit_copy_ps_6_6_ps_main"),
-                                           blit_copy_ps_name,
-                                           sizeof(blit_copy_ps_name)));
+    const auto blit_copy_ps_name =
+        make_shader_filename(api, select_profile("blit_copy_ps_5_0_ps_main", "blit_copy_ps_6_6_ps_main"));
 
-    uPtr<std::byte, void (*)(void*)> blit_copy_ps_data(nullptr, free);
+    uPtr<std::byte[]> blit_copy_ps_blob_data;
+    qhenki::gfx::Shader blit_copy_ps_blob;
+    THROW_IF_FALSE(read_compiled_shader_blob(
+        api, blit_copy_ps_name.buffer.data(), &blit_copy_ps_blob_data, &blit_copy_ps_blob.size));
+    blit_copy_ps_blob.data = blit_copy_ps_blob_data.get();
     qhenki::gfx::Shader blit_copy_pixel_shader;
-    read_compiled_shader_bytes(api, blit_copy_ps_name, &blit_copy_ps_data, &blit_copy_pixel_shader.size);
-    blit_copy_pixel_shader.data = blit_copy_ps_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(blit_copy_ps_blob, &blit_copy_pixel_shader));
 
     // Load blit luminance pixel shader
-    char blit_luminance_ps_name[96]{};
-    THROW_IF_FALSE(
-        append_shader_extension(api,
-                                select_profile_base("blit_luminance_ps_5_0_ps_main", "blit_luminance_ps_6_6_ps_main"),
-                                blit_luminance_ps_name,
-                                sizeof(blit_luminance_ps_name)));
+    const auto blit_luminance_ps_name =
+        make_shader_filename(api, select_profile("blit_luminance_ps_5_0_ps_main", "blit_luminance_ps_6_6_ps_main"));
 
-    uPtr<std::byte, void (*)(void*)> blit_luminance_ps_data(nullptr, free);
+    uPtr<std::byte[]> blit_luminance_ps_blob_data;
+    qhenki::gfx::Shader blit_luminance_ps_blob;
+    THROW_IF_FALSE(read_compiled_shader_blob(
+        api, blit_luminance_ps_name.buffer.data(), &blit_luminance_ps_blob_data, &blit_luminance_ps_blob.size));
+    blit_luminance_ps_blob.data = blit_luminance_ps_blob_data.get();
     qhenki::gfx::Shader blit_luminance_pixel_shader;
-    read_compiled_shader_bytes(api, blit_luminance_ps_name, &blit_luminance_ps_data, &blit_luminance_pixel_shader.size);
-    blit_luminance_pixel_shader.data = blit_luminance_ps_data.get();
+    THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(blit_luminance_ps_blob, &blit_luminance_pixel_shader));
     {
-        uPtr<std::byte, void (*)(void*)> blob_data(nullptr, free);
+        uPtr<std::byte[]> blob_data;
         size_t blob_size = 0;
 
-        const char* blit_bloom_base = select_profile_base("blit_bloom_1d_ps_5_0_ps_main",
-                                                          "blit_bloom_1d_ps_6_6_ps_main");
-        char blit_bloom_name[96]{};
-        THROW_IF_FALSE(append_shader_extension(api, blit_bloom_base, blit_bloom_name, sizeof(blit_bloom_name)));
-        const auto blit_bloom_blob_name = qhenki::util::format_string("%s_blob", blit_bloom_name);
-
-        THROW_IF_FALSE(read_compiled_shader_bytes(api, blit_bloom_blob_name.buffer.data(), &blob_data, &blob_size));
+        const auto blit_bloom_name =
+            make_shader_filename(api, select_profile("blit_bloom_1d_ps_5_0_ps_main", "blit_bloom_1d_ps_6_6_ps_main"));
+        THROW_IF_FALSE(read_compiled_shader_blob(api, blit_bloom_name.buffer.data(), &blob_data, &blob_size));
         const char* horizontal_defines[] = {"BLUR_HORIZONTAL=1"};
         const char* vertical_defines[] = {"BLUR_HORIZONTAL=0"};
-        void* horizontal_shader_ptr = nullptr;
-        size_t horizontal_shader_size = 0;
-        void* vertical_shader_ptr = nullptr;
-        size_t vertical_shader_size = 0;
-        THROW_IF_FALSE(qhenki::util::find_permutation_in_blob(
-            blob_data.get(), blob_size, horizontal_defines, 1, &horizontal_shader_ptr, &horizontal_shader_size));
-        THROW_IF_FALSE(qhenki::util::find_permutation_in_blob(
-            blob_data.get(), blob_size, vertical_defines, 1, &vertical_shader_ptr, &vertical_shader_size));
-
-        qhenki::gfx::Shader blit_bloom_1d_horizontal_pixel_shader{
-            .data = horizontal_shader_ptr,
-            .size = horizontal_shader_size,
+        const qhenki::gfx::Shader blit_bloom_blob{
+            .data = blob_data.get(),
+            .size = blob_size,
         };
-        qhenki::gfx::Shader blit_bloom_1d_vertical_pixel_shader{
-            .data = vertical_shader_ptr,
-            .size = vertical_shader_size,
-        };
+        qhenki::gfx::Shader blit_bloom_1d_horizontal_pixel_shader;
+        qhenki::gfx::Shader blit_bloom_1d_vertical_pixel_shader;
+        THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(
+            blit_bloom_blob, &blit_bloom_1d_horizontal_pixel_shader, horizontal_defines, 1));
+        THROW_IF_FALSE(qhenki::util::ShaderBlob::find_shader(
+            blit_bloom_blob, &blit_bloom_1d_vertical_pixel_shader, vertical_defines, 1));
 
         qhenki::gfx::GraphicsPipelineDesc blit_pipeline_desc = {
             .rtv_formats = {m_offscreen_rt_format},

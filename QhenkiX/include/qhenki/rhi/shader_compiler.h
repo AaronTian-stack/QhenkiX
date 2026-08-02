@@ -5,10 +5,10 @@
 #include <variant>
 #include <vector>
 
+#include <slang-com-ptr.h>
+
 #include "qhenki/rhi/shader.h"
 #include "qhenki/utility/math_util.h"
-
-struct IDxcBlob;
 
 struct NonOwning
 {
@@ -25,7 +25,6 @@ struct Owning
 struct CompilerInput
 {
     std::variant<NonOwning, Owning> path_and_defines;
-    std::string_view pdb_path;
     std::string entry_point = "main";
     std::span<const std::string> includes;
     qhenki::gfx::ShaderModel shader_model;
@@ -73,17 +72,24 @@ struct CompilerInput
     }
 };
 
+enum class ShaderIR : uint8_t
+{
+    DXBC,
+    DXIL,
+    SPIRV,
+};
+
 struct CompilerOutput
 {
     std::string error_message;
-    // Need to manually call Release on this blob when done
-    IDxcBlob* blob;
+    // TODO: Use own blob type?
+    Slang::ComPtr<ISlangBlob> blob;
 };
 
 class ShaderCompiler
 {
 public:
     // Creates a source blob (DXIL, DXBC, or SPIR-V) from the input
-    virtual bool compile(const CompilerInput& input, CompilerOutput& output, bool output_spirv = false) = 0;
+    virtual bool compile(const CompilerInput& input, CompilerOutput& output, ShaderIR ir) = 0;
     virtual ~ShaderCompiler() = default;
 };

@@ -12,6 +12,9 @@ function(qhenkix_configure_example_target TARGET_NAME)
         XCODE_SCHEME_WORKING_DIRECTORY "${_working_dir}"
     )
 
+    # DXC is used to read reflection embedded in DXIL
+    qhenkix_stage_dxc_runtime(${TARGET_NAME})
+
     if(NOT MSVC AND NOT CMAKE_GENERATOR STREQUAL "Xcode")
         get_property(_banner_shown GLOBAL PROPERTY QHENKIX_EXAMPLE_WD_BANNER_SHOWN)
         if(NOT _banner_shown)

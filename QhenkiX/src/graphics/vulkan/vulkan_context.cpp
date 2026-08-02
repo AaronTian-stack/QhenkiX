@@ -808,7 +808,8 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         return false;
     }
 
-    const spirv_cross::CompilerGLSL vs_reflect(static_cast<uint32_t*>(vertex_shader.data), vertex_shader.size / 4u);
+    const spirv_cross::CompilerGLSL vs_reflect(static_cast<uint32_t*>(vertex_shader.data),
+                                               vertex_shader.size / sizeof(uint32_t));
     spirv_cross::ShaderResources resources = vs_reflect.get_shader_resources();
 
     const auto vs_entry_name = vs_reflect.get_entry_points_and_stages()[0].name;
@@ -875,7 +876,8 @@ bool VulkanContext::create_pipeline(const GraphicsPipelineDesc& desc,
         };
     }
 
-    const spirv_cross::CompilerGLSL ps_reflect(static_cast<uint32_t*>(pixel_shader.data), pixel_shader.size / 4u);
+    const spirv_cross::CompilerGLSL ps_reflect(static_cast<uint32_t*>(pixel_shader.data),
+                                               pixel_shader.size / sizeof(uint32_t));
     const auto ps_entry_name = ps_reflect.get_entry_points_and_stages()[0].name;
 
     const auto vk_root_signature = to_internal(*in_layout);

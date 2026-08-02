@@ -4,8 +4,11 @@
 #include <cstdint>
 #include <cstring>
 
+#include "qhenki/rhi/shader.h"
+
 namespace qhenki::util
 {
+// .slang_blob container layout:
 // [ShaderBlobHeader]
 // [Entry0][Define0_0\0][Define0_1\0]...[EntryN][DefineN_*\0]
 // [Shader0Bytecode][Shader1Bytecode]...[ShaderNBytecode]
@@ -25,142 +28,134 @@ struct ShaderBlobEntry
 };
 
 constexpr uint32_t SHADER_BLOB_MAGIC = 0x53584342; // 'SXCB'
-constexpr uint32_t SHADER_BLOB_VERSION = 1;
+constexpr uint32_t SHADER_BLOB_VERSION = 3;
 
-/**
- * Finds a shader permutation in a loaded shader blob.
- * @param blob Pointer to loaded shader blob (e.g. .dxil_blob)
- * @param blob_size Size of the blob in bytes
- * @param defines Array of strings to match (e.g. "NAME=VALUE", "NAME")
- * @param define_count Number of defines in the array
- * @param out_shader (out) Pointer to the found binary data
- * @param out_size (out) Size of the found binary data
- * @return Whether a matching permutation was found successfully.
- */
-inline bool find_permutation_in_blob(void* blob,
-                                     const size_t blob_size,
-                                     const char* const* defines,
-                                     const uint32_t define_count,
-                                     void** const out_shader,
-                                     size_t* out_size)
+class ShaderBlob
 {
-    if (!blob || blob_size < sizeof(ShaderBlobHeader) || !out_shader || !out_size)
+public:
+    /**
+     * Finds native shader bytecode matching the requested defines.
+     * Returns the first shader when no defines are provided.
+     * @param blob Loaded .slang_blob container.
+     * @param out_shader Receives a non-owning view of the selected shader bytecode.
+     * @param defines Array of null terminated define strings to match.
+     * @param define_count Number of strings in the defines array.
+     * @return Whether matching shader bytecode was found successfully.
+     */
+    static bool find_shader(const gfx::Shader& blob,
+                            gfx::Shader* const out_shader,
+                            const char* const* defines = nullptr,
+                            const uint32_t define_count = 0)
     {
-        return false;
-    }
-    auto* base = static_cast<std::byte*>(blob);
-    const auto* end = base + blob_size;
-
-    const auto* header = reinterpret_cast<const ShaderBlobHeader*>(base);
-    if (header->magic != SHADER_BLOB_MAGIC || header->version != SHADER_BLOB_VERSION)
-    {
-        return false;
-    }
-
-    if (!defines || define_count == 0)
-    {
-        return false;
-    }
-
-    for (uint32_t i = 0; i < define_count; i++)
-    {
-        if (!defines[i])
-        {
-            return false;
-        }
-    }
-
-    // Iterate entries and define strings
-    const char* cursor = reinterpret_cast<const char*>(base + sizeof(ShaderBlobHeader));
-    for (uint64_t i = 0; i < header->shader_count; i++)
-    {
-        if (cursor + sizeof(ShaderBlobEntry) > reinterpret_cast<const char*>(end))
+        if (!out_shader || !blob.data || blob.size < sizeof(ShaderBlobHeader) || (!defines && define_count != 0))
         {
             return false;
         }
 
-        const auto* entry = reinterpret_cast<const ShaderBlobEntry*>(cursor);
-        cursor += sizeof(ShaderBlobEntry);
-
-        // Get pointer to next entry
-        const char* entry_cursor = cursor;
-        for (uint32_t d = 0; d < entry->define_count; d++)
+        for (uint32_t i = 0; i < define_count; i++)
         {
-            const char* p = entry_cursor;
-            while (p < reinterpret_cast<const char*>(end) && *p != '\0')
-            {
-                p++;
-            }
-            if (p >= reinterpret_cast<const char*>(end))
+            if (!defines[i])
             {
                 return false;
             }
-            entry_cursor = p + 1;
         }
 
-        // Check if all requested defines are present in entry defines
-        bool match = true;
-        for (uint32_t j = 0; j < define_count; j++)
+        auto* const base = static_cast<std::byte*>(blob.data);
+        const auto* const end = base + blob.size;
+        ShaderBlobHeader header{};
+        std::memcpy(&header, base, sizeof(header));
+        if (header.magic != SHADER_BLOB_MAGIC || header.version != SHADER_BLOB_VERSION)
         {
-            const char* req = defines[j];
-            const auto req_len = std::strlen(req);
+            return false;
+        }
 
-            bool found = false;
-            const char* check_cursor = cursor;
-            for (uint32_t d = 0; d < entry->define_count; d++)
+        const std::byte* cursor = base + sizeof(ShaderBlobHeader);
+        for (uint64_t i = 0; i < header.shader_count; i++)
+        {
+            ShaderBlobEntry entry{};
+            const char* define_list = nullptr;
+            if (!read_entry(&cursor, end, &entry, &define_list))
             {
-                // Get the define string from the blob
-                const char* start = check_cursor;
-                const char* p = start;
-                while (p < reinterpret_cast<const char*>(end) && *p != '\0')
-                {
-                    p++;
-                }
-                if (p >= reinterpret_cast<const char*>(end))
-                {
-                    return false;
-                }
-                const auto len = static_cast<size_t>(p - start);
+                return false;
+            }
 
-                if (len == req_len && std::strncmp(start, req, req_len) == 0)
+            bool match = true;
+            for (uint32_t requested = 0; requested < define_count; requested++)
+            {
+                const auto requested_size = std::strlen(defines[requested]);
+                bool found = false;
+                const char* define_cursor = define_list;
+                for (uint32_t d = 0; d < entry.define_count; d++)
                 {
-                    found = true;
+                    const auto size = std::strlen(define_cursor);
+                    if (size == requested_size && std::memcmp(define_cursor, defines[requested], size) == 0)
+                    {
+                        found = true;
+                        break;
+                    }
+                    define_cursor += size + 1;
+                }
+                if (!found)
+                {
+                    match = false;
                     break;
                 }
-                check_cursor = p + 1;
             }
-            // Requested define not found
-            if (!found)
+
+            if (match)
             {
-                match = false;
-                break;
+                return set_shader_view(blob, entry, out_shader);
             }
         }
 
-        cursor = entry_cursor;
+        return false;
+    }
 
-        if (!match)
-        {
-            // Not in this shader
-            continue;
-        }
-        if (entry->offset > blob_size)
-        {
-            return false;
-        }
-
-        const auto end_off = entry->offset + entry->size;
-        if (end_off > blob_size || end_off < entry->offset)
+private:
+    static bool read_entry(const std::byte** cursor,
+                           const std::byte* const end,
+                           ShaderBlobEntry* const out_entry,
+                           const char** const out_defines = nullptr)
+    {
+        auto& cursor_r = *cursor;
+        if (cursor_r > end || static_cast<size_t>(end - cursor_r) < sizeof(ShaderBlobEntry))
         {
             return false;
         }
 
-        *out_shader = reinterpret_cast<void*>(base + entry->offset);
-        *out_size = static_cast<size_t>(entry->size);
+        std::memcpy(out_entry, cursor_r, sizeof(ShaderBlobEntry));
+        cursor_r += sizeof(*out_entry);
+        if (out_defines)
+        {
+            *out_defines = reinterpret_cast<const char*>(cursor_r);
+        }
 
+        for (uint32_t i = 0; i < out_entry->define_count; i++)
+        {
+            const auto remaining = static_cast<size_t>(end - cursor_r);
+            const auto* const terminator = static_cast<const std::byte*>(std::memchr(cursor_r, '\0', remaining));
+            if (!terminator)
+            {
+                return false;
+            }
+            cursor_r = terminator + 1;
+        }
         return true;
     }
 
-    return false;
-}
+    static bool set_shader_view(const gfx::Shader& blob, const ShaderBlobEntry& entry, gfx::Shader* const out_shader)
+    {
+        const auto shader_end = entry.offset + entry.size;
+        if (entry.offset > blob.size || shader_end < entry.offset || shader_end > blob.size)
+        {
+            return false;
+        }
+
+        *out_shader = {
+            .data = static_cast<std::byte*>(blob.data) + static_cast<size_t>(entry.offset),
+            .size = static_cast<size_t>(entry.size),
+        };
+        return true;
+    }
+};
 } // namespace qhenki::util

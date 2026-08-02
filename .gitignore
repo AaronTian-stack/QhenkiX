@@ -470,3 +470,4 @@ compile_commands.json
 *.dxbc_blob
 *.spv
 *.spv_blob
+*.slang_blob

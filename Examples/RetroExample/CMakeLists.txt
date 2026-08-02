@@ -4,7 +4,7 @@ project(RetroExample LANGUAGES CXX)
 include("${REPO_ROOT}/Examples/cmake/CompileShaders.cmake")
 include("${REPO_ROOT}/Examples/cmake/ExampleTarget.cmake")
 
-file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.hlsl")
+file(GLOB SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/base-shaders/*.slang")
 set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
 source_group("base-shaders" FILES ${SHADER_FILES})
 

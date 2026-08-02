@@ -14,7 +14,6 @@
 
 #include "d3d12_command_list.h"
 #include "d3d12_pipeline.h"
-#include "dxc_shader_compiler.h"
 #include "qhenki/application.h"
 
 #include "d3d12_descriptor_heap.h"
@@ -164,9 +163,17 @@ std::string D3D12Context::create(const bool enable_debug_layer)
         return "D3D12: Failed to create device";
     }
 
-    if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_library.ReleaseAndGetAddressOf()))))
+    m_dxcompiler_module = LoadLibraryW(L"dxcompiler.dll");
+    if (!m_dxcompiler_module)
     {
-        return "D3D12: Failed to create DxcLibrary";
+        return "D3D12: Failed to load Slang's bundled dxcompiler.dll for native DXIL reflection";
+    }
+    const auto create_dxc_instance = reinterpret_cast<DxcCreateInstanceProc>(
+        GetProcAddress(m_dxcompiler_module, "DxcCreateInstance"));
+    if (!create_dxc_instance ||
+        FAILED(create_dxc_instance(CLSID_DxcUtils, IID_PPV_ARGS(m_dxc_utils.ReleaseAndGetAddressOf()))))
+    {
+        return "D3D12: Failed to create DXC reflection utilities";
     }
 
     // Heap Tier is considered in D3D12MA library so technically no need to consider it here (yet)
@@ -444,46 +451,42 @@ unsigned D3D12Context::get_frame_slot(const unsigned slot_count) const
     return slot_count > 0 ? m_frame_count % slot_count : 0;
 }
 
-D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection* shader_reflection,
+D3D12_INPUT_ELEMENT_DESC* D3D12Context::shader_reflection(ID3D12ShaderReflection* const shader_reflection,
                                                           const D3D12_SHADER_DESC& shader_desc,
                                                           const bool increment_slot) const
 {
     assert(shader_reflection);
 
     auto& arena = acquire_arena(m_frame_count);
-    const auto input_element_desc = arena.alloc_array<D3D12_INPUT_ELEMENT_DESC>(shader_desc.InputParameters);
+    const auto input_elements_descs = arena.alloc_array<D3D12_INPUT_ELEMENT_DESC>(shader_desc.InputParameters);
+
+    UINT slot = 0;
+    for (UINT parameter_index = 0; parameter_index < shader_desc.InputParameters; ++parameter_index)
     {
-        UINT slot = 0;
-        for (UINT parameter_index = 0; parameter_index < shader_desc.InputParameters; parameter_index++)
+        D3D12_SIGNATURE_PARAMETER_DESC input{};
+        if (FAILED(shader_reflection->GetInputParameterDesc(parameter_index, &input)))
         {
-            D3D12_SIGNATURE_PARAMETER_DESC signature_parameter_desc{};
-            const auto hr = shader_reflection->GetInputParameterDesc(parameter_index, &signature_parameter_desc);
-
-            if (FAILED(hr))
-            {
-                return nullptr;
-            }
-
-            const auto format = qhenki::gfx::mask_to_format(signature_parameter_desc.Mask,
-                                                            signature_parameter_desc.ComponentType);
-            if (format == DXGI_FORMAT_UNKNOWN)
-            {
-                return nullptr;
-            }
-
-            input_element_desc[parameter_index] = D3D12_INPUT_ELEMENT_DESC{
-                .SemanticName = signature_parameter_desc.SemanticName,
-                .SemanticIndex = signature_parameter_desc.SemanticIndex,
-                .Format = format,
-                .InputSlot = increment_slot ? slot++ : 0u,
-                .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
-                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                .InstanceDataStepRate = 0u, // TODO: Manual options for instancing
-            };
+            return nullptr;
         }
+
+        const auto format = mask_to_format(input.Mask, input.ComponentType);
+        if (format == DXGI_FORMAT_UNKNOWN)
+        {
+            return nullptr;
+        }
+
+        input_elements_descs[parameter_index] = {
+            .SemanticName = input.SemanticName,
+            .SemanticIndex = input.SemanticIndex,
+            .Format = format,
+            .InputSlot = increment_slot ? slot++ : 0u,
+            .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
+            .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            .InstanceDataStepRate = 0u,
+        };
     }
 
-    return input_element_desc;
+    return input_elements_descs;
 }
 
 bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
@@ -502,83 +505,63 @@ bool D3D12Context::create_pipeline(const GraphicsPipelineDesc& desc,
     auto d3d12_pipeline = to_internal(*pipeline);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
-    ComPtr<ID3D12ShaderReflection> shader_reflection;
-    D3D12_SHADER_DESC shader_desc{};
     D3D12_INPUT_ELEMENT_DESC* input_layout_desc = nullptr;
 
-    const DxcBuffer vs_container_buffer = {.Ptr = vertex_shader.data, .Size = vertex_shader.size, .Encoding = 0};
-
-    // SM >= 6.0
+    const DxcBuffer vertex_buffer{
+        .Ptr = vertex_shader.data,
+        .Size = vertex_shader.size,
+        .Encoding = 0,
+    };
+    ComPtr<ID3D12ShaderReflection> reflection;
+    D3D12_SHADER_DESC shader_desc{};
+    void* reflection_data = nullptr;
+    UINT32 reflection_size = 0;
+    if (FAILED(m_dxc_utils->GetDxilContainerPart(
+            &vertex_buffer, DXC_PART_REFLECTION_DATA, &reflection_data, &reflection_size)) ||
+        !reflection_data || reflection_size == 0)
     {
-        // Prefer reflecting from the RDAT part if available to avoid scanning the container
-        void* rdat_ptr = nullptr;
-        UINT32 rdat_size = 0;
-        auto hr =
-            m_library->GetDxilContainerPart(&vs_container_buffer, DXC_PART_REFLECTION_DATA, &rdat_ptr, &rdat_size);
-        if (SUCCEEDED(hr) && rdat_ptr && rdat_size)
-        {
-            const DxcBuffer rdat_buffer = {.Ptr = rdat_ptr, .Size = rdat_size, .Encoding = 0};
-            hr = m_library->CreateReflection(&rdat_buffer, IID_PPV_ARGS(&shader_reflection));
-        }
-        else
-        {
-            hr = m_library->CreateReflection(&vs_container_buffer, IID_PPV_ARGS(&shader_reflection));
-        }
-        if (FAILED(hr))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
-            pipeline->internal_state.reset();
-            return false;
-        }
-
-        if (FAILED(shader_reflection->GetDesc(&shader_desc)))
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to reflect vertex shader\n");
-            pipeline->internal_state.reset();
-            return false;
-        }
-
-        input_layout_desc = this->shader_reflection(shader_reflection.Get(), shader_desc, desc.increment_slot);
-        if (input_layout_desc == nullptr)
-        {
-            OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get input layout description\n");
-            return false;
-        }
-
-        pso_desc.VS = {.pShaderBytecode = vertex_shader.data, .BytecodeLength = vertex_shader.size};
-        pso_desc.PS = {.pShaderBytecode = pixel_shader.data, .BytecodeLength = pixel_shader.size};
+        OutputDebugStringA("Qhenki D3D12 ERROR: DXIL does not contain native reflection data\n");
+        pipeline->internal_state.reset();
+        return false;
     }
 
-    pso_desc.InputLayout = {.pInputElementDescs = input_layout_desc, .NumElements = shader_desc.InputParameters};
-
-    // Prefer root signature embedded in shader container if present
-    ComPtr<ID3D12RootSignature> root_signature;
+    const DxcBuffer reflection_buffer{
+        .Ptr = reflection_data,
+        .Size = reflection_size,
+        .Encoding = 0,
+    };
+    if (FAILED(m_dxc_utils->CreateReflection(&reflection_buffer, IID_PPV_ARGS(&reflection))) || !reflection ||
+        FAILED(reflection->GetDesc(&shader_desc)))
     {
-        void* rsig_ptr = nullptr;
-        UINT32 rsig_size = 0;
-        if (SUCCEEDED(m_library->GetDxilContainerPart(
-                &vs_container_buffer, DXC_PART_ROOT_SIGNATURE, &rsig_ptr, &rsig_size)) &&
-            rsig_ptr && rsig_size)
-        {
-            assert(!in_layout); // Should not have both
-            if (FAILED(m_device->CreateRootSignature(
-                    0, rsig_ptr, rsig_size, IID_PPV_ARGS(root_signature.ReleaseAndGetAddressOf()))))
-            {
-                pipeline->internal_state.reset();
-                return false;
-            }
-            pso_desc.pRootSignature = root_signature.Get();
-            d3d12_pipeline->root_signature = root_signature;
-        }
+        OutputDebugStringA("Qhenki D3D12 ERROR: Native DXIL reflection failed\n");
+        pipeline->internal_state.reset();
+        return false;
+    }
+    input_layout_desc = this->shader_reflection(reflection.Get(), shader_desc, desc.increment_slot);
+    if (!input_layout_desc)
+    {
+        OutputDebugStringA("Qhenki D3D12 ERROR: Failed to get input layout description\n");
+        pipeline->internal_state.reset();
+        return false;
     }
 
-    if (!pso_desc.pRootSignature)
+    pso_desc.VS = {.pShaderBytecode = vertex_shader.data, .BytecodeLength = vertex_shader.size};
+    pso_desc.PS = {.pShaderBytecode = pixel_shader.data, .BytecodeLength = pixel_shader.size};
+    pso_desc.InputLayout = {
+        .pInputElementDescs = input_layout_desc,
+        .NumElements = shader_desc.InputParameters,
+    };
+
+    if (!in_layout)
     {
-        const auto rs = to_internal(*in_layout)->Get();
-        assert(rs);
-        pso_desc.pRootSignature = rs;
-        d3d12_pipeline->root_signature = rs;
+        OutputDebugStringA("Qhenki D3D12 ERROR: An explicit pipeline layout is required\n");
+        pipeline->internal_state.reset();
+        return false;
     }
+    const auto rs = to_internal(*in_layout)->Get();
+    assert(rs);
+    pso_desc.pRootSignature = rs;
+    d3d12_pipeline->root_signature = rs;
 
     auto make_d3d12_rasterizer_desc = [](const RasterizerDesc& r)
     {
@@ -2248,6 +2231,12 @@ bool D3D12Context::wait_idle()
 
 D3D12Context::~D3D12Context()
 {
+    m_dxc_utils.Reset();
+    if (m_dxcompiler_module)
+    {
+        FreeLibrary(m_dxcompiler_module);
+        m_dxcompiler_module = nullptr;
+    }
     m_allocator.Reset();
     m_swapchain.Reset();
     m_dxgi_factory.Reset();

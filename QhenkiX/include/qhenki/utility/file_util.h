@@ -11,7 +11,7 @@ namespace qhenki::util
  * @param size (out) Size in bytes of the data read from the file.
  * @return Whether the file was successfully read or not. Could fail from failing to open or read.
  */
-bool read_file(const wchar_t* path, void** data, size_t* size);
+bool read_file(const wchar_t* path, std::byte** data, size_t* size);
 bool write_file(const wchar_t* path, const void* data, size_t size);
 
 /**
@@ -21,6 +21,6 @@ bool write_file(const wchar_t* path, const void* data, size_t size);
  * @param size (out) Size in bytes of the data read from the file.
  * @return Whether the file was successfully read or not. Could fail from failing to open or read.
  */
-bool read_file(const char* path, void** data, size_t* size);
+bool read_file(const char* path, std::byte** data, size_t* size);
 bool write_file(const char* path, const void* data, size_t size);
 } // namespace qhenki::util
