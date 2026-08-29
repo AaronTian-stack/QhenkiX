@@ -20,8 +20,6 @@ set(QHENKIX_INCLUDE_DIRS
     "${QHENKIX_SRC_DIR}/external/vk-bootstrap/src"
     "${QHENKIX_SRC_DIR}/external/VulkanMemAlloc"
     "${QHENKIX_SRC_DIR}/external/concurrent_queue-1.0.4"
-    "${QHENKIX_SRC_DIR}/external/slang/include"
-    "${QHENKIX_SRC_DIR}/external/slang/external/dxc"
     "${QHENKIX_SRC_DIR}/external/SPIRV-Cross/include"
 )
 

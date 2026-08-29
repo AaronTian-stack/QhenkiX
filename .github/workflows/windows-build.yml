@@ -8,6 +8,7 @@ jobs:
   build-qhenkix:
     name: QhenkiX
     runs-on: windows-latest
+    needs: build-sxc
     strategy:
       matrix:
         config: [Debug, Release]
@@ -27,8 +28,20 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
+    - name: Download SXC SDK
+      uses: actions/download-artifact@v4
+      with:
+        name: sxc-windows
+        path: prebuilt-sxc/
+
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'windows-debug' || 'windows-release' }}
+      run: >-
+        cmake --preset ${{ matrix.config == 'Debug' && 'windows-debug' || 'windows-release' }}
+        -DBUILD_GLTF_VIEWER=OFF
+        -DBUILD_IMGUI_EXAMPLE=OFF
+        -DBUILD_SIMPLE_EXAMPLE=OFF
+        -DBUILD_RETRO_EXAMPLE=OFF
+        -DSXC_ROOT=${{ github.workspace }}/prebuilt-sxc
 
     - name: Build QhenkiX
       run: cmake --build build --config ${{ matrix.config }} --target QhenkiX --parallel
@@ -48,15 +61,13 @@ jobs:
   build-sxc:
     name: SXC
     runs-on: windows-latest
-    needs: build-qhenkix
-    strategy:
-      matrix:
-        config: [Debug, Release]
     
     steps:
-    - name: Checkout code
+    - name: Checkout SXC
       uses: actions/checkout@v4
       with:
+        repository: AaronTian-stack/SXC
+        path: sxc-source
         submodules: 'recursive'
         fetch-depth: 0
 
@@ -68,23 +79,23 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Download QhenkiX
-      uses: actions/download-artifact@v4
-      with:
-        name: qhenkix-prebuilt-windows-${{ matrix.config }}
-        path: prebuilt-qhenkix/
-
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'windows-prebuilt-sxc-debug' || 'windows-prebuilt-sxc-release' }}
+      working-directory: sxc-source
+      run: cmake --preset windows-release
 
     - name: Build SXC
-      run: cmake --build build --config ${{ matrix.config }} --target SXC --parallel
+      working-directory: sxc-source
+      run: cmake --build build --config Release --target SXC --parallel
+
+    - name: Package SXC SDK
+      working-directory: sxc-source
+      run: cmake --install build --config Release --prefix sdk
 
     - name: Upload SXC Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: sxc-windows-${{ matrix.config }}
-        path: build/SXC/${{ matrix.config }}/
+        name: sxc-windows
+        path: sxc-source/sdk/
         retention-days: 1
 
   build-examples:
@@ -120,7 +131,7 @@ jobs:
     - name: Download SXC
       uses: actions/download-artifact@v4
       with:
-        name: sxc-windows-${{ matrix.config }}
+        name: sxc-windows
         path: prebuilt-sxc/
 
     - name: Configure CMake

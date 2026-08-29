@@ -4,7 +4,7 @@
 
 ---
 
-QhenkiX is a personal C++20 library for 3D software creation. It is centered around a render hardware interface (RHI) that abstracts graphics operations across multiple APIs. The project currently includes D3D12, D3D11, and Vulkan backend code paths, plus an examples workspace and a standalone shader compiler frontend ([SXC](SXC/README.md)). It aims to serve as a base for a game project while providing a way for me to experiment with graphics techniques and different graphics APIs.
+QhenkiX is a personal C++20 library for 3D software creation. It is centered around a render hardware interface (RHI) that abstracts graphics operations across multiple APIs. The project currently includes D3D12, D3D11, and Vulkan backend code paths, plus an examples workspace. Shader compilation is provided by the separate [SXC](https://github.com/AaronTian-stack/SXC) project. It aims to serve as a base for a game project while providing a way for me to experiment with graphics techniques and different graphics APIs.
 
 ## Features
 
@@ -23,7 +23,7 @@ Current highlights:
 - Separate binding model support for modern and "compatibility" backends
     - Allows for flexible and performant binding patterns such as bindless descriptors
 - Fine-grained synchronization model with enhanced barrier-style concepts
-- Standalone shader batch compiler tool: [SXC](SXC/README.md)
+- Companion shader batch compiler tool: [SXC](https://github.com/AaronTian-stack/SXC)
     - Command line tool for parallel incremental compilation of shaders
 - ImGui integration
 - Utility modules for math, transforms, file IO, and memory
@@ -56,7 +56,8 @@ See [Examples](Examples) for use cases of the library.
     ```
 2. Install Linux system dependencies for SDL3 (Linux only).
     - https://wiki.libsdl.org/SDL3/README-linux
-3. Generate build files using CMake.
+3. Install the platform-specific [SXC](https://github.com/AaronTian-stack/SXC) SDK and pass `-DSXC_ROOT=/path/to/sxc-sdk` when configuring. QhenkiX consumes the SDK's header-only shader blob reader, while the examples also use its compiler executable.
+4. Generate build files using CMake.
     ```bash
     cd QhenkiX
     mkdir build
@@ -67,15 +68,15 @@ See [Examples](Examples) for use cases of the library.
     ```bash
     cmake -S QhenkiX -B QhenkiX/build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
     ```
-4. Build the workspace.
+5. Build the workspace.
     ```bash
     cmake --build . --config Release
     ```
     Or open the generated Visual Studio solution (`QhenkiX-Workspace.slnx`) and build from there.
 
-5. [Link the library to your app](#linking).
+6. [Link the library to your app](#linking).
 
-6. Extend the [Application](QhenkiX/include/qhenki/application.h) class and start building your app. See [Examples/README.md](Examples/README.md).
+7. Extend the [Application](QhenkiX/include/qhenki/application.h) class and start building your app. See [Examples/README.md](Examples/README.md).
 
 ## Linking
 
@@ -102,31 +103,12 @@ QhenkiX requires several shared libraries to run. When using CMake, the examples
 ##### Windows
 
 - `SDL3.dll`
+- `dxcompiler.dll`
+- `dxil.dll`
 
 ##### Linux
 
 - `libSDL3.so`
-
-#### SXC runtime
-
-`SXC` needs the Slang compiler and its downstream compiler libraries available at runtime.
-
-##### Windows
-
-- `slang-compiler.dll`
-- `slang-glslang.dll`
-- `d3dcompiler_47.dll`
-- `dxcompiler.dll`
-- `dxil.dll`
-- `tbb12.dll`
-
-##### Linux
-
-- `libslang.so`
-- `libslang-glslang.so`
-- `libtbb.so.12`
-
-Note that Slang's pinned binary package currently provides downstream DXC only for Windows. DXIL generation on Linux therefore requires a downstream compiler to be supplied separately.
 
 ## Dependencies
 
@@ -134,7 +116,6 @@ Note that Slang's pinned binary package currently provides downstream DXC only f
 - [D3D12MemAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) - (MIT License)
 - [D3D12DescriptorHelpers](https://github.com/sawickiap/D3D12DescriptorHelpers) - (Public Domain)
 - [robin-map / tsl](https://github.com/Tessil/robin-map) - (MIT License)
-- [Slang](https://github.com/shader-slang/slang) - (Apache 2.0 with LLVM Exception)
 - [DirectX Headers](https://github.com/microsoft/DirectX-Headers) - (MIT License)
 - [DirectXMath](https://github.com/microsoft/DirectXMath) - (MIT License)
 - [DirectXTex](https://github.com/microsoft/DirectXTex) - (MIT License)

@@ -8,7 +8,6 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake/ScopedBuildSharedLibs.cmake)
 
 # Set repo root for all subprojects
 set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
-include(${CMAKE_CURRENT_SOURCE_DIR}/QhenkiX/cmake/SlangCompiler.cmake)
 
 option(BUILD_GLTF_VIEWER "Build gltfViewer example" ON)
 option(BUILD_IMGUI_EXAMPLE "Build ImGuiExample" ON)
@@ -20,7 +19,15 @@ set(QHENKIX_PREBUILT_LIB "" CACHE FILEPATH "Path to prebuilt QhenkiX.lib")
 set(QHENKIX_PREBUILT_SDL_ROOT "" CACHE PATH "Path to prebuilt SDL3 output")
 set(QHENKIX_PREBUILT_DIRECTXTEX_LIB "" CACHE FILEPATH "Path to prebuilt DirectXTex.lib")
 set(QHENKIX_PREBUILT_DIRECTXGUIDS_LIB "" CACHE FILEPATH "Path to prebuilt DirectX-Guids.lib")
-set(SXC_PREBUILT_EXE "" CACHE FILEPATH "Path to prebuilt SXC.exe")
+set(SXC_ROOT "" CACHE PATH "Path to an installed SXC SDK")
+
+if(NOT SXC_ROOT)
+    message(FATAL_ERROR
+        "QhenkiX requires an installed SXC SDK for shader blob reading. "
+        "Set SXC_ROOT to the SDK directory produced by 'cmake --install' in SXC.")
+endif()
+get_filename_component(SXC_ROOT "${SXC_ROOT}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+find_package(SXC CONFIG REQUIRED PATHS "${SXC_ROOT}" NO_DEFAULT_PATH)
 
 set(SDL_SHARED ON CACHE BOOL "" FORCE)
 set(SDL_STATIC OFF CACHE BOOL "" FORCE)
@@ -204,6 +211,7 @@ if(QHENKIX_PREBUILT_LIB)
     set_target_properties(QhenkiX PROPERTIES IMPORTED_LOCATION "${QHENKIX_PREBUILT_LIB}")
     target_include_directories(QhenkiX INTERFACE ${QHENKIX_INCLUDE_DIRS})
     target_link_libraries(QhenkiX INTERFACE
+        SXC::ShaderBlob
         DirectXMath
         DirectXTex
         DirectX-Guids
@@ -219,11 +227,25 @@ else()
     add_subdirectory(QhenkiX)
 endif()
 
-if(SXC_PREBUILT_EXE)
-    add_executable(SXC IMPORTED GLOBAL)
-    set_target_properties(SXC PROPERTIES IMPORTED_LOCATION "${SXC_PREBUILT_EXE}")
-else()
-    add_subdirectory(SXC)
+if(BUILD_GLTF_VIEWER OR BUILD_IMGUI_EXAMPLE OR BUILD_SIMPLE_EXAMPLE OR BUILD_RETRO_EXAMPLE)
+    function(qhenkix_stage_dxc_runtime target_name)
+        if(WIN32)
+            set(_sxc_runtime_dir "${SXC_ROOT}/bin")
+            foreach(_runtime_file dxcompiler.dll dxil.dll)
+                set(_runtime_path "${_sxc_runtime_dir}/${_runtime_file}")
+                if(NOT EXISTS "${_runtime_path}")
+                    message(FATAL_ERROR
+                        "QhenkiX requires ${_runtime_file} for DXIL reflection. "
+                        "Expected it in the SXC SDK at '${_runtime_path}'.")
+                endif()
+                add_custom_command(TARGET ${target_name} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${_runtime_path}"
+                        "$<TARGET_FILE_DIR:${target_name}>"
+                )
+            endforeach()
+        endif()
+    endfunction()
 endif()
 
 if(BUILD_GLTF_VIEWER)

@@ -166,7 +166,7 @@ std::string D3D12Context::create(const bool enable_debug_layer)
     m_dxcompiler_module = LoadLibraryW(L"dxcompiler.dll");
     if (!m_dxcompiler_module)
     {
-        return "D3D12: Failed to load Slang's bundled dxcompiler.dll for native DXIL reflection";
+        return "D3D12: Failed to load dxcompiler.dll for native DXIL reflection";
     }
     const auto create_dxc_instance = reinterpret_cast<DxcCreateInstanceProc>(
         GetProcAddress(m_dxcompiler_module, "DxcCreateInstance"));

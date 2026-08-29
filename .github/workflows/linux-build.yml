@@ -8,6 +8,7 @@ jobs:
   build-qhenkix:
     name: QhenkiX
     runs-on: ubuntu-24.04
+    needs: build-sxc
     strategy:
       matrix:
         config: [Debug, Release]
@@ -22,8 +23,20 @@ jobs:
     - name: Set up Linux build environment
       uses: ./.github/actions/linux-build-env
 
+    - name: Download SXC SDK
+      uses: actions/download-artifact@v4
+      with:
+        name: sxc-linux
+        path: prebuilt-sxc/
+
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-debug' || 'linux-release' }}
+      run: >-
+        cmake --preset ${{ matrix.config == 'Debug' && 'linux-debug' || 'linux-release' }}
+        -DBUILD_GLTF_VIEWER=OFF
+        -DBUILD_IMGUI_EXAMPLE=OFF
+        -DBUILD_SIMPLE_EXAMPLE=OFF
+        -DBUILD_RETRO_EXAMPLE=OFF
+        -DSXC_ROOT=${{ github.workspace }}/prebuilt-sxc
 
     - name: Build QhenkiX
       run: cmake --build build --target QhenkiX --parallel
@@ -41,40 +54,38 @@ jobs:
   build-sxc:
     name: SXC
     runs-on: ubuntu-24.04
-    needs: build-qhenkix
-    strategy:
-      matrix:
-        config: [Debug, Release]
 
     steps:
-    - name: Checkout code
+    - name: Checkout SXC
       uses: actions/checkout@v4
       with:
+        repository: AaronTian-stack/SXC
+        path: sxc-source
         submodules: 'recursive'
         fetch-depth: 0
 
     - name: Set up Linux build environment
-      uses: ./.github/actions/linux-build-env
-
-    - name: Download QhenkiX
-      uses: actions/download-artifact@v4
-      with:
-        name: qhenkix-prebuilt-linux-${{ matrix.config }}
-        path: prebuilt-qhenkix/
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build
 
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-prebuilt-sxc-debug' || 'linux-prebuilt-sxc-release' }}
+      working-directory: sxc-source
+      run: cmake --preset linux-release
 
     - name: Build SXC
+      working-directory: sxc-source
       run: cmake --build build --target SXC --parallel
+
+    - name: Package SXC SDK
+      working-directory: sxc-source
+      run: cmake --install build --config Release --prefix sdk
 
     - name: Upload SXC Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: sxc-linux-${{ matrix.config }}
-        path: |
-          build/SXC/SXC
-          build/SXC/*.so*
+        name: sxc-linux
+        path: sxc-source/sdk/
         retention-days: 1
         if-no-files-found: error
 
@@ -106,11 +117,11 @@ jobs:
     - name: Download SXC
       uses: actions/download-artifact@v4
       with:
-        name: sxc-linux-${{ matrix.config }}
+        name: sxc-linux
         path: prebuilt-sxc/
 
     - name: Mark prebuilt SXC as executable
-      run: chmod +x prebuilt-sxc/SXC
+      run: chmod +x prebuilt-sxc/bin/SXC
 
     - name: Configure CMake
       run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-prebuilt-examples-debug' || 'linux-prebuilt-examples-release' }}
