@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sxc/shader_blob.h>
+#include <shader_blob.h>
 
 #include "qhenki/rhi/shader.h"
 

@@ -5,12 +5,51 @@ on:
   workflow_dispatch:
 
 env:
-  SXC_VERSION: v0.5.1
+  SXC_REF: 655a811453753953a28aefa77f23cec572eafe42
 
 jobs:
+  build-sxc:
+    name: SXC dependency
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout SXC
+      uses: actions/checkout@v4
+      with:
+        repository: AaronTian-stack/SXC
+        ref: ${{ env.SXC_REF }}
+        path: sxc-source
+        submodules: recursive
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4.2'
+
+    - name: Set up MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure SXC
+      run: cmake --preset windows-release -S sxc-source
+
+    - name: Build SXC
+      run: cmake --build sxc-source/build --config Release --target SXC --parallel
+
+    - name: Package SXC for this workflow
+      run: cmake --install sxc-source/build --config Release --prefix prebuilt-sxc
+
+    - name: Upload SXC dependency
+      uses: actions/upload-artifact@v4
+      with:
+        name: sxc-sdk-windows
+        path: prebuilt-sxc/
+        retention-days: 1
+        if-no-files-found: error
+
   build-qhenkix:
     name: QhenkiX
     runs-on: windows-latest
+    needs: build-sxc
     strategy:
       matrix:
         config: [Debug, Release]
@@ -30,13 +69,11 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Download SXC SDK
-      shell: pwsh
-      run: |
-        Invoke-WebRequest `
-          -Uri "https://github.com/AaronTian-stack/SXC/releases/download/${{ env.SXC_VERSION }}/sxc-sdk-windows.zip" `
-          -OutFile sxc-sdk-windows.zip
-        Expand-Archive -LiteralPath sxc-sdk-windows.zip -DestinationPath prebuilt-sxc
+    - name: Download SXC dependency
+      uses: actions/download-artifact@v4
+      with:
+        name: sxc-sdk-windows
+        path: prebuilt-sxc/
 
     - name: Configure CMake
       run: >-
@@ -92,13 +129,11 @@ jobs:
         name: qhenkix-prebuilt-windows-${{ matrix.config }}
         path: prebuilt-qhenkix/
 
-    - name: Download SXC
-      shell: pwsh
-      run: |
-        Invoke-WebRequest `
-          -Uri "https://github.com/AaronTian-stack/SXC/releases/download/${{ env.SXC_VERSION }}/sxc-sdk-windows.zip" `
-          -OutFile sxc-sdk-windows.zip
-        Expand-Archive -LiteralPath sxc-sdk-windows.zip -DestinationPath prebuilt-sxc
+    - name: Download SXC dependency
+      uses: actions/download-artifact@v4
+      with:
+        name: sxc-sdk-windows
+        path: prebuilt-sxc/
 
     - name: Configure CMake
       run: cmake --preset ${{ matrix.config == 'Debug' && 'windows-prebuilt-examples-debug' || 'windows-prebuilt-examples-release' }}
