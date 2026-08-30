@@ -67,6 +67,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: AaronTian-stack/SXC
+        ref: ab04b02f1bf31c9144d6ae6ee911728bb70583d7
         path: sxc-source
         submodules: 'recursive'
         fetch-depth: 0
