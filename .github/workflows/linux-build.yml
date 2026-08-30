@@ -4,11 +4,13 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  SXC_VERSION: v0.5.0
+
 jobs:
   build-qhenkix:
     name: QhenkiX
     runs-on: ubuntu-24.04
-    needs: build-sxc
     strategy:
       matrix:
         config: [Debug, Release]
@@ -24,10 +26,11 @@ jobs:
       uses: ./.github/actions/linux-build-env
 
     - name: Download SXC SDK
-      uses: actions/download-artifact@v4
-      with:
-        name: sxc-linux
-        path: prebuilt-sxc/
+      run: |
+        curl --fail --location --output sxc-sdk-linux.tar.gz \
+          "https://github.com/AaronTian-stack/SXC/releases/download/${{ env.SXC_VERSION }}/sxc-sdk-linux.tar.gz"
+        mkdir prebuilt-sxc
+        tar -xzf sxc-sdk-linux.tar.gz -C prebuilt-sxc
 
     - name: Configure CMake
       run: >-
@@ -51,49 +54,10 @@ jobs:
         retention-days: 1
         if-no-files-found: error
 
-  build-sxc:
-    name: SXC
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Checkout SXC
-      uses: actions/checkout@v4
-      with:
-        repository: AaronTian-stack/SXC
-        ref: ab04b02f1bf31c9144d6ae6ee911728bb70583d7
-        path: sxc-source
-        submodules: 'recursive'
-        fetch-depth: 0
-
-    - name: Set up Linux build environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ninja-build
-
-    - name: Configure CMake
-      working-directory: sxc-source
-      run: cmake --preset linux-release
-
-    - name: Build SXC
-      working-directory: sxc-source
-      run: cmake --build build --target SXC --parallel
-
-    - name: Package SXC SDK
-      working-directory: sxc-source
-      run: cmake --install build --config Release --prefix sdk
-
-    - name: Upload SXC Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: sxc-linux
-        path: sxc-source/sdk/
-        retention-days: 1
-        if-no-files-found: error
-
   build-examples:
     name: ${{ matrix.example }} (${{ matrix.config }})
     runs-on: ubuntu-24.04
-    needs: [build-qhenkix, build-sxc]
+    needs: build-qhenkix
     strategy:
       matrix:
         example: [SimpleExample, ImGuiExample, gltfViewer, RetroExample]
@@ -116,10 +80,11 @@ jobs:
         path: prebuilt-qhenkix/
 
     - name: Download SXC
-      uses: actions/download-artifact@v4
-      with:
-        name: sxc-linux
-        path: prebuilt-sxc/
+      run: |
+        curl --fail --location --output sxc-sdk-linux.tar.gz \
+          "https://github.com/AaronTian-stack/SXC/releases/download/${{ env.SXC_VERSION }}/sxc-sdk-linux.tar.gz"
+        mkdir prebuilt-sxc
+        tar -xzf sxc-sdk-linux.tar.gz -C prebuilt-sxc
 
     - name: Mark prebuilt SXC as executable
       run: chmod +x prebuilt-sxc/bin/SXC
@@ -143,13 +108,12 @@ jobs:
     runs-on: ubuntu-24.04
     needs:
       - build-qhenkix
-      - build-sxc
       - build-examples
     if: ${{ always() }}
     steps:
       - name: Fail if any upstream job failed
         run: |
-          for result in "${{ needs.build-qhenkix.result }}" "${{ needs.build-sxc.result }}" "${{ needs.build-examples.result }}"; do
+          for result in "${{ needs.build-qhenkix.result }}" "${{ needs.build-examples.result }}"; do
             if [ "$result" != "success" ]; then
               echo "Upstream job failed: $result"
               exit 1
