@@ -4,10 +4,52 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  SXC_REF: 655a811453753953a28aefa77f23cec572eafe42
+
 jobs:
+  build-sxc:
+    name: SXC dependency
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout SXC
+      uses: actions/checkout@v4
+      with:
+        repository: AaronTian-stack/SXC
+        ref: ${{ env.SXC_REF }}
+        path: sxc-source
+        submodules: recursive
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4.2'
+
+    - name: Set up MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure SXC
+      run: cmake --preset windows-release -S sxc-source
+
+    - name: Build SXC
+      run: cmake --build sxc-source/build --config Release --target SXC --parallel
+
+    - name: Package SXC for this workflow
+      run: cmake --install sxc-source/build --config Release --prefix prebuilt-sxc
+
+    - name: Upload SXC dependency
+      uses: actions/upload-artifact@v4
+      with:
+        name: sxc-sdk-windows
+        path: prebuilt-sxc/
+        retention-days: 1
+        if-no-files-found: error
+
   build-qhenkix:
     name: QhenkiX
     runs-on: windows-latest
+    needs: build-sxc
     strategy:
       matrix:
         config: [Debug, Release]
@@ -27,8 +69,20 @@ jobs:
     - name: Set up MSBuild
       uses: microsoft/setup-msbuild@v2
 
+    - name: Download SXC dependency
+      uses: actions/download-artifact@v4
+      with:
+        name: sxc-sdk-windows
+        path: prebuilt-sxc/
+
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'windows-debug' || 'windows-release' }}
+      run: >-
+        cmake --preset ${{ matrix.config == 'Debug' && 'windows-debug' || 'windows-release' }}
+        -DBUILD_GLTF_VIEWER=OFF
+        -DBUILD_IMGUI_EXAMPLE=OFF
+        -DBUILD_SIMPLE_EXAMPLE=OFF
+        -DBUILD_RETRO_EXAMPLE=OFF
+        -DSXC_ROOT=${{ github.workspace }}/prebuilt-sxc
 
     - name: Build QhenkiX
       run: cmake --build build --config ${{ matrix.config }} --target QhenkiX --parallel
@@ -45,52 +99,10 @@ jobs:
           build/SDL/${{ matrix.config }}/SDL3.dll
         retention-days: 1
 
-  build-sxc:
-    name: SXC
-    runs-on: windows-latest
-    needs: build-qhenkix
-    strategy:
-      matrix:
-        config: [Debug, Release]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
-        fetch-depth: 0
-
-    - name: Setup CMake
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '4.2'
-
-    - name: Set up MSBuild
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Download QhenkiX
-      uses: actions/download-artifact@v4
-      with:
-        name: qhenkix-prebuilt-windows-${{ matrix.config }}
-        path: prebuilt-qhenkix/
-
-    - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'windows-prebuilt-sxc-debug' || 'windows-prebuilt-sxc-release' }}
-
-    - name: Build SXC
-      run: cmake --build build --config ${{ matrix.config }} --target SXC --parallel
-
-    - name: Upload SXC Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: sxc-windows-${{ matrix.config }}
-        path: build/SXC/${{ matrix.config }}/
-        retention-days: 1
-
   build-examples:
     name: ${{ matrix.example }} (${{ matrix.config }})
     runs-on: windows-latest
-    needs: [build-qhenkix, build-sxc]
+    needs: build-qhenkix
     strategy:
       matrix:
         example: [SimpleExample, ImGuiExample, gltfViewer, RetroExample]
@@ -117,10 +129,10 @@ jobs:
         name: qhenkix-prebuilt-windows-${{ matrix.config }}
         path: prebuilt-qhenkix/
 
-    - name: Download SXC
+    - name: Download SXC dependency
       uses: actions/download-artifact@v4
       with:
-        name: sxc-windows-${{ matrix.config }}
+        name: sxc-sdk-windows
         path: prebuilt-sxc/
 
     - name: Configure CMake
@@ -141,13 +153,12 @@ jobs:
     runs-on: ubuntu-24.04
     needs:
       - build-qhenkix
-      - build-sxc
       - build-examples
     if: ${{ always() }}
     steps:
       - name: Fail if any upstream job failed
         run: |
-          for result in "${{ needs.build-qhenkix.result }}" "${{ needs.build-sxc.result }}" "${{ needs.build-examples.result }}"; do
+          for result in "${{ needs.build-qhenkix.result }}" "${{ needs.build-examples.result }}"; do
             if [ "$result" != "success" ]; then
               echo "Upstream job failed: $result"
               exit 1

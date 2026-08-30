@@ -7,7 +7,6 @@
 
 #include "qhenki/rhi/barrier.h"
 #include "qhenki/rhi/enums.h"
-#include "qhenki/rhi/shader.h"
 
 using Microsoft::WRL::ComPtr;
 

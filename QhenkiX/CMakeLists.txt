@@ -49,7 +49,6 @@ set(QHENKIX_SOURCES
     "${QHENKIX_DIR}/graphics/orthographic_camera_component.cpp"
     "${QHENKIX_DIR}/graphics/perspective_camera_component.cpp"
     "${QHENKIX_DIR}/graphics/2d/spritebatch.cpp"
-    "${QHENKIX_DIR}/graphics/shared/slang_shader_compiler.cpp"
 
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.cpp"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.cpp"
@@ -64,7 +63,6 @@ set(QHENKIX_SOURCES
 
     "${QHENKIX_DIR}/utility/gfx_util.cpp"
     "${QHENKIX_DIR}/utility/file_util.cpp"
-    "${QHENKIX_DIR}/utility/shader_model_util.cpp"
     "${QHENKIX_DIR}/utility/vulkan_util.cpp"
 
     "${QHENKIX_DIR}/graphics/shared/descriptor_flush.cpp"
@@ -92,8 +90,6 @@ if(WIN32)
 endif()
 
 set(QHENKIX_PRIVATE_HEADERS
-    "${QHENKIX_DIR}/graphics/shared/slang_shader_compiler.h"
-
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_context.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_buffer.h"
     "${QHENKIX_DIR}/graphics/vulkan/vulkan_descriptor_heap.h"
@@ -149,7 +145,6 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/utility/general_util.h"
     "${QHENKIX_PUBLIC_DIR}/utility/directxmath_compat.h"
     "${QHENKIX_PUBLIC_DIR}/utility/math_util.h"
-    "${QHENKIX_PUBLIC_DIR}/utility/shader_model_util.h"
     "${QHENKIX_PUBLIC_DIR}/utility/string_util.h"
 
     "${QHENKIX_PUBLIC_DIR}/input/input_manager.h"
@@ -171,7 +166,6 @@ set(QHENKIX_PUBLIC_HEADERS
     "${QHENKIX_PUBLIC_DIR}/rhi/queue.h"
     "${QHENKIX_PUBLIC_DIR}/rhi/render_target.h"
     "${QHENKIX_PUBLIC_DIR}/rhi/sampler.h"
-    "${QHENKIX_PUBLIC_DIR}/rhi/shader_compiler.h"
     "${QHENKIX_PUBLIC_DIR}/rhi/shader.h"
     "${QHENKIX_PUBLIC_DIR}/rhi/submission.h"
     "${QHENKIX_PUBLIC_DIR}/rhi/subresource.h"
@@ -185,7 +179,6 @@ set(QHENKIX_PUBLIC_HEADERS
 )
 
 add_library(${PROJECT_NAME} STATIC ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS} ${IMGUI_SOURCES})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${QHENKIX_SLANG_LINK_TARGET})
 
 set(ALL_FILES ${QHENKIX_SOURCES} ${QHENKIX_PRIVATE_HEADERS} ${QHENKIX_PUBLIC_HEADERS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ALL_FILES})
@@ -238,7 +231,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC DirectX-Guids)
 target_link_libraries(${PROJECT_NAME} PUBLIC Microsoft::DirectXMath)
 
 qhenkix_add_dependency_subdirectory(external/SDL ${CMAKE_BINARY_DIR}/SDL)
-target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
+target_link_libraries(${PROJECT_NAME} PUBLIC SXC::ShaderBlob SDL3::SDL3 ${QHENKIX_SYSTEM_LIBS})
 
 set(SPIRV_CROSS_STATIC ON CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_SHARED OFF CACHE BOOL "" FORCE)

@@ -4,10 +4,52 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  SXC_REF: 655a811453753953a28aefa77f23cec572eafe42
+
 jobs:
+  build-sxc:
+    name: SXC dependency
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout SXC
+      uses: actions/checkout@v4
+      with:
+        repository: AaronTian-stack/SXC
+        ref: ${{ env.SXC_REF }}
+        path: sxc-source
+        submodules: recursive
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4.2'
+
+    - name: Install Ninja
+      run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+    - name: Configure SXC
+      run: cmake --preset linux-release -S sxc-source
+
+    - name: Build SXC
+      run: cmake --build sxc-source/build --config Release --target SXC --parallel
+
+    - name: Package SXC for this workflow
+      run: cmake --install sxc-source/build --config Release --prefix prebuilt-sxc
+
+    - name: Upload SXC dependency
+      uses: actions/upload-artifact@v4
+      with:
+        name: sxc-sdk-linux
+        path: prebuilt-sxc/
+        retention-days: 1
+        if-no-files-found: error
+
   build-qhenkix:
     name: QhenkiX
     runs-on: ubuntu-24.04
+    needs: build-sxc
     strategy:
       matrix:
         config: [Debug, Release]
@@ -22,8 +64,20 @@ jobs:
     - name: Set up Linux build environment
       uses: ./.github/actions/linux-build-env
 
+    - name: Download SXC dependency
+      uses: actions/download-artifact@v4
+      with:
+        name: sxc-sdk-linux
+        path: prebuilt-sxc/
+
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-debug' || 'linux-release' }}
+      run: >-
+        cmake --preset ${{ matrix.config == 'Debug' && 'linux-debug' || 'linux-release' }}
+        -DBUILD_GLTF_VIEWER=OFF
+        -DBUILD_IMGUI_EXAMPLE=OFF
+        -DBUILD_SIMPLE_EXAMPLE=OFF
+        -DBUILD_RETRO_EXAMPLE=OFF
+        -DSXC_ROOT=${{ github.workspace }}/prebuilt-sxc
 
     - name: Build QhenkiX
       run: cmake --build build --target QhenkiX --parallel
@@ -38,50 +92,10 @@ jobs:
         retention-days: 1
         if-no-files-found: error
 
-  build-sxc:
-    name: SXC
-    runs-on: ubuntu-24.04
-    needs: build-qhenkix
-    strategy:
-      matrix:
-        config: [Debug, Release]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
-        fetch-depth: 0
-
-    - name: Set up Linux build environment
-      uses: ./.github/actions/linux-build-env
-
-    - name: Download QhenkiX
-      uses: actions/download-artifact@v4
-      with:
-        name: qhenkix-prebuilt-linux-${{ matrix.config }}
-        path: prebuilt-qhenkix/
-
-    - name: Configure CMake
-      run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-prebuilt-sxc-debug' || 'linux-prebuilt-sxc-release' }}
-
-    - name: Build SXC
-      run: cmake --build build --target SXC --parallel
-
-    - name: Upload SXC Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: sxc-linux-${{ matrix.config }}
-        path: |
-          build/SXC/SXC
-          build/SXC/*.so*
-        retention-days: 1
-        if-no-files-found: error
-
   build-examples:
     name: ${{ matrix.example }} (${{ matrix.config }})
     runs-on: ubuntu-24.04
-    needs: [build-qhenkix, build-sxc]
+    needs: build-qhenkix
     strategy:
       matrix:
         example: [SimpleExample, ImGuiExample, gltfViewer, RetroExample]
@@ -103,14 +117,14 @@ jobs:
         name: qhenkix-prebuilt-linux-${{ matrix.config }}
         path: prebuilt-qhenkix/
 
-    - name: Download SXC
+    - name: Download SXC dependency
       uses: actions/download-artifact@v4
       with:
-        name: sxc-linux-${{ matrix.config }}
+        name: sxc-sdk-linux
         path: prebuilt-sxc/
 
     - name: Mark prebuilt SXC as executable
-      run: chmod +x prebuilt-sxc/SXC
+      run: chmod +x prebuilt-sxc/bin/SXC
 
     - name: Configure CMake
       run: cmake --preset ${{ matrix.config == 'Debug' && 'linux-prebuilt-examples-debug' || 'linux-prebuilt-examples-release' }}
@@ -131,13 +145,12 @@ jobs:
     runs-on: ubuntu-24.04
     needs:
       - build-qhenkix
-      - build-sxc
       - build-examples
     if: ${{ always() }}
     steps:
       - name: Fail if any upstream job failed
         run: |
-          for result in "${{ needs.build-qhenkix.result }}" "${{ needs.build-sxc.result }}" "${{ needs.build-examples.result }}"; do
+          for result in "${{ needs.build-qhenkix.result }}" "${{ needs.build-examples.result }}"; do
             if [ "$result" != "success" ]; then
               echo "Upstream job failed: $result"
               exit 1

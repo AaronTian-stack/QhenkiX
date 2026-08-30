@@ -22,7 +22,7 @@
       "inherits": "windows-base"
     },
     {
-      "name": "windows-prebuilt-sxc-debug",
+      "name": "windows-prebuilt-debug",
       "inherits": "windows-debug",
       "cacheVariables": {
         "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/Debug/QhenkiX.lib",
@@ -32,7 +32,7 @@
       }
     },
     {
-      "name": "windows-prebuilt-sxc-release",
+      "name": "windows-prebuilt-release",
       "inherits": "windows-release",
       "cacheVariables": {
         "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/Release/QhenkiX.lib",
@@ -43,16 +43,16 @@
     },
     {
       "name": "windows-prebuilt-examples-debug",
-      "inherits": "windows-prebuilt-sxc-debug",
+      "inherits": "windows-prebuilt-debug",
       "cacheVariables": {
-        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC.exe"
+        "SXC_ROOT": "${sourceDir}/prebuilt-sxc"
       }
     },
     {
       "name": "windows-prebuilt-examples-release",
-      "inherits": "windows-prebuilt-sxc-release",
+      "inherits": "windows-prebuilt-release",
       "cacheVariables": {
-        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC.exe"
+        "SXC_ROOT": "${sourceDir}/prebuilt-sxc"
       }
     },
     {
@@ -80,7 +80,7 @@
       }
     },
     {
-      "name": "linux-prebuilt-sxc-debug",
+      "name": "linux-prebuilt-debug",
       "inherits": "linux-debug",
       "cacheVariables": {
         "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/libQhenkiX.a",
@@ -88,7 +88,7 @@
       }
     },
     {
-      "name": "linux-prebuilt-sxc-release",
+      "name": "linux-prebuilt-release",
       "inherits": "linux-release",
       "cacheVariables": {
         "QHENKIX_PREBUILT_LIB": "${sourceDir}/prebuilt-qhenkix/QhenkiX/libQhenkiX.a",
@@ -97,16 +97,16 @@
     },
     {
       "name": "linux-prebuilt-examples-debug",
-      "inherits": "linux-prebuilt-sxc-debug",
+      "inherits": "linux-prebuilt-debug",
       "cacheVariables": {
-        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC"
+        "SXC_ROOT": "${sourceDir}/prebuilt-sxc"
       }
     },
     {
       "name": "linux-prebuilt-examples-release",
-      "inherits": "linux-prebuilt-sxc-release",
+      "inherits": "linux-prebuilt-release",
       "cacheVariables": {
-        "SXC_PREBUILT_EXE": "${sourceDir}/prebuilt-sxc/SXC"
+        "SXC_ROOT": "${sourceDir}/prebuilt-sxc"
       }
     }
   ]

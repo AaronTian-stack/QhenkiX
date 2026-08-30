@@ -27,7 +27,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
         file(MAKE_DIRECTORY "${COMPILED_SHADERS_DIR}/dx12")
 
         add_custom_target(${TARGET_NAME}_CompileShaders_DX11 ALL
-            COMMAND $<TARGET_FILE:SXC>
+            COMMAND $<TARGET_FILE:SXC::Compiler>
                 -c "${CONFIG_PATH}"
                 -sm ${SXC_DX11_SM}
                 -ir DXBC
@@ -36,7 +36,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
                 -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
                 -g DX11=1
                 $<$<BOOL:${EXAMPLES_FORCE_SHADER_RECOMPILE}>:-f>
-            DEPENDS SXC
+            DEPENDS SXC::Compiler
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
             COMMENT "Compiling shaders for ${TARGET_NAME} (DX11)..."
         )
@@ -44,7 +44,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
         list(APPEND _shader_aggregate_deps ${TARGET_NAME}_CompileShaders_DX11)
 
         add_custom_target(${TARGET_NAME}_CompileShaders_DX12 ALL
-            COMMAND $<TARGET_FILE:SXC>
+            COMMAND $<TARGET_FILE:SXC::Compiler>
                 -c "${CONFIG_PATH}"
                 -sm ${SXC_DX12_SM}
                 -ir DXIL
@@ -53,7 +53,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
                 -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
                 -g DX12=1
                 $<$<BOOL:${EXAMPLES_FORCE_SHADER_RECOMPILE}>:-f>
-            DEPENDS SXC
+            DEPENDS SXC::Compiler
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
             COMMENT "Compiling shaders for ${TARGET_NAME} (DX12)..."
         )
@@ -62,7 +62,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
     endif()
 
     add_custom_target(${TARGET_NAME}_CompileShaders_Vulkan ALL
-        COMMAND $<TARGET_FILE:SXC>
+        COMMAND $<TARGET_FILE:SXC::Compiler>
             -c "${CONFIG_PATH}"
             -sm ${SXC_VULKAN_SM}
             -ir SPIRV
@@ -70,7 +70,7 @@ function(add_shader_targets TARGET_NAME CONFIG_PATH)
             -i "${CMAKE_CURRENT_SOURCE_DIR}"
             -i "${CMAKE_SOURCE_DIR}/QhenkiX/include"
             $<$<BOOL:${EXAMPLES_FORCE_SHADER_RECOMPILE}>:-f>
-        DEPENDS SXC
+        DEPENDS SXC::Compiler
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Compiling shaders for ${TARGET_NAME} (Vulkan)..."
     )

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <span>
 #include <vector>
-#include <cstdint>
 
 #include "qhenki/rhi/descriptor.h"
 
